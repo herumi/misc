@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 	const int threadNum = argc == 1 ? 1 : atoi(argv[1]);
 	omp_set_num_threads(threadNum);
 	printf("thread %d\n", omp_get_max_threads());
-	const int n = 1 * 2 * 3 * 4 * 1000;
+	const int n = 1 * 2 * 3 * 4 * 20000;
 
 	#pragma omp parallel for
 	for (int i = 0; i < n; i++) {
