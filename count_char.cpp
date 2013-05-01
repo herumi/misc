@@ -110,12 +110,15 @@ int main(int argc, char *argv[])
 	std::sort(fv.begin(), fv.end(), std::greater<Freq>());
 	const double rv = 100.0 / charNum;
 	for (size_t i = 0, ie = fv.size(); i != ie; ++i) {
-		std::string s;
+		char buf[5] = {};
 		cybozu::Char c = fv[i].c;
 		if (!cybozu::IsSpace(c)) {
-			cybozu::String(1, c).toUtf8(s);
+			int len = cybozu::string::toUtf8(buf, c);
+			if (len > 0) {
+				buf[len] = 0;
+			}
 		}
-		printf("%06x(%s) %8d %.2g%%\n", c, s.c_str(), fv[i].freq, fv[i].freq * rv);
+		printf("%06x(%s) %8d %.2g%%\n", c, buf, fv[i].freq, fv[i].freq * rv);
 	}
 //	idxTbl.put();
 }
