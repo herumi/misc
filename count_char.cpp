@@ -100,6 +100,7 @@ int main(int argc, char *argv[])
 //		idxTbl.append(c);
 	}
 	printf("num=%d\n", (int)cm.size());
+	printf("total=%lld\n", (long long)charNum);
 	FreqVec fv(cm.size());
 	int pos = 0;
 	for (CharMap::const_iterator i = cm.begin(), ie = cm.end(); i != ie; ++i) {
