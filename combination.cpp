@@ -23,7 +23,7 @@ uint64_t bsr(uint64_t x)
 
 #endif
 
-uint64_t nextParmitation(uint64_t a)
+uint64_t nextCombination(uint64_t a)
 {
 	if (a & 1) {
 		uint64_t b = a ^ (a + 1);
@@ -66,6 +66,6 @@ int main(int argc, char *argv[])
 	uint64_t i = ((uint64_t(1) << (n - k)) - 1) << k;
 	while (i) {
 		printB(n, i);
-		i = nextParmitation(i);
+		i = nextCombination(i);
 	}
 }
