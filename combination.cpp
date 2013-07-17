@@ -63,9 +63,9 @@ int main(int argc, char *argv[])
 	 *       <- k  ->
 	 * <---  n  ---->
 	 */
-	uint64_t i = ((uint64_t(1) << (n - k)) - 1) << k;
-	while (i) {
-		printB(n, i);
-		i = nextCombination(i);
+	uint64_t a = ((uint64_t(1) << (n - k)) - 1) << k;
+	while (a) {
+		printB(n, a);
+		a = nextCombination(a);
 	}
 }
