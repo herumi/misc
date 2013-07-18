@@ -133,7 +133,7 @@ void bench()
 		nextCombinationC,
 		nextCombination
 	};
-	size_t a = makeInit(23, 10);
+	size_t a = makeInit(31, 15);
 	for (int i = 0; i < 2; i++) {
 		Xbyak::util::Clock clk;
 		clk.begin();
