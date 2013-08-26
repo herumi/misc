@@ -2,7 +2,7 @@
 #include <xbyak/xbyak_util.h>
 #include <cybozu/benchmark.hpp>
 
-const int N = 10000000;
+const int N = 1000000;
 
 int (*f1)(); // shrx
 int (*f2)(); // shr
@@ -12,6 +12,8 @@ int (*f5)(); // rorx n
 int (*f6)(); // ror n
 int (*f7)(); // bextr
 int (*f8)(); // bzhi
+int (*f9)(); // hash with rorx
+int (*fa)(); // hash with ror
 
 struct Code : Xbyak::CodeGenerator {
 	Code()
@@ -41,6 +43,13 @@ struct Code : Xbyak::CodeGenerator {
 		align(16);
 		f8 = getCurr<int (*)()>();
 		gen6();
+
+		align(16);
+		f9 = getCurr<int (*)()>();
+		gen7(true);
+		align(16);
+		fa = getCurr<int (*)()>();
+		gen7(false);
 	}
 	void gen1()
 	{
@@ -113,12 +122,38 @@ struct Code : Xbyak::CodeGenerator {
 		jnz("@b");
 		ret();
 	}
+	void gen7(bool useRorx)
+	{
+		mov(ecx, N);
+		xor_(eax, eax);
+	L("@@");
+		if (useRorx) {
+			rorx(r8, rcx, 2);
+			xor_(rax, r8);
+			rorx(r8, rcx, 13);
+			xor_(rax, r8);
+			rorx(r8, rcx, 22);
+			xor_(rax, r8);
+		} else {
+			mov(r8, rcx);
+			ror(r8, 2);
+			xor_(rax, r8);
+			ror(r8, 11);
+			xor_(rax, r8);
+			ror(r8, 9);
+			xor_(rax, r8);
+		}
+		sub(ecx, 1);
+		jnz("@b");
+		ret();
+	}
 };
 
 int main()
 	try
 {
 	Code c;
+#if 0
 	printf("%x\n", f1());
 	printf("%x\n", f2());
 	CYBOZU_BENCH("f1", f1);
@@ -138,6 +173,12 @@ int main()
 	printf("%x\n", f8());
 	CYBOZU_BENCH("f7", f7);
 	CYBOZU_BENCH("r8", f8);
+#endif
+
+	printf("%x\n", f9());
+	printf("%x\n", fa());
+	CYBOZU_BENCH("f9", f9);
+	CYBOZU_BENCH("ra", fa);
 } catch (std::exception& e) {
 	printf("err=%s\n", e.what());
 }
