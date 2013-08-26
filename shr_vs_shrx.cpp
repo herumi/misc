@@ -8,8 +8,10 @@ int (*f1)(); // shrx
 int (*f2)(); // shr
 int (*f3)(); // rorx 1
 int (*f4)(); // ror 1
-int (*f5)();
-int (*f6)();
+int (*f5)(); // rorx n
+int (*f6)(); // ror n
+int (*f7)(); // bextr
+int (*f8)(); // bzhi
 
 struct Code : Xbyak::CodeGenerator {
 	Code()
@@ -32,6 +34,13 @@ struct Code : Xbyak::CodeGenerator {
 		align(16);
 		f6 = getCurr<int (*)()>();
 		gen4(5);
+
+		align(16);
+		f7 = getCurr<int (*)()>();
+		gen5();
+		align(16);
+		f8 = getCurr<int (*)()>();
+		gen6();
 	}
 	void gen1()
 	{
@@ -80,9 +89,34 @@ struct Code : Xbyak::CodeGenerator {
 		jnz("@b");
 		ret();
 	}
+	void gen5()
+	{
+		mov(ecx, N);
+		xor_(eax, eax);
+		mov(edx, 3 << 8);
+	L("@@");
+		bextr(r8, rcx, rdx);
+		add(rax, r8);
+		sub(ecx, 1);
+		jnz("@b");
+		ret();
+	}
+	void gen6()
+	{
+		mov(ecx, N);
+		xor_(eax, eax);
+		mov(edx, 3);
+	L("@@");
+		bzhi(r8, rcx, rdx);
+		add(rax, r8);
+		sub(ecx, 1);
+		jnz("@b");
+		ret();
+	}
 };
 
 int main()
+	try
 {
 	Code c;
 	printf("%x\n", f1());
@@ -99,5 +133,12 @@ int main()
 	printf("%x\n", f6());
 	CYBOZU_BENCH("f3", f3);
 	CYBOZU_BENCH("r4", f4);
+
+	printf("%x\n", f7());
+	printf("%x\n", f8());
+	CYBOZU_BENCH("f7", f7);
+	CYBOZU_BENCH("r8", f8);
+} catch (std::exception& e) {
+	printf("err=%s\n", e.what());
 }
 
