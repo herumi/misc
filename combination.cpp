@@ -1,12 +1,17 @@
 /*
-	gcc -mbmi
+	gcc -Ofast -march=native -mbmi
+	i7-4770 CPU @ 3.40GHz with gcc-4.8.1
+	clk 7.10 ; C
+	clk 6.81 ; intrinsic
+	clk 6.25 ; asm (use shrx) => 6.31 use shr(x, c), but shr(x, 1) is faster than shrx
 */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <assert.h>
 #include <cybozu/bit_operation.hpp>
 
-//#define USE_INTRIN
+#define USE_INTRIN
 
 #define XBYAK_NO_OP_NAMES
 #include <xbyak/xbyak.h>
@@ -21,7 +26,6 @@
 
 bool g_isHaswell = false;
 
-#ifndef USE_INTRIN
 struct NextCombinationCode : Xbyak::CodeGenerator {
 	NextCombinationCode()
 		try
@@ -54,10 +58,11 @@ struct NextCombinationCode : Xbyak::CodeGenerator {
 		lea(c, ptr [a + 1]); // y + 1
 		shr(a, 1); // y / 2
 		bsr(c, c); // rcx = bsr(y + 1)
+//tzcnt(rcx, rcx);
 		sub(x, a); // c
 		mov(a, x);
 		blsi(x, x); // c & (-c)
-		shr(x, cl);
+		shrx(x, x, rcx);
 		sub(a, x);
 		ret();
 	L("@@");
@@ -70,13 +75,17 @@ struct NextCombinationCode : Xbyak::CodeGenerator {
 		printf("ERR %s\n", e.what());
 	}
 } s_code;
-#endif
 
+/*
+	a = 0x7fffffff => b + 1 = 0, c = 0, then return 0 if bsr(b + 1) is any
+	a = 0xffffffff => b + 1 = 0, c = 0x80000000
+*/
 size_t nextCombinationC(size_t  a)
 {
 	if (a & 1) {
 		size_t b = a ^ (a + 1);
 		size_t c = a - b / 2;
+		assert(b + 1);
 #if 1
 		return c - ((c & -c) >> cybozu::bsr(b + 1));
 #else
@@ -107,11 +116,7 @@ size_t nextCombinationI(size_t  a)
 }
 #endif
 
-#ifdef USE_INTRIN
-size_t (*nextCombination)(size_t) = nextCombinationI;
-#else
 size_t (*nextCombination)(size_t) = g_isHaswell ? s_code.getCode<size_t (*)(size_t)>() : nextCombinationC;
-#endif
 
 void putB(size_t n, size_t a)
 {
@@ -165,10 +170,13 @@ void bench()
 	typedef size_t (*func)(size_t);
 	const func tbl[] = {
 		nextCombinationC,
+#ifdef USE_INTRIN
+		nextCombinationI,
+#endif
 		nextCombination
 	};
 	size_t a = makeInit(31, 15);
-	for (int i = 0; i < 2; i++) {
+	for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(tbl); i++) {
 		Xbyak::util::Clock clk;
 		clk.begin();
 		size_t n = testLoop(tbl[i], a);
@@ -194,7 +202,7 @@ int main(int argc, char *argv[])
 	}
 	const uint32_t n = atoi(argv[0]);
 	const uint32_t k = atoi(argv[1]);
-	if (n > 64 || k > n) {
+	if (n >= 64 || k > n) {
 		printf("bad n=%u, k=%u\n", n, k);
 		return 1;
 	}
