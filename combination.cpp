@@ -1,7 +1,12 @@
+/*
+	gcc -mbmi
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <cybozu/bit_operation.hpp>
+
+//#define USE_INTRIN
 
 #define XBYAK_NO_OP_NAMES
 #include <xbyak/xbyak.h>
@@ -9,10 +14,14 @@
 
 #ifdef _MSC_VER
 	#pragma warning(disable : 4146)
+	#include <intrin.h>
+#else
+	#include <x86intrin.h>
 #endif
 
 bool g_isHaswell = false;
 
+#ifndef USE_INTRIN
 struct NextCombinationCode : Xbyak::CodeGenerator {
 	NextCombinationCode()
 		try
@@ -61,6 +70,7 @@ struct NextCombinationCode : Xbyak::CodeGenerator {
 		printf("ERR %s\n", e.what());
 	}
 } s_code;
+#endif
 
 size_t nextCombinationC(size_t  a)
 {
@@ -77,7 +87,31 @@ size_t nextCombinationC(size_t  a)
 	}
 }
 
+#ifdef USE_INTRIN
+#ifdef __GNUC__
+uint64_t blsmsk(uint64_t x) { return __blsmsk_u64(x); }
+uint64_t blsi(uint64_t x) { return __blsi_u64(x); }
+#else
+uint64_t blsmsk(uint64_t x) { return _blsmsk_u64(x); }
+uint64_t blsi(uint64_t x) { return _blsi_u64(x); }
+#endif
+size_t nextCombinationI(size_t  a)
+{
+	if (a & 1) {
+		size_t b = blsmsk(a + 1);
+		size_t c = a - b / 2;
+		return c - (blsi(c) >> cybozu::bsr(b + 1));
+	} else {
+		return a - blsi(a) / 2;
+	}
+}
+#endif
+
+#ifdef USE_INTRIN
+size_t (*nextCombination)(size_t) = nextCombinationI;
+#else
 size_t (*nextCombination)(size_t) = g_isHaswell ? s_code.getCode<size_t (*)(size_t)>() : nextCombinationC;
+#endif
 
 void putB(size_t n, size_t a)
 {
@@ -146,7 +180,11 @@ void bench()
 
 int main(int argc, char *argv[])
 {
+#ifdef USE_INTRIN
+	printf("use intrin version\n");
+#else
 	printf("use %s version\n", g_isHaswell ? "asm" : "C");
+#endif
 	argc--, argv++;
 	if (argc != 2) {
 		printf("nCk n k\n");
