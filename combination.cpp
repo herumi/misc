@@ -18,9 +18,9 @@ struct NextCombinationCode : Xbyak::CodeGenerator {
 		try
 	{
 		Xbyak::util::Cpu cpu;
-		if (!cpu.has(Xbyak::util::Cpu::tGPR1)) {
+		if (!cpu.has(Xbyak::util::Cpu::tBMI1)) {
 			printf("This CPU does not support blsi, ...\n");
-			return;
+			exit(1);
 		}
 		g_isHaswell = true;
 #ifdef XBYAK32
