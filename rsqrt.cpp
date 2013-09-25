@@ -40,9 +40,9 @@ float rsqrt2(float x)
 }
 
 /*
-	f := int((log(x+1)/log(2)-(x+A))^2,x=0..1);
-	sol := solve(diff(f,A)=0,A);
-	s := evalf(sol,15);
+	f := int((log(x+1)/log(2)-(x+t))^2,x=0..1);
+	s := solve(diff(f,t)=0,t);
+	s := evalf(s,15);
 	hex(int(3/2. * (127 - s) * (1 << 23))) = 0x5f34ff58
 */
 float rsqrt3(float x)
@@ -61,43 +61,34 @@ float newton(float x, float rsqrt(float))
 	return x * (1.5f - x2 * x * x);
 }
 
-int main()
+void test(float begin, float end, float d, float f(float))
 {
-	double sa = 0, ma = 0;
-	double sb = 0, mb = 0;
-	double sc = 0, mc = 0;
-	double sd = 0, md = 0;
+	double s = 0;
+	double m = 0;
 	int n = 0;
-	for (float x = 0.1; x < 10000; x += 0.003) {
+	for (float x = begin; x < end; x += d) {
 		float y = 1 / sqrt(x);
-		float a = rsqrt0(x);
-#if 0
-		float b = newton(x, rsqrt1);
-		float c = newton(x, rsqrt2);
-		float d = newton(x, rsqrt3);
+#if 1
+		float z = f(x);
 #else
-		float b = rsqrt1(x);
-		float c = rsqrt2(x);
-		float d = rsqrt3(x);
+		float z = newton(x, f);
 #endif
-		float da = fabs(a - y);
-		float db = fabs(b - y);
-		float dc = fabs(c - y);
-		float dd = fabs(d - y);
-		sa += da / a;
-		sb += db / a;
-		sc += dc / a;
-		sd += dd / a;
-		if (da > ma) ma = da;
-		if (db > mb) mb = db;
-		if (dc > mc) mc = dc;
-		if (dd > md) md = dd;
+		float ds = fabs(y - z);
+		s += ds / y;
+		if (ds > m) m = ds;
 		n++;
 	}
-	sa /= n;
-	sb /= n;
-	sc /= n;
-	sd /= n;
-	printf("s:%e %e %e %e\n", sa, sb, sc, sd);
-	printf("m:%e %e %e %e\n", ma, mb, mc, md);
+	s /= n;
+	printf("err %e max %e\n", s, m);
+}
+
+int main()
+{
+	const float begin = 0.1;
+	const float end = 10000;
+	const float d = 0.003;
+	test(begin, end, d, rsqrt0);
+	test(begin, end, d, rsqrt1);
+	test(begin, end, d, rsqrt2);
+	test(begin, end, d, rsqrt3);
 }
