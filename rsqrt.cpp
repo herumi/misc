@@ -1,5 +1,10 @@
 /*
   see http://en.wikipedia.org/wiki/Fast_inverse_square_root
+
+err 9.692228e-005 max 6.933212e-004
+err 2.335245e-002 max 1.025827e-001
+err 2.349671e-002 max 1.032121e-001
+err 1.578313e-002 max 9.164917e-002
 */
 #include <stdio.h>
 #include <stdint.h>
