@@ -65,7 +65,7 @@ ARBは
 | size<0|undefined(6.7.5.2とp.506)|N3820 ill-formed|-|
 | メモリ確保できないとき|?|undefined. bad_array_lengthをthrowするのが望ましい|bad_array_length|
 
-(注意)サイズの正負はsize_tにキャスとする前の値で決められる。
+(注意)サイズの正負はsize_tにキャストする前の値で決められる。
 
 ## コンパイラの対応状況
 
