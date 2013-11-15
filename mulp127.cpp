@@ -9,7 +9,7 @@
 
 typedef mie::FpT<mie::Gmp> Fp;
 const int NN = 1000;
-//#define USE_LOOP
+//#define LOOP_CORE
 
 /*
 	p = 2^127 - 1
@@ -70,11 +70,11 @@ struct Code : public Xbyak::CodeGenerator {
 		// mulx(H, L, x) = [H:L] = x * rdx
 		using namespace Xbyak;
 		using namespace Xbyak::util;
-#ifdef USE_LOOP
-		StackFrame sf(this, 3, 8 | UseRDX | UseRCX);
-		const Reg64& pz = sf.p[0];
-		const Reg64& px = sf.p[1];
-		const Reg64& py = sf.p[2];
+#ifdef LOOP_CORE
+		StackFrame sf(this, 3, 9 | UseRDX | UseRCX);
+		const Reg64& a = sf.p[0];
+		const Reg64& b = sf.p[1];
+		const Reg64& c = sf.p[2];
 
 		const Reg64& t0 = sf.t[0];
 		const Reg64& t1 = sf.t[1];
@@ -84,18 +84,15 @@ struct Code : public Xbyak::CodeGenerator {
 		const Reg64& t5 = sf.t[5];
 		const Reg64& t6 = sf.t[6];
 		const Reg64& t7 = sf.t[7];
-		/*
-			x = [a:b]
-			y = [c:d]
-		*/
+		const Reg64& d = sf.t[8];
 		mov(rcx, NN);
-	L("@@");
-		mov(rdx, ptr [px]); // b
-		mulx(t1, t0, ptr [py]); // [t1:t0] = bd
-		mulx(t3, t2, ptr [py + 8]); // [t3:t2] = bc
-		mov(rdx, ptr [px + 8]); // a
-		mulx(t5, t4, ptr [py]); // [t5:t4] = ad
-		mulx(t7, t6, ptr [py + 8]); // [py:px] = ac
+	L("@@"); // 17clk
+		mov(rdx, b); // b
+		mulx(t1, t0, d); // [t1:t0] = bd
+		mulx(t3, t2, c); // [t3:t2] = bc
+		mov(rdx, a); // a
+		mulx(t5, t4, d); // [t5:t4] = ad
+		mulx(t7, t6, c); // [py:px] = ac
 		xor_(eax, eax);
 		add(t0, t6);
 		adc(t1, t7);
@@ -108,8 +105,8 @@ struct Code : public Xbyak::CodeGenerator {
 		adc(rax, 0);
 		add(t0, rax);
 		adc(t1, 0);
-		mov(ptr [pz], t0);
-		mov(ptr [pz + 8], t1);
+		mov(a, t0);
+		mov(b, t1);
 		dec(rcx);
 		jnz("@b");
 #else
@@ -155,10 +152,10 @@ struct Code : public Xbyak::CodeGenerator {
 		// mulx(H, L, x) = [H:L] = x * rdx
 		using namespace Xbyak;
 		using namespace Xbyak::util;
-#ifdef USE_LOOP
+#ifdef LOOP_CORE
 		StackFrame sf(this, 2, 6 | UseRDX | UseRCX);
-		const Reg64& pz = sf.p[0];
-		const Reg64& px = sf.p[1];
+		const Reg64& a = sf.p[0];
+		const Reg64& b = sf.p[1];
 
 		const Reg64& t0 = sf.t[0];
 		const Reg64& t1 = sf.t[1];
@@ -166,16 +163,13 @@ struct Code : public Xbyak::CodeGenerator {
 		const Reg64& t3 = sf.t[3];
 		const Reg64& t4 = sf.t[4];
 		const Reg64& t5 = sf.t[5];
-		/*
-			x = [a:b]
-		*/
 		mov(rcx, NN);
-	L("@@");
-		mov(rdx, ptr [px]); // b
-		mulx(t1, t0, rdx); // [t1:t0] = b^2
-		mulx(t3, t2, ptr [px + 8]); // [t3:t2] = ab
-		mov(rdx, ptr [px + 8]); // a
-		mulx(t4, t5, rdx); // [t4:px] = a^2
+	L("@@"); // 14.5clk
+		mov(rdx, b);
+		mulx(t1, t0, b); // [t1:t0] = b^2
+		mulx(t3, t2, a); // [t3:t2] = ab
+		mov(rdx, a); // a
+		mulx(t4, t5, a); // [t4:px] = a^2
 		xor_(eax, eax);
 		add(t0, t5);
 		adc(t1, t4);
@@ -188,8 +182,8 @@ struct Code : public Xbyak::CodeGenerator {
 		adc(rax, 0);
 		add(t0, rax);
 		adc(t1, 0);
-		mov(ptr [pz], t0);
-		mov(ptr [pz + 8], t1);
+		mov(a, t0);
+		mov(b, t1);
 		dec(rcx);
 		jnz("@b");
 #else
