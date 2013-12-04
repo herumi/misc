@@ -1,6 +1,15 @@
 /*
 	verify the report
 	http://eli.thegreenplace.net/2013/12/03/intel-i7-loop-performance-anomaly/
+
+	i7 4770
+	load + add + store
+	loopCall   6   clk
+	loopNoCall 7.3 clk
+
+	read-modify-write
+	loopCall   6   clk
+	loopNoCall 6   clk
 */
 #define XBYAK_NO_OP_NAMES
 #include <xbyak/xbyak.h>
@@ -25,15 +34,19 @@ struct Code : Xbyak::CodeGenerator {
 	}
 	void gen(bool doCall)
 	{
-		xor_(eax, eax);
+		mov(rax, N);
 		mov(rcx, (size_t)&counter);
 	L("@@");
 		if (doCall) call("f");
+#if 1 // read-modify-write is faster
+		add(ptr [rcx], rax);
+#else
 		mov(rdx, ptr [rcx]);
 		add(rdx, rax);
-		add(rax, 1);
 		mov(ptr [rcx], rdx);
-		cmp(rax, N);
+#endif
+//		dec(rax);
+		sub(rax, 1);
 		jnz("@b");
 		ret();
 		if (doCall) {
