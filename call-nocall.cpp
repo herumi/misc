@@ -51,7 +51,7 @@ void test(void (*f)())
 	clk.begin();
 	f();
 	clk.end();
-	printf("counter=%lld %f\n", (long long)counter, clk.getClock() / double(clk.getCount()));
+	printf("%.2f clk/loop counter=%lld\n", clk.getClock() / double(clk.getCount() * N), (long long)counter);
 }
 int main()
 {
