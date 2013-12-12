@@ -69,6 +69,8 @@ contiguous_range<charT>は似た機能を提供するがstd::stringとは意味�
 
 ### string_view_(begin, end)型の提供(却下)
 
+変換が連続領域に基づくものなら許可したいが難しい。
+明示的に変換してからコンストラクタに渡したほうがいい。
 
 ## 以下実装における細かい注意について
 
@@ -116,7 +118,13 @@ std::string::data()と異なり0終端されるとは限らない。
 この戻り値をconst charT*の引数だけを持つ関数に渡してはならない。
 
 ### void remove_prefix(size_type n);
+
+先頭n文字を削除する。O(1)で実行される。
+
 ### void remove_suffix(size_type n);
+
+後n文字を削除する。O(1)で実行される。
+
 ### constexpr basic_string_view substr(size_type pos = 0, size_type n = npos) const;
 
-O(1)で実行される。
+部分文字列を切り出す。O(1)で実行される。
