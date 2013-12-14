@@ -57,6 +57,11 @@ snprintfにより文字列を作ったときに問題を起こす。
 
 というコードでstrlen(p)は最適化により3となるのでパフォーマンスの問題はない(VC, gcc, clang)。
 
+### 要素の比較ではなく(begin, end)で比較せよ(却下)
+
+要素の比較をすると、参照中にもとの領域の文字が変わっってしまうリスクはあるが、
+同じ値の文字は同じであって欲しいので中身を比較する。
+
 ### contiguous_range<charT>を待てばよいのでは(却下)
 
 contiguous_range<charT>は似た機能を提供するがstd::stringとは意味が違う。
@@ -92,6 +97,10 @@ templateクラスの形
 ### typedef const_iterator iterator;
 
 string_viewはconst参照のみを扱うのでiteratorはconst_iteratorと同じである。
+
+### static constexpr size_type npos = size_type(-1);
+
+std::string::nposとは異なる型になる可能性はあるのでstring_view::nposを使うべき。
 
 ### basic_string_view(const charT* str);
 
