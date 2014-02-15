@@ -8,10 +8,12 @@ int main(int argc, char *argv[])
 	std::string ip;
 	uint16_t port;
 	std::string cmd;
+	bool verbose = false;
 
 	cybozu::Option opt;
 	opt.appendOpt(&isServer, false, "s", "server");
 	opt.appendOpt(&ip, "", "ip", "ip address");
+	opt.appendBoolOpt(&verbose, "v", "verbose");
 	opt.appendMust(&port, "p", "port");
 	opt.appendParamOpt(&cmd, "cmd", "string to send");
 
@@ -27,9 +29,13 @@ int main(int argc, char *argv[])
 			while (!server.queryAccept()) {
 			}
 			cybozu::Socket client;
-			cybozu::SocketAddr addr;
-			server.accept(client, &addr);
-			printf("addr=%s\n", addr.toStr().c_str());
+			if (verbose) {
+				cybozu::SocketAddr addr;
+				server.accept(client, &addr);
+				printf("addr=%s\n", addr.toStr().c_str());
+			} else {
+				server.accept(client);
+			}
 			{
 				char buf[128];
 				size_t readSize = client.readSome(buf, sizeof(buf));
