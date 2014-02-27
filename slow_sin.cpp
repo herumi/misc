@@ -13,7 +13,7 @@
 #include <math.h>
 #include <time.h>
 
-const struct A {
+struct A {
 	float a[8];
 	A()
 	{
@@ -22,12 +22,13 @@ const struct A {
 			a[i] = x;
 		}
 	}
-} aaa;
+};
 
-double (*f)(double) = sin;
+const A a;
 
 int main()
 {
+	double (*f)(double) = sin;
 	double begin = clock();
 	double x = 1.0;
 	double y = 0;
