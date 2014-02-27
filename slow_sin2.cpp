@@ -1,12 +1,5 @@
 /*
-	cl /EHsc /Ox /Ob2 /fp:fast /Zi slow_sin.cpp
-	cl /EHsc /Ox /Ob2 /fp:fast /arch:AVX /Feslow_sin_avx.exe /Zi slow_sin.cpp
-
-	Core i7-2600 3.4GHz / Windows 7 Ultimate
-
-	                 VS2012(x64) VS2013(x64)
-	slow_sin             1.33       1.34
-	slow_sin_avx         1.33       6.27
+	cl /EHsc /Ox /Ob2 /fp:fast /arch:AVX /Zi slow_sin2.cpp
 */
 
 #include <stdio.h>
