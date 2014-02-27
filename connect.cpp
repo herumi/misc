@@ -4,27 +4,41 @@
 int main(int argc, char *argv[])
 	try
 {
-	bool isServer;
 	std::string ip;
 	uint16_t port;
 	std::string cmd;
 	bool verbose = false;
+	int mode = 0;
 
 	cybozu::Option opt;
-	opt.appendOpt(&isServer, false, "s", "server");
-	opt.appendOpt(&ip, "", "ip", "ip address");
-	opt.appendBoolOpt(&verbose, "v", "verbose");
-	opt.appendMust(&port, "p", "port");
-	opt.appendParamOpt(&cmd, "cmd", "string to send");
+	opt.appendOpt(&ip, "", "ip", ": ip address");
+	opt.appendBoolOpt(&verbose, "v", ": verbose");
+	opt.appendOpt(&mode, 0, "m", ": mode = 4(v4only), 6(v6only), 0(both)");
+	opt.appendOpt(&port, uint16_t(50000), "p", ": port");
+	opt.appendParamOpt(&cmd, "cmd", ":string to send");
+	switch (mode) {
+	case 0:
+		mode = cybozu::Socket::allowIPv4 | cybozu::Socket::allowIPv6;
+		break;
+	case 4:
+		mode = cybozu::Socket::allowIPv4;
+		break;
+	case 6:
+		mode = cybozu::Socket::allowIPv6;
+		break;
+	default:
+		printf("bad mode=%d\n", mode);
+		return 1;
+	}
 
 	if (!opt.parse(argc, argv)) {
 		opt.usage();
 		return 1;
 	}
-	if (isServer) {
+	if (ip.empty()) {
 		printf("server port=%d\n", port);
 		cybozu::Socket server;
-		server.bind(port);
+		server.bind(port, mode);
 		for (;;) {
 			while (!server.queryAccept()) {
 			}
