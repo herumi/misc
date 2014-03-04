@@ -1,0 +1,41 @@
+Xbyakのラベルの扱いの拡張案
+
+現状の仕様
+
+L("AAA"); グローバルラベル
+
+L(".AAA"); ローカルラベル
+
+jne(".AAA");
+
+inLocalLabel(); outLocalLabel();
+で囲まれた中のローカルラベルはその外側のラベルは見えない。
+
+拡張案
+ジャンプ命令の第2(3?)引数にint型の引数を追加する。
+
+inLocalLabel();
+L(".AAA"); // L1
+
+  inLocalLabel();
+  L(".AAA"); // L2
+
+    inLocalLabel();
+    L(".AAA"); // L3
+
+    jmp(".AAA"); // 今までどおり
+    jmp(".AAA", 1); // 1段外のスコープのラベル(L2)になる
+    jmp(".AAA", 2); // L1になる
+
+    outLocalLabel();
+  outLocalLabel();
+outLocalLabel();
+
+inLocalLabel()が今のスタックの段数を返すようにすればより自由度が高まるか。
+
+現状は
+jne(const std::string& label, LabelType type = T_AUTO);
+これをどうやって拡張しよう。
+
+案) 第2引数がマイナスのときは上記拡張になるとする。
+-1なら1段外、-2なら2段外。このときはT_NEAR固定でよいか。
