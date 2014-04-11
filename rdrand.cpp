@@ -50,6 +50,7 @@ uint32_t use_mt()
 uint32_t use_random_device()
 {
 	static std::random_device rd;
+//	static std::random_device rd("/dev/urandom");
 	return rd();
 }
 #endif
