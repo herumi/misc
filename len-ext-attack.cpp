@@ -5,10 +5,19 @@
 #include <stdio.h>
 #include <string>
 
-void put(const std::string& msg)
+void put(const std::string& msg, bool allHex = true)
 {
 	for (size_t i = 0; i < msg.size(); i++) {
-		printf("%02x", (unsigned char)msg[i]);
+		const char c = msg[i];
+		if (allHex) {
+			printf("%02x", (unsigned char)msg[i]);
+		} else {
+			if (' ' <= c && c <= '~') {
+				putchar(c);
+			} else {
+				printf("\\x%02x", (unsigned char)msg[i]);
+			}
+		}
 	}
 	printf("\n");
 }
@@ -107,9 +116,10 @@ int main()
 		any string
 	*/
 	puts("attacker");
+	printf("s size=%d\n", (int)s.size());
 	const Pair pair = makeFakePair(s.size(), msg, mac, "xyz");
 	printf("new msg=");
-	put(pair.msg);
+	put(pair.msg, false);
 
 	puts("server");
 	pair.validate(s);
