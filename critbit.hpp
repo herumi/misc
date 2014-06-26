@@ -169,7 +169,8 @@ private:
 		uint8_t extra_;
 		int getDirection(const uint8_t *u, size_t len) const
 		{
-			const uint8_t c = (len_ < len) ? u[len_] : 0;
+			if (len_ >= len) return 0;
+			const uint8_t c = u[len_];
 			return (c >> extra_) & 1;
 		}
 	};
