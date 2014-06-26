@@ -6,11 +6,7 @@
 #include <string.h>
 #include <new>
 #include <string>
-#define CRITBIT_USE_BSF
-
-#ifdef CRITBIT_USE_BSF
 #include <cybozu/bit_operation.hpp>
-#endif
 
 namespace critbit {
 
@@ -58,9 +54,9 @@ struct StrSet {
 		}
 		return false; // already has s
 	different_byte_found:
-		extra = calcBit(extra);
+		extra = getBsr(extra);
 		const uint8_t c = p[newLen];
-		const int newdirection = (1 + (extra | c)) >> 8;
+		const int newdirection = (c >> extra) & 1;
 
 		Node* const newNode = (Node*)malloc(sizeof(Node));
 		if (newNode == 0) throw std::bad_alloc();
@@ -83,7 +79,7 @@ struct StrSet {
 			Node* q = (Node*)(p - 1);
 
 			if (q->len_ > newLen) break;
-			if (q->len_ == newLen && q->extra_ > extra) break;
+			if (q->len_ == newLen && q->extra_ < extra) break;
 			const int direction = q->getDirection(u, len);
 			wherep = &q->child_[direction];
 		}
@@ -174,23 +170,13 @@ private:
 		int getDirection(const uint8_t *u, size_t len) const
 		{
 			const uint8_t c = (len_ < len) ? u[len_] : 0;
-			return (1 + (extra_ | c)) >> 8;
+			return (c >> extra_) & 1;
 		}
 	};
 	void putSp(size_t len) const
 	{
 		for (size_t i = 0; i < len; i++) {
 			putchar(' ');
-		}
-	}
-	void putExtra(uint8_t x) const
-	{
-		x = ~x;
-		for (int i = 0; i < 8; i++) {
-			if (x & (1 << i)) {
-//				printf("~(1 << %d)", i);
-				printf("[%d]", i);
-			}
 		}
 	}
 	void putInner(const uint8_t *p, size_t level = 0) const
@@ -201,8 +187,7 @@ private:
 			return;
 		}
 		const Node *q = (const Node*)(p - 1);
-		putSp(level); printf("len=%d, extra=", q->len_, q->extra_);
-		putExtra(q->extra_); printf("\n");
+		putSp(level); printf("len=%d, extra=%d\n", q->len_, q->extra_);
 		putSp(level); printf("[L]\n"); putInner(q->child_[0], level + 2);
 		putSp(level); printf("[R]\n"); putInner(q->child_[1], level + 2);
 	}
@@ -243,27 +228,19 @@ private:
 		return handler(arg, (const char*)p);
 	}
 	/*
-		0b11111110 for x = 1
-		0b11111101 for x in [2, 3]
-		0b11111011 for x in [4, 7]
-		0b11110111 for x in [8, 15]
-		0b11101111 for x in [16, 31]
-		0b11011111 for x in [32, 63]
-		0b10111111 for x in [64, 127]
-		0b01111111 for x in [128, 255]
+		0 for x = 1
+		1 for x in [2, 3]
+		2 for x in [4, 7]
+		3 for x in [8, 15]
+		4 for x in [16, 31]
+		5 for x in [32, 63]
+		6 for x in [64, 127]
+		7 for x in [128, 255]
 	*/
-	uint8_t calcBit(uint8_t x) const
+	uint8_t getBsr(uint8_t x) const
 	{
 		assert(x);
-#ifdef CRITBIT_USE_BSF
-//		if (x == 0) return 255;
-		return 255 - (1 << cybozu::bsr(x));
-#else
-		x |= x >> 1;
-		x |= x >> 2;
-		x |= x >> 4;
-		return (x & ~(x >> 1)) ^ 255;
-#endif
+		return (uint8_t)cybozu::bsr(x);
 	}
 };
 
