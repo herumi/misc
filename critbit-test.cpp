@@ -20,8 +20,10 @@ CYBOZU_TEST_AUTO(has)
 	critbit::StrSet crit;
 	static const char* elems[] = {"a", "aa", "b", "bb", "ab", "ba", "aba", "bab", NULL};
 
-	for (size_t i = 0; elems[i]; ++i) crit.insert(elems[i]);
-		CYBOZU_TEST_EQUAL(crit.size(), 8);
+	for (size_t i = 0; elems[i]; ++i) {
+		crit.insert(elems[i]);
+	}
+	CYBOZU_TEST_EQUAL(crit.size(), 8);
 
 	for (size_t i = 0; elems[i]; ++i) {
 		CYBOZU_TEST_ASSERT(crit.has(elems[i]));
