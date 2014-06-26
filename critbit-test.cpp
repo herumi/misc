@@ -7,8 +7,17 @@
 #include <cybozu/test.hpp>
 #include <cybozu/benchmark.hpp>
 #include <cybozu/mmap.hpp>
+#include <cybozu/unordered_set.hpp>
+
+typedef std::vector<std::string> StrVec;
 
 struct StrSet : std::set<std::string> {
+	bool has(const std::string& str) const
+	{
+		return this->find(str) != this->end();
+	}
+};
+struct StrHash : CYBOZU_NAMESPACE_STD::unordered_set<std::string> {
 	bool has(const std::string& str) const
 	{
 		return this->find(str) != this->end();
@@ -86,30 +95,39 @@ CYBOZU_TEST_AUTO(traverse)
 }
 
 template<class Set>
+int findAll(const Set& s, const StrVec& sv)
+{
+	int c = 0;
+	for (size_t i = 0; i < sv.size(); i++) {
+		c += s.has(sv[i]);
+	}
+	return c;
+}
+
+template<class Set>
 void bench(const char *msg, const std::string& text)
 {
-	printf("bench:%s\n", msg);
-	std::vector<std::string> sampling;
+	printf("bench:%s -------------------\n", msg);
+	StrVec words;
 	Set set;
 	std::istringstream iss(text);
 	std::string word;
-	int c = 0;
 	while (iss >> word) {
 		set.insert(word);
-		c++;
-		if ((c % 100) == 0 && sampling.size() < 10) {
-			sampling.push_back(word);
-		}
+		words.push_back(word);
 	}
 	printf("word num %d\n", (int)set.size());
-	printf("sampling num %d\n", (int)sampling.size());
-	for (size_t i = 0; i < sampling.size(); i++) {
-		const std::string w = sampling[i];
-		const char *msg = sampling[i].c_str();
+	for (size_t i = 0; i < set.size(); i++) {
+		const std::string w = words[i];
+		const char *msg = words[i].c_str();
 		CYBOZU_BENCH(msg, set.has, w);
+		if (i == 9) break;
 	}
 	const std::string str = "maybe-not-found-string";
 	CYBOZU_BENCH(str.c_str(), set.has, str);
+	int c = 0;
+	CYBOZU_BENCH_C("findAll", 1, c = findAll, set, words);
+	printf("count=%d\n", c);
 }
 
 int main(int argc, char *argv[])
@@ -121,8 +139,7 @@ int main(int argc, char *argv[])
 		cybozu::Mmap m(file);
 		const std::string text(m.get(), m.size());
 		bench<StrSet>("std::set", text);
-		bench<critbit::StrSet>("critbit::set", text);
-		bench<StrSet>("std::set", text);
+		bench<StrHash>("std::unordered_set", text);
 		bench<critbit::StrSet>("critbit::set", text);
 	}
 	return cybozu::test::autoRun.run(argc, argv);
