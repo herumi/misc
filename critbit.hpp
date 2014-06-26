@@ -222,7 +222,6 @@ private:
 	{
 		if (isNode(p)) {
 			Node* q = (Node*)(p - 1);
-
 			if (!traverseInner(q->child_[0], arg, handler)) return false;
 			return traverseInner(q->child_[1], arg, handler);
 		}
