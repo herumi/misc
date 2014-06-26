@@ -183,6 +183,16 @@ private:
 			putchar(' ');
 		}
 	}
+	void putExtra(uint8_t x) const
+	{
+		x = ~x;
+		for (int i = 0; i < 8; i++) {
+			if (x & (1 << i)) {
+//				printf("~(1 << %d)", i);
+				printf("[%d]", i);
+			}
+		}
+	}
 	void putInner(const uint8_t *p, size_t level = 0) const
 	{
 		putSp(level);
@@ -191,7 +201,8 @@ private:
 			return;
 		}
 		const Node *q = (const Node*)(p - 1);
-		putSp(level); printf("len=%d, extra=%d\n", q->len_, q->extra_);
+		putSp(level); printf("len=%d, extra=", q->len_, q->extra_);
+		putExtra(q->extra_); printf("\n");
 		putSp(level); printf("[L]\n"); putInner(q->child_[0], level + 2);
 		putSp(level); printf("[R]\n"); putInner(q->child_[1], level + 2);
 	}
@@ -231,10 +242,21 @@ private:
 		}
 		return handler(arg, (const char*)p);
 	}
+	/*
+		0b11111110 for x = 1
+		0b11111101 for x in [2, 3]
+		0b11111011 for x in [4, 7]
+		0b11110111 for x in [8, 15]
+		0b11101111 for x in [16, 31]
+		0b11011111 for x in [32, 63]
+		0b10111111 for x in [64, 127]
+		0b01111111 for x in [128, 255]
+	*/
 	uint8_t calcBit(uint8_t x) const
 	{
+		assert(x);
 #ifdef CRITBIT_USE_BSF
-		if (x == 0) return 255;
+//		if (x == 0) return 255;
 		return 255 - (1 << cybozu::bsr(x));
 #else
 		x |= x >> 1;
