@@ -42,10 +42,10 @@ struct StrSet {
 			return true;
 		}
 		uint8_t *p = seekToLeaf(root_, u, len);
-	
+
 		uint32_t newLen;
-		uint32_t extra;
-	
+		uint8_t extra;
+
 		for (newLen = 0; newLen < len; newLen++) {
 			if (p[newLen] != u[newLen]) {
 				extra = p[newLen] ^ u[newLen];
@@ -75,19 +75,19 @@ struct StrSet {
 		newNode->extra_ = extra;
 		newNode->child_[1 - newdirection] = x;
 		uint8_t** wherep = &root_;
-	
+
 		for (;;) {
 			uint8_t* p = *wherep;
-	
+
 			if (!isNode(p)) break;
 			Node* q = (Node*)(p - 1);
-	
+
 			if (q->len_ > newLen) break;
 			if (q->len_ == newLen && q->extra_ > extra) break;
-
-			wherep = &q->child_[q->getDirection(u, len)];
+			const int direction = q->getDirection(u, len);
+			wherep = &q->child_[direction];
 		}
-	
+
 		newNode->child_[newdirection] = *wherep;
 		*wherep = (uint8_t*)(1 + (char*)newNode);
 		size_++;
@@ -119,7 +119,7 @@ struct StrSet {
 		uint8_t** whereq = 0;
 		Node* q = 0;
 		int direction = 0;
-	
+
 		while (isNode(p)) {
 			q = (Node*)(p - 1);
 			direction = q->getDirection(u, len);
@@ -149,7 +149,7 @@ struct StrSet {
 		const size_t len = strlen(prefix);
 		uint8_t* p = root_;
 		uint8_t* top = p;
-	
+
 		while (isNode(p)) {
 			Node* q = (Node*)(p - 1);
 			p = q->child_[q->getDirection(u, len)];
@@ -181,11 +181,12 @@ private:
 	{
 		while (isNode(p)) {
 			Node* q = (Node*)(p - 1);
-			p = q->child_[q->getDirection(u, len)];
+			const int direction = q->getDirection(u, len);
+			p = q->child_[direction];
 		}
 		return p;
 	}
-	
+
 	static void clearAll(uint8_t* p)
 	{
 		if (isNode(p)) {
@@ -208,7 +209,7 @@ private:
 		}
 		return handler(arg, (const char*)p);
 	}
-	uint32_t calcBit(uint8_t x) const
+	uint8_t calcBit(uint8_t x) const
 	{
 #ifdef CRITBIT_USE_BSF
 		if (x == 0) return 255;
