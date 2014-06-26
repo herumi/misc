@@ -160,6 +160,10 @@ struct StrSet {
 		}
 		return traverseInner(top, arg, handler);
 	}
+	void put() const
+	{
+		putInner(root_);
+	}
 private:
 	uint8_t *root_;
 	size_t size_;
@@ -173,6 +177,24 @@ private:
 			return (1 + (extra_ | c)) >> 8;
 		}
 	};
+	void putSp(size_t len) const
+	{
+		for (size_t i = 0; i < len; i++) {
+			putchar(' ');
+		}
+	}
+	void putInner(const uint8_t *p, size_t level = 0) const
+	{
+		putSp(level);
+		if (!isNode(p)) {
+			printf("[leaf] %s\n", p);
+			return;
+		}
+		const Node *q = (const Node*)(p - 1);
+		putSp(level); printf("len=%d, extra=%d\n", q->len_, q->extra_);
+		putSp(level); printf("[L]\n"); putInner(q->child_[0], level + 2);
+		putSp(level); printf("[R]\n"); putInner(q->child_[1], level + 2);
+	}
 	static inline bool isNode(const uint8_t *p)
 	{
 		return ((intptr_t)p & 1) != 0;
