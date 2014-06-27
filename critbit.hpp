@@ -229,14 +229,7 @@ private:
 		return handler(arg, (const char*)p);
 	}
 	/*
-		0 for x = 1
-		1 for x in [2, 3]
-		2 for x in [4, 7]
-		3 for x in [8, 15]
-		4 for x in [16, 31]
-		5 for x in [32, 63]
-		6 for x in [64, 127]
-		7 for x in [128, 255]
+		return log_2(x)
 	*/
 	uint8_t getBsr(uint8_t x) const
 	{
