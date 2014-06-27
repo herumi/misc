@@ -25,9 +25,9 @@ struct StrSet {
 	size_t size() const { return size_; }
 	bool insert(const std::string& str)
 	{
-		return append(str.c_str(), str.size());
+		return insert(str.c_str(), str.size());
 	}
-	bool append(const char *s, size_t len = 0)
+	bool insert(const char *s, size_t len = 0)
 	{
 		const uint8_t* u = reinterpret_cast<const uint8_t*>(s);
 		if (len == 0) len = strlen(s);
