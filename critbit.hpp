@@ -189,7 +189,7 @@ private:
 			return;
 		}
 		const Node *q = (const Node*)(p - 1);
-		putSp(level); printf("len=%d, extra=%d\n", q->len_, q->extra_);
+		putSp(level); printf("len=%d\n", q->len_ * 8 + 7 - q->extra_);
 		putSp(level); printf("[L]\n"); putInner(q->child_[0], level + 2);
 		putSp(level); printf("[R]\n"); putInner(q->child_[1], level + 2);
 	}
