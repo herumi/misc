@@ -100,7 +100,6 @@ struct Repeater {
 	std::thread s2c_;
 	std::exception_ptr ep_;
 	void loop(int dir)
-		try
 	{
 		if (opt_.verbose) printf("thread loop %d start\n", dir);
 		assert(dir == 0 || dir == 1);
@@ -109,30 +108,31 @@ struct Repeater {
 		const bool needShutdown = dir == 1;
 		while (!g_quit) {
 			if (state_ >= Open1sock && from.isValid()) {
-				while (!from.queryAccept()) {
+				try {
+					while (!from.queryAccept()) {
+					}
+					if (g_quit) break;
+					char buf[4096];
+					const size_t readSize = from.readSome(buf, sizeof(buf));
+					if (opt_.verbose) printf("readSize %d [%d] state=%d\n", (int)readSize, dir, (int)state_);
+					if (readSize > 0) {
+						if (to.isValid()) to.write(buf, readSize);
+						continue;
+					}
+				} catch (std::exception& e) {
+					printf("ERR Repeater %s\n", e.what());
 				}
-				if (g_quit) break;
-				char buf[4096];
-				const size_t readSize = from.readSome(buf, sizeof(buf));
-				if (opt_.verbose) printf("readSize %d [%d] state=%d\n", (int)readSize, dir, (int)state_);
-				if (readSize > 0) {
-					if (to.isValid()) to.write(buf, readSize);
-				} else {
-					if (needShutdown) to.waitForClose();
-					from.close();
-					state_--;
-					assert(state_ == Ready || state_ == Open1sock);
-					if (opt_.verbose) printf("close [%d] state=%d\n", dir, (int)state_);
-					if (state_ == Ready) state_ = Sleep;
-				}
+				if (needShutdown) to.waitForClose();
+				from.close();
+				state_--;
+				assert(state_ == Ready || state_ == Open1sock);
+				if (opt_.verbose) printf("close [%d] state=%d\n", dir, (int)state_);
+				if (state_ == Ready) state_ = Sleep;
 			} else {
 				waitMsec(100);
 			}
 		}
 		if (opt_.verbose) printf("thread loop %d end\n", dir);
-	} catch (std::exception& e) {
-		printf("ERR Repeater %s\n", e.what());
-		ep_ = std::current_exception();
 	}
 	int getState() const { return state_; }
 public:
@@ -177,6 +177,7 @@ int main(int argc, char *argv[])
 		while (!g_quit) {
 	RETRY:
 			while (!server.queryAccept()) {
+#if 0
 				if (opt.verbose) {
 					printf("worker state ");
 					for (size_t i = 0; i < opt.threadNum; i++) {
@@ -184,6 +185,7 @@ int main(int argc, char *argv[])
 					}
 					printf("\n");
 				}
+#endif
 			}
 			if (g_quit) break;
 			cybozu::SocketAddr addr;
