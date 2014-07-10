@@ -105,6 +105,7 @@ struct Repeater {
 		return (uint64_t)::time(0);
 	}
 	void loop(int dir)
+		try
 	{
 		if (opt_.verbose) printf("thread loop %d start\n", dir);
 		assert(dir == 0 || dir == 1);
@@ -134,6 +135,10 @@ struct Repeater {
 					}
 				} catch (std::exception& e) {
 					printf("ERR Repeater %s\n", e.what());
+					from.close();
+					to.close();
+					state_ = Sleep;
+					continue;
 				}
 				if (needShutdown) to.waitForClose();
 				from.close();
@@ -142,10 +147,12 @@ struct Repeater {
 				if (opt_.verbose) printf("close [%d] state=%d\n", dir, (int)state_);
 				if (state_ == Ready) state_ = Sleep;
 			} else {
-				waitMsec(100);
+				waitMsec(10);
 			}
 		}
 		if (opt_.verbose) printf("thread loop %d end\n", dir);
+	} catch (...) {
+		ep_ = std::current_exception();
 	}
 	int getState() const { return state_; }
 public:
