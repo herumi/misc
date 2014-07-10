@@ -15,7 +15,7 @@ void test(uint64_t interval, const V* tbl, size_t tblNum, uint64_t expectNum, ui
 	}
 	const SMAverage::ValVec& vv = sma.getValVec();
 	CYBOZU_TEST_EQUAL(vv.size(), expectNum);
-	CYBOZU_TEST_EQUAL(sma.getTotalVal(), expectTotal);
+	CYBOZU_TEST_EQUAL(sma.getTotalByte(), expectTotal);
 }
 
 CYBOZU_TEST_AUTO(append)

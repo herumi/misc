@@ -7,6 +7,7 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
+#include <time.h>
 #include "sma.hpp"
 
 std::atomic<int> g_quit;
@@ -18,7 +19,7 @@ struct Option {
 	uint16_t recvPort;
 	uint16_t cmdPort;
 	uint32_t delaySec;
-	uint32_t rateMbps;
+	double rateMbps;
 	size_t threadNum;
 	bool verbose;
 	Option(int argc, char *argv[])
@@ -99,6 +100,10 @@ struct Repeater {
 	std::thread c2s_;
 	std::thread s2c_;
 	std::exception_ptr ep_;
+	uint64_t getCurTimeSec() const
+	{
+		return (uint64_t)::time(0);
+	}
 	void loop(int dir)
 	{
 		if (opt_.verbose) printf("thread loop %d start\n", dir);
@@ -106,17 +111,25 @@ struct Repeater {
 		cybozu::Socket &from = s_[dir];
 		cybozu::Socket &to = s_[1 - dir];
 		const bool needShutdown = dir == 1;
+		const int intervalSec = 3;
+		SMAverage sma(intervalSec);
+		std::vector<char> buf(12 * 1024);
 		while (!g_quit) {
 			if (state_ >= Open1sock && from.isValid()) {
 				try {
 					while (!from.queryAccept()) {
 					}
 					if (g_quit) break;
-					char buf[4096];
-					const size_t readSize = from.readSome(buf, sizeof(buf));
+					const size_t readSize = from.readSome(buf.data(), buf.size());
 					if (opt_.verbose) printf("readSize %d [%d] state=%d\n", (int)readSize, dir, (int)state_);
+					if (opt.rageMbps > 0) {
+						sma.append(readSize, getCurTimeSec());
+						while (sma.getBps(getCurTimeSec()) * 1e-6 > opt.rateMbps) {
+							waitMsec(10);
+						}
+					}
 					if (readSize > 0) {
-						if (to.isValid()) to.write(buf, readSize);
+						if (to.isValid()) to.write(buf.data(), readSize);
 						continue;
 					}
 				} catch (std::exception& e) {

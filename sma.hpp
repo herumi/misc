@@ -5,53 +5,52 @@
 #include <list>
 #include <stdint.h>
 #include <stdlib.h>
+#include <cybozu/exception.hpp>
 
 class SMAverage {
 public:
 	struct Val {
-		uint64_t v;
-		uint64_t t;
-		Val(uint64_t v = 0, uint64_t t = 0)
-			: v(v)
-			, t(t)
+		uint64_t byteSize;
+		uint64_t curTimeSec;
+		Val(uint64_t byteSize = 0, uint64_t curTimeSec = 0)
+			: byteSize(byteSize)
+			, curTimeSec(curTimeSec)
 		{
 		}
 	};
 	typedef std::list<Val> ValVec;
 private:
 	ValVec vv_;
-	uint64_t interval_;
-	uint64_t totalVal_;
-	size_t num_;
-	void removeOldElement(uint64_t t)
+	uint64_t intevalSec_;
+	uint64_t totalByte_;
+	void removeOldElement(uint64_t curTimeSec)
 	{
 		for (;;) {
-			typename ValVec::iterator begin = vv_.begin();
+			ValVec::iterator begin = vv_.begin();
 			if (begin == vv_.end()) break;
-			if (begin->t + interval_ >= t) break;
-			totalVal_ -= begin->v;
+			if (begin->curTimeSec + intevalSec_ >= curTimeSec) break;
+			totalByte_ -= begin->byteSize;
 			vv_.pop_front();
-			num_--;
 		}
 	}
 public:
-	explicit SMAverage(uint64_t interval)
-		: interval_(interval)
-		, totalVal_(0)
-		, num_(0)
+	explicit SMAverage(uint64_t intervalSec)
+		: intevalSec_(intervalSec)
+		, totalByte_(0)
 	{
+		if (intervalSec <= 0) throw cybozu::Exception("SMAverate:bad intervalSec") << intervalSec;
 	}
-	void append(uint64_t v, uint64_t t)
+	void append(uint64_t byteSize, uint64_t curTimeSec)
 	{
-		removeOldElement(t);
-		vv_.push_back(Val(v, t));
-		totalVal_ += v;
-		num_++;
+		removeOldElement(curTimeSec);
+		vv_.push_back(Val(byteSize, curTimeSec));
+		totalByte_ += byteSize;
 	}
-	double get() const
+	double getBps(uint64_t cur)
 	{
-		return totalVal_ / double(num_);
+		removeOldElement(cur);
+		return totalByte_ * 8 / double(intevalSec_);
 	}
 	const ValVec& getValVec() const { return vv_; }
-	uint64_t getTotalVal() const { return totalVal_; }
+	uint64_t getTotalByte() const { return totalByte_; }
 };
