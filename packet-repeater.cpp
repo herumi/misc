@@ -122,7 +122,7 @@ struct Repeater {
 					if (g_quit) break;
 					const size_t readSize = from.readSome(buf.data(), buf.size());
 					if (opt_.verbose) printf("readSize %d [%d] state=%d\n", (int)readSize, dir, (int)state_);
-					if (opt.rageMbps > 0) {
+					if (opt_.rageMbps > 0) {
 						sma.append(readSize, getCurTimeSec());
 						while (sma.getBps(getCurTimeSec()) * 1e-6 > opt.rateMbps) {
 							waitMsec(10);
