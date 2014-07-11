@@ -3,6 +3,7 @@
 */
 #include <cybozu/option.hpp>
 #include <cybozu/socket.hpp>
+#include <cybozu/log.hpp>
 #include <thread>
 #include <atomic>
 #include <chrono>
@@ -51,7 +52,7 @@ struct Option {
 void cmdThread(const Option& opt)
 	try
 {
-	if (opt.verbose) puts("cmdThread start");
+	if (opt.verbose) cybozu::PutLog(cybozu::LogInfo, "cmdThread start port=%d", opt.cmdPort);
 	cybozu::Socket server;
 	server.bind(opt.cmdPort);
 	while (!g_quit) {
@@ -59,27 +60,40 @@ void cmdThread(const Option& opt)
 			if (g_quit) break;
 		}
 		if (g_quit) break;
-		cybozu::Socket client;
-		server.accept(client);
-		char buf[128];
-		const size_t readSize = server.readSome(buf, sizeof(buf));
-		if (readSize > 0) {
-			const std::string cmd(buf, readSize);
-			if (opt.verbose) printf("cmd=%s\n", cmd.c_str());
-			if (cmd == "quit") {
-				g_quit = true;
-			} else
-			if (cmd == "stop") {
-				g_stop = true;
-			} else
-			if (cmd == "start") {
-				g_stop = false;
+		try {
+			cybozu::SocketAddr addr;
+			cybozu::Socket client;
+			server.accept(client, &addr);
+			if (opt.verbose) cybozu::PutLog(cybozu::LogInfo, "cmdThread accept addr %s", addr.toStr().c_str());
+			char buf[128];
+			size_t readSize = client.readSome(buf, sizeof(buf));
+			if (readSize > 0) {
+				if (buf[readSize - 1] == '\n') readSize--;
+				if (readSize > 0 && buf[readSize - 1] == '\r') readSize--;
+				const std::string cmd(buf, readSize);
+				if (cmd == "quit") {
+					if (opt.verbose) cybozu::PutLog(cybozu::LogInfo, "cmdThread quit");
+					g_quit = true;
+				} else
+				if (cmd == "stop") {
+					if (opt.verbose) cybozu::PutLog(cybozu::LogInfo, "cmdThread stop");
+					g_stop = true;
+				} else
+				if (cmd == "start") {
+					if (opt.verbose) cybozu::PutLog(cybozu::LogInfo, "cmdThread start");
+					g_stop = false;
+				} else
+				{
+					if (opt.verbose) cybozu::PutLog(cybozu::LogInfo, "bad command `%s'", cmd.c_str());
+				}
 			}
+		} catch (std::exception& e) {
+			cybozu::PutLog(cybozu::LogInfo, "cmdThread ERR %s (continue)", e.what());
 		}
 	}
-	if (opt.verbose) puts("cmdThread stop");
+	if (opt.verbose) cybozu::PutLog(cybozu::LogInfo, "cmdThread stop");
 } catch (std::exception& e) {
-	printf("ERR cmdThread %s\n", e.what());
+	cybozu::PutLog(cybozu::LogInfo, "cmdThread ERR %s", e.what());
 }
 
 void waitMsec(int msec)
@@ -87,13 +101,13 @@ void waitMsec(int msec)
 	std::this_thread::sleep_for(std::chrono::milliseconds(msec));
 }
 
-struct Repeater {
+class Repeater {
 	cybozu::Socket s_[2]; // s_[0] : client, s_[1] : server
 	enum {
-		Sleep = 0,
-		Ready = 1,
-		Open1sock = 2,
-		Open2sock = 3,
+		Sleep,
+		Ready,
+		Running,
+		Error
 	};
 	const Option& opt_;
 	std::atomic<int> state_;
@@ -107,7 +121,7 @@ struct Repeater {
 	void loop(int dir)
 		try
 	{
-		if (opt_.verbose) printf("thread loop %d start\n", dir);
+		if (opt_.verbose) cybozu::PutLog(cybozu::LogInfo, "loop %d start", dir);
 		assert(dir == 0 || dir == 1);
 		cybozu::Socket &from = s_[dir];
 		cybozu::Socket &to = s_[1 - dir];
@@ -116,13 +130,33 @@ struct Repeater {
 		SMAverage sma(intervalSec);
 		std::vector<char> buf(12 * 1024);
 		while (!g_quit) {
-			if (state_ >= Open1sock && from.isValid()) {
+			switch ((int)state_) {
+			case Sleep:
+				waitMsec(10);
+				continue;
+			case Ready:
+				waitMsec(1);
+				continue;
+			case Error:
+				if (!to.isValid()) {
+					if (opt_.verbose) cybozu::PutLog(cybozu::LogInfo, "loop %d %d toSleep", dir, (int)state_);
+					state_ = Sleep;
+				} else {
+					waitMsec(1);
+				}
+				break;
+			case Running:
+				if (!from.isValid()) {
+					cybozu::PutLog(cybozu::LogInfo, "loop %d %d from is not valid", dir, (int)state_);
+					state_ = Error;
+					continue;
+				}
 				try {
 					while (!from.queryAccept()) {
 					}
 					if (g_quit) break;
 					const size_t readSize = from.readSome(buf.data(), buf.size());
-					if (opt_.verbose) printf("readSize %d [%d] state=%d\n", (int)readSize, dir, (int)state_);
+					if (opt_.verbose) cybozu::PutLog(cybozu::LogInfo, "loop %d %d readSize %d", dir, (int)state_, (int)readSize);
 					if (opt_.rateMbps > 0) {
 						sma.append(readSize, getCurTimeSec());
 						while (sma.getBps(getCurTimeSec()) * 1e-6 > opt_.rateMbps) {
@@ -130,32 +164,35 @@ struct Repeater {
 						}
 					}
 					if (readSize > 0) {
-						if (to.isValid()) to.write(buf.data(), readSize);
+						if (!g_stop && to.isValid()) to.write(buf.data(), readSize);
 						continue;
 					}
 				} catch (std::exception& e) {
-					printf("ERR Repeater %s\n", e.what());
+					cybozu::PutLog(cybozu::LogInfo, "loop %d %d ERR %s", dir, (int)state_, e.what());
+					state_ = Error;
 					from.close();
-					to.close();
-					state_ = Sleep;
 					continue;
 				}
-				if (needShutdown) to.waitForClose();
+				if (needShutdown) {
+					if (opt_.verbose) cybozu::PutLog(cybozu::LogInfo,"loop %d %d shutdown", dir, (int)state_);
+					const bool dontThrow = true;
+					to.shutdown(1, dontThrow); // write disallow
+				}
+				if (opt_.verbose) cybozu::PutLog(cybozu::LogInfo, "loop %d %d close", dir, (int)state_);
 				from.close();
-				state_--;
-				assert(state_ == Ready || state_ == Open1sock);
-				if (opt_.verbose) printf("close [%d] state=%d\n", dir, (int)state_);
-				if (state_ == Ready) state_ = Sleep;
-			} else {
-				waitMsec(10);
+				if (opt_.verbose) cybozu::PutLog(cybozu::LogInfo, "loop %d %d isValid %d", dir, (int)state_, from.isValid());
+				break;
 			}
 		}
-		if (opt_.verbose) printf("thread loop %d end\n", dir);
+		if (opt_.verbose) cybozu::PutLog(cybozu::LogInfo, "loop %d end", dir);
 	} catch (...) {
 		ep_ = std::current_exception();
+		s_[0].close();
+		s_[1].close();
+		state_ = Sleep;
 	}
-	int getState() const { return state_; }
 public:
+	int getState() const { return state_; }
 	Repeater(const Option& opt)
 		: opt_(opt)
 		, state_(Sleep)
@@ -167,11 +204,20 @@ public:
 	{
 		int expected = Sleep;
 		if (!state_.compare_exchange_strong(expected, Ready)) return false;
-		if (opt_.verbose) puts("set socket");
-		s_[0].moveFrom(client);
-		s_[1].connect(opt_.serverAddr, opt_.serverPort);
-		state_ = Open2sock;
-		return true;
+		if (opt_.verbose) cybozu::PutLog(cybozu::LogInfo, "tryAndRun:in");
+		try {
+			s_[0].moveFrom(client);
+			s_[1].connect(opt_.serverAddr, opt_.serverPort);
+			state_ = Running;
+			return true;
+		} catch (std::exception& e) {
+			cybozu::PutLog(cybozu::LogInfo, "tryAndRun::connect err %s", e.what());
+			s_[0].close();
+			s_[1].close();
+			state_ = Sleep;
+			waitMsec(100);
+			return true;
+		}
 	}
 	void join()
 	{
@@ -211,12 +257,12 @@ int main(int argc, char *argv[])
 			cybozu::SocketAddr addr;
 			cybozu::Socket client;
 			server.accept(client, &addr);
-			if (opt.verbose) printf("accept addr %s\n", addr.toStr().c_str());
+			if (opt.verbose) fprintf(stderr, "accept addr %s\n", addr.toStr().c_str());
 			while (!g_quit) {
 				for (size_t i = 0; i < opt.threadNum; i++) {
-					if (opt.verbose) printf("worker[%d] state=%d\n", (int)i, worker[i]->getState());
+//					if (opt.verbose) fprintf(stderr, "worker[%d] state=%d", (int)i, worker[i]->getState());
 					if (worker[i]->tryAndRun(client)) {
-						if (opt.verbose) printf("start %d repeater\n", (int)i);
+						if (opt.verbose) fprintf(stderr, "start %d repeater", (int)i);
 						goto RETRY;
 					}
 				}
@@ -225,12 +271,12 @@ int main(int argc, char *argv[])
 			waitMsec(100);
 		}
 	} catch (std::exception& e) {
-		printf("ERR %s\n", e.what());
+		fprintf(stderr, "ERR %s\n", e.what());
 	}
 	g_quit = true;
-	cmdWorker.join();
 	for (std::unique_ptr<Repeater>& p : worker) {
 		p->join();
 	}
+	cmdWorker.join();
 	if (opt.verbose) puts("main end");
 }
