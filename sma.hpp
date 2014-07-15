@@ -11,8 +11,8 @@ class SMAverage {
 public:
 	struct Val {
 		uint64_t byteSize;
-		uint64_t curTimeSec;
-		Val(uint64_t byteSize = 0, uint64_t curTimeSec = 0)
+		double curTimeSec;
+		Val(uint64_t byteSize = 0, double curTimeSec = 0)
 			: byteSize(byteSize)
 			, curTimeSec(curTimeSec)
 		{
@@ -21,9 +21,9 @@ public:
 	typedef std::list<Val> ValVec;
 private:
 	ValVec vv_;
-	uint64_t intevalSec_;
+	double intevalSec_;
 	uint64_t totalByte_;
-	void removeOldElement(uint64_t curTimeSec)
+	void removeOldElement(double curTimeSec)
 	{
 		for (;;) {
 			ValVec::iterator begin = vv_.begin();
@@ -34,22 +34,25 @@ private:
 		}
 	}
 public:
-	explicit SMAverage(uint64_t intervalSec)
+	explicit SMAverage(double intervalSec)
 		: intevalSec_(intervalSec)
 		, totalByte_(0)
 	{
 		if (intervalSec <= 0) throw cybozu::Exception("SMAverate:bad intervalSec") << intervalSec;
 	}
-	void append(uint64_t byteSize, uint64_t curTimeSec)
+	void append(uint64_t byteSize, double curTimeSec)
 	{
 		removeOldElement(curTimeSec);
 		vv_.push_back(Val(byteSize, curTimeSec));
 		totalByte_ += byteSize;
 	}
-	double getBps(uint64_t cur)
+	double getBps(double curSec)
 	{
-		removeOldElement(cur);
-		return totalByte_ * 8 / double(intevalSec_);
+		removeOldElement(curSec);
+		if (vv_.empty()) return 0;
+		double delta = curSec - vv_.front().curTimeSec;
+		if (delta == 0) delta = 1;
+		return totalByte_ * 8 / delta;
 	}
 	const ValVec& getValVec() const { return vv_; }
 	uint64_t getTotalByte() const { return totalByte_; }
