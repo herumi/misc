@@ -1,5 +1,10 @@
 #include "veb_tree.hpp"
+#include <set>
+#define CYBOZU_TEST_DISABLE_AUTO_RUN
 #include <cybozu/test.hpp>
+#include <cybozu/benchmark.hpp>
+#include <cybozu/unordered_set.hpp>
+#include <cybozu/xorshift.hpp>
 
 CYBOZU_TEST_AUTO(test1)
 {
@@ -343,4 +348,54 @@ CYBOZU_TEST_AUTO(test14)
 	CYBOZU_TEST_ASSERT(T.findPrev(0x00f0) == 0x00f0);
 	T.insert(0x000f);
 	CYBOZU_TEST_ASSERT(T.findPrev(0x000f) == 0x000f);
+}
+
+template<class Set>
+void bench(const char *msg, uint32_t n, uint32_t r)
+{
+	printf("bench:%s -------------------\n", msg);
+	Set set(n);
+	cybozu::XorShift rg;
+	for (uint32_t i = 0; i < n / r; i++) {
+		set.insert(rg.get32() % n);
+	}
+	int c = 0;
+	CYBOZU_BENCH_C("has", int(n / r), c += set.has, rg.get32() % n);
+	printf("c=%d\n", c);
+}
+
+struct IntSet : std::set<uint32_t> {
+	explicit IntSet(uint32_t)
+	{
+	}
+	bool has(uint32_t x) const
+	{
+		return this->find(x) != this->end();
+	}
+};
+struct IntHash : CYBOZU_NAMESPACE_STD::unordered_set<uint32_t> {
+	explicit IntHash(uint32_t)
+	{
+	}
+	bool has(uint32_t x) const
+	{
+		return this->find(x) != this->end();
+	}
+};
+
+int main(int argc, char *argv[])
+	try
+{
+	if (argc == 1) {
+		return cybozu::test::autoRun.run(argc, argv);
+	}
+	const uint32_t n = atoi(argv[1]);
+	const uint32_t r = argc > 2 ? atoi(argv[2]) : 2;
+	printf("n=%u, r=%u\n", n, r);
+	bench<IntSet>("std::set", n, r);
+	bench<IntHash>("std::unordered_set", n, r);
+	bench<VebTree>("vEB tree", n, r);
+} catch (std::exception& e) {
+	printf("ERR %s\n", e.what());
+	return 1;
 }
