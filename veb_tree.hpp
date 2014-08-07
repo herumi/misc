@@ -16,7 +16,6 @@ inline uint32_t fls(uint32_t x)
 	return 1 + cybozu::bsr(x);
 }
 
-
 struct VebSub {
 	uint32_t M;
 	uint32_t k;
@@ -89,7 +88,7 @@ inline uint32_t low(const VebSub& T)
 	return decode(T.p, bytes(T.k));
 }
 
-inline void setlow(VebSub T, uint32_t x)
+inline void setlow(VebSub& T, uint32_t x)
 {
 	if (T.M <= bitSize) {
 		set(T.p, x);
@@ -98,7 +97,7 @@ inline void setlow(VebSub T, uint32_t x)
 	}
 }
 
-inline uint32_t high(VebSub T)
+inline uint32_t high(const VebSub& T)
 {
 	if (T.M <= bitSize) {
 		uint32_t x = decode(T.p, bytes(T.M));
@@ -108,12 +107,13 @@ inline uint32_t high(VebSub T)
 	return decode(T.p + bytes(T.k), bytes(T.k));
 }
 
-inline void sethigh(VebSub T, uint32_t x)
+inline void sethigh(VebSub& T, uint32_t x)
 {
-	if (T.M <= bitSize)
+	if (T.M <= bitSize) {
 		set(T.p, x);
-	else
+	} else {
 		encode(T.p + bytes(T.k), bytes(T.k), x);
+	}
 }
 
 inline uint32_t vebsize(uint32_t M)
@@ -151,16 +151,14 @@ inline VebSub branch(const VebSub& S, uint32_t i)
 	return T;
 }
 
-inline int empty(const VebSub& T)
+inline bool empty(const VebSub& T)
 {
-	if (T.M <= bitSize)
-		return decode(T.p, bytes(T.M)) == 0;
-	if (low(T) <= high(T))
-		return 0;
-	return 1;
+	if (T.M <= bitSize) return decode(T.p, bytes(T.M)) == 0;
+	if (low(T) <= high(T)) return false;
+	return true;
 }
 
-inline void mkempty(VebSub T)
+inline void mkempty(VebSub& T)
 {
 	if (T.M <= bitSize) {
 		encode(T.p, bytes(T.M), 0);
@@ -168,14 +166,16 @@ inline void mkempty(VebSub T)
 	}
 	setlow(T, 1);
 	sethigh(T, 0);
-	mkempty(aux(T));
+	VebSub a = aux(T);
+	mkempty(a);
 	uint32_t m = highbits(T.M - 1, T.k / 2) + 1;
 	for (uint32_t i = 0; i < m; i++) {
-		mkempty(branch(T, i));
+		VebSub b = branch(T, i);
+		mkempty(b);
 	}
 }
 
-inline void vebput(VebSub T, uint32_t x)
+inline void vebput(VebSub& T, uint32_t x)
 {
 	if (x >= T.M)
 		return;
@@ -204,10 +204,13 @@ inline void vebput(VebSub T, uint32_t x)
 	uint32_t j = lowbits(x, T.k / 2);
 	VebSub B = branch(T, i);
 	vebput(B, j);
-	if (low(B) == high(B)) vebput(aux(T), i);
+	if (low(B) == high(B)) {
+		VebSub a = aux(T);
+		vebput(a, i);
+	}
 }
 
-inline void vebdel(VebSub T, uint32_t x)
+inline void vebdel(VebSub& T, uint32_t x)
 {
 	if (empty(T) || x >= T.M) return;
 	if (T.M <= bitSize) {
@@ -253,7 +256,7 @@ inline void vebdel(VebSub T, uint32_t x)
 	if (empty(B)) vebdel(A, i);
 }
 
-inline void mkfull(VebSub T)
+inline void mkfull(VebSub& T)
 {
 	if (T.M <= bitSize) {
 		encode(T.p, bytes(T.M), ones(T.M));
@@ -261,7 +264,8 @@ inline void mkfull(VebSub T)
 	}
 	setlow(T, 0);
 	sethigh(T, T.M - 1);
-	mkfull(aux(T));
+	VebSub a = aux(T);
+	mkfull(a);
 	uint32_t m = highbits(T.M - 1, T.k / 2) + 1;
 	for (uint32_t i = 0; i < m; i++) {
 		VebSub B = branch(T, i);
@@ -323,10 +327,9 @@ inline uint32_t vebpred(const VebSub& T, uint32_t x)
 	return i * ipow(T.k / 2) + high(B);
 }
 
-inline VebSub vebnew(uint32_t M, bool full)
+inline void vebnew(VebSub& T, uint32_t M, bool full)
 {
 	assert(M > 1);
-	VebSub T;
 	T.k = fls(M-1);
 	T.p = (uint8_t*)malloc(vebsize(M));
 	T.M = M;
@@ -335,7 +338,6 @@ inline VebSub vebnew(uint32_t M, bool full)
 	} else {
 		mkempty(T);
 	}
-	return T;
 }
 
 } // veb_tree_local
@@ -351,7 +353,7 @@ public:
 	}
 	explicit VebTree(uint32_t M, bool full = false)
 	{
-		v = veb_tree_local::vebnew(M, full);
+		veb_tree_local::vebnew(v, M, full);
 	}
 	~VebTree()
 	{
