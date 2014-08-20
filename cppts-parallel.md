@@ -163,18 +163,18 @@ is_execution_policyはどのポリシーの並列実行を行うかを指定す�
     uninitialized_fill_n unique unique_copy
 
 
-** 標準関数にあるけど上記一覧にないもの(抜けがあるかも)
+## 標準関数にあるけど上記一覧にないもの(抜けがあるかも)
 
    accumulate binary_search copy_backward equal_range is_permutation
    make_heap next_permutation lower_bound
    partial_sum partition_point pop_heap prev_permutation push_heap
    sort_heap suffle upper_bound
 
-** 標準関数に無くて上記一覧に入っているもの
+## 標準関数に無くて上記一覧に入っているもの
 
    for_each_n reduce inclusive_scan exclusive_scan
 
-** 一般和の定義
+## 一般和の定義
 
    * g_sum(op, a_1, ..., a_N) ; 可換な和
        * return a_1 if N = 1
@@ -186,7 +186,7 @@ is_execution_policyはどのポリシーの並列実行を行うかを指定す�
        * op.(g_noncomm_sum(op, a_1, ..., a_k), g_noncomm_sum(op, a_(k+1), .., a_N)
        * ただし 1 <= k < N
 
-** for_each
+## for_each
 
     template<class ExecutionPolicy, class InputIterator, class Function>
     void for_each(ExecutionPolicy&& exec,
@@ -196,7 +196,7 @@ is_execution_policyはどのポリシーの並列実行を行うかを指定す�
 
 std::for_eachと違い並列実行させるときはFunctionはCopyConstructibleでなければならない。
 
-** for_each_n
+## for_each_n
 
 サイズ指定のfor_each
 
@@ -206,7 +206,7 @@ std::for_eachと違い並列実行させるときはFunctionはCopyConstructible
                   Function f);
 
 
-** reduce
+## reduce
 
 標準のaccumulateと同じ。
 
@@ -216,7 +216,7 @@ std::for_eachと違い並列実行させるときはFunctionはCopyConstructible
 ただしbinary_opが非結合的や非可換の場合、結果は非決定的。
 g_sum(op, init, *first, ..., *(first + (last - first) - 1))を返す。
 
-** inclusive_scanとexclusive_scan
+## inclusive_scanとexclusive_scan
 
     template<class InputIterator, class OputputIterator, class T, class BinaryOperation>
     OutputIterator
@@ -234,11 +234,11 @@ opは[first, last), [result, result + (last - first))区間の値を変更した
 
 opが結合的でなければ結果は非決定的。
 
-*** inclusive_scan
+### inclusive_scan
 区間[result, result + (last - first))内の各iに対して
 g_noncomm_sum(op, init, *first, ..., *(first + (i - result))を返す。
 
-***  exclusive_scan
+### exclusive_scan
 区間[result, result + (last - first))内の各iに対して
 g_noncomm_sum(op, init, *first, ..., *(first + (i - result) - 1))を返す。
 
