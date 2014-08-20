@@ -129,7 +129,7 @@ is_execution_policyはどのポリシーの並列実行を行うかを指定す�
 * 標準関数は次のときにvectorization-unsafeという。
     * メモリ確保、開放以外の関数で、同期するための関数を呼び出しをすることが示されているとき。
 
-
+### 例
 
     int x = 0;
     std::mutex m;
