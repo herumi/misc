@@ -104,6 +104,7 @@ is_execution_policyはどのポリシーの並列実行を行うかを指定す�
     * 結果の正しさを保証するのも呼び出し側の責任。
 
 
+
     std::vector<int> a = { 0, 1 };
     std::vector<int> v;
     for_each(par, a.begin(), a.end(),
@@ -127,6 +128,8 @@ is_execution_policyはどのポリシーの並列実行を行うかを指定す�
     * mutexを使うとデットロックの危険性が高い。
 * 標準関数は次のときにvectorization-unsafeという。
     * メモリ確保、開放以外の関数で、同期するための関数を呼び出しをすることが示されているとき。
+
+
 
     int x = 0;
     std::mutex m;
