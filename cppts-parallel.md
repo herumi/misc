@@ -144,7 +144,7 @@ is_execution_policyはどのポリシーの並列実行を行うかを指定す�
     // 恐らくデットロックを起こす。
 
 * par, par_vecはシステムリソースが足りないときシーケンシャルな実行になる。
-* par, par_vecはInputIteratorを受けたとしても実際にはRandomAccessIterator立った場合、operator[]を使ってよい。
+* par, par_vecはInputIteratorを受けたとしても実際にはRandomAccessIteratorだった場合、operator[]を使ってよい。
   この場合、operator[]がレースフリーであることは呼び出し側の責任。
 * 処理系依存の型のポリシーを受けたときは、処理系依存。
 
