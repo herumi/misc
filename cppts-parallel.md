@@ -2,7 +2,7 @@
 
 ## 参照
 
-* [parallelism-ts](https://github.com/cplusplus/parallelism-ts)
+* [N4106:parallelism-ts](https://github.com/cplusplus/parallelism-ts)
 
 ## 目的
 
@@ -90,9 +90,10 @@ is_execution_policyはどのポリシーの並列実行を行うかを指定す�
         const char *what() const noexcept override;
     };
 
-* iteratorはForwardIterator;
-* size()はexception_listが持つオブジェクトの個数
-* begin(), end()がそのオブジェクトの範囲
+* exception_listはexception_ptrの列を持つ。
+* iteratorはForwardIterator;でexception_ptrを指す。
+* size()はexception_listが持つオブジェクトの個数。
+* begin(), end()がそのオブジェクトの範囲。
 * what()は何かNTBS(NULL終端文字列)を返す。
 
 ## 並列アルゴリズム
@@ -100,7 +101,7 @@ is_execution_policyはどのポリシーの並列実行を行うかを指定す�
 * 並列アルゴリズムは要素アクセス関数経由でオブジェクトにアクセスする。
 * seqが指定されたときは呼び出しスレッドの中でシーケンシャルオーダーでアクセスする。
 * parが指定されるたときは不定数のスレッドから不定の順序で実行されうる。
-    * データレースやデットロックを起こさないようにするのは呼び出し側の責任。
+    * データレースやデッドロックを起こさないようにするのは呼び出し側の責任。
     * 結果の正しさを保証するのも呼び出し側の責任。
 
 ### 例
@@ -141,7 +142,7 @@ is_execution_policyはどのポリシーの並列実行を行うかを指定す�
            m.unlock();
        }
     );
-    // 恐らくデットロックを起こす。
+    // 恐らくデッドロックを起こす。
 
 * par, par_vecはシステムリソースが足りないときシーケンシャルな実行になる。
 * par, par_vecはInputIteratorを受けたとしても実際にはRandomAccessIteratorだった場合、operator[]を使ってよい。
@@ -186,6 +187,7 @@ is_execution_policyはどのポリシーの並列実行を行うかを指定す�
 
 
    * g_noncomm_sum(op, a_1, ..., a_N) ; 非可換な和
+       * return a_1 if N = 1
        * op.(g_noncomm_sum(op, a_1, ..., a_k), g_noncomm_sum(op, a_(k+1), .., a_N)
        * ただし 1 <= k < N
 
@@ -245,5 +247,10 @@ g_noncomm_sum(op, init, *first, ..., *(first + (i - result))を返す。
 区間[result, result + (last - first))内の各iに対して
 g_noncomm_sum(op, init, *first, ..., *(first + (i - result) - 1))を返す。
 
-
 inclusiveとexclusiveの差はi番目の要素に対して*(first + (i - result))を含むか含まないかの違い。
+
+## その他
+
+* reduce, includsive_scanなどExcecutionPolicyがないけど、抜けてるだけだよね?
+* reduceとaccumulateの違いは非結合的、非可換なときにreduceが非決定的になるとあるけど、accumulateは並列版ないよね。
+* スレッドを生成しないvecはいるだろう。
