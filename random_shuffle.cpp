@@ -4,6 +4,7 @@
 #include <map>
 #include <cybozu/xorshift.hpp>
 #include <cybozu/exception.hpp>
+#include <cybozu/random_generator.hpp>
 
 template<class T, class RG>
 void shuffle1(T& v, RG& rg)
@@ -11,16 +12,6 @@ void shuffle1(T& v, RG& rg)
 	if (v.size() <= 1) return;
 	for (size_t i = 0, n = v.size(); i < n - 1; i++) {
 		size_t r = size_t(rg.get64() % n);
-		std::swap(v[i], v[r]);
-	}
-}
-
-template<class T, class RG>
-void shuffle2(T& v, RG& rg)
-{
-	if (v.size() <= 1) return;
-	for (size_t i = 0, n = v.size(); i < n - 1; i++) {
-		size_t r = i + size_t(rg.get64() % (n - i));
 		std::swap(v[i], v[r]);
 	}
 }
@@ -43,8 +34,8 @@ struct IntVec : public std::vector<int> {
 
 typedef std::map<IntVec, int> Map;
 
-template<class F>
-void test(F f, size_t n)
+template<class V, class RG>
+void test(void f(V&, RG& rg), size_t n)
 {
 	cybozu::XorShift rg;
 	const int N = 10000000;
@@ -71,9 +62,9 @@ void test(F f, size_t n)
 
 int main()
 {
-	for (int i = 2; i < 6; i++) {
-		printf("i=%d\n", i);
+	for (size_t i = 2; i < 6; i++) {
+		printf("i=%d\n", (int)i);
 		test(shuffle1<IntVec, cybozu::XorShift>, i);
-		test(shuffle2<IntVec, cybozu::XorShift>, i);
+		test(cybozu::shuffle<IntVec, cybozu::XorShift>, i);
 	}
 }
