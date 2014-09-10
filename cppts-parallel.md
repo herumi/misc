@@ -192,48 +192,49 @@ is_execution_policyはどのポリシーの並列実行を行うかを指定す�
        * ただし 1 <= k < N
 
 ## for_each
-
+```
     template<class ExecutionPolicy, class InputIterator, class Function>
     void for_each(ExecutionPolicy&& exec,
                   InputIterator first, InputIterator last,
                   Function f);
-
+```
 
 std::for_eachと違い並列実行させるときはFunctionはCopyConstructibleでなければならない。
 
 ## for_each_n
 
 サイズ指定のfor_each
-
+```
     template<class ExecutionPolicy, class InputIterator, class Size, class Function>
     void for_each_n(ExecutionPolicy&& exec,
                   InputIterator first, Size n,
                   Function f);
-
+```
 
 ## reduce
 
 標準のaccumulateと同じ。
 
-    template<class InputIterator, class T, class BinaryOperation>
-    T reduce(InputIterator first, InputIterator last, T init, BinaryOperation op);
+    template<class ExecutionPolicy, class InputIterator, class T, class BinaryOperation>
+    T reduce(ExecutionPolicy&& exec, InputIterator first, InputIterator last, T init, BinaryOperation op);
 
 ただしbinary_opが非結合的や非可換の場合、結果は非決定的。
 g_sum(op, init, *first, ..., *(first + (last - first) - 1))を返す。
 
 ## inclusive_scanとexclusive_scan
-
-    template<class InputIterator, class OputputIterator, class T, class BinaryOperation>
+```
+    template<class ExecutionPolicy, class InputIterator, class OputputIterator, class T, class BinaryOperation>
     OutputIterator
-    inclusive_scan(InputIterator first, InputIterator last,
+    inclusive_scan(ExecutionPolicy&& exec, InputIterator first, InputIterator last,
                    OutputIterator result, T init, BinaryOperation op);
+```
 
-
-    template<class InputIterator, class OputputIterator, class T, class BinaryOperation>
+```
+    template<class ExecutionPolicy, class InputIterator, class OputputIterator, class T, class BinaryOperation>
     OutputIterator
-    exclusive_scan(InputIterator first, InputIterator last,
+    exclusive_scan(ExecutionPolicy&& exec, InputIterator first, InputIterator last,
                    OutputIterator result, T init, BinaryOperation op);
-
+```
 
 opは[first, last), [result, result + (last - first))区間の値を変更したり、iteratorを無効にしてはいけない。
 
