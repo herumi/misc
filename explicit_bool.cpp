@@ -49,8 +49,8 @@ public:
 	{
 		return p_ != 0;
 	}
-	bool operator==(int) const { return p_ != 0; }
-	bool operator!=(int) const { return p_ == 0; }
+	bool operator==(int) const { return p_ == 0; }
+	bool operator!=(int) const { return p_ != 0; }
 };
 #endif
 
