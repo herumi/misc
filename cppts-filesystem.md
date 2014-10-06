@@ -549,3 +549,17 @@ private:
 
 * directory_iteratorとrecursive_directory_iterator
 directory_entryを指すinput_iterator。recursive_directory_iteratorはサブディレクトリも走査する。
+```
+// Visual Studioでのサンプル
+#include <filesystem>
+#include <iostream>
+
+int main()
+{
+    using namespace std::tr2::sys;
+    const path path("c:/tmp");
+    for (directory_iterator i(path); i != directory_iterator(); ++i) {
+        std::cout << i->path() << std::endl;
+    }
+}
+```
