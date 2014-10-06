@@ -83,20 +83,57 @@ namespace std { namespace tbd { namespace filesystem {
 * エラーを返すバージョン : void copy(const path& from, const path& to,error_code& ec) noexcept;
 
 ```
+/*
+    pを絶対パスに変換する。
+*/
 path absolute(const path& p, const path& base=current_path());
+/*
+    pをシンボリックリンクや.や..を含まない絶対パスに変換する。
+    pは存在しなければならない。
+*/
 path canonical(const path& p, const path& base = current_path());
+/*
+  ファイルをコピーする。
+  from, toがディレクトリだとその中のファイルをコピーする。
+  copy_options::recursiveを使うと再帰的にコピーする。
+*/
 void copy(const path& from, const path& to);
+void copy(const path& from, const path& to, copy_options options);
+/*
+   ファイルをコピーする。
+*/
 bool copy_file(const path& from, const path& to);
+/*
+    シンボリックリンクをコピーする。
+*/
 void copy_symlink(const path& existing_symlink,const path& new_symlink);
+/*
+   ディレクトリを作成する。途中のディレクトリがなければ作る。
+*/
 bool create_directories(const path& p);
+/*
+   ディレクトリを作成する。途中のディレクトリがなければエラー。
+*/
 bool create_directory(const path& p);
+/*
+	ディレクトリのシンボリックリンクを作る。
+*/
 void create_directory_symlink(const path& to,const path& new_symlink);
+/*
+	ハードリンクを作る。
+*/
 void create_hard_link(const path& to, const path& new_hard_link);
+/*
+	シンボリックリンクを作る。
+*/
 void create_symlink(const path& to, const path& new_symlink);
 path current_path();
 void current_path(const path& p);
 bool exists(file_status s) noexcept;
 bool exists(const path& p);
+/*
+    二つのファイルが同じファイルを指すか否か。
+*/
 bool equivalent(const path& p1, const path& p2);
 uintmax_t file_size(const path& p);
 uintmax_t hard_link_count(const path& p);
@@ -121,6 +158,10 @@ file_time_type last_write_time(const path& p);
 void last_write_time(const path& p, file_time_type new_time);
 path read_symlink(const path& p);
 bool remove(const path& p);
+/*
+    再帰的にファイルを削除する。
+    消されたファイル数を返す。
+*/
 uintmax_t remove_all(const path& p);
 void rename(const path& from, const path& to);
 void resize_file(const path& p, uintmax_t size);
@@ -129,7 +170,14 @@ file_status status(const path& p);
 bool status_known(file_status s) noexcept;
 file_status symlink_status(const path& p);
 path system_complete(const path& p);
+/*
+    一時ファイルのディレクトリを返す。
+*/
 path temp_directory_path();
+/*
+    一時ファイルを取得する。%は0-9a-fのどれか。
+    unique_path("test-%%%.txt");なら"test-x9a.txt"とかになる。
+*/
 path unique_path(const path& model="%%%%-%%%%-%%%%-%%%%");
 ```
 
@@ -451,3 +499,53 @@ unknown         | 0xffff|       |パーミッション不明
 add_perms       |0x10000|       |ビットごとにorするようにする。
 remove_perms    |0x20000|       |設定したbitを0にする。
 resolve_symlinks|0x40000|       |シンボリックリンク先に対して行う。
+
+# file_status
+ファイルの型とパーミッションの情報を持つ。
+
+```
+class file_status {
+public:
+    // 一部抜粋
+    // 取得
+    file_type type() const noexcept;
+    perms permissions() const noexcept;
+    // 変更
+    void type(file_type ft) noexcept;
+    void permissions(perms prms) noexcept;
+};
+```
+# directory_entry
+ディレクトリの情報を持つクラス。
+file_statusは値のキャッシュのように振る舞う。
+status()は比較的コストの高い関数なのでディレクトリ走査と同時に情報を取得しているOSがあるかもしれない。
+キャッシュされた情報と実際のファイルの状態にはレースが発生するかもしれない。
+
+```
+class directory_entry {
+public:
+    // 一部抜粋
+
+    void assign(
+        const path& p,
+        file_status st = file_status(),
+        file_status symlink_st = file_status()
+    );
+    void replace_filename(
+        const path& p,
+        file_status st = file_status(),
+        file_status symlink_st = file_status()
+    );
+    // 取得
+    const path& path() const noexcept;
+    file_status status() const;
+    file_status symlink_status() const;
+private:
+    path m_path; // for exposition only
+    mutable file_status m_status;
+    mutable file_status m_symlink_status;
+};
+```
+
+* directory_iteratorとrecursive_directory_iterator
+directory_entryを指すinput_iterator。recursive_directory_iteratorはサブディレクトリも走査する。
