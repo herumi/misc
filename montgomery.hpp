@@ -24,35 +24,40 @@ struct Montgomery {
 
 	void mul(mpz_class& z, const mpz_class& x, const mpz_class& y) const
 	{
-#if 0
-		const size_t ySize = mie::Gmp::getBlockSize(y);
-		mpz_class c = x * mie::Gmp::getBlock(y, 0);
-		BlockType q = mie::Gmp::getBlock(c, 0) * pp_;
-		c += p_ * q;
-		c >>= sizeof(BlockType) * 8;
-		for (size_t i = 1; i < pn_; i++) {
-			if (i < ySize) {
-				c += x * mie::Gmp::getBlock(y, i);
-			}
-			BlockType q = mie::Gmp::getBlock(c, 0) * pp_;
-			c += p_ * q;
-			c >>= sizeof(BlockType) * 8;
-		}
-		if (c >= p_) {
-			c -= p_;
-		}
-		z = c;
-#else
 		z = x * y;
+		reduction(z);
+		if (z >= p_) {
+			z -= p_;
+		}
+	}
+	void reduction(mpz_class& z) const
+	{
+#if 0
+		const size_t N = 72 / sizeof(BlockType);
+		BlockType buf[N];
+		const size_t zn = mie::Gmp::getBlockSize(z);
+		assert(zn  <= pn_ * 2 && pn_ * 2 <= N);
+		memcpy(buf, mie::Gmp::getBlock(p), zn * sizeof(BlockType));
+		memset(buf[zn], 0, (pn_ - zn) * sizeof(BlockType));
+		reduction(buf);
+#else
 		for (size_t i = 0; i < pn_; i++) {
 			BlockType q = mie::Gmp::getBlock(z, 0) * pp_;
 			z += p_ * q;
 			z >>= sizeof(BlockType) * 8;
 		}
-		if (z >= p_) {
-			z -= p_;
-		}
 #endif
 	}
+#if 0
+	void mullAdd(BlockType *z, const BlockType *x, BlockType y)
+	void reduction(BlockType *z) const
+	{
+		for (size_t i = 0; i < pn_; i++) {
+			BlockType q = z[i] * pp_;
+			z += p_ * q;
+			z >>= sizeof(BlockType) * 8;
+		}
+	}
+#endif
 };
 
