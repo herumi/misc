@@ -10,6 +10,156 @@
 
 C++コアと標準ライブラリにトランザクショナルメモリ(以下tx)を提供する。
 
+## 概要
+### synchronized構文。
+```
+int f()
+{
+  static int i = 0;
+  synchronized {
+    printf("before %d\n", i);
+    ++i;
+    printf("after %d\n", i);
+    return i;
+  }
+}
+```
+複数スレッドからのf()の呼び出しはbefore/afterの値は(オーバーフローを除いて)必ず1増えている。
+
+
+### atomic構文。
+```
+atomic_noexcept { ... }
+atomic_cancel { ... }
+atomic_commit { ... }
+```
+
+```
+int f()
+{
+  static int i = 0;
+  atomic_noexcept {
+    ++i;
+    return i;
+  }
+}
+```
+複数スレッドからのf()の呼び出しもmutexで守られているかのように正しく処理される。
+
+### syncrhonized構文に対する最適化のヒント
+`optimize_for_synchronized`属性はその関数がsynchronized構文からの呼び出しで最適化されるべきであることを示す。
+```
+// translation unit 1
+[[optimize_for_synchronized]] int f(int);
+
+void g(int x) {
+  synchronized {
+    int ret = f(x*x);
+  }
+}
+
+// translation unit 2
+#include <iostream>
+
+extern int verbose;
+
+[[optimize_for_synchronized]] int f(int x)
+{
+  if (x >= 0)
+    return x;
+  if (verbose > 1)
+    std::cerr << "failure: negative x" << std::endl;
+  return -1;
+}
+```
+もしfに`optimize_for_synchronized`がなく、`transaction_safe`宣言されていなければいつもgのsynchronized blockの中で投機実行が中断されてしまう。
+
+### 宣言に追加
+```
+(cv-qualifier) (ref-qualifier) (tx-qualifier) (exception-specification) (attribute-specifier)
+```
+* transaction_safe_noinherit
+* transaction_safe
+
+transaction_safeで定義された仮想関数のoverrideはtx_safe。
+
+```
+struct B {
+  virtual void f() transaction_safe;
+  virtual ~B() transaction_safe_noinherit;
+};
+
+// pre-existing code
+struct D1 : B
+{
+  void f() override { }   // ok
+  ~D1() override { }   // ok
+};
+
+struct D2 : B
+{
+  void f() override { std::cout << "D2::f" << std::endl; }
+       // error: transaction-safe f has transaction-unsafe definition
+  ~D2() override { std::cout << "~D2" << std::endl; }     // ok
+};
+
+struct D3 : B
+{
+  void f() transaction_safe_noinherit override;
+         // error: B::f() is transaction_safe
+};
+
+int main()
+{
+  D2 * d2 = new D2;
+  B * b2 = d2;
+  atomic_commit {
+    B b;        // ok
+    D1 d1;      // ok
+    B& b1 = d1;
+    D2 x;       // error: destructor of D2 is not transaction-safe
+    b1.f();     // ok, calls D1::f()
+    delete b2;  // undefined behavior: calls unsafe destructor of D2
+  }
+}
+```
+
+### tx-safeな関数の定義
+式が次のいずれかを含めばtx-unsafe
+* volatile glvalueに適用されるlvalue-to-rvalue変換
+* volatile glvalueを通してオブジェクトを変更する表現
+* volatile属性を持つ一時オブジェクトの生成
+* a function call (5.2.2 expr.call) whose postfix-expression is an id-expression that names a non-virtual function that is not transaction-safe
+  * ???
+* tx-safeでない非仮想関数の暗黙の呼び出し
+* tx-safeでない関数の呼び出し
+
+文が次のいずれかであればtx-unsafe
+* 式がtx-unsafe
+* asm文
+* volatileの宣言
+* 文がtx-unsafe(再帰的)
+```
+  extern volatile int * p = 0;
+  struct S {
+    virtual ~S();
+  };
+
+  int f() transaction_safe {
+    int x = 0;   // ok: not volatile
+    p = &x;      // ok: the pointer is not volatile
+    int i = *p;      // error: read through volatile glvalue
+    S s;         // error: invocation of unsafe destructor
+  }
+```
+```
+  int f(int x) {    // is transaction-safe
+    if (x <= 0)
+      return 0;
+    return x + f(x-1);
+  }
+```
+
 ## 解決されていない問題
 
 * 例外ハンドラがstd::terminateを呼び出したとき。
@@ -34,8 +184,16 @@ terminateハンドラはtransaction_safeで宣言されていない。
 → 仮想関数に対して"maybe tx_safe"を追加する。
 * 次のクラスを導入する。
 ```
-template<class T>
-class tx_exception : exception { ... };
+  namespace std {
+    template<class T>
+    class tx_exception : public runtime_error {
+    public:
+       explicit tx_exception(T value) transaction_safe;
+       tx_exception(T value, const char* what_arg) transaction_safe;
+       tx_exception(T value, const string& what_arg) transaction_safe;
+       T get() const transaction_safe;
+    };
+  }
 ```
 この`what()`はtx_safeで、`T`はmemcpy可能なものである。
 
@@ -56,10 +214,11 @@ Cの評価の後にAがあるなら、Tの始まりはCの後にある。
 * tx-safeな関数のlvalueは関数ポインタのprvalueに変換できる。
 * tx-safeな関数へのポインタはメンバ関数ポインタのprvalueに変換できる。
 
-##
+## 継承
+syncronized/atomic block内での`transaction_safe_noinherit`がついてない仮想関数の呼び出しは未定義。
 
 
-## 古い
+## 古いメモ
 以下は[N3919:Transactional Memory Support for C++](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3919.pdf)を見たときのメモや感想など。
 
 ### synchronizedとatomic blockを排他する必要があるのか。
