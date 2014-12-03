@@ -6,6 +6,7 @@
 * [ML](https://groups.google.com/a/isocpp.org/forum/#!aboutgroup/tm)
 * [N4265:Transactional Memory Support for C++: Wording (revision 3)](https://isocpp.org/files/papers/n4265.html)
 * [pdf:https://groups.google.com/a/isocpp.org/group/tm/attach/8b50f7aa6cabf94b/Technical%20Specification%20for%20C++%20Extensions%20for%20Transactional%20Memory,%20Working%20Draft,.pdf?part=0.1]
+
 ## 目的
 
 C++コアと標準ライブラリにトランザクショナルメモリ(以下tx)を提供する。
@@ -33,6 +34,20 @@ atomic_noexcept { ... }
 atomic_cancel { ... }
 atomic_commit { ... }
 ```
+blockを最後まで実行したときの挙動
+* atomic_commit
+スレッド間の同期処理をしてから抜ける。他に何も影響を与えない。
+* atomic_cancel
+  * 現在の例外がtxキャンセルに対応していないならstd::abortを呼ぶ。
+  * 現在の例外がtxキャンセルに対応しているなら次の処理をする。
+    * 例外オブジェクトから一時オブジェクトがコピー初期化される。
+      * 初期化が例外を出すとstd::terminateが呼ばれる。
+    * atomic blockで影響を受けた全てのメモリの値は(一時オブジェクトが占有している領域を除いて)atomic blockが実行される前の状態に戻される。
+    * atomic blockの終了処理(スレッド間の同期処理)。
+    * 一時オブジェクトは例外オブジェクトとして利用される。
+* atomic_noexcept
+例外がでればstd::abortを呼ぶ。
+atomic blockの処理の影響が他に見えるようになるのはプログラムの終了よりも優先される。
 
 ```
 int f()
@@ -45,6 +60,13 @@ int f()
 }
 ```
 複数スレッドからのf()の呼び出しもmutexで守られているかのように正しく処理される。
+
+### txキャンセルをサポートするもの
+* bad_alloc, bad_array_length, bad_array_new_length
+* bad_cast
+* bad_typeid
+* bad_exception
+* tx_exception
 
 ### syncrhonized構文に対する最適化のヒント
 `optimize_for_synchronized`属性はその関数がsynchronized構文からの呼び出しで最適化されるべきであることを示す。
@@ -159,6 +181,8 @@ int main()
     return x + f(x-1);
   }
 ```
+### ライブラリ
+
 
 ## 解決されていない問題
 
