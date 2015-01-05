@@ -1,6 +1,7 @@
 /*
 	compare between constant multiplication and bit shift
 */
+#define XBYAK_NO_OP_NAMES
 #include <stdio.h>
 #include <xbyak/xbyak_util.h>
 
@@ -10,7 +11,7 @@ struct Code0 : public Xbyak::CodeGenerator {
 	Code0()
 	{
 		push(ebx);
-		xor(eax, eax);
+		xor_(eax, eax);
 		mov(edx, N);
 	L("@@");
 		lea(ebx, ptr [edx * 4]);
@@ -30,7 +31,7 @@ struct Code0 : public Xbyak::CodeGenerator {
 struct Code1 : public Xbyak::CodeGenerator {
 	Code1()
 	{
-		xor(eax, eax);
+		xor_(eax, eax);
 		mov(edx, N);
 	L("@@");
 		mov(ecx, edx);
@@ -46,7 +47,7 @@ struct Code2 : public Xbyak::CodeGenerator {
 	Code2()
 	{
 		push(ebx);
-		xor(eax, eax);
+		xor_(eax, eax);
 		mov(edx, N);
 	L("@@");
 		mov(ebx, edx);
@@ -65,7 +66,7 @@ struct Code3 : public Xbyak::CodeGenerator {
 	Code3()
 	{
 		push(ebx);
-		xor(eax, eax);
+		xor_(eax, eax);
 		mov(edx, N);
 	L("@@");
 		mov(ebx, edx);
