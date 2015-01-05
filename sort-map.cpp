@@ -128,7 +128,6 @@ void test(size_t n, int type)
 			/* sort first */
 			typedef std::vector<const A*> VectP;
 			VectP vp(n);
-			int idx = 0;
 			for (size_t i = 0; i < n; i++) { vp[i] = &va[i]; }
 			std::sort(vp.begin(), vp.end(), *_1 < *_2);
 			keep = s_counter.cmp_; s_counter.reset();
@@ -161,7 +160,7 @@ void test(size_t n, int type)
 		break;
 	}
 	if (n < putNumMax) map.put();
-	printf("n %8d t %d %8d %8d\n", n, type, keep, s_counter.cmp_);
+	printf("n %8d t %d %8d %8d\n", (int)n, type, keep, s_counter.cmp_);
 }
 
 int main(int argc, char *argv[])
