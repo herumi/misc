@@ -1,6 +1,7 @@
 #if 1
 #include <stdio.h>
 #include <vector>
+#include <stdexcept>
 #include <sstream>
 
 struct Reg {
