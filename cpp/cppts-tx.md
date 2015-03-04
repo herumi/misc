@@ -342,3 +342,24 @@ atomic {
 > ...not allowed; no side effects of the transation can be observed.
 >                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 >                 不要? コピペミス?
+-----------------------------------------------------------------------------
+
+std::pair<int,int> f(int i) {
+    static int x = i;
+    static int y = i;
+    return std::pair(x,y);
+}
+
+Th0
+atomic_noexcept {
+  auto r1 = f(0);
+}
+
+Th1
+f(1);
+
+atomic_noexceptはtransactionなのでget(0, 1)にはならない。
+Th0がx=0にしたらtransactionが終わってからf(1)が実行される。
+Th1はyを初期化しない
+
+Th0がsynchronized blockをつかえばget(0, 1)はありえる。

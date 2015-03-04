@@ -2,13 +2,14 @@
 #include <stdio.h>
 #include <fenv.h>
 #include <math.h>
+
 #define XBYAK_NO_OP_NAMES
 #include <xbyak/xbyak.h>
 
 struct Code : Xbyak::CodeGenerator {
 	Code(int mode)
 	{
-		roundpd(xm0, xm0, mode);
+		roundsd(xm0, xm0, mode);
 		ret();
 	}
 };
@@ -19,10 +20,10 @@ double (*f1)(double) = c1.getCode<double (*)(double)>();
 double (*f2)(double) = c2.getCode<double (*)(double)>();
 double (*f3)(double) = c3.getCode<double (*)(double)>();
 
-void fff(int x)
+void fff(int x, double d0, double d1)
 {
 	fesetround(x);
-	printf("%d %f %f\n", x, nearbyint(1.5), nearbyint(-1.5));
+	printf("fff %d %f %f\n", x, nearbyint(d0), nearbyint(d1));
 
 }
 
@@ -35,12 +36,15 @@ int main()
 	printf("to_plus  %f %f\n", f2(1.5), f2(-1.5));
 	printf("zero     %f %f\n", f3(1.5), f3(-1.5));
 
-	fff(FE_DOWNWARD);
-	fff(FE_UPWARD);
-	fff(FE_TOWARDZERO);
-	std::thread t1(fff, FE_DOWNWARD);
-	std::thread t2(fff, FE_UPWARD);
-	std::thread t3(fff, FE_TOWARDZERO);
+	fff(FE_TONEAREST, 1.5, -1.5);
+	fff(FE_DOWNWARD, 1.5, -1.5);
+	fff(FE_UPWARD, 1.5, -1.5);
+	fff(FE_TOWARDZERO, 1.5, -1.5);
+	std::thread t0(fff, FE_TONEAREST, 1.5, -1.5);
+	std::thread t1(fff, FE_DOWNWARD, 1.5, -1.5);
+	std::thread t2(fff, FE_UPWARD, 1.5, -1.5);
+	std::thread t3(fff, FE_TOWARDZERO, 1.5, -1.5);
+	t0.join();
 	t1.join();
 	t2.join();
 	t3.join();
