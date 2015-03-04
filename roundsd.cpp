@@ -14,27 +14,41 @@ struct Code : Xbyak::CodeGenerator {
 	}
 };
 
-Code c0(0), c1(1), c2(2), c3(3);
+struct GetMXCSR : Xbyak::CodeGenerator {
+	GetMXCSR()
+	{
+		push(eax);
+		stmxcsr(ptr [rsp]);
+		pop(eax);
+		ret();
+	}
+} g_getMXCSR;
+
+Code c0(0), c1(1), c2(2), c3(3), c4(0x4);
 double (*f0)(double) = c0.getCode<double (*)(double)>();
 double (*f1)(double) = c1.getCode<double (*)(double)>();
 double (*f2)(double) = c2.getCode<double (*)(double)>();
 double (*f3)(double) = c3.getCode<double (*)(double)>();
+double (*f4)(double) = c4.getCode<double (*)(double)>();
+
+int (*getMXCSR)() = g_getMXCSR.getCode<int(*)()>();
 
 void fff(int x, double d0, double d1)
 {
 	fesetround(x);
-	printf("fff %d %f %f\n", x, nearbyint(d0), nearbyint(d1));
-
+	printf("fff % 5d %f %f\n", x, nearbyint(d0), nearbyint(d1));
+	printf("asm % 5d %f %f\n", x, f4(d0), f4(d1));
+	printf("mxcsr RC %d\n", (getMXCSR() >> 13) & 3);
 }
 
 int main()
 	try
 {
-	printf("         %f %f\n", 1.5, -1.5);
-	printf("nearest  %f %f\n", f0(1.5), f0(-1.5));
-	printf("to_minus %f %f\n", f1(1.5), f1(-1.5));
-	printf("to_plus  %f %f\n", f2(1.5), f2(-1.5));
-	printf("zero     %f %f\n", f3(1.5), f3(-1.5));
+	printf("          %f %f\n", 1.5, -1.5);
+	printf("nearest   %f %f\n", f0(1.5), f0(-1.5));
+	printf("to_minus  %f %f\n", f1(1.5), f1(-1.5));
+	printf("to_plus   %f %f\n", f2(1.5), f2(-1.5));
+	printf("zero      %f %f\n", f3(1.5), f3(-1.5));
 
 	fff(FE_TONEAREST, 1.5, -1.5);
 	fff(FE_DOWNWARD, 1.5, -1.5);
