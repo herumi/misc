@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 size_t ConsistentHash(uint64_t key, size_t n) {
-	uint64_t b = 1, j = 0;
+	uint64_t b = 0, j = 0;
 	while (j < n) {
 		b = j;
 		key = key * 2862933555777941757ull + 1;
