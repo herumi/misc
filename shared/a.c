@@ -8,6 +8,11 @@
 void sub_free(void*);
 #endif
 
+#ifdef MYMALLOC
+const char *soName = "./bb.so";
+#else
+const char *soName = "./b.so";
+#endif
 
 int main()
 {
@@ -15,7 +20,7 @@ int main()
 	char *p = malloc(123);
 #ifdef USE_DLOPEN
 	puts("dlopen");
-	void *h = dlopen("./b.so", RTLD_LAZY);
+	void *h = dlopen(soName, RTLD_LAZY);
 	if (h == NULL) {
 		perror("dlopen");
 		return 1;
@@ -32,6 +37,9 @@ int main()
 	dlclose(h);
 #else
 	sub_free(p);
+#endif
+#ifdef MYMALLOC
+	mie_dstr();
 #endif
 	return 0;
 }
