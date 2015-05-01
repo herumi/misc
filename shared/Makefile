@@ -1,5 +1,5 @@
 CFLAGS=-g -fsanitize=address
-MOPT=../mymalloc.c -Dmalloc=mie_malloc -Dfree=mie_free -include ../mymalloc.h -DMYMALLOC
+MOPT=../mymalloc.c -Dmalloc=mie_malloc -Drealloc=mie_realloc -Dcalloc=mie_calloc -Dfree=mie_free -Dstrdup=mie_strdup -include ../mymalloc.h -DMYMALLOC
 test: a.c b.so
 	gcc a.c -o test ./b.so $(CFLAGS) -ldl
 

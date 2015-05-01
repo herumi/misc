@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <dlfcn.h>
 
-#define USE_DLOPEN
+//#define USE_DLOPEN
 
 #ifndef USE_DLOPEN
 void sub_free(void*);
@@ -14,9 +14,17 @@ const char *soName = "./bb.so";
 const char *soName = "./b.so";
 #endif
 
+void test_realloc()
+{
+	puts("test_realloc");
+	char *p = malloc(555);
+	p = realloc(p, 999);
+	free(p);
+}
 int main()
 {
 	puts("main");
+	test_realloc();
 	char *p = malloc(123);
 #ifdef USE_DLOPEN
 	puts("dlopen");
