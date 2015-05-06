@@ -1,15 +1,18 @@
 CFLAGS=-g -fsanitize=address
-MOPT=../mymalloc.c -Dmalloc=mie_malloc -Drealloc=mie_realloc -Dcalloc=mie_calloc -Dfree=mie_free -Dstrdup=mie_strdup -include ../mymalloc.h -DMYMALLOC
-test: a.c b.so
-	gcc a.c -o test ./b.so $(CFLAGS) -ldl
+MOPT= -Dmalloc=mie_malloc -Drealloc=mie_realloc -Dcalloc=mie_calloc -Dfree=mie_free -Dstrdup=mie_strdup -include ../mymalloc.h -DMYMALLOC
+test: a.c b.so mymalloc.so
+	gcc a.c -o test ./b.so $(MOPT) -ldl -DUSE_DLOPEN ./mymalloc.so
+
+mymalloc.so: ../mymalloc.c
+	gcc -fPIC -shared -o mymalloc.so -g ../mymalloc.c
 
 b.so: b.c
-	gcc -fPIC -shared -o b.so b.c $(CFLAGS)
+	gcc -fPIC -shared -o b.so b.c $(MOPT) -DUSE_DLOPEN
 
 bb.so: b.c
 	gcc -fPIC -shared -o bb.so b.c -g $(MOPT)
 tt: a.c bb.so
-	gcc a.c -o tt ./bb.so -g -ldl $(MOPT)
+	gcc a.c -o tt ./bb.so -g -ldl $(MOPT) ./mymalloc.so
 
 clean:
 	rm -rf test b.so bb.so tt
