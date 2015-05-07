@@ -82,6 +82,20 @@ public:
 	}
 };
 
+void bench0(const std::vector<double>& v)
+{
+	const size_t n = v.size();
+	cybozu::CpuClock clk;
+	double sum = 0;
+	clk.begin();
+	const double *p = &v[0];
+	for (size_t i = 0; i < n; i++) {
+		sum += exp(p[i]);
+	}
+	clk.end();
+	printf("std::exp with array    %7.2f %.18e\n", clk.getClock() / double(n), sum);
+}
+
 void bench(const char *msg, double (*f)(double), const std::vector<double>& v)
 {
 	const size_t n = v.size();
@@ -151,6 +165,7 @@ int main()
 	for (size_t i = 0; i < v.size(); i++) {
 		v[i] = r.get();
 	}
+	bench0(v);
 	for (size_t i = 0; i < sizeof(tbl) / sizeof(*tbl); i++) {
 		bench(tbl[i].name, tbl[i].f, v);
 	}
