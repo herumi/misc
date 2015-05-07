@@ -16,8 +16,8 @@ typedef struct {
 	int alloc;
 } Info;
 
-#define MAX_MALLOC_NUM 100000
-#define MAX_MALLOC_SIZE (1024 * 1024 * 128)
+#define MAX_MALLOC_NUM 1000000
+#define MAX_MALLOC_SIZE (1024 * 1024 * 1024)
 const size_t margin = 8;
 const char head[] = "\x11\x22\x33\x44\x55\x66\x77\x88";
 const char tail[] = "\x99\xaa\xbb\xcc\xdd\xee\xff\x01";
@@ -206,5 +206,4 @@ void mie_dstr()
 	if (mie_fp != stderr) {
 		mie_dump(mie_fp);
 	}
-	putHex(mie_buffer, 200);
 }

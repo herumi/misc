@@ -42,6 +42,11 @@ int main()
 #else
 	sub_free(p);
 #endif
+	{
+		char *q = malloc(3);
+		q[3] = 'a';
+		free(q);
+	}
 	mie_dstr();
 	return 0;
 }
