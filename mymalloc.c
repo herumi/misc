@@ -7,7 +7,7 @@
 #endif
 
 FILE *mie_fp;
-#define dprintf(...) fprintf(mie_fp, __VA_ARGS__)
+#define dprintf(...) if (mie_fp) fprintf(mie_fp, __VA_ARGS__)
 
 typedef struct {
 	char *p;
@@ -29,7 +29,7 @@ const void *mie_stopPtr;
 
 void putInfo()
 {
-	fprintf(stderr, "putInfo mie_buffer=%p mie_tblNum=%zd mie_pos=%zd\n", mie_buffer, mie_tblNum, mie_pos);
+	dprintf("putInfo mie_buffer=%p mie_tblNum=%zd mie_pos=%zd\n", mie_buffer, mie_tblNum, mie_pos);
 #ifdef USE_READLINK
 	char buf[1024];
 	int ret = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
@@ -38,18 +38,34 @@ void putInfo()
 		return;
 	}
 	buf[ret] = '\0';
-	fprintf(stderr, "self %s\n", buf);
+	dprintf("self %s\n", buf);
 #endif
+}
+
+void mie_verify()
+{
+	dprintf("my_dstr num=%zd pos=%zd\n", mie_tblNum, mie_pos);
+	putInfo();
+	int i;
+	int notFree = 0;
+	for (i = 0; i < mie_tblNum; i++) {
+		const Info *pi = &mie_tbl[i];
+		if (pi->alloc) {
+			dprintf("not free[%d] %p %zd %zd\n", i, pi->p, pi->size, pi->n);
+			notFree++;
+		}
+	}
+	dprintf("# notFree=%d\n", notFree);
 }
 
 static void putHex(const char *p, size_t n)
 {
-	fprintf(mie_fp, "putHex %p %zd\n", p, n);
+	dprintf("putHex %p %zd\n", p, n);
 	size_t i;
 	for (i = 0; i < n; i++) {
-		fprintf(mie_fp, "%02x ", (unsigned char)p[i]);
+		dprintf("%02x ", (unsigned char)p[i]);
 	}
-	fprintf(mie_fp, "\n");
+	dprintf("\n");
 }
 
 static void setStopPtr()
@@ -63,16 +79,21 @@ static void setStopPtr()
 	}
 }
 
-__attribute__((constructor)) static void mie_init()
+//__attribute__((constructor))
+void mie_init()
 {
-	const char *name = "./mymalloc.log";
-	putInfo();
+	static int init = 0;
+	if (init) return;
+	init = 1;
+	const char *name = "/tmp/mymalloc.log";
 	mie_fp = fopen(name, "w");
 	if (mie_fp == NULL) {
 		fprintf(stderr, "can't open %s\n", name);
 		mie_fp = stderr;
 	}
+	putInfo();
 	setStopPtr();
+	atexit(mie_verify);
 }
 static void *my_alloc(size_t n, size_t size, size_t align)
 {
@@ -85,7 +106,7 @@ static void *my_alloc(size_t n, size_t size, size_t align)
 	mie_pos += margin;
 	mie_pos = (mie_pos + align - 1) & ~(align - 1);
 	if (mie_pos + size * n > MAX_MALLOC_SIZE) {
-		fprintf(stderr, "QQQ mymalloc : no malloc n=%zd, mie_pos=%zd\n", n, size);
+		dprintf("QQQ mymalloc : no malloc n=%zd, mie_pos=%zd\n", n, size);
 		exit(1);
 	}
 	p = mie_buffer + mie_pos;
@@ -99,51 +120,28 @@ static void *my_alloc(size_t n, size_t size, size_t align)
 	memcpy(p + size, tail, margin);
 	mie_pos += size + margin;
 	if (p == mie_stopPtr) {
-		fprintf(stderr, "QQQ find stopPtr %p\n", p);
+		dprintf("QQQ find stopPtr %p\n", p);
 	}
 	return p;
 }
-int mie_posix_memalign(void **memptr, size_t alignment, size_t size)
+int mie_posix_memalign(void **memptr, size_t align, size_t size)
 {
-	void *p = my_alloc(1, size, alignment);
-	if (p == NULL) return 1;
+	void *p = my_alloc(1, size, align);
 	*memptr = p;
-	return 0;
+	dprintf("mie_posix_memalign[%zd] %zd %zd %p\n", mie_tblNum - 1, align, size, p);
+	return (p == NULL);
 }
-void *mie_aligned_alloc(size_t alignment, size_t size)
+void *mie_aligned_alloc(size_t align, size_t size)
 {
-	return my_alloc(1, size, alignment);
+	void *p = my_alloc(1, size, align);
+	dprintf("mie_aligned_alloc[%zd] %zd %zd %p\n", mie_tblNum - 1, align, size, p);
+	return p;
 }
-
-void mie_free(void *ptr)
+void *mie_memalign(size_t align, size_t size)
 {
-	dprintf("free %p", ptr);
-	char *p = (char*)ptr;
-	int i;
-	if (ptr == NULL) return;
-	for (i = 0; i < mie_tblNum; i++) {
-		Info *pi = &mie_tbl[i];
-		if (pi->p == p) {
-			if (pi->alloc == 0) {
-				fprintf(stderr, " QQQ double free %p\n", ptr);
-				exit(1);
-			}
-			pi->alloc = 0;
-			dprintf("[%d]\n", i);
-			if (memcmp(p - margin, head, margin) != 0) {
-				dprintf("QQQ broken head:"); putHex(p - margin, margin);
-				putHex(head, margin);
-			}
-			const char *q = p + pi->size * pi->n;
-			if (memcmp(q, tail, margin) != 0) {
-				dprintf("QQQ broken tail:"); putHex(q, margin);
-				putHex(head, margin);
-			}
-			return;
-		}
-	}
-	fprintf(stderr, " QQQ mie_free : not found %p\n", ptr);
-	putInfo();
+	void *p = my_alloc(1, size, align);
+	dprintf("mie_memalign[%zd] %zd %zd %p\n", mie_tblNum - 1, align, size, p);
+	return p;
 }
 
 void *mie_malloc(size_t size)
@@ -151,6 +149,52 @@ void *mie_malloc(size_t size)
 	void *p = my_alloc(1, size, 16);
 	dprintf("malloc[%zd] %zd %p\n", mie_tblNum - 1, size, p);
 	return p;
+}
+
+#define INFO_DOUBLE_FREE (-1)
+#define INFO_BROKEN_HEAD (-2)
+#define INFO_BROKEN_TAIL (-3)
+#define INFO_NOT_FOUND (-4)
+/*
+	found if positive or zero
+	err otherwise
+*/
+static int getInfoIdx(const void *p)
+{
+	int i;
+	for (i = 0; i < mie_tblNum; i++) {
+		Info *pi = &mie_tbl[i];
+		if (pi->p == p) {
+			if (pi->alloc == 0) {
+				dprintf(" QQQ double free\n");
+				return INFO_DOUBLE_FREE;
+			}
+			if (memcmp(p - margin, head, margin) != 0) {
+				dprintf("QQQ broken head:");
+				putHex(p - margin, margin);
+				return INFO_BROKEN_HEAD;
+			}
+			const char *q = p + pi->size * pi->n;
+			if (memcmp(q, tail, margin) != 0) {
+				dprintf("QQQ broken tail:");
+				putHex(q, margin);
+				return INFO_BROKEN_TAIL;
+			}
+			return i;
+		}
+	}
+	dprintf(" QQQ mie_free : not found\n");
+	return INFO_NOT_FOUND;
+}
+
+void mie_free(void *p)
+{
+	if (p == NULL) return;
+	dprintf("free %p\n", p);
+	int idx = getInfoIdx(p);
+	if (idx >= 0) {
+		mie_tbl[idx].alloc = 0;
+	}
 }
 
 void *mie_calloc(size_t n, size_t size)
@@ -186,24 +230,50 @@ char *mie_strdup(const char *str)
 	dprintf("strdup[%zd] end %p\n", mie_tblNum - 1, newPtr);
 	return newPtr;
 }
-void mie_dump(FILE *fp)
+size_t mie_malloc_usable_size(void *p)
 {
-	fprintf(fp, "my_dstr num=%zd pos=%zd\n", mie_tblNum, mie_pos); putInfo();
-	int i;
-	int notFree = 0;
-	for (i = 0; i < mie_tblNum; i++) {
-		const Info *pi = &mie_tbl[i];
-		if (pi->alloc) {
-			fprintf(fp, "not free %p %zd %zd\n", pi->p, pi->size, pi->n);
-			notFree++;
-		}
-	}
-	fprintf(fp, "# notFree=%d\n", notFree);
-}
-void mie_dstr()
-{
-	mie_dump(stderr);
-	if (mie_fp != stderr) {
-		mie_dump(mie_fp);
+	if (p == NULL) return 0;
+	dprintf("malloc_usable_size %p ", p);
+	int idx = getInfoIdx(p);
+	if (idx >= 0) {
+		size_t size = mie_tbl[idx].size * mie_tbl[idx].n;
+		dprintf("%zd\n", size);
+		return size;
 	}
 }
+
+#ifdef MYMALLOC_PRELOAD
+int posix_memalign(void **memptr, size_t align, size_t size)
+{
+	return mie_posix_memalign(memptr, align, size);
+}
+void *aligned_alloc(size_t align, size_t size)
+{
+	return mie_aligned_alloc(align, size);
+}
+void *memalign(size_t align, size_t size)
+{
+	return mie_memalign(align, size);
+}
+void *malloc(size_t size)
+{
+	return mie_malloc(size);
+}
+void free(void *ptr)
+{
+	mie_free(ptr);
+}
+void *calloc(size_t n, size_t size)
+{
+	return mie_calloc(n, size);
+}
+void *realloc(void *ptr, size_t size)
+{
+	return mie_realloc(ptr, size);
+}
+size_t malloc_usable_size(void *p)
+{
+	return mie_malloc_usable_size(p);
+}
+#endif
+

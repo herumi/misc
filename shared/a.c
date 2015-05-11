@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <malloc.h>
 #include <stdlib.h>
 #include <dlfcn.h>
 
@@ -19,6 +20,7 @@ void test_realloc()
 }
 int main()
 {
+	mie_init();
 	puts("main");
 	test_realloc();
 	char *p = malloc(7);
@@ -44,9 +46,9 @@ int main()
 #endif
 	{
 		char *q = malloc(3);
+		printf("malloc size=%zd\n", malloc_usable_size(q));
 		q[3] = 'a';
 		free(q);
 	}
-	mie_dstr();
 	return 0;
 }
