@@ -1,6 +1,8 @@
 #include <memory.h>
 #include <stdio.h>
 #include <stdlib.h>
+#define __USE_GNU
+#include <dlfcn.h>
 //#define USE_READLINK
 #ifdef USE_READLINK
 #include <unistd.h>
@@ -97,6 +99,17 @@ void mie_init()
 }
 static void *my_alloc(size_t n, size_t size, size_t align)
 {
+	if (mie_fp == NULL) {
+		static void *(*org_malloc)(size_t) = NULL;
+		if (org_malloc == NULL) {
+			org_malloc = (void* (*)(size_t))dlsym(RTLD_NEXT, "malloc");
+			if (org_malloc == NULL) {
+				perror("dlsym");
+				exit(1);
+			}
+		}
+		return org_malloc(size * n);
+	}
 	char *p;
 	Info *pi;
 	if (mie_tblNum == MAX_MALLOC_NUM) {
@@ -159,7 +172,7 @@ void *mie_malloc(size_t size)
 	found if positive or zero
 	err otherwise
 */
-static int getInfoIdx(const void *p)
+static int getInfoIdx(void *p)
 {
 	int i;
 	for (i = 0; i < mie_tblNum; i++) {
@@ -183,17 +196,28 @@ static int getInfoIdx(const void *p)
 			return i;
 		}
 	}
-	dprintf(" QQQ mie_free : not found\n");
+	dprintf("\n");
+//	dprintf(" QQQ mie_free : not found so use org_free\n");
+	static void (*org_free)(void*) = NULL;
+	if (org_free == NULL) {
+		org_free = (void (*)(void*))dlsym(RTLD_NEXT, "free");
+		if (org_free == NULL) {
+			perror("dlsym free");
+			exit(1);
+		}
+	}
+	org_free(p);
 	return INFO_NOT_FOUND;
 }
 
 void mie_free(void *p)
 {
 	if (p == NULL) return;
-	dprintf("free %p\n", p);
+	dprintf("free %p ", p);
 	int idx = getInfoIdx(p);
 	if (idx >= 0) {
 		mie_tbl[idx].alloc = 0;
+		dprintf("[%d]\n", idx);
 	}
 }
 
@@ -240,6 +264,15 @@ size_t mie_malloc_usable_size(void *p)
 		dprintf("%zd\n", size);
 		return size;
 	}
+	static size_t (*org_malloc_usable_size)(void*) = NULL;
+	if (org_malloc_usable_size == NULL) {
+		org_malloc_usable_size = (size_t (*)(void*))dlsym(RTLD_NEXT, "malloc_usable_size");
+		if (org_malloc_usable_size == NULL) {
+			perror("dlsym malloc_usable_size");
+			exit(1);
+		}
+	}
+	return org_malloc_usable_size(p);
 }
 
 #ifdef MYMALLOC_PRELOAD
