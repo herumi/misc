@@ -1,60 +1,68 @@
 #include <memory.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <execinfo.h>
 #define __USE_GNU
 #include <dlfcn.h>
-//#define USE_READLINK
-#ifdef USE_READLINK
-#include <unistd.h>
-#endif
 
 FILE *mie_fp;
 #define dprintf(...) if (mie_fp) fprintf(mie_fp, __VA_ARGS__)
 
+#define MAX_MALLOC_SIZE (1024 * 1024 * 1024)
+#define MAX_MALLOC_NUM 1000000
+#define HASH_NUM 65537
+#define LIST_NUM (MAX_MALLOC_NUM / HASH_NUM)
+#define MAX_STACK_NUM 4
+
 typedef struct {
 	char *p;
 	size_t size;
-	size_t n;
+	void *stack[MAX_STACK_NUM];
 	int alloc;
 } Info;
 
-#define MAX_MALLOC_NUM 1000000
-#define MAX_MALLOC_SIZE (1024 * 1024 * 1024)
 const size_t margin = 8;
 const char head[] = "\x11\x22\x33\x44\x55\x66\x77\x88";
 const char tail[] = "\x99\xaa\xbb\xcc\xdd\xee\xff\x01";
-__attribute__((aligned(32))) char mie_buffer[MAX_MALLOC_SIZE];
-Info mie_tbl[MAX_MALLOC_NUM];
-size_t mie_tblNum;
+__attribute__((aligned(4096))) char mie_buffer[MAX_MALLOC_SIZE];
 size_t mie_pos;
 const void *mie_stopPtr;
+Info mie_tbl[HASH_NUM][LIST_NUM];
+int mie_tblNum[HASH_NUM];
+int mie_allocNum;
+int getStackTrace = 0;
 
-void putInfo()
+static int getHash(const void *p)
 {
-	dprintf("putInfo mie_buffer=%p mie_tblNum=%zd mie_pos=%zd\n", mie_buffer, mie_tblNum, mie_pos);
-#ifdef USE_READLINK
-	char buf[1024];
-	int ret = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
-	if (ret < 0) {
-		perror("readlink");
-		return;
-	}
-	buf[ret] = '\0';
-	dprintf("self %s\n", buf);
-#endif
+	return ((size_t)p / 8) % HASH_NUM;
 }
 
+static void putInfo(const Info *pi)
+{
+	dprintf("%p %zd", pi->p, pi->size);
+	if (getStackTrace) {
+		int i;
+		for (i = 0; i < MAX_STACK_NUM; i++) {
+			const void *p = pi->stack[i];
+			if (p) dprintf(" %p", p);
+		}
+	}
+	dprintf("\n");
+}
 void mie_verify()
 {
-	dprintf("my_dstr num=%zd pos=%zd\n", mie_tblNum, mie_pos);
-	putInfo();
-	int i;
+	dprintf("my_dstr mie_buffer=%p mie_pos=%zd mie_allocNum=%d \n", mie_buffer, mie_pos, mie_allocNum);
+	int i, j;
 	int notFree = 0;
-	for (i = 0; i < mie_tblNum; i++) {
-		const Info *pi = &mie_tbl[i];
-		if (pi->alloc) {
-			dprintf("not free[%d] %p %zd %zd\n", i, pi->p, pi->size, pi->n);
-			notFree++;
+	for (i = 0; i < HASH_NUM; i++) {
+		const Info *tbl = &mie_tbl[i][0];
+		int n = mie_tblNum[i];
+		for (j = 0; j < n; j++) {
+			const Info *pi = &tbl[j];
+			if (pi->alloc) {
+				dprintf("not free[%d] ", i);
+				putInfo(pi);
+			}
 		}
 	}
 	dprintf("# notFree=%d\n", notFree);
@@ -93,12 +101,14 @@ void mie_init()
 		fprintf(stderr, "can't open %s\n", name);
 		mie_fp = stderr;
 	}
-	putInfo();
+	dprintf("mie_buffer=%p mie_pos=%zd mie_allocNum=%d \n", mie_buffer, mie_pos, mie_allocNum);
 	setStopPtr();
 	atexit(mie_verify);
+//	getStackTrace = 1;
 }
-static void *my_alloc(size_t n, size_t size, size_t align)
+static void *my_alloc(size_t size, size_t align)
 {
+#if 0
 	if (mie_fp == NULL) {
 		static void *(*org_malloc)(size_t) = NULL;
 		if (org_malloc == NULL) {
@@ -108,59 +118,68 @@ static void *my_alloc(size_t n, size_t size, size_t align)
 				exit(1);
 			}
 		}
-		return org_malloc(size * n);
+		return org_malloc(size);
 	}
+#endif
 	char *p;
 	Info *pi;
-	if (mie_tblNum == MAX_MALLOC_NUM) {
-		fprintf(stderr, "QQQ mymalloc : no malloc num\n");
-		exit(1);
-	}
 	mie_pos += margin;
 	mie_pos = (mie_pos + align - 1) & ~(align - 1);
-	if (mie_pos + size * n > MAX_MALLOC_SIZE) {
-		dprintf("QQQ mymalloc : no malloc n=%zd, mie_pos=%zd\n", n, size);
+	if (mie_pos + size > MAX_MALLOC_SIZE) {
+		dprintf("QQQ mymalloc : no malloc size=%zd\n", size);
 		exit(1);
 	}
 	p = mie_buffer + mie_pos;
 	memcpy(p - margin, head, margin);
-	pi = &mie_tbl[mie_tblNum];
+	int idx = getHash(p);
+	int pos = mie_tblNum[idx]++;
+	if (pos == LIST_NUM) {
+		dprintf("QQQ mymalloc : no malloc idx=%d\n", idx);
+		exit(1);
+	}
+	pi = &mie_tbl[idx][pos];
 	pi->p = p;
 	pi->size = size;
-	pi->n = n;
 	pi->alloc = 1;
-	mie_tblNum++;
 	memcpy(p + size, tail, margin);
 	mie_pos += size + margin;
+	mie_allocNum++;
+	if (getStackTrace) {
+		int n = backtrace(pi->stack, MAX_STACK_NUM);
+		int i;
+		for (i = n; i < MAX_STACK_NUM; i++) pi->stack[i] = NULL;
+	}
 	if (p == mie_stopPtr) {
 		dprintf("QQQ find stopPtr %p\n", p);
 	}
+	dprintf("%d:%d [%d] %zd %zd %p\n", idx, pos, mie_allocNum, size, align, p);
 	return p;
 }
+
 int mie_posix_memalign(void **memptr, size_t align, size_t size)
 {
-	void *p = my_alloc(1, size, align);
+	dprintf("mie_posix_memalign ");
+	void *p = my_alloc(size, align);
 	*memptr = p;
-	dprintf("mie_posix_memalign[%zd] %zd %zd %p\n", mie_tblNum - 1, align, size, p);
 	return (p == NULL);
 }
 void *mie_aligned_alloc(size_t align, size_t size)
 {
-	void *p = my_alloc(1, size, align);
-	dprintf("mie_aligned_alloc[%zd] %zd %zd %p\n", mie_tblNum - 1, align, size, p);
+	dprintf("mie_aligned_alloc ");
+	void *p = my_alloc(size, align);
 	return p;
 }
 void *mie_memalign(size_t align, size_t size)
 {
-	void *p = my_alloc(1, size, align);
-	dprintf("mie_memalign[%zd] %zd %zd %p\n", mie_tblNum - 1, align, size, p);
+	dprintf("mie_memalign ");
+	void *p = my_alloc(size, align);
 	return p;
 }
 
 void *mie_malloc(size_t size)
 {
-	void *p = my_alloc(1, size, 16);
-	dprintf("malloc[%zd] %zd %p\n", mie_tblNum - 1, size, p);
+	dprintf("mie_malloc ");
+	void *p = my_alloc(size, 16);
 	return p;
 }
 
@@ -172,32 +191,55 @@ void *mie_malloc(size_t size)
 	found if positive or zero
 	err otherwise
 */
-static int getInfoIdx(void *p)
+static int getInfoIdx(int *pIdx, void *p)
 {
 	int i;
-	for (i = 0; i < mie_tblNum; i++) {
-		Info *pi = &mie_tbl[i];
+	int idx = getHash(p);
+	*pIdx = idx;
+	Info *tbl = &mie_tbl[idx][0];
+	int n = mie_tblNum[idx];
+	for (i = 0; i < n; i++) {
+		Info *pi = &tbl[i];
 		if (pi->p == p) {
 			if (pi->alloc == 0) {
-				dprintf(" QQQ double free\n");
+				dprintf(" QQQ double free ");
+				putInfo(pi);
 				return INFO_DOUBLE_FREE;
 			}
 			if (memcmp(p - margin, head, margin) != 0) {
 				dprintf("QQQ broken head:");
+				putInfo(pi);
 				putHex(p - margin, margin);
-				return INFO_BROKEN_HEAD;
+				return i;
+//				return INFO_BROKEN_HEAD;
 			}
-			const char *q = p + pi->size * pi->n;
+			const char *q = p + pi->size;
 			if (memcmp(q, tail, margin) != 0) {
 				dprintf("QQQ broken tail:");
+				putInfo(pi);
 				putHex(q, margin);
-				return INFO_BROKEN_TAIL;
+//				return INFO_BROKEN_TAIL;
+				return i;
 			}
 			return i;
 		}
 	}
-	dprintf("\n");
-//	dprintf(" QQQ mie_free : not found so use org_free\n");
+	dprintf("QQQ not found\n");
+	return INFO_NOT_FOUND;
+}
+
+void mie_free(void *p)
+{
+	if (p == NULL) return;
+	dprintf("free %p ", p);
+	int idx;
+	int pos = getInfoIdx(&idx, p);
+	if (pos >= 0) {
+		mie_tbl[idx][pos].alloc = 0;
+		mie_allocNum--;
+		dprintf("[%d]\n", mie_allocNum);
+	}
+#if 0
 	static void (*org_free)(void*) = NULL;
 	if (org_free == NULL) {
 		org_free = (void (*)(void*))dlsym(RTLD_NEXT, "free");
@@ -207,25 +249,14 @@ static int getInfoIdx(void *p)
 		}
 	}
 	org_free(p);
-	return INFO_NOT_FOUND;
-}
-
-void mie_free(void *p)
-{
-	if (p == NULL) return;
-	dprintf("free %p ", p);
-	int idx = getInfoIdx(p);
-	if (idx >= 0) {
-		mie_tbl[idx].alloc = 0;
-		dprintf("[%d]\n", idx);
-	}
+#endif
 }
 
 void *mie_calloc(size_t n, size_t size)
 {
-	void *p = my_alloc(n, size, 16);
+	dprintf("mie_calloc ");
+	void *p = my_alloc(n * size, 16);
 	memset(p, 0, n * size);
-	dprintf("calloc[%zd] %zd %zd %p\n", mie_tblNum - 1, n, size, p);
 	return p;
 }
 void *mie_realloc(void *ptr, size_t size)
@@ -237,33 +268,36 @@ void *mie_realloc(void *ptr, size_t size)
 		newPtr = ptr;
 		goto exit;
 	}
-	newPtr = my_alloc(1, size, 16);
+	newPtr = my_alloc(size, 16);
 	if (ptr == NULL) goto exit;
 	memmove(newPtr, ptr, size);
 	mie_free(ptr);
 exit:
-	dprintf("realloc[%zd] end %p\n", mie_tblNum - 1, newPtr);
+	dprintf("realloc end %p\n", newPtr);
 	return newPtr;
 }
 char *mie_strdup(const char *str)
 {
 	size_t len = strlen(str);
-	dprintf("strdup %p %zd : ", str, len);
-	char *newPtr = mie_malloc(len + 1);
+	dprintf("mie_strdup %p %zd ", str, len);
+	char *newPtr = my_alloc(len + 1, 16);
 	memcpy(newPtr, str, len + 1);
-	dprintf("strdup[%zd] end %p\n", mie_tblNum - 1, newPtr);
 	return newPtr;
 }
 size_t mie_malloc_usable_size(void *p)
 {
 	if (p == NULL) return 0;
 	dprintf("malloc_usable_size %p ", p);
-	int idx = getInfoIdx(p);
-	if (idx >= 0) {
-		size_t size = mie_tbl[idx].size * mie_tbl[idx].n;
-		dprintf("%zd\n", size);
+	int idx;
+	int pos = getInfoIdx(&idx, p);
+	if (pos >= 0) {
+		size_t size = mie_tbl[idx][pos].size;
+		dprintf("[%d:%d] %zd\n", pos, idx, size);
 		return size;
 	}
+#if 1
+	return 0;
+#else
 	static size_t (*org_malloc_usable_size)(void*) = NULL;
 	if (org_malloc_usable_size == NULL) {
 		org_malloc_usable_size = (size_t (*)(void*))dlsym(RTLD_NEXT, "malloc_usable_size");
@@ -273,6 +307,7 @@ size_t mie_malloc_usable_size(void *p)
 		}
 	}
 	return org_malloc_usable_size(p);
+#endif
 }
 
 #ifdef MYMALLOC_PRELOAD
