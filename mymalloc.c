@@ -10,14 +10,16 @@ FILE *mie_fp;
 
 #define MAX_MALLOC_SIZE (1024 * 1024 * 1024)
 #define MAX_MALLOC_NUM 1000000
-#define HASH_NUM 65537
+#define HASH_NUM 100003
 #define LIST_NUM (MAX_MALLOC_NUM / HASH_NUM)
-#define MAX_STACK_NUM 4
+//#define MAX_STACK_NUM 4
 
 typedef struct {
 	char *p;
 	size_t size;
+#ifdef MAX_STACK_NUM
 	void *stack[MAX_STACK_NUM];
+#endif
 	int alloc;
 } Info;
 
@@ -40,6 +42,7 @@ static int getHash(const void *p)
 static void putInfo(const Info *pi)
 {
 	dprintf("%p %zd", pi->p, pi->size);
+#ifdef MAX_STACK_NUM
 	if (getStackTrace) {
 		int i;
 		for (i = 0; i < MAX_STACK_NUM; i++) {
@@ -47,25 +50,24 @@ static void putInfo(const Info *pi)
 			if (p) dprintf(" %p", p);
 		}
 	}
+#endif
 	dprintf("\n");
 }
 void mie_verify()
 {
 	dprintf("my_dstr mie_buffer=%p mie_pos=%zd mie_allocNum=%d \n", mie_buffer, mie_pos, mie_allocNum);
 	int i, j;
-	int notFree = 0;
 	for (i = 0; i < HASH_NUM; i++) {
 		const Info *tbl = &mie_tbl[i][0];
 		int n = mie_tblNum[i];
 		for (j = 0; j < n; j++) {
 			const Info *pi = &tbl[j];
 			if (pi->alloc) {
-				dprintf("not free[%d] ", i);
+				dprintf("not free ");
 				putInfo(pi);
 			}
 		}
 	}
-	dprintf("# notFree=%d\n", notFree);
 }
 
 static void putHex(const char *p, size_t n)
@@ -144,15 +146,18 @@ static void *my_alloc(size_t size, size_t align)
 	memcpy(p + size, tail, margin);
 	mie_pos += size + margin;
 	mie_allocNum++;
+#ifdef MAX_STACK_NUM
 	if (getStackTrace) {
 		int n = backtrace(pi->stack, MAX_STACK_NUM);
 		int i;
 		for (i = n; i < MAX_STACK_NUM; i++) pi->stack[i] = NULL;
 	}
+#endif
 	if (p == mie_stopPtr) {
 		dprintf("QQQ find stopPtr %p\n", p);
 	}
-	dprintf("%d:%d [%d] %zd %zd %p\n", idx, pos, mie_allocNum, size, align, p);
+//	dprintf("%d:%d [%d] %zd %zd %p\n", idx, pos, mie_allocNum, size, align, p);
+	dprintf("%zd %zd %p\n", size, align, p);
 	return p;
 }
 
@@ -237,7 +242,7 @@ void mie_free(void *p)
 	if (pos >= 0) {
 		mie_tbl[idx][pos].alloc = 0;
 		mie_allocNum--;
-		dprintf("[%d]\n", mie_allocNum);
+		dprintf("\n");
 	}
 #if 0
 	static void (*org_free)(void*) = NULL;
