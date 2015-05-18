@@ -142,8 +142,8 @@ uint32_t rev_tempering(uint32_t x)
 
 	//	x ^= (x << 7) & 0x9D2C5680;
 	{
-		// [a:b:c:(d:e):f] = [7:7:7:(4:3):4]
-		// [0:a:b:  c  :d]
+		// x = [f:(e:d):c:b:a] = [4:(3:4):7:7:7]
+		// (x << 7) = [d:c:b:a:0]
 		const uint32_t w = 0x9D2C5680;
 		uint32_t a = x & mask(7);
 		uint32_t b = ((x ^ ((a << 7) & w)) >> 7) & mask(7);
@@ -156,11 +156,16 @@ uint32_t rev_tempering(uint32_t x)
 
 	// x ^= x >> 11;
 	{
-		// [a:b:c] = [11:11:10]
+		// x = [c:b:a] = [10:11:11]
+#if 1
+		x ^= x >> 11;
+		x ^= x >> 22;
+#else
 		uint32_t c = x >> 22;
 		uint32_t b = (x >> 11) ^ c;
 		uint32_t a = (x ^ b) & mask(11);
 		x = a | (b << 11) | (c << 22);
+#endif
 	}
 	return x;
 }

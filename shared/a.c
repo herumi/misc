@@ -21,6 +21,7 @@ void test_realloc()
 int main()
 {
 	mie_init();
+	printf("malloc=%p, free=%p\n", malloc, free);
 	puts("main");
 	test_realloc();
 	char *p = malloc(7);
