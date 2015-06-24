@@ -26,11 +26,11 @@ _fjsp_v2r8 trissel(_fjsp_v2r8 a, _fjsp_v2r8 b)
 	for (int i = 0; i < 2; i++) {
 		uint64_t x = ub[i];
 		if (x & 1) {
-			x = ua[i];
-		} else {
 			x = ud.u;
+		} else {
+			x = ua[i];
 		}
-		x ^= uint64_t((x >> 1) & 1) << 63;
+		x ^= uint64_t((ub[i] >> 1) & 1) << 63;
 		out[i] = x;
 	}
 	_fjsp_v2r8 c;
@@ -45,7 +45,7 @@ void testTrissel()
 		1.0, 2.2, -3.4, 4.5, 0
 	};
 	int64_t uTbl[] = {
-		0, 1, 2, 3, 0
+		0, 1, 2, 3
 	};
 	for (size_t i = 0; i < sizeof(dTbl) / sizeof(*dTbl); i++) {
 		double d[2] = { dTbl[i], dTbl[i] };
