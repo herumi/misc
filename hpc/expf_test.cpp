@@ -244,32 +244,31 @@ float bench2(const char *msg, void func(float*, const float *))
 	return t;
 }
 
-int main()
+void test(const char *msg, float func(float), float begin, float end, float step)
 {
-	float maxDiff1 = 0;
-	float maxDiff2 = 0;
-	double sumDiff1 = 0;
-	double sumDiff2 = 0;
+	float maxDiff = 0;
+	double sumDiff = 0;
 	int count = 0;
-	for (float x = -30; x < 30; x += 1e-4) {
+	for (float x = begin; x < end; x += step) {
 		float a = exp(x);
-		float b = fmath_exp(x);
-		float c = new_exp(x);
-		float d1 = fabs(a - b) / a;
-		float d2 = fabs(a - c) / a;
-		sumDiff1 += d1;
-		sumDiff2 += d2;
+		float b = func(x);
+		float d = fabs(a - b) / a;
+		sumDiff += d;
 		count++;
-//		printf("x=%11.6e a=%11.6e b=%11.6e d=%11.6e\n", x, a, b, d);
-		if (d1 > maxDiff1) {
-			maxDiff1 = d1;
-		}
-		if (d2 > maxDiff2) {
-			maxDiff2 = d2;
+		if (d > maxDiff) {
+			maxDiff = d;
 		}
 	}
-	printf("1. aveDiff=%11.e maxDiff=%11.6e\n", sumDiff1 / count, maxDiff1);
-	printf("2. aveDiff=%11.e maxDiff=%11.6e\n", sumDiff2 / count, maxDiff2);
+	printf("%s aveDiff=%11.e maxDiff=%11.6e\n", msg, sumDiff / count, maxDiff);
+}
+
+int main()
+{
+	const float begin = -30.0f;
+	const float end = 30.0f;
+	const float step = 1e-4f;
+	test("fmath_exp", fmath_exp, begin, end, step);
+	test("new_exp  ", new_exp, begin, end, step);
 	float dummy = 0;
 	dummy += bench1("fmath_exp", fmath_exp);
 	dummy += bench1("new_exp  ", new_exp);
