@@ -161,6 +161,7 @@ void fmath_exp4(float* RESTRICT y, const float* RESTRICT x)
 }
 
 #if 0
+// remez(exp(x), 5, [-1/8, 1/8]); by sollya
 #define FMATH_EXP_C0 1.00000000016564766
 #define FMATH_EXP_C1 1.00000000014198308
 #define FMATH_EXP_C2 0.49999980918318004
