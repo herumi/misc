@@ -134,21 +134,26 @@ void fmath_exp4(float* RESTRICT y, const float* RESTRICT x)
 */
 float new_exp(float x)
 {
-	double t = x / 128;
-	// |t| < 1/4
-	const double c2 = 1 / 2.0;
-	const double c3 = 1 / 3.0;
-	const double c4 = 1 / 4.0;
-	const double c5 = 1 / 5.0;
-	const double c6 = 1 / 6.0;
-	double y = 1 + t * (1 + c2 * t * (1 + c3 * t * (1 + c4 * t * (1 + t * (c5 + (c5 * c6) * t)))));
+	const double c1 =   0.99999996025848823;
+	const double c2 =   0.49999998277874321;
+	const double c23 =  0.16670736071314988;
+	const double c234 = 0.0416761619019393736;
+	// |t| < 1/16
+	// add:4, mul:4
+	// mul:9
+#define DEGREE4(y, t) double y = 1 + t * (c1 + t * (c2 + t * (c23 + c234 * t))); \
+	y *= y; \
+	y *= y; \
+	y *= y; \
+	y *= y; \
+	y *= y; \
+	y *= y; \
+	y *= y; \
+	y *= y; \
 	y *= y;
-	y *= y;
-	y *= y;
-	y *= y;
-	y *= y;
-	y *= y;
-	y *= y;
+
+	double t = x / 512;
+	DEGREE4(y, t)
 	return (float)y;
 }
 
@@ -157,52 +162,114 @@ float new_exp(float x)
 */
 void new_exp4(float y[4], const float x[4])
 {
-	double t0 = x[0] / 128;
-	double t1 = x[1] / 128;
-	double t2 = x[2] / 128;
-	double t3 = x[3] / 128;
-	// |t| < 1/4
-	const double c2 = 1 / 2.0;
-	const double c3 = 1 / 3.0;
-	const double c4 = 1 / 4.0;
-	const double c5 = 1 / 5.0;
-	const double c6 = 1 / 6.0;
-	double y0 = 1 + t0 * (1 + c2 * t0 * (1 + c3 * t0 * (1 + c4 * t0 * (1 + t0 * (c5 + (c5 * c6) * t0)))));
-	double y1 = 1 + t1 * (1 + c2 * t1 * (1 + c3 * t1 * (1 + c4 * t1 * (1 + t1 * (c5 + (c5 * c6) * t1)))));
-	double y2 = 1 + t2 * (1 + c2 * t2 * (1 + c3 * t2 * (1 + c4 * t2 * (1 + t2 * (c5 + (c5 * c6) * t2)))));
-	double y3 = 1 + t3 * (1 + c2 * t3 * (1 + c3 * t3 * (1 + c4 * t3 * (1 + t3 * (c5 + (c5 * c6) * t3)))));
+	const double c1 =   0.99999996025848823;
+	const double c2 =   0.49999998277874321;
+	const double c23 =  0.16670736071314988;
+	const double c234 = 0.0416761619019393736;
+	double t0 = x[0] / 512;
+	double t1 = x[1] / 512;
+	double t2 = x[2] / 512;
+	double t3 = x[3] / 512;
 
-	y0 *= y0;
-	y0 *= y0;
-	y0 *= y0;
-	y0 *= y0;
-	y0 *= y0;
-	y0 *= y0;
-	y0 *= y0;
+	DEGREE4(y0, t0)
+	DEGREE4(y1, t1)
+	DEGREE4(y2, t2)
+	DEGREE4(y3, t3)
 
-	y1 *= y1;
-	y1 *= y1;
-	y1 *= y1;
-	y1 *= y1;
-	y1 *= y1;
-	y1 *= y1;
-	y1 *= y1;
+	y[0] = (float)y0;
+	y[1] = (float)y1;
+	y[2] = (float)y2;
+	y[3] = (float)y3;
+}
 
-	y2 *= y2;
-	y2 *= y2;
-	y2 *= y2;
-	y2 *= y2;
-	y2 *= y2;
-	y2 *= y2;
-	y2 *= y2;
+float new2_exp(float x)
+{
+	// |t| < 1/8
+	const double c1 = 1.00000000014198308;
+	const double c2 = 0.49999980918318004;
+	const double c23 = 0.16666660911936907;
+	const double c234 = 0.041699229294277873;
+	const double c2345 = 0.0083395356689759046;
+	// add:5, mul:5
+	// mul:8
+#define DEGREE5(y, t) double y = 1 + t * (c1 + t * (c2 + t * (c23 + t * (c234 + c2345 * t)))); \
+	y *= y; \
+	y *= y; \
+	y *= y; \
+	y *= y; \
+	y *= y; \
+	y *= y; \
+	y *= y; \
+	y *= y;
+	double t = x / 256;
+	DEGREE5(y, t);
+	return (float)y;
+}
 
-	y3 *= y3;
-	y3 *= y3;
-	y3 *= y3;
-	y3 *= y3;
-	y3 *= y3;
-	y3 *= y3;
-	y3 *= y3;
+void new2_exp4(float y[4], const float x[4])
+{
+	const double c1 = 1.00000000014198308;
+	const double c2 = 0.49999980918318004;
+	const double c23 = 0.16666660911936907;
+	const double c234 = 0.041699229294277873;
+	const double c2345 = 0.0083395356689759046;
+	double t0 = x[0] / 512;
+	double t1 = x[1] / 512;
+	double t2 = x[2] / 512;
+	double t3 = x[3] / 512;
+
+	DEGREE5(y0, t0)
+	DEGREE5(y1, t1)
+	DEGREE5(y2, t2)
+	DEGREE5(y3, t3)
+
+	y[0] = (float)y0;
+	y[1] = (float)y1;
+	y[2] = (float)y2;
+	y[3] = (float)y3;
+}
+
+float new3_exp(float x)
+{
+	const double c0 =   0.99999999503275223;
+	const double c1 =   0.99999999602620547;
+	const double c2 =   0.50004069132939481;
+	const double c23 =  0.16667887404231470;
+	// |t| < 1/32
+	// add:3, mul:3
+	// mul:10
+#define DEGREE3(y, t) double y = c0 + t * (c1 + t * (c2 + t * c23)); \
+	y *= y; \
+	y *= y; \
+	y *= y; \
+	y *= y; \
+	y *= y; \
+	y *= y; \
+	y *= y; \
+	y *= y; \
+	y *= y; \
+	y *= y;
+	double t = x / 1024;
+	DEGREE3(y, t);
+	return (float)y;
+}
+
+void new3_exp4(float y[4], const float x[4])
+{
+	const double c0 =   0.99999999503275223;
+	const double c1 =   0.99999999602620547;
+	const double c2 =   0.50004069132939481;
+	const double c23 =  0.16667887404231470;
+	double t0 = x[0] / 512;
+	double t1 = x[1] / 512;
+	double t2 = x[2] / 512;
+	double t3 = x[3] / 512;
+
+	DEGREE3(y0, t0)
+	DEGREE3(y1, t1)
+	DEGREE3(y2, t2)
+	DEGREE3(y3, t3)
+
 	y[0] = (float)y0;
 	y[1] = (float)y1;
 	y[2] = (float)y2;
@@ -278,13 +345,19 @@ int main()
 	const float step = 1e-4f;
 	test("fmath_exp", fmath_exp, begin, end, step);
 	test("new_exp  ", new_exp, begin, end, step);
+	test("new2_exp ", new2_exp, begin, end, step);
+	test("new3_exp ", new3_exp, begin, end, step);
 	float dummy = 0;
 	dummy += bench1("std::exp  ", expf);
 	dummy += bench1("fmath_exp ", fmath_exp);
 	dummy += bench1("new_exp   ", new_exp);
+	dummy += bench1("new2_exp  ", new2_exp);
+	dummy += bench1("new3_exp  ", new3_exp);
 
 	dummy += bench2("std::exp4 ", std_exp4);
 	dummy += bench2("fmath_exp4", fmath_exp4);
 	dummy += bench2("new_exp4  ", new_exp4);
+	dummy += bench2("new2_exp4 ", new2_exp4);
+	dummy += bench2("new3_exp4 ", new3_exp4);
 	printf("dummy=%f\n", dummy); // avoid optimization
 }
