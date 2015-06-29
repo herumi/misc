@@ -29,7 +29,9 @@ dummy=1213674.625000
 #ifdef _MSC_VER
 	#define RESTRICT
 	#include <intrin.h>
+	#define MIE_ALIGN(x) __declspec(align(x))
 #else
+	#define MIE_ALIGN(x) __attribute__((aligned(x)))
 	#ifdef __FUJITSU
 		#define RESTRICT
 		#include <fjmfunc.h> // for v_exp
@@ -176,7 +178,7 @@ void fmath_exp4(float* RESTRICT y, const float* RESTRICT x)
 #define FMATH_EXP_C4 0.041694294620381676
 #define FMATH_EXP_C5 0.0083383426505236529
 #endif
-#define FMATH_EXP_DEGREE5(y, t) double y = FMATH_EXP_C0 + t * (FMATH_EXP_C1 + t * (FMATH_EXP_C2 + t * (FMATH_EXP_C3 + t * (FMATH_EXP_C4 + FMATH_EXP_C5 * t)))); \
+#define FMATH_EXP_DEGREE5(y, t) double y = ((((FMATH_EXP_C5 * t + FMATH_EXP_C4) * t + FMATH_EXP_C3) * t + FMATH_EXP_C2) * t + FMATH_EXP_C1) * t + FMATH_EXP_C0; \
 	y *= y; \
 	y *= y; \
 	y *= y; \
@@ -201,10 +203,52 @@ float new_exp(float x)
 
 void new_exp4(float y[4], const float x[4])
 {
-	double t0 = x[0] / 512;
-	double t1 = x[1] / 512;
-	double t2 = x[2] / 512;
-	double t3 = x[3] / 512;
+#if 0
+	__m128 xf = _mm_load_ps(x);
+	__m128 c256 = _mm_set_ps1(1.0f / 256);
+	xf = _mm_mul_ps(xf, c256);
+	__m128d t0 = _mm_cvtps_pd(xf);
+	__m128d t1 = _mm_cvtps_pd(_mm_movehl_ps(xf, xf));
+	const __m128d c0 = _mm_set1_pd(FMATH_EXP_C0);
+	const __m128d c1 = _mm_set1_pd(FMATH_EXP_C1);
+	const __m128d c2 = _mm_set1_pd(FMATH_EXP_C2);
+	const __m128d c3 = _mm_set1_pd(FMATH_EXP_C3);
+	const __m128d c4 = _mm_set1_pd(FMATH_EXP_C4);
+	const __m128d c5 = _mm_set1_pd(FMATH_EXP_C5);
+	__m128d y0, y1;
+	y0 = _mm_mul_pd(c5, t0); y0 = _mm_add_pd(y0, c4);
+	y1 = _mm_mul_pd(c5, t1); y1 = _mm_add_pd(y1, c4);
+
+	y0 = _mm_mul_pd(y0, t0); y0 = _mm_add_pd(y0, c3);
+	y1 = _mm_mul_pd(y0, t0); y1 = _mm_add_pd(y1, c3);
+
+	y0 = _mm_mul_pd(y0, t0); y0 = _mm_add_pd(y0, c2);
+	y1 = _mm_mul_pd(y0, t0); y1 = _mm_add_pd(y1, c2);
+
+	y0 = _mm_mul_pd(y0, t0); y0 = _mm_add_pd(y0, c1);
+	y1 = _mm_mul_pd(y0, t0); y1 = _mm_add_pd(y1, c1);
+
+	y0 = _mm_mul_pd(y0, t0); y0 = _mm_add_pd(y0, c0);
+	y1 = _mm_mul_pd(y0, t0); y1 = _mm_add_pd(y1, c0);
+
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+
+	__m128 y0f = _mm_cvtpd_ps(y0);
+	__m128 y1f = _mm_cvtpd_ps(y1);
+	y0f = _mm_movelh_ps(y0f, y1f);
+	_mm_store_ps(y, y0f);
+#else
+	double t0 = x[0] / 256;
+	double t1 = x[1] / 256;
+	double t2 = x[2] / 256;
+	double t3 = x[3] / 256;
 
 	FMATH_EXP_DEGREE5(y0, t0)
 	FMATH_EXP_DEGREE5(y1, t1)
@@ -215,6 +259,7 @@ void new_exp4(float y[4], const float x[4])
 	y[1] = (float)y1;
 	y[2] = (float)y2;
 	y[3] = (float)y3;
+#endif
 }
 
 uint64_t getClk()
@@ -245,8 +290,8 @@ float bench1(const char *msg, float func(float))
 float bench2(const char *msg, void func(float*, const float *))
 {
 	uint64_t clk = getClk();
-	float xa[4] = { -1.2, 2.4, 3.5, 0.6 };
-	float ya[4];
+	MIE_ALIGN(16) float xa[4] = { -1.2, 2.4, 3.5, 0.6 };
+	MIE_ALIGN(16) float ya[4];
 	const int N = 100000;
 	for (int i = 0; i < N; i++) {
 		func(ya, xa);
@@ -263,17 +308,42 @@ float bench2(const char *msg, void func(float*, const float *))
 
 void test(const char *msg, float func(float), float begin, float end, float step)
 {
-	float maxDiff = 0;
+	double maxDiff = 0;
 	double sumDiff = 0;
 	int count = 0;
 	for (float x = begin; x < end; x += step) {
 		float a = exp(x);
 		float b = func(x);
-		float d = fabs(a - b) / a;
+		double d = fabs(a - b) / (double)a;
 		sumDiff += d;
 		count++;
 		if (d > maxDiff) {
 			maxDiff = d;
+		}
+	}
+	printf("%s aveDiff=%11.e maxDiff=%11.6e\n", msg, sumDiff / count, maxDiff);
+}
+
+void test2(const char *msg, void func(float*, const float *), float begin, float end, float step)
+{
+	double maxDiff = 0;
+	double sumDiff = 0;
+	int count = 0;
+	MIE_ALIGN(16) float a[4];
+	MIE_ALIGN(16) float b[4];
+	for (float x = begin; x < end; x += step * 4) {
+		for (int i = 0; i < 4; i++) {
+			a[i] = x + step * i;
+		}
+		func(b, a);
+		for (int i = 0; i < 4; i++) {
+			float aa = exp(a[i]);
+			double d = fabs(b[i] - aa) / (double)aa;
+			sumDiff += d;
+			count++;
+			if (d > maxDiff) {
+				maxDiff = d;
+			}
 		}
 	}
 	printf("%s aveDiff=%11.e maxDiff=%11.6e\n", msg, sumDiff / count, maxDiff);
@@ -286,6 +356,7 @@ int main()
 	const float step = 1e-4f;
 	test("fmath_exp", fmath_exp, begin, end, step);
 	test("new_exp  ", new_exp, begin, end, step);
+	test2("new_exp4 ", new_exp4, begin, end, step);
 	float dummy = 0;
 	dummy += bench1("std::exp  ", expf);
 	dummy += bench1("fmath_exp ", fmath_exp);
