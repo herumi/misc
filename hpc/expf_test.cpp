@@ -172,7 +172,7 @@ float new_exp(float x)
 	const double E = 0.0083383426505236529;
 	// add:5, mul:5
 	// mul:8
-#define DEGREE5(y, t) double y = 1 + t * (A + t * (B + t * (C + t * (D + E * t)))); \
+#define FMATH_EXP_DEGREE5(y, t) double y = 1 + t * (A + t * (B + t * (C + t * (D + E * t)))); \
 	y *= y; \
 	y *= y; \
 	y *= y; \
@@ -183,7 +183,7 @@ float new_exp(float x)
 	y *= y;
 	// |t| < 1/8
 	double t = x / 256;
-	DEGREE5(y, t);
+	FMATH_EXP_DEGREE5(y, t);
 	return (float)y;
 }
 
@@ -200,10 +200,10 @@ void new_exp4(float y[4], const float x[4])
 	double t2 = x[2] / 512;
 	double t3 = x[3] / 512;
 
-	DEGREE5(y0, t0)
-	DEGREE5(y1, t1)
-	DEGREE5(y2, t2)
-	DEGREE5(y3, t3)
+	FMATH_EXP_DEGREE5(y0, t0)
+	FMATH_EXP_DEGREE5(y1, t1)
+	FMATH_EXP_DEGREE5(y2, t2)
+	FMATH_EXP_DEGREE5(y3, t3)
 
 	y[0] = (float)y0;
 	y[1] = (float)y1;
