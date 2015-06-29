@@ -6,8 +6,11 @@
 	#define RESTRICT
 	#include <intrin.h>
 #else
-//	#define RESTRICT __restrict__
-	#define RESTRICT
+	#ifdef __FUJITSU
+		#define RESTRICT
+	#else
+		#define RESTRICT __restrict__
+	#endif
 	#include <sys/time.h>
 #endif
 
@@ -77,6 +80,12 @@ float fmath_exp(float x)
 	return (1.0f + t) * fi.f;
 }
 
+void std_exp4(float* RESTRICT y, const float* RESTRICT x)
+{
+	for (int i = 0; i < 4; i++) {
+		y[i] = expf(x[i]);
+	}
+}
 void fmath_exp4(float* RESTRICT y, const float* RESTRICT x)
 {
 	const int s = FMATH_EXP_TABLE_SIZE;
@@ -270,9 +279,11 @@ int main()
 	test("fmath_exp", fmath_exp, begin, end, step);
 	test("new_exp  ", new_exp, begin, end, step);
 	float dummy = 0;
-	dummy += bench1("fmath_exp", fmath_exp);
-	dummy += bench1("new_exp  ", new_exp);
+	dummy += bench1("std::exp  ", expf);
+	dummy += bench1("fmath_exp ", fmath_exp);
+	dummy += bench1("new_exp   ", new_exp);
 
+	dummy += bench2("std::exp4 ", std_exp4);
 	dummy += bench2("fmath_exp4", fmath_exp4);
 	dummy += bench2("new_exp4  ", new_exp4);
 	printf("dummy=%f\n", dummy); // avoid optimization
