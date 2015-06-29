@@ -160,19 +160,22 @@ void fmath_exp4(float* RESTRICT y, const float* RESTRICT x)
 	y[3] = (1.0f + t3) * fi3.f;
 }
 
-/*
-	assume x in [-30, 30]
-*/
-float new_exp(float x)
-{
-	const double A = 1.00000000006177459;
-	const double B = 0.49999988007542528;
-	const double C = 0.16666663108604157;
-	const double D = 0.041694294620381676;
-	const double E = 0.0083383426505236529;
-	// add:5, mul:5
-	// mul:8
-#define FMATH_EXP_DEGREE5(y, t) double y = 1 + t * (A + t * (B + t * (C + t * (D + E * t)))); \
+#if 0
+#define FMATH_EXP_C0 1.00000000016564766
+#define FMATH_EXP_C1 1.00000000014198308
+#define FMATH_EXP_C2 0.49999980918318004
+#define FMATH_EXP_C3 0.16666660911936907
+#define FMATH_EXP_C4 0.041699229294277873
+#define FMATH_EXP_C5 0.0083395356689759046
+#else
+#define FMATH_EXP_C0 1
+#define FMATH_EXP_C1 1.00000000006177459
+#define FMATH_EXP_C2 0.49999988007542528
+#define FMATH_EXP_C3 0.16666663108604157
+#define FMATH_EXP_C4 0.041694294620381676
+#define FMATH_EXP_C5 0.0083383426505236529
+#endif
+#define FMATH_EXP_DEGREE5(y, t) double y = FMATH_EXP_C0 + t * (FMATH_EXP_C1 + t * (FMATH_EXP_C2 + t * (FMATH_EXP_C3 + t * (FMATH_EXP_C4 + FMATH_EXP_C5 * t)))); \
 	y *= y; \
 	y *= y; \
 	y *= y; \
@@ -181,6 +184,14 @@ float new_exp(float x)
 	y *= y; \
 	y *= y; \
 	y *= y;
+
+/*
+	assume x in [-30, 30]
+*/
+float new_exp(float x)
+{
+	// add:5, mul:5
+	// mul:8
 	// |t| < 1/8
 	double t = x / 256;
 	FMATH_EXP_DEGREE5(y, t);
@@ -189,12 +200,6 @@ float new_exp(float x)
 
 void new_exp4(float y[4], const float x[4])
 {
-	const double A = 1.00000000006177459;
-	const double B = 0.49999988007542528;
-	const double C = 0.16666663108604157;
-	const double D = 0.041694294620381676;
-	const double E = 0.0083383426505236529;
-
 	double t0 = x[0] / 512;
 	double t1 = x[1] / 512;
 	double t2 = x[2] / 512;
