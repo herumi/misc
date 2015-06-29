@@ -82,10 +82,28 @@ float fmath_exp(float x)
 
 void std_exp4(float* RESTRICT y, const float* RESTRICT x)
 {
+#ifdef __FUJITSU
+	long n = 4;
+	v_exp(y, &n, x);
+#else
 	for (int i = 0; i < 4; i++) {
 		y[i] = expf(x[i]);
 	}
+#endif
 }
+
+void std_exp8(float* RESTRICT y, const float* RESTRICT x)
+{
+#ifdef __FUJITSU
+	long n = 8;
+	v_exp(y, &n, x);
+#else
+	for (int i = 0; i < 8; i++) {
+		y[i] = expf(x[i]);
+	}
+#endif
+}
+
 void fmath_exp4(float* RESTRICT y, const float* RESTRICT x)
 {
 	const int s = FMATH_EXP_TABLE_SIZE;
@@ -185,14 +203,14 @@ void new_exp4(float y[4], const float x[4])
 float new2_exp(float x)
 {
 	// |t| < 1/8
-	const double c1 = 1.00000000014198308;
-	const double c2 = 0.49999980918318004;
-	const double c23 = 0.16666660911936907;
-	const double c234 = 0.041699229294277873;
-	const double c2345 = 0.0083395356689759046;
+	const double A = 1.00000000006177459;
+	const double B = 0.49999988007542528;
+	const double C = 0.16666663108604157;
+	const double D = 0.041694294620381676;
+	const double E = 0.0083383426505236529;
 	// add:5, mul:5
 	// mul:8
-#define DEGREE5(y, t) double y = 1 + t * (c1 + t * (c2 + t * (c23 + t * (c234 + c2345 * t)))); \
+#define DEGREE5(y, t) double y = 1 + t * (A + t * (B + t * (C + t * (D + E * t)))); \
 	y *= y; \
 	y *= y; \
 	y *= y; \
@@ -208,11 +226,12 @@ float new2_exp(float x)
 
 void new2_exp4(float y[4], const float x[4])
 {
-	const double c1 = 1.00000000014198308;
-	const double c2 = 0.49999980918318004;
-	const double c23 = 0.16666660911936907;
-	const double c234 = 0.041699229294277873;
-	const double c2345 = 0.0083395356689759046;
+	const double A = 1.00000000006177459;
+	const double B = 0.49999988007542528;
+	const double C = 0.16666663108604157;
+	const double D = 0.041694294620381676;
+	const double E = 0.0083383426505236529;
+
 	double t0 = x[0] / 512;
 	double t1 = x[1] / 512;
 	double t2 = x[2] / 512;
@@ -227,6 +246,42 @@ void new2_exp4(float y[4], const float x[4])
 	y[1] = (float)y1;
 	y[2] = (float)y2;
 	y[3] = (float)y3;
+}
+
+void new2_exp8(float y[8], const float x[8])
+{
+	const double A = 1.00000000006177459;
+	const double B = 0.49999988007542528;
+	const double C = 0.16666663108604157;
+	const double D = 0.041694294620381676;
+	const double E = 0.0083383426505236529;
+
+	double t0 = x[0] / 512;
+	double t1 = x[1] / 512;
+	double t2 = x[2] / 512;
+	double t3 = x[3] / 512;
+	double t4 = x[4] / 512;
+	double t5 = x[5] / 512;
+	double t6 = x[6] / 512;
+	double t7 = x[7] / 512;
+
+	DEGREE5(y0, t0)
+	DEGREE5(y1, t1)
+	DEGREE5(y2, t2)
+	DEGREE5(y3, t3)
+	DEGREE5(y4, t4)
+	DEGREE5(y5, t5)
+	DEGREE5(y6, t6)
+	DEGREE5(y7, t7)
+
+	y[0] = (float)y0;
+	y[1] = (float)y1;
+	y[2] = (float)y2;
+	y[3] = (float)y3;
+	y[4] = (float)y4;
+	y[5] = (float)y5;
+	y[6] = (float)y6;
+	y[7] = (float)y7;
 }
 
 float new3_exp(float x)
@@ -304,8 +359,8 @@ float bench1(const char *msg, float func(float))
 float bench2(const char *msg, void func(float*, const float *))
 {
 	uint64_t clk = getClk();
-	float xa[4] = { -1.2, 2.4, 3.5, 0.6 };
-	float ya[4];
+	float xa[8] = { -1.2, 2.4, 3.5, 0.6, 4.0, -2.5, 0, 1 };
+	float ya[8];
 	const int N = 100000;
 	for (int i = 0; i < N; i++) {
 		func(ya, xa);
@@ -313,8 +368,12 @@ float bench2(const char *msg, void func(float*, const float *))
 		xa[1] += 1e-7;
 		xa[2] += 1e-7;
 		xa[3] += 1e-7;
+		xa[4] += 1e-7;
+		xa[5] += 1e-7;
+		xa[6] += 1e-7;
+		xa[7] += 1e-7;
 	}
-	float t = ya[0] + ya[1] + ya[2] + ya[3];
+	float t = ya[0] + ya[1] + ya[2] + ya[3] + ya[4] + ya[5] + ya[6] + ya[7];
 	double time = (getClk() - clk) / double(N);
 	printf("%s %f\n", msg, time);
 	return t;
@@ -359,5 +418,7 @@ int main()
 	dummy += bench2("new_exp4  ", new_exp4);
 	dummy += bench2("new2_exp4 ", new2_exp4);
 	dummy += bench2("new3_exp4 ", new3_exp4);
+	dummy += bench2("std::exp8 ", std_exp8);
+	dummy += bench2("new2_exp8 ", new2_exp8);
 	printf("dummy=%f\n", dummy); // avoid optimization
 }
