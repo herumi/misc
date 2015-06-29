@@ -1,3 +1,27 @@
+/*
+FCCpx -Kfast -Krestp=all expf_test.cpp on SPARC64 IXfx
+fmath_exp aveDiff=      1e-06 maxDiff=3.891789e-06
+new_exp   aveDiff=      2e-08 maxDiff=1.192089e-07
+std::exp   0.210750
+fmath_exp  0.119110
+new_exp    0.114230
+std::exp4  0.116130
+fmath_exp4 0.121790
+new_exp4   0.066480
+dummy=1213628.375000
+
+g++ -Ofast -march=native expf_test.cpp on Haswell
+fmath_exp aveDiff=      1e-06 maxDiff=5.086112e-06
+new_exp   aveDiff=      2e-08 maxDiff=1.192089e-07
+std::exp   0.024020
+fmath_exp  0.014020
+new_exp    0.022640
+std::exp4  0.091110
+fmath_exp4 0.031910
+new_exp4   0.071500
+dummy=1213674.625000
+
+*/
 #include <stdio.h>
 #include <math.h>
 #include <stdint.h>
