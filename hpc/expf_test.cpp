@@ -64,6 +64,13 @@ void std_exp4d(double* RESTRICT y, const double* RESTRICT x)
 	}
 }
 
+void std_exp8d(double* RESTRICT y, const double* RESTRICT x)
+{
+	for (int i = 0; i < 8; i++) {
+		y[i] = (double)exp((float)x[i]);
+	}
+}
+
 #define FMATH_EXP_TABLE_SIZE 7
 
 const unsigned int kFmathExpTable[128] = {
@@ -386,6 +393,73 @@ void new_exp4d(double py[4], const double px[4])
 	_mm_store_pd(py + 0, y0);
 	_mm_store_pd(py + 2, y1);
 }
+
+void new_exp8d(double py[8], const double px[8])
+{
+	const __m128d c256 = _mm_set_pd(1.0 / 256, 1.0 / 256);
+	const __m128d c0 = _mm_set_pd(FMATH_EXP_C0, FMATH_EXP_C0);
+	const __m128d c1 = _mm_set_pd(FMATH_EXP_C1, FMATH_EXP_C1);
+	const __m128d c2 = _mm_set_pd(FMATH_EXP_C2, FMATH_EXP_C2);
+	const __m128d c3 = _mm_set_pd(FMATH_EXP_C3, FMATH_EXP_C3);
+	const __m128d c4 = _mm_set_pd(FMATH_EXP_C4, FMATH_EXP_C4);
+	const __m128d c5 = _mm_set_pd(FMATH_EXP_C5, FMATH_EXP_C5);
+	__m128d t0 = _mm_load_pd(px + 0);
+	__m128d t1 = _mm_load_pd(px + 2);
+	__m128d t2 = _mm_load_pd(px + 4);
+	__m128d t3 = _mm_load_pd(px + 6);
+	t0 = _mm_mul_pd(t0, c256);
+	t1 = _mm_mul_pd(t1, c256);
+	t2 = _mm_mul_pd(t2, c256);
+	t3 = _mm_mul_pd(t3, c256);
+	__m128d y0, y1, y2, y3;
+	y0 = _fjsp_madd_v2r8(c5, t0, c4);
+	y1 = _fjsp_madd_v2r8(c5, t1, c4);
+	y2 = _fjsp_madd_v2r8(c5, t2, c4);
+	y3 = _fjsp_madd_v2r8(c5, t3, c4);
+
+	y0 = _fjsp_madd_v2r8(y0, t0, c3);
+	y1 = _fjsp_madd_v2r8(y1, t1, c3);
+	y2 = _fjsp_madd_v2r8(y2, t2, c3);
+	y3 = _fjsp_madd_v2r8(y3, t3, c3);
+
+	y0 = _fjsp_madd_v2r8(y0, t0, c2);
+	y1 = _fjsp_madd_v2r8(y1, t1, c2);
+	y2 = _fjsp_madd_v2r8(y2, t2, c2);
+	y3 = _fjsp_madd_v2r8(y3, t3, c2);
+
+	y0 = _fjsp_madd_v2r8(y0, t0, c1);
+	y1 = _fjsp_madd_v2r8(y1, t1, c1);
+	y2 = _fjsp_madd_v2r8(y2, t2, c1);
+	y3 = _fjsp_madd_v2r8(y3, t3, c1);
+
+	y0 = _fjsp_madd_v2r8(y0, t0, c0);
+	y1 = _fjsp_madd_v2r8(y1, t1, c0);
+	y2 = _fjsp_madd_v2r8(y2, t2, c0);
+	y3 = _fjsp_madd_v2r8(y3, t3, c0);
+
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+
+	y2 = _mm_mul_pd(y2, y2); y3 = _mm_mul_pd(y3, y3);
+	y2 = _mm_mul_pd(y2, y2); y3 = _mm_mul_pd(y3, y3);
+	y2 = _mm_mul_pd(y2, y2); y3 = _mm_mul_pd(y3, y3);
+	y2 = _mm_mul_pd(y2, y2); y3 = _mm_mul_pd(y3, y3);
+	y2 = _mm_mul_pd(y2, y2); y3 = _mm_mul_pd(y3, y3);
+	y2 = _mm_mul_pd(y2, y2); y3 = _mm_mul_pd(y3, y3);
+	y2 = _mm_mul_pd(y2, y2); y3 = _mm_mul_pd(y3, y3);
+	y2 = _mm_mul_pd(y2, y2); y3 = _mm_mul_pd(y3, y3);
+
+	_mm_store_pd(py + 0, y0);
+	_mm_store_pd(py + 2, y1);
+	_mm_store_pd(py + 4, y2);
+	_mm_store_pd(py + 6, y3);
+}
 #endif
 
 uint64_t getClk()
@@ -413,25 +487,6 @@ float bench1(const char *msg, float func(float))
 	return t * x;
 }
 
-float bench2(const char *msg, void func(float*, const float *))
-{
-	uint64_t clk = getClk();
-	MIE_ALIGN(16) float xa[4] = { -1.2, 2.4, 3.5, 0.6 };
-	MIE_ALIGN(16) float ya[4];
-	const int N = 100000;
-	for (int i = 0; i < N; i++) {
-		func(ya, xa);
-		xa[0] += 1e-7;
-		xa[1] += 1e-7;
-		xa[2] += 1e-7;
-		xa[3] += 1e-7;
-	}
-	float t = ya[0] + ya[1] + ya[2] + ya[3];
-	double time = (getClk() - clk) / double(N);
-	printf("%s %f\n", msg, time);
-	return t;
-}
-
 void test(const char *msg, float func(float), float begin, float end, float step)
 {
 	double maxDiff = 0;
@@ -450,45 +505,20 @@ void test(const char *msg, float func(float), float begin, float end, float step
 	printf("%s aveDiff=%11.e maxDiff=%11.6e\n", msg, sumDiff / count, maxDiff);
 }
 
-void test2(const char *msg, void func(float*, const float *), float begin, float end, float step)
+template<size_t N, class T>
+void testv(const char *msg, void func(T*, const T *), float begin, float end, float step)
 {
 	double maxDiff = 0;
 	double sumDiff = 0;
 	int count = 0;
-	MIE_ALIGN(16) float a[4];
-	MIE_ALIGN(16) float b[4];
-	for (float x = begin; x < end; x += step * 4) {
-		for (int i = 0; i < 4; i++) {
-			a[i] = x + step * i;
+	MIE_ALIGN(16) T a[N];
+	MIE_ALIGN(16) T b[N];
+	for (double x = begin; x < end; x += step * N) {
+		for (int i = 0; i < N; i++) {
+			a[i] = T(x + step * i);
 		}
 		func(b, a);
-		for (int i = 0; i < 4; i++) {
-			float aa = exp(a[i]);
-			double d = fabs(b[i] - aa) / (double)aa;
-			sumDiff += d;
-			count++;
-			if (d > maxDiff) {
-				maxDiff = d;
-			}
-		}
-	}
-	printf("%s aveDiff=%11.e maxDiff=%11.6e\n", msg, sumDiff / count, maxDiff);
-}
-
-#ifdef __FUJITSU
-void test2d(const char *msg, void func(double*, const double *), float begin, float end, float step)
-{
-	double maxDiff = 0;
-	double sumDiff = 0;
-	int count = 0;
-	MIE_ALIGN(16) double a[4];
-	MIE_ALIGN(16) double b[4];
-	for (float x = begin; x < end; x += step * 4) {
-		for (int i = 0; i < 4; i++) {
-			a[i] = x + step * i;
-		}
-		func(b, a);
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < N; i++) {
 			double aa = exp(a[i]);
 			double d = fabs(b[i] - aa) / aa;
 			sumDiff += d;
@@ -500,23 +530,29 @@ void test2d(const char *msg, void func(double*, const double *), float begin, fl
 	}
 	printf("%s aveDiff=%11.e maxDiff=%11.6e\n", msg, sumDiff / count, maxDiff);
 }
-#endif
-float bench2d(const char *msg, void func(double*, const double *))
+
+template<size_t N, class T>
+float benchv(const char *msg, void func(T*, const T *))
 {
-	uint64_t clk = getClk();
-	MIE_ALIGN(16) double xa[4] = { -1.2, 2.4, 3.5, 0.6 };
-	MIE_ALIGN(16) double ya[4];
-	const int N = 100000;
-	for (int i = 0; i < N; i++) {
-		func(ya, xa);
-		xa[0] += 1e-7;
-		xa[1] += 1e-7;
-		xa[2] += 1e-7;
-		xa[3] += 1e-7;
+	MIE_ALIGN(16) T xa[N];
+	MIE_ALIGN(16) T ya[N];
+	for (size_t i = 0; i < N; i++) {
+		xa[i] = (T)sin(double(i)) * 3;
 	}
-	double t = ya[0] + ya[1] + ya[2] + ya[3];
+	uint64_t clk = getClk();
+	const int C = 100000;
+	for (int j = 0; j < C; j++) {
+		func(ya, xa);
+		for (size_t i = 0; i < N; i++) {
+			xa[i] += 1e-7;
+		}
+	}
 	double time = (getClk() - clk) / double(N);
-	printf("%s %f\n", msg, time);
+	double t = 0;
+	for (size_t i = 0; i < N; i++) {
+		t += ya[i];
+	}
+	printf("%s %8.3f\n", msg, time);
 	return t;
 }
 
@@ -527,21 +563,29 @@ int main()
 	const float step = 1e-4f;
 	test("fmath_exp", fmath_exp, begin, end, step);
 	test("new_exp  ", new_exp, begin, end, step);
-	test2("new_exp4 ", new_exp4, begin, end, step);
+	testv<4>("new_exp4 ", new_exp4, begin, end, step);
+	testv<8>("std_exp8d", std_exp8d, begin, end, step);
 #ifdef __FUJITSU
-	test2d("new_exp4d", new_exp4d, begin, end, step);
+	testv<4>("new_exp4d", new_exp4d, begin, end, step);
+	testv<8>("new_exp8d", new_exp8d, begin, end, step);
 #endif
 	float dummy = 0;
 	dummy += bench1("std::exp  ", expf);
 	dummy += bench1("fmath_exp ", fmath_exp);
 	dummy += bench1("new_exp   ", new_exp);
 
-	dummy += bench2("std::exp4 ", std_exp4);
-	dummy += bench2("fmath_exp4", fmath_exp4);
-	dummy += bench2("new_exp4  ", new_exp4);
-	dummy += bench2d("std_exp4d ", std_exp4d);
+	puts("---");
+	dummy += benchv<4>("std::exp4 ", std_exp4);
+	dummy += benchv<4>("fmath_exp4", fmath_exp4);
+	dummy += benchv<4>("new_exp4  ", new_exp4);
 #ifdef __FUJITSU
-	dummy += bench2d("new_exp4d ", new_exp4d);
+	dummy += benchv<4>("new_exp4d ", new_exp4d);
+#endif
+
+	puts("---");
+	dummy += benchv<8>("std_exp8d ", std_exp8d);
+#ifdef __FUJITSU
+	dummy += benchv<8>("new_exp8d ", new_exp8d);
 #endif
 	printf("dummy=%f\n", dummy); // avoid optimization
 }
