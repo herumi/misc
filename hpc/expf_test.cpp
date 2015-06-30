@@ -32,9 +32,13 @@ dummy=1213674.625000
 	#define MIE_ALIGN(x) __declspec(align(x))
 #else
 	#define MIE_ALIGN(x) __attribute__((aligned(x)))
+	#ifdef __x86_64__
+		#include <x86intrin.h>
+	#endif
 	#ifdef __FUJITSU
 		#define RESTRICT
 		#include <fjmfunc.h> // for v_exp
+		#include <emmintrin.h>
 	#else
 		#define RESTRICT __restrict__
 	#endif
@@ -201,12 +205,98 @@ float new_exp(float x)
 	return (float)y;
 }
 
-void new_exp4(float y[4], const float x[4])
+void new_exp4(float py[4], const float px[4])
 {
+#ifdef __FUJITSU
+	const __m128d c256 = _mm_set_pd(1.0 / 256, 1.0 / 256);
+	const __m128d c0 = _mm_set_pd(FMATH_EXP_C0, FMATH_EXP_C0);
+	const __m128d c1 = _mm_set_pd(FMATH_EXP_C1, FMATH_EXP_C1);
+	const __m128d c2 = _mm_set_pd(FMATH_EXP_C2, FMATH_EXP_C2);
+	const __m128d c3 = _mm_set_pd(FMATH_EXP_C3, FMATH_EXP_C3);
+	const __m128d c4 = _mm_set_pd(FMATH_EXP_C4, FMATH_EXP_C4);
+	const __m128d c5 = _mm_set_pd(FMATH_EXP_C5, FMATH_EXP_C5);
+	__m128d t0 = _fjsp_set_v2r8(px[1], px[0]);
+	__m128d t1 = _fjsp_set_v2r8(px[3], px[2]);
+	t0 = _mm_mul_pd(t0, c256);
+	t1 = _mm_mul_pd(t1, c256);
+	__m128d y0, y1;
+	y0 = _mm_mul_pd(c5, t0); y0 = _mm_add_pd(y0, c4);
+	y1 = _mm_mul_pd(c5, t1); y1 = _mm_add_pd(y1, c4);
+
+	y0 = _mm_mul_pd(y0, t0); y0 = _mm_add_pd(y0, c3);
+	y1 = _mm_mul_pd(y1, t1); y1 = _mm_add_pd(y1, c3);
+
+	y0 = _mm_mul_pd(y0, t0); y0 = _mm_add_pd(y0, c2);
+	y1 = _mm_mul_pd(y1, t1); y1 = _mm_add_pd(y1, c2);
+
+	y0 = _mm_mul_pd(y0, t0); y0 = _mm_add_pd(y0, c1);
+	y1 = _mm_mul_pd(y1, t1); y1 = _mm_add_pd(y1, c1);
+
+	y0 = _mm_mul_pd(y0, t0); y0 = _mm_add_pd(y0, c0);
+	y1 = _mm_mul_pd(y1, t1); y1 = _mm_add_pd(y1, c0);
+
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
+	MIE_ALIGN(16) double out[4];
+	_mm_store_pd(out + 0, y0);
+	_mm_store_pd(out + 2, y1);
+	py[0] = (float)out[0];
+	py[1] = (float)out[1];
+	py[2] = (float)out[2];
+	py[3] = (float)out[3];
+#else
+	double t0 = px[0] / 256;
+	double t1 = px[1] / 256;
+	double t2 = px[2] / 256;
+	double t3 = px[3] / 256;
+
+	FMATH_EXP_DEGREE5(y0, t0)
+	FMATH_EXP_DEGREE5(y1, t1)
+	FMATH_EXP_DEGREE5(y2, t2)
+	FMATH_EXP_DEGREE5(y3, t3)
+
+	py[0] = (float)y0;
+	py[1] = (float)y1;
+	py[2] = (float)y2;
+	py[3] = (float)y3;
+#endif
+
 #if 0
-	__m128 xf = _mm_load_ps(x);
+	__m128 xf = _mm_load_ps(px);
 	__m128 c256 = _mm_set_ps1(1.0f / 256);
 	xf = _mm_mul_ps(xf, c256);
+#ifdef __AVX2__
+	__m256d t = _mm256_cvtps_pd(xf);
+	const __m256d c0 = _mm256_set1_pd(FMATH_EXP_C0);
+	const __m256d c1 = _mm256_set1_pd(FMATH_EXP_C1);
+	const __m256d c2 = _mm256_set1_pd(FMATH_EXP_C2);
+	const __m256d c3 = _mm256_set1_pd(FMATH_EXP_C3);
+	const __m256d c4 = _mm256_set1_pd(FMATH_EXP_C4);
+	const __m256d c5 = _mm256_set1_pd(FMATH_EXP_C5);
+	__m256d y;
+	y = _mm256_mul_pd(c5, t); y = _mm256_add_pd(y, c4);
+	y = _mm256_mul_pd(y, t); y = _mm256_add_pd(y, c3);
+	y = _mm256_mul_pd(y, t); y = _mm256_add_pd(y, c2);
+	y = _mm256_mul_pd(y, t); y = _mm256_add_pd(y, c1);
+	y = _mm256_mul_pd(y, t); y = _mm256_add_pd(y, c0);
+
+	y = _mm256_mul_pd(y, y);
+	y = _mm256_mul_pd(y, y);
+	y = _mm256_mul_pd(y, y);
+	y = _mm256_mul_pd(y, y);
+	y = _mm256_mul_pd(y, y);
+	y = _mm256_mul_pd(y, y);
+	y = _mm256_mul_pd(y, y);
+	y = _mm256_mul_pd(y, y);
+	__m128 yf = _mm256_cvtpd_ps(y);
+	_mm_store_ps(py, yf);
+#else
 	__m128d t0 = _mm_cvtps_pd(xf);
 	__m128d t1 = _mm_cvtps_pd(_mm_movehl_ps(xf, xf));
 	const __m128d c0 = _mm_set1_pd(FMATH_EXP_C0);
@@ -220,16 +310,16 @@ void new_exp4(float y[4], const float x[4])
 	y1 = _mm_mul_pd(c5, t1); y1 = _mm_add_pd(y1, c4);
 
 	y0 = _mm_mul_pd(y0, t0); y0 = _mm_add_pd(y0, c3);
-	y1 = _mm_mul_pd(y0, t0); y1 = _mm_add_pd(y1, c3);
+	y1 = _mm_mul_pd(y1, t1); y1 = _mm_add_pd(y1, c3);
 
 	y0 = _mm_mul_pd(y0, t0); y0 = _mm_add_pd(y0, c2);
-	y1 = _mm_mul_pd(y0, t0); y1 = _mm_add_pd(y1, c2);
+	y1 = _mm_mul_pd(y1, t1); y1 = _mm_add_pd(y1, c2);
 
 	y0 = _mm_mul_pd(y0, t0); y0 = _mm_add_pd(y0, c1);
-	y1 = _mm_mul_pd(y0, t0); y1 = _mm_add_pd(y1, c1);
+	y1 = _mm_mul_pd(y1, t1); y1 = _mm_add_pd(y1, c1);
 
 	y0 = _mm_mul_pd(y0, t0); y0 = _mm_add_pd(y0, c0);
-	y1 = _mm_mul_pd(y0, t0); y1 = _mm_add_pd(y1, c0);
+	y1 = _mm_mul_pd(y1, t1); y1 = _mm_add_pd(y1, c0);
 
 	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
 	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
@@ -243,22 +333,8 @@ void new_exp4(float y[4], const float x[4])
 	__m128 y0f = _mm_cvtpd_ps(y0);
 	__m128 y1f = _mm_cvtpd_ps(y1);
 	y0f = _mm_movelh_ps(y0f, y1f);
-	_mm_store_ps(y, y0f);
-#else
-	double t0 = x[0] / 256;
-	double t1 = x[1] / 256;
-	double t2 = x[2] / 256;
-	double t3 = x[3] / 256;
-
-	FMATH_EXP_DEGREE5(y0, t0)
-	FMATH_EXP_DEGREE5(y1, t1)
-	FMATH_EXP_DEGREE5(y2, t2)
-	FMATH_EXP_DEGREE5(y3, t3)
-
-	y[0] = (float)y0;
-	y[1] = (float)y1;
-	y[2] = (float)y2;
-	y[3] = (float)y3;
+	_mm_store_ps(py, y0f);
+#endif
 #endif
 }
 
