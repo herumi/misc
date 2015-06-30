@@ -280,11 +280,11 @@ void new_exp4(float py[4], const float px[4])
 	const __m256d c4 = _mm256_set1_pd(FMATH_EXP_C4);
 	const __m256d c5 = _mm256_set1_pd(FMATH_EXP_C5);
 	__m256d y;
-	y = _mm256_mul_pd(c5, t); y = _mm256_add_pd(y, c4);
-	y = _mm256_mul_pd(y, t); y = _mm256_add_pd(y, c3);
-	y = _mm256_mul_pd(y, t); y = _mm256_add_pd(y, c2);
-	y = _mm256_mul_pd(y, t); y = _mm256_add_pd(y, c1);
-	y = _mm256_mul_pd(y, t); y = _mm256_add_pd(y, c0);
+	y = _mm256_fmadd_pd(c5, t, c4);
+	y = _mm256_fmadd_pd(y, t, c3);
+	y = _mm256_fmadd_pd(y, t, c2);
+	y = _mm256_fmadd_pd(y, t, c1);
+	y = _mm256_fmadd_pd(y, t, c0);
 
 	y = _mm256_mul_pd(y, y);
 	y = _mm256_mul_pd(y, y);
