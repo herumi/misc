@@ -57,6 +57,13 @@ void std_exp4(float* RESTRICT y, const float* RESTRICT x)
 #endif
 }
 
+void std_exp4d(double* RESTRICT y, const double* RESTRICT x)
+{
+	for (int i = 0; i < 4; i++) {
+		y[i] = exp(x[i]);
+	}
+}
+
 #define FMATH_EXP_TABLE_SIZE 7
 
 const unsigned int kFmathExpTable[128] = {
@@ -493,6 +500,7 @@ void test2d(const char *msg, void func(double*, const double *), float begin, fl
 	}
 	printf("%s aveDiff=%11.e maxDiff=%11.6e\n", msg, sumDiff / count, maxDiff);
 }
+#endif
 float bench2d(const char *msg, void func(double*, const double *))
 {
 	uint64_t clk = getClk();
@@ -511,7 +519,6 @@ float bench2d(const char *msg, void func(double*, const double *))
 	printf("%s %f\n", msg, time);
 	return t;
 }
-#endif
 
 int main()
 {
@@ -532,6 +539,7 @@ int main()
 	dummy += bench2("std::exp4 ", std_exp4);
 	dummy += bench2("fmath_exp4", fmath_exp4);
 	dummy += bench2("new_exp4  ", new_exp4);
+	dummy += bench2d("std_exp4d ", std_exp4d);
 #ifdef __FUJITSU
 	dummy += bench2d("new_exp4d ", new_exp4d);
 #endif
