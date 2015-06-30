@@ -220,20 +220,20 @@ void new_exp4(float py[4], const float px[4])
 	t0 = _mm_mul_pd(t0, c256);
 	t1 = _mm_mul_pd(t1, c256);
 	__m128d y0, y1;
-	y0 = __fjsp_madd_v2r8(c5, t0, c4);
-	y1 = __fjsp_madd_v2r8(c5, t1, c4);
+	y0 = _fjsp_madd_v2r8(c5, t0, c4);
+	y1 = _fjsp_madd_v2r8(c5, t1, c4);
 
-	y0 = __fjsp_madd_v2r8(y0, t0, c3);
-	y1 = __fjsp_madd_v2r8(y1, t1, c3);
+	y0 = _fjsp_madd_v2r8(y0, t0, c3);
+	y1 = _fjsp_madd_v2r8(y1, t1, c3);
 
-	y0 = __fjsp_madd_v2r8(y0, t0, c2);
-	y1 = __fjsp_madd_v2r8(y1, t1, c2);
+	y0 = _fjsp_madd_v2r8(y0, t0, c2);
+	y1 = _fjsp_madd_v2r8(y1, t1, c2);
 
-	y0 = __fjsp_madd_v2r8(y0, t0, c1);
-	y1 = __fjsp_madd_v2r8(y1, t1, c1);
+	y0 = _fjsp_madd_v2r8(y0, t0, c1);
+	y1 = _fjsp_madd_v2r8(y1, t1, c1);
 
-	y0 = __fjsp_madd_v2r8(y0, t0, c0);
-	y1 = __fjsp_madd_v2r8(y1, t1, c0);
+	y0 = _fjsp_madd_v2r8(y0, t0, c0);
+	y1 = _fjsp_madd_v2r8(y1, t1, c0);
 
 	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
 	y0 = _mm_mul_pd(y0, y0); y1 = _mm_mul_pd(y1, y1);
