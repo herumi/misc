@@ -438,6 +438,36 @@ func prob13() {
 	fmt.Println(r.String()[0:10])
 }
 
+func prob14() {
+	CountCollatz := func(n int) (r int) {
+		for {
+			if n == 1 {
+				return r
+			}
+			switch {
+			case n % 2 == 0:
+				n /= 2
+			default:
+				n = 3 * n + 1
+			}
+		}
+	}
+	max := 0
+	for i := 0; i < 1000000; i++ {
+		c := CountCollatz(i)
+		if c > max {
+			max = c
+		}
+	}
+	fmt.Println(max)
+}
+
+func prob15() {
+	x := new(big.Int)
+	x.Binomial(40, 20)
+	fmt.Println(x)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -475,6 +505,10 @@ func main() {
 		prob12()
 	case 13:
 		prob13()
+	case 14:
+		prob14()
+	case 15:
+		prob15()
 	default:
 		fmt.Println("not solved")
 	}
