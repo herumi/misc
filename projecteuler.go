@@ -479,7 +479,45 @@ func prob16() {
 	fmt.Println(r)
 }
 
-func prob17() {
+func prob18() {
+	s := [][]int {
+{75}, {95,64}, {17,47,82}, {18,35,87,10}, {20,04,82,47,65}, {19,01,23,75,03,34}, {88,02,77,73,07,63,67}, {99,65,04,28,06,16,70,92}, {41,41,26,56,83,40,80,70,33}, {41,48,72,33,47,32,37,16,94,29}, {53,71,44,65,25,43,91,52,97,51,14}, {70,11,33,28,77,73,17,78,39,68,17,57}, {91,71,52,38,17,14,91,43,58,50,27,29,48}, {63,66,04,68,89,53,67,30,73,16,69,87,40,31}, {04,62,98,27,23,9,70,98,73,93,38,53,60,04,23}}
+
+	RemoveTail := func(s [][]int) [][]int {
+		n := len(s)
+		if n < 2 {
+			return s
+		}
+		r := s[0:n-2]
+		r0 := s[n-2]
+		r1 := s[n-1]
+		for i := 0; i < len(r0); i++ {
+			a := r1[i]
+			b := r1[i + 1]
+			if a > b {
+				r0[i] += a
+			} else {
+				r0[i] += b
+			}
+		}
+		r = append(r, r0)
+		return r
+	}
+	for ; len(s) > 1; {
+		s = RemoveTail(s)
+	}
+	fmt.Println(s[0][0])
+}
+
+func prob20() {
+	x := big.NewInt(0)
+	x.MulRange(1, 100)
+	s := x.String()
+	r := 0
+	for _, c := range s {
+		r += int(c - '0')
+	}
+	fmt.Println(r)
 }
 
 func main() {
@@ -525,8 +563,10 @@ func main() {
 		prob15()
 	case 16:
 		prob16()
-	case 17:
-		prob17()
+	case 18:
+		prob18()
+	case 20:
+		prob20()
 	default:
 		fmt.Println("not solved")
 	}
