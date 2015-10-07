@@ -42,7 +42,7 @@ func MakePrime(pTbl PrimeTable) (primes Primes) {
 	return primes
 }
 
-func FactorInt(n int, primes Primes) []Factor {
+func FactorInt(n int) []Factor {
 	fs := []Factor{}
 	for _, p := range primes {
 		if n < p {
@@ -62,6 +62,15 @@ func FactorInt(n int, primes Primes) []Factor {
 		fs = append(fs, f)
 	}
 	return fs
+}
+
+func FactorNum(n int) int {
+	fs := FactorInt(n)
+	r := 1
+	for _, f := range(fs) {
+		r *= f.e + 1
+	}
+	return r
 }
 
 func prob1() {
@@ -92,7 +101,7 @@ func prob2() {
 
 func prob3() {
 	n := 600851475143
-	fs := FactorInt(n, primes)
+	fs := FactorInt(n)
 	p := fs[len(fs)-1].p
 	fmt.Println(p)
 }
@@ -303,6 +312,19 @@ func prob11() {
 	fmt.Println(max)
 }
 
+func prob12() {
+	const n = 500
+	tri := 0
+	for i := 1; ; i++ {
+		tri += i
+		r := FactorNum(tri)
+		if r > n {
+			fmt.Println(tri)
+			return
+		}
+	}
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -336,6 +358,8 @@ func main() {
 		prob10()
 	case 11:
 		prob11()
+	case 12:
+		prob12()
 	default:
 		fmt.Println("not solved")
 	}
