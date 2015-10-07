@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <vector>
+#include <list>
 
 struct A {
 	A() {}
@@ -41,6 +42,36 @@ int main()
 		puts("--------------");
 		puts("non empty emplace_back");
 		v.emplace(v.begin(), "abc");
+		puts("--------------");
+	}
+	puts("-------------- list --------------------");
+	using List = std::list<A>;
+	puts("--------------");
+	puts("empty push_back");
+	{
+		List ls;
+		ls.push_back("abc");
+	}
+	puts("--------------");
+	puts("empty emplace_back");
+	{
+		List ls;
+		ls.emplace_back("abc");
+	}
+		puts("--------------");
+	{
+		List ls(1);
+		puts("--------------");
+		puts("non empty push_back");
+		ls.insert(ls.begin(), "abc");
+		puts("--------------");
+	}
+		puts("--------------");
+	{
+		List ls(1);
+		puts("--------------");
+		puts("non empty emplace_back");
+		ls.emplace(ls.begin(), "abc");
 		puts("--------------");
 	}
 }
