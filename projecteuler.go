@@ -468,6 +468,20 @@ func prob15() {
 	fmt.Println(x)
 }
 
+func prob16() {
+	x := big.NewInt(2)
+	x.Exp(x, big.NewInt(1000), nil)
+	s := x.String()
+	r := 0
+	for _, c := range(s) {
+		r += int(c - '0')
+	}
+	fmt.Println(r)
+}
+
+func prob17() {
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -509,6 +523,10 @@ func main() {
 		prob14()
 	case 15:
 		prob15()
+	case 16:
+		prob16()
+	case 17:
+		prob17()
 	default:
 		fmt.Println("not solved")
 	}
