@@ -246,7 +246,6 @@ func prob10() {
 	fmt.Println(sum)
 }
 
-/*
 func prob11() {
 	tbl := [][]int {
 	{ 8,02,22,97,38,15,00,40,00,75,04,05,07,78,52,12,50,77,91, 8},
@@ -269,7 +268,7 @@ func prob11() {
     {20,69,36,41,72,30,23,88,34,62,99,69,82,67,59,85,74,04,36,16},
     {20,73,35,29,78,31,90,01,74,31,49,71,48,86,81,16,23,57,05,54},
     {01,70,54,71,83,51,54,69,16,92,33,48,61,43,52,01,89,19,67,48}}
-	n := len(s)
+	n := len(tbl)
 
     dirTbl := [][][]int{
 		{{0,0},{0,1},{0,2},{0,3}},
@@ -278,11 +277,11 @@ func prob11() {
 		{{0,0},{1,-1},{2,-2},{3,-3}},
 	}
 
-	pickup := func(x0, y0 int, dir []int, tbl[][]int) int {
+	pickup := func(x0, y0 int, dir [][]int, tbl[][]int) int {
 		r := 1
 		for i := 0; i < 4; i++ {
-			x := x0 + dir[i]
-			y := y0 + dir[j]
+			x := x0 + dir[i][0]
+			y := y0 + dir[i][1]
 			if !(0 <= x && x < n && 0 <= y && y < n) {
 				return 0
 			}
@@ -293,8 +292,8 @@ func prob11() {
 	max := 0
 	for x := 0; x < n; x++ {
 		for y := 0; y < n; y++ {
-			for _, dir := range(dirTbl); {
-				r := pickup(x, y, dir, s)
+			for _, dir := range(dirTbl) {
+				r := pickup(x, y, dir, tbl)
 				if r > max {
 					max = r
 				}
@@ -303,7 +302,6 @@ func prob11() {
 	}
 	fmt.Println(max)
 }
-*/
 
 func main() {
 	if len(os.Args) == 1 {
@@ -336,8 +334,8 @@ func main() {
 		prob9()
 	case 10:
 		prob10()
-//	case 11:
-//		prob11()
+	case 11:
+		prob11()
 	default:
 		fmt.Println("not solved")
 	}
