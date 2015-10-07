@@ -122,6 +122,23 @@ func prob4() {
 	fmt.Println(ret)
 }
 
+func gcd(x, y int) int {
+	if x == 0 {
+		return y
+	}
+	return gcd(y%x, x)
+}
+func lcm(x, y int) int {
+	return x * y / gcd(x, y)
+}
+func prob5() {
+	r := 1
+	for i := 2; i <= 20; i++ {
+		r = lcm(r, i)
+	}
+	fmt.Println(r)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -141,6 +158,8 @@ func main() {
 		prob3()
 	case 4:
 		prob4()
+	case 5:
+		prob5()
 	default:
 		fmt.Println("not solved")
 	}
