@@ -90,12 +90,36 @@ func prob2() {
 	fmt.Println(sum)
 }
 
-
 func prob3() {
 	n := 600851475143
 	fs := FactorInt(n, primes)
-	p := fs[len(fs) - 1].p
+	p := fs[len(fs)-1].p
 	fmt.Println(p)
+}
+
+func prob4() {
+	isPalindrome := func(x int) bool {
+		s := strconv.Itoa(x)
+		n := len(s)
+		for i := 0; i < n/2; i++ {
+			if s[i] != s[n-1-i] {
+				return false
+			}
+		}
+		return true
+	}
+	ret := 0
+	for a := 100; a < 1000; a++ {
+		for b := a; b < 1000; b++ {
+			x := a * b
+			if isPalindrome(x) {
+				if x > ret {
+					ret = x
+				}
+			}
+		}
+	}
+	fmt.Println(ret)
 }
 
 func main() {
@@ -115,6 +139,8 @@ func main() {
 		prob2()
 	case 3:
 		prob3()
+	case 4:
+		prob4()
 	default:
 		fmt.Println("not solved")
 	}
