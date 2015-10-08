@@ -6,9 +6,11 @@ import (
 	"os"
 	"sort"
 	"strconv"
-	//	"io/ioutil"
+	"io/ioutil"
 	"bufio"
-	//	"strings"
+	"strings"
+//	"io"
+	"encoding/csv"
 )
 
 type PrimeTable []bool
@@ -555,10 +557,24 @@ func prob21() {
 
 func prob22() {
 	var sv []string
-	const ptn = 2
+	const ptn = 0
 	switch ptn {
 	case 0:
+		{
+			buf, _ := ioutil.ReadFile("names.txt")
+			isv := strings.Split(string(buf), ",")
+			for _, s := range isv {
+				s = strings.Trim(s, "\"")
+				sv = append(sv, s)
+			}
+		}
 	case 1:
+		{
+			fp, _ := os.Open("names.txt")
+			defer fp.Close()
+			r := csv.NewReader(fp)
+			sv, _ = r.Read()
+		}
 	case 2:
 		{
 			fp, _ := os.Open("names.txt")
