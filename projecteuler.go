@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"sort"
 	"strconv"
+	//	"io/ioutil"
+	"bufio"
+	//	"strings"
 )
 
 type PrimeTable []bool
@@ -549,6 +553,59 @@ func prob21() {
 	fmt.Println(s)
 }
 
+func prob22() {
+	var sv []string
+	const ptn = 2
+	switch ptn {
+	case 0:
+	case 1:
+	case 2:
+		{
+			fp, _ := os.Open("names.txt")
+			defer fp.Close()
+			sc := bufio.NewScanner(fp)
+			sep := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+				n := len(data)
+				s := 0
+				if n > 0 && data[0] == ',' {
+					s++
+				}
+				if n > 2 && data[s] == '"' {
+					s++
+					w := 0
+					for data[s+w] != '"' {
+						w++
+						if s+w == n {
+							break
+						}
+					}
+					if s+w < n {
+						return s + w + 1, data[s : s+w], nil
+					}
+				}
+				return 0, nil, nil
+			}
+			sc.Split(sep)
+			for sc.Scan() {
+				sv = append(sv, sc.Text())
+			}
+		}
+	}
+	sort.StringSlice(sv).Sort()
+	score := 0
+	calc := func(s string) int {
+		r := 0
+		for _, c := range s {
+			r += int(c - 'A' + 1)
+		}
+		return r
+	}
+	for i, s := range sv {
+		score += (i + 1) * calc(s)
+	}
+	fmt.Println(score)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -598,6 +655,8 @@ func main() {
 		prob20()
 	case 21:
 		prob21()
+	case 22:
+		prob22()
 	default:
 		fmt.Println("not solved")
 	}
