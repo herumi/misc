@@ -1,15 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"os"
 	"sort"
 	"strconv"
-	"io/ioutil"
-	"bufio"
 	"strings"
-//	"io"
+	//	"io"
 	"encoding/csv"
 )
 
@@ -78,6 +78,23 @@ func FactorNum(n int) int {
 		r *= f.e + 1
 	}
 	return r
+}
+
+func pow(a, b int) int {
+	r := 1
+	for i := 0; i < b; i++ {
+		r *= a
+	}
+	return r
+}
+
+func SumDivisors(n int) int {
+	fs := FactorInt(n)
+	r := 1
+	for _, f := range fs {
+		r *= (pow(f.p, f.e+1) - 1) / (f.p - 1)
+	}
+	return r - n
 }
 
 func prob1() {
@@ -527,24 +544,9 @@ func prob20() {
 }
 
 func prob21() {
-	pow := func(a, b int) int {
-		r := 1
-		for i := 0; i < b; i++ {
-			r *= a
-		}
-		return r
-	}
-	d := func(n int) int {
-		fs := FactorInt(n)
-		r := 1
-		for _, f := range fs {
-			r *= (pow(f.p, f.e+1) - 1) / (f.p - 1)
-		}
-		return r - n
-	}
 	amicable := func(a int) bool {
-		b := d(a)
-		return a != b && d(b) == a
+		b := SumDivisors(a)
+		return a != b && SumDivisors(b) == a
 	}
 	s := 0
 	for i := 2; i < 10000; i++ {
@@ -622,6 +624,34 @@ func prob22() {
 	fmt.Println(score)
 }
 
+func prob23() {
+	var abundant []int
+	const n = 28124
+	for i := 1; i < n; i++ {
+		if SumDivisors(i) > i {
+			abundant = append(abundant, i)
+		}
+	}
+	ptn := make([]bool, n)
+	for i := 0; i < len(abundant); i++ {
+		a := abundant[i]
+		for j := i; j < len(abundant); j++ {
+			b := abundant[j]
+			if a + b >= n {
+				break
+			}
+			ptn[a + b] = true
+		}
+	}
+	sum := 0
+	for i := 0; i < len(ptn); i++ {
+		if !ptn[i] {
+			sum += i
+		}
+	}
+	fmt.Println(sum)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -673,6 +703,8 @@ func main() {
 		prob21()
 	case 22:
 		prob22()
+	case 23:
+		prob23()
 	default:
 		fmt.Println("not solved")
 	}
