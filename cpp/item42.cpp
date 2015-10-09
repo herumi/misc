@@ -5,11 +5,12 @@
 struct A {
 	A() {}
 	A(const A&) { puts("cstr:const A&"); }
-	A(A&&) { puts("cstr:A&&"); }
+	A(A&&) noexcept { puts("cstr:A&&"); }
 	A(const char*) { puts("cstr:const char*"); }
 	A& operator=(const A&) { puts("=:const A&"); return *this; }
-	A& operator=(A&&) { puts("=:A&&"); return *this; }
+	A& operator=(A&&) noexcept { puts("=:A&&"); return *this; }
 	A& operator=(const char*) { puts("=:const char*"); return *this; }
+	void swap(A&) noexcept { puts("swap"); }
 	~A() { puts("dstr"); }
 };
 
