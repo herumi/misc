@@ -637,10 +637,10 @@ func prob23() {
 		a := abundant[i]
 		for j := i; j < len(abundant); j++ {
 			b := abundant[j]
-			if a + b >= n {
+			if a+b >= n {
 				break
 			}
-			ptn[a + b] = true
+			ptn[a+b] = true
 		}
 	}
 	sum := 0
@@ -650,6 +650,28 @@ func prob23() {
 		}
 	}
 	fmt.Println(sum)
+}
+
+func prob24() {
+}
+
+func prob25() {
+	x := big.NewInt(1)
+	y := big.NewInt(1)
+	t := new(big.Int)
+	limit := new(big.Int)
+	limit.Exp(big.NewInt(10), big.NewInt(1000-1), nil)
+	c := 2
+	for {
+		if x.Cmp(limit) > 0 {
+			break
+		}
+		t.Set(x)
+		x.Add(x, y)
+		y.Set(t)
+		c++
+	}
+	fmt.Println(c)
 }
 
 func main() {
@@ -705,6 +727,10 @@ func main() {
 		prob22()
 	case 23:
 		prob23()
+	case 24:
+		prob24()
+	case 25:
+		prob25()
 	default:
 		fmt.Println("not solved")
 	}
