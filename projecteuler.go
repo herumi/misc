@@ -733,6 +733,30 @@ func prob27() {
 	fmt.Println(ma * mb)
 }
 
+func prob28() {
+	ans := func(c int) int {
+		ac := 2
+		ai := 0
+		a := func() int {
+			ai++
+			if ai == 4 {
+				ai = 0
+				ac += 2
+				return ac - 2
+			}
+			return ac
+		}
+		b := 1
+		s := 0
+		for i := 0; i < c * 2 - 1; i++ {
+			s += b
+			b = b + a()
+		}
+		return s
+	}
+	fmt.Println(ans(1001))
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -794,6 +818,8 @@ func main() {
 		prob26()
 	case 27:
 		prob27()
+	case 28:
+		prob28()
 	default:
 		fmt.Println("not solved")
 	}
