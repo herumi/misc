@@ -674,6 +674,30 @@ func prob25() {
 	fmt.Println(c)
 }
 
+func prob26() {
+	const limit = 1000
+	f := func(n int) int {
+		m := map[int] bool{}
+		r := limit % n
+		for {
+			_, ok := m[r]
+			if ok {
+				return len(m)
+			}
+			m[r] = true
+			r = (r * 10) % n
+		}
+	}
+	max := 0
+	for i := 2; i < limit; i++ {
+		d := f(i)
+		if d > max {
+			max = i
+		}
+	}
+	fmt.Println(max)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -731,6 +755,8 @@ func main() {
 		prob24()
 	case 25:
 		prob25()
+	case 26:
+		prob26()
 	default:
 		fmt.Println("not solved")
 	}
