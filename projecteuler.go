@@ -679,7 +679,7 @@ func prob25() {
 func prob26() {
 	const limit = 1000
 	f := func(n int) int {
-		m := map[int] bool{}
+		m := map[int]bool{}
 		r := limit % n
 		for {
 			_, ok := m[r]
@@ -709,7 +709,7 @@ func prob27() {
 			return x
 		}
 		for n := 0; n < abs(b); n++ {
-			x := n * (n + a) + b
+			x := n*(n+a) + b
 			if !primeTbl[abs(x)] {
 				return n
 			}
@@ -720,7 +720,7 @@ func prob27() {
 	max := 0
 	ma := 0
 	mb := 0
-	for a:= -n + 1; a < n; a++ {
+	for a := -n + 1; a < n; a++ {
 		for b := -n + 1; b < n; b++ {
 			r := f(a, b)
 			if r > max {
@@ -748,13 +748,43 @@ func prob28() {
 		}
 		b := 1
 		s := 0
-		for i := 0; i < c * 2 - 1; i++ {
+		for i := 0; i < c*2-1; i++ {
 			s += b
 			b = b + a()
 		}
 		return s
 	}
 	fmt.Println(ans(1001))
+}
+
+type Ints []*big.Int
+func (v Ints) Len() int {
+	return len(v)
+}
+func (v Ints) Less(i, j int) bool {
+	return v[i].Cmp(v[j]) < 0
+}
+func (v Ints) Swap(i, j int) {
+	v[i], v[j] = v[j], v[i]
+}
+
+func prob29() {
+
+	v := Ints{}
+	for a := 2; a <= 100; a++ {
+		for b := 2; b <= 100; b++ {
+			x := new(big.Int).Exp(big.NewInt(int64(a)), big.NewInt(int64(b)), nil)
+			v = append(v, x)
+		}
+	}
+	sort.Sort(v)
+	n := 1
+	for i := 1; i < len(v); i++ {
+		if v[i-1].Cmp(v[i]) != 0 {
+			n++
+		}
+	}
+	fmt.Println(n)
 }
 
 func main() {
@@ -820,6 +850,8 @@ func main() {
 		prob27()
 	case 28:
 		prob28()
+	case 29:
+		prob29()
 	default:
 		fmt.Println("not solved")
 	}
