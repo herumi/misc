@@ -19,10 +19,12 @@ type Factor struct {
 	p, e int
 }
 
+var primeTbl PrimeTable
 var primes Primes
 
 func init() {
-	primes = MakePrime(MakePrimeTable(10000000))
+	primeTbl = MakePrimeTable(10000000)
+	primes = MakePrime(primeTbl)
 }
 
 func MakePrimeTable(n int) PrimeTable {
@@ -698,6 +700,39 @@ func prob26() {
 	fmt.Println(max)
 }
 
+func prob27() {
+	f := func(a, b int) int {
+		abs := func(x int) int {
+			if x < 0 {
+				return -x
+			}
+			return x
+		}
+		for n := 0; n < abs(b); n++ {
+			x := n * (n + a) + b
+			if !primeTbl[abs(x)] {
+				return n
+			}
+		}
+		return 0
+	}
+	const n = 1000
+	max := 0
+	ma := 0
+	mb := 0
+	for a:= -n + 1; a < n; a++ {
+		for b := -n + 1; b < n; b++ {
+			r := f(a, b)
+			if r > max {
+				max = r
+				ma = a
+				mb = b
+			}
+		}
+	}
+	fmt.Println(ma * mb)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -757,6 +792,8 @@ func main() {
 		prob25()
 	case 26:
 		prob26()
+	case 27:
+		prob27()
 	default:
 		fmt.Println("not solved")
 	}
