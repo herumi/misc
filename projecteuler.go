@@ -654,7 +654,48 @@ func prob23() {
 	fmt.Println(sum)
 }
 
+func PermutationGen(n int) func() (*[]int, bool) {
+	v := make([]int, n)
+	for i := 0; i < n; i++ {
+		v[i] = i
+	}
+	perm := func() (*[]int, bool)  {
+		i := n - 2
+		for ; i >= 0; i-- {
+			if v[i] < v[i + 1] {
+				break
+			}
+		}
+		if i < 0 {
+			return nil, false
+		}
+		a := v[i]
+		for j := n - 1; j > 0; j-- {
+			b := v[j]
+			if b > a {
+				v[i], v[j] = v[j], v[i]
+				sort.Sort(sort.IntSlice(v[i + 1:]))
+				return &v, true
+			}
+		}
+		return nil, false
+	}
+	return perm
+}
 func prob24() {
+	p := PermutationGen(10)
+	i := 1
+	for {
+		v, _ := p()
+		i++
+		if i == 1000000 {
+			for _, x := range *v {
+				fmt.Printf("%d", x)
+			}
+			fmt.Println()
+			break
+		}
+	}
 }
 
 func prob25() {
@@ -797,6 +838,9 @@ func prob29() {
 	}
 }
 
+func prob30() {
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -862,6 +906,8 @@ func main() {
 		prob28()
 	case 29:
 		prob29()
+	case 30:
+		prob30()
 	default:
 		fmt.Println("not solved")
 	}
