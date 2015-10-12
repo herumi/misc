@@ -769,22 +769,32 @@ func (v Ints) Swap(i, j int) {
 }
 
 func prob29() {
-
-	v := Ints{}
-	for a := 2; a <= 100; a++ {
-		for b := 2; b <= 100; b++ {
-			x := new(big.Int).Exp(big.NewInt(int64(a)), big.NewInt(int64(b)), nil)
-			v = append(v, x)
+	if true {
+		m := map[string]bool{}
+		x := big.NewInt(0)
+		for a := 2; a <= 100; a++ {
+			for b := 2; b <= 100; b++ {
+				m[x.Exp(big.NewInt(int64(a)), big.NewInt(int64(b)), nil).String()] = true
+			}
 		}
-	}
-	sort.Sort(v)
-	n := 1
-	for i := 1; i < len(v); i++ {
-		if v[i-1].Cmp(v[i]) != 0 {
-			n++
+		fmt.Println(len(m))
+	} else {
+		v := Ints{}
+		for a := 2; a <= 100; a++ {
+			for b := 2; b <= 100; b++ {
+				x := new(big.Int).Exp(big.NewInt(int64(a)), big.NewInt(int64(b)), nil)
+				v = append(v, x)
+			}
 		}
+		sort.Sort(v)
+		n := 1
+		for i := 1; i < len(v); i++ {
+			if v[i-1].Cmp(v[i]) != 0 {
+				n++
+			}
+		}
+		fmt.Println(n)
 	}
-	fmt.Println(n)
 }
 
 func main() {
