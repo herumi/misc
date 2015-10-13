@@ -856,6 +856,71 @@ func prob30() {
 	fmt.Println(sum)
 }
 
+func prob31() {
+	m := map[int]int{}
+	m[0] = 0
+	coins := []int{200, 100, 50, 20, 10, 5, 2, 1}
+	const Max = 200
+	clone := func(m map[int]int) map[int]int {
+		r := map[int]int{}
+		for v, n := range m {
+			r[v] = n
+		}
+		return r
+	}
+	for _, c := range coins {
+		if c > Max {
+			continue
+		}
+		m2 := clone(m)
+		for x := (Max / c) * c; x > 0; x -= c {
+			m2[x]++
+			for v, n := range m {
+				y := x + v
+				if y > Max {
+					continue
+				}
+				m2[y] += n
+			}
+		}
+		m = clone(m2)
+	}
+	fmt.Println(m[200])
+}
+
+func prob32() {
+	pandigital := func(a, b int) bool {
+		s := fmt.Sprintf("%d%d%d", a, b, a*b)
+		v := 0
+		if len(s) != 9 {
+			return false
+		}
+		for _, e := range s {
+			v |= 1 << uint(e-'1')
+		}
+		return v == (1<<9)-1
+	}
+	count := func(m map[int]bool, b1, e1, b2, e2 int) {
+		for i := b1; i <= e1; i++ {
+			for j := b2; j <= e2; j++ {
+				if pandigital(i, j) {
+					m[i*j] = true
+				}
+			}
+		}
+	}
+	m := map[int]bool{}
+	count(m, 1, 9, 1000, 9999)
+	count(m, 10, 99, 100, 999)
+	sum := 0
+	for v, b := range m {
+		if b {
+			sum += v
+		}
+	}
+	fmt.Println(sum)
+}
+
 func prob33() {
 	numer := 1
 	denom := 1
@@ -944,6 +1009,10 @@ func main() {
 		prob29()
 	case 30:
 		prob30()
+	case 31:
+		prob31()
+	case 32:
+		prob32()
 	case 33:
 		prob33()
 	default:
