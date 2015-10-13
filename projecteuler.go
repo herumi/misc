@@ -1006,6 +1006,28 @@ func prob35() {
 	fmt.Println(n)
 }
 
+func prob36() {
+	isRev := func(s string) bool {
+		n := len(s)
+		for i := 0; i < n/2; i++ {
+			if s[i] != s[n - 1 - i] {
+				return false
+			}
+		}
+		return true
+	}
+	valid := func(n int) bool {
+		return isRev(fmt.Sprintf("%d", n)) && isRev(fmt.Sprintf("%b", n))
+	}
+	sum := 0
+	for i := 1; i < 1000000; i++ {
+		if valid(i) {
+			sum += i
+		}
+	}
+	fmt.Println(sum)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1083,6 +1105,8 @@ func main() {
 		prob34()
 	case 35:
 		prob35()
+	case 36:
+		prob36()
 	default:
 		fmt.Println("not solved")
 	}
