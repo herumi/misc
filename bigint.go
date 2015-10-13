@@ -85,5 +85,21 @@ func main() {
 			}
 		}
 		fmt.Println(len(m))
+	case 4:
+		fmt.Println("use Bits().String()")
+		m := map[string]bool{}
+		x := big.NewInt(0)
+		toS := func(x []big.Word) (s string) {
+			for _, v := range x {
+				s += fmt.Sprintf("%x", v)
+			}
+			return
+		}
+		for a := 2; a <= an; a++ {
+			for b := 2; b <= bn; b++ {
+				m[toS(x.Exp(big.NewInt(int64(a)), big.NewInt(int64(b)), nil).Bits())] = true
+			}
+		}
+		fmt.Println(len(m))
 	}
 }
