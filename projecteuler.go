@@ -855,6 +855,27 @@ func prob30() {
 	fmt.Println(sum)
 }
 
+func prob33() {
+	numer := 1
+	denom := 1
+	for a:= 1; a < 10; a++ {
+		for b := 1; b < 10; b++ {
+			for c := a + 1; c < 10; c++ {
+				/*
+					(10a+b)/(10b+c) == a/c
+				*/
+				if (10 * a + b) * c == a * (10 * b + c) {
+					fmt.Printf("%d%d/%d%d\n", a, b, b, c)
+					numer *= a
+					denom *= c
+				}
+			}
+		}
+	}
+	g := gcd(numer, denom)
+	fmt.Println(denom / g)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -922,6 +943,8 @@ func main() {
 		prob29()
 	case 30:
 		prob30()
+	case 33:
+		prob33()
 	default:
 		fmt.Println("not solved")
 	}
