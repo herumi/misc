@@ -20,6 +20,16 @@ func (v Ints) Swap(i, j int) {
 	v[i], v[j] = v[j], v[i]
 }
 
+const maxWordNum = 128
+type BigIntArray [maxWordNum]big.Word
+
+func toA(x *big.Int) (r BigIntArray) {
+	for i, v := range x.Bits() {
+		r[i] = v
+	}
+	return
+}
+
 func main() {
 	mode := 0
 	if len(os.Args) >= 2 {
@@ -62,6 +72,16 @@ func main() {
 		for a := 2; a <= an; a++ {
 			for b := 2; b <= bn; b++ {
 				m[string(x.Exp(big.NewInt(int64(a)), big.NewInt(int64(b)), nil).Bytes())] = true
+			}
+		}
+		fmt.Println(len(m))
+	case 3:
+		fmt.Println("use BigIntArray")
+		m := map[BigIntArray]bool{}
+		x := big.NewInt(0)
+		for a := 2; a <= an; a++ {
+			for b := 2; b <= bn; b++ {
+				m[toA(x.Exp(big.NewInt(int64(a)), big.NewInt(int64(b)), nil))] = true
 			}
 		}
 		fmt.Println(len(m))

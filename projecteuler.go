@@ -810,7 +810,7 @@ func (v Ints) Swap(i, j int) {
 }
 
 func prob29() {
-	if true {
+	if false {
 		m := map[string]bool{}
 		x := big.NewInt(0)
 		for a := 2; a <= 100; a++ {
