@@ -942,6 +942,28 @@ func prob33() {
 	fmt.Println(denom / g)
 }
 
+func prob34() {
+	tbl := [10]int{1}
+	for i := 1; i < 10; i++ {
+		tbl[i] = tbl[i - 1] * i
+	}
+	valid := func(x int) bool {
+		s := fmt.Sprintf("%d", x)
+		r := 0
+		for _, c := range s {
+			r += tbl[int(c - '0')]
+		}
+		return r == x
+	}
+	sum := 0
+	for i := 3; i < 1000000; i++ {
+		if valid(i) {
+			sum += i
+		}
+	}
+	fmt.Println(sum)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1015,6 +1037,8 @@ func main() {
 		prob32()
 	case 33:
 		prob33()
+	case 34:
+		prob34()
 	default:
 		fmt.Println("not solved")
 	}
