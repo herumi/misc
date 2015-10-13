@@ -20,7 +20,7 @@ func (v Ints) Swap(i, j int) {
 	v[i], v[j] = v[j], v[i]
 }
 
-const maxWordNum = 128
+const maxWordNum = 74
 type BigIntArray [maxWordNum]big.Word
 
 func toA(x *big.Int) (r BigIntArray) {
