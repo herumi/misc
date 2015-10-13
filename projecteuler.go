@@ -964,6 +964,48 @@ func prob34() {
 	fmt.Println(sum)
 }
 
+func prob35() {
+	toInt := func(x []int) (r int) {
+		for i := 0; i < len(x); i++ {
+			r = r * 10 + x[i]
+		}
+		return
+	}
+	rot := func(x []int) {
+		t := x[0]
+		for i := 1; i < len(x); i++ {
+			x[i - 1] = x[i]
+		}
+		x[len(x) - 1] = t
+	}
+	cyclic := func(x int) bool {
+		ss := fmt.Sprintf("%d", x)
+		n := len(ss)
+		s := make([]int, n)
+		for i, c := range ss {
+			s[i] = int(c - '0')
+		}
+		for i := 1; i < n; i++ {
+			rot(s)
+			v := toInt(s)
+			if !primeTbl[v] {
+				return false
+			}
+		}
+		return true
+	}
+	n := 0
+	for _, p := range(primes) {
+		if p >= 1000000 {
+			break
+		}
+		if cyclic(p) {
+			n++
+		}
+	}
+	fmt.Println(n)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1039,6 +1081,8 @@ func main() {
 		prob33()
 	case 34:
 		prob34()
+	case 35:
+		prob35()
 	default:
 		fmt.Println("not solved")
 	}
