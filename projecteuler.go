@@ -839,6 +839,20 @@ func prob29() {
 }
 
 func prob30() {
+	sum := 0
+	for i := 2; i <= 9 * 9 * 9 * 9 * 9 * 5; i++ {
+		s := strconv.Itoa(i)
+		t := 0
+		for _, e := range s {
+			x := int(e - '0')
+			xx := x * x
+			t += xx * xx * x
+		}
+		if i == t {
+			sum += i
+		}
+	}
+	fmt.Println(sum)
 }
 
 func main() {
