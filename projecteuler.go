@@ -659,10 +659,10 @@ func PermutationGen(n int) func() (*[]int, bool) {
 	for i := 0; i < n; i++ {
 		v[i] = i
 	}
-	perm := func() (*[]int, bool)  {
+	perm := func() (*[]int, bool) {
 		i := n - 2
 		for ; i >= 0; i-- {
-			if v[i] < v[i + 1] {
+			if v[i] < v[i+1] {
 				break
 			}
 		}
@@ -674,7 +674,7 @@ func PermutationGen(n int) func() (*[]int, bool) {
 			b := v[j]
 			if b > a {
 				v[i], v[j] = v[j], v[i]
-				sort.Sort(sort.IntSlice(v[i + 1:]))
+				sort.Sort(sort.IntSlice(v[i+1:]))
 				return &v, true
 			}
 		}
@@ -799,6 +799,7 @@ func prob28() {
 }
 
 type Ints []*big.Int
+
 func (v Ints) Len() int {
 	return len(v)
 }
@@ -840,7 +841,7 @@ func prob29() {
 
 func prob30() {
 	sum := 0
-	for i := 2; i <= 9 * 9 * 9 * 9 * 9 * 5; i++ {
+	for i := 2; i <= 9*9*9*9*9*5; i++ {
 		s := strconv.Itoa(i)
 		t := 0
 		for _, e := range s {
@@ -858,13 +859,13 @@ func prob30() {
 func prob33() {
 	numer := 1
 	denom := 1
-	for a:= 1; a < 10; a++ {
+	for a := 1; a < 10; a++ {
 		for b := 1; b < 10; b++ {
 			for c := a + 1; c < 10; c++ {
 				/*
 					(10a+b)/(10b+c) == a/c
 				*/
-				if (10 * a + b) * c == a * (10 * b + c) {
+				if (10*a+b)*c == a*(10*b+c) {
 					fmt.Printf("%d%d/%d%d\n", a, b, b, c)
 					numer *= a
 					denom *= c
