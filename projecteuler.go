@@ -964,13 +964,14 @@ func prob34() {
 	fmt.Println(sum)
 }
 
-func prob35() {
-	toInt := func(x []int) (r int) {
-		for i := 0; i < len(x); i++ {
-			r = r * 10 + x[i]
-		}
-		return
+func toInt(x []int) (r int) {
+	for i := 0; i < len(x); i++ {
+		r = r * 10 + x[i]
 	}
+	return
+}
+
+func prob35() {
 	rot := func(x []int) {
 		t := x[0]
 		for i := 1; i < len(x); i++ {
@@ -1026,6 +1027,21 @@ func prob36() {
 		}
 	}
 	fmt.Println(sum)
+}
+
+func prob37() {
+	t1 := []int{2, 3, 5, 7}
+	for _, a := range t1 {
+		for _, b := range t1 {
+			if a == b {
+				continue
+			}
+			x := toInt([]int{a, b})
+			if primeTbl[x] {
+				fmt.Println(x)
+			}
+		}
+	}
 }
 
 func main() {
@@ -1107,6 +1123,8 @@ func main() {
 		prob35()
 	case 36:
 		prob36()
+	case 37:
+		prob37()
 	default:
 		fmt.Println("not solved")
 	}
