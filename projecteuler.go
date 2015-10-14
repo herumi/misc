@@ -1030,18 +1030,55 @@ func prob36() {
 }
 
 func prob37() {
-	t1 := []int{2, 3, 5, 7}
-	for _, a := range t1 {
-		for _, b := range t1 {
-			if a == b {
-				continue
+	extend := func(xv []int, d int) (r []int) {
+		for _, x := range xv {
+			tbl := []int{1, 3, 5, 7, 9}
+			for _, i := range tbl {
+				y := d * i + x
+				if primeTbl[y] {
+					z1 := 30 * d + y
+					z2 := 70 * d + y
+					if primeTbl[z1] || primeTbl[z2] {
+						r = append(r, y)
+					}
+				}
 			}
-			x := toInt([]int{a, b})
-			if primeTbl[x] {
-				fmt.Println(x)
+		}
+		return
+	}
+	xv := []int{3, 7}
+	for d := 10; ; d *= 10 {
+		xv = extend(xv, d)
+		if len(xv) == 0 {
+			break
+		}
+		fmt.Println(xv)
+	}
+}
+
+func prob38() {
+	max := 0
+	for i := 1; i <= 99999; i++ {
+		s := ""
+		n := 1
+		for ; n < 10 && len(s) < 9; n++ {
+			s += fmt.Sprintf("%d", i * n)
+		}
+		if len(s) == 9 {
+			v := 0
+			for j := 0; j < 9; j++ {
+				v |= 1 << uint(s[j] - '0')
+			}
+			if v == 0x3fe {
+//				fmt.Println(i, n, s)
+				si, _ := strconv.Atoi(s)
+				if si > max {
+					max = si
+				}
 			}
 		}
 	}
+	fmt.Println(max)
 }
 
 func main() {
@@ -1125,6 +1162,8 @@ func main() {
 		prob36()
 	case 37:
 		prob37()
+	case 38:
+		prob38()
 	default:
 		fmt.Println("not solved")
 	}
