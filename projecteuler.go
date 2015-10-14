@@ -945,13 +945,13 @@ func prob33() {
 func prob34() {
 	tbl := [10]int{1}
 	for i := 1; i < 10; i++ {
-		tbl[i] = tbl[i - 1] * i
+		tbl[i] = tbl[i-1] * i
 	}
 	valid := func(x int) bool {
 		s := fmt.Sprintf("%d", x)
 		r := 0
 		for _, c := range s {
-			r += tbl[int(c - '0')]
+			r += tbl[int(c-'0')]
 		}
 		return r == x
 	}
@@ -966,7 +966,7 @@ func prob34() {
 
 func toInt(x []int) (r int) {
 	for i := 0; i < len(x); i++ {
-		r = r * 10 + x[i]
+		r = r*10 + x[i]
 	}
 	return
 }
@@ -975,9 +975,9 @@ func prob35() {
 	rot := func(x []int) {
 		t := x[0]
 		for i := 1; i < len(x); i++ {
-			x[i - 1] = x[i]
+			x[i-1] = x[i]
 		}
-		x[len(x) - 1] = t
+		x[len(x)-1] = t
 	}
 	cyclic := func(x int) bool {
 		ss := fmt.Sprintf("%d", x)
@@ -996,7 +996,7 @@ func prob35() {
 		return true
 	}
 	n := 0
-	for _, p := range(primes) {
+	for _, p := range primes {
 		if p >= 1000000 {
 			break
 		}
@@ -1011,7 +1011,7 @@ func prob36() {
 	isRev := func(s string) bool {
 		n := len(s)
 		for i := 0; i < n/2; i++ {
-			if s[i] != s[n - 1 - i] {
+			if s[i] != s[n-1-i] {
 				return false
 			}
 		}
@@ -1034,10 +1034,10 @@ func prob37() {
 		for _, x := range xv {
 			tbl := []int{1, 3, 5, 7, 9}
 			for _, i := range tbl {
-				y := d * i + x
+				y := d*i + x
 				if primeTbl[y] {
-					z1 := 30 * d + y
-					z2 := 70 * d + y
+					z1 := 30*d + y
+					z2 := 70*d + y
 					if primeTbl[z1] || primeTbl[z2] {
 						r = append(r, y)
 					}
@@ -1062,15 +1062,15 @@ func prob38() {
 		s := ""
 		n := 1
 		for ; n < 10 && len(s) < 9; n++ {
-			s += fmt.Sprintf("%d", i * n)
+			s += fmt.Sprintf("%d", i*n)
 		}
 		if len(s) == 9 {
 			v := 0
 			for j := 0; j < 9; j++ {
-				v |= 1 << uint(s[j] - '0')
+				v |= 1 << uint(s[j]-'0')
 			}
 			if v == 0x3fe {
-//				fmt.Println(i, n, s)
+				//				fmt.Println(i, n, s)
 				si, _ := strconv.Atoi(s)
 				if si > max {
 					max = si
