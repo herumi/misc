@@ -1122,6 +1122,30 @@ func prob38() {
 	fmt.Println(max)
 }
 
+func prob39() {
+	maxn := 0
+	maxp := 0
+	for p := 12; p <= 1000; p++ {
+		n := 0
+		for a := 1; a <= p/3; a++ {
+			for b := a + 1; ; b++ {
+				c := p - a - b
+				if c <= b {
+					break
+				}
+				if a*a == c*c-b*b {
+					n++
+				}
+			}
+		}
+		if n > maxn {
+			maxn = n
+			maxp = p
+		}
+	}
+	fmt.Println(maxp)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1205,6 +1229,8 @@ func main() {
 		prob37()
 	case 38:
 		prob38()
+	case 39:
+		prob39()
 	default:
 		fmt.Println("not solved")
 	}
