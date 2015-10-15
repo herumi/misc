@@ -1191,6 +1191,24 @@ func prob40() {
 }
 
 func prob41() {
+	// 1+...+9 = 45 = 0 mod 3
+	// 1+...+8 = 36 = 0 mod 3
+	v := []int{-7,-6,-5,-4,-3,-2,-1}
+	toI := func(v []int) int {
+		r := 0
+		for _, x := range v {
+			r = r * 10 + x
+		}
+		return -r
+	}
+	for {
+		p := toI(v)
+		if v[len(v) - 1] % 2 != 0 && IsPrime(p) {
+			fmt.Println(p)
+			break
+		}
+		NextPermutation(v)
+	}
 }
 
 func main() {
