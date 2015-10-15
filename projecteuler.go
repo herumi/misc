@@ -1056,16 +1056,45 @@ func prob37() {
 		}
 		return true
 	}
+	valid := func(x int) bool {
+		return valid1(x) && valid2(x)
+	}
 	sum := 0
 	for _, p := range primes {
 		if p < 10 {
 			continue
 		}
-		if valid1(p) && valid2(p) {
+		if valid(p) {
 			sum += p
 		}
 	}
 	fmt.Println(sum)
+	/*
+		{
+			tbl := []int{1, 3, 7, 9}
+			xs := []int{3, 7}
+			add := func(xs []int) []int {
+				r := []int{}
+				for _, x := range xs {
+					for _, s := range tbl {
+						y := x * 10 + s
+						if primeTbl[y] {
+							r = append(r, y)
+							if valid(y) {
+								fmt.Println("ans", y)
+							}
+						}
+					}
+				}
+				return r
+			}
+			for {
+				xs = add(xs)
+				fmt.Println(xs)
+			}
+
+		}
+	*/
 }
 
 func prob38() {
