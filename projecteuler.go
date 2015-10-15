@@ -1146,6 +1146,35 @@ func prob39() {
 	fmt.Println(maxp)
 }
 
+func prob40() {
+	gen := func() func() int {
+		n := 1
+		s := ""
+		pos := 0
+		d := func() int {
+			if len(s) == pos {
+				s = fmt.Sprintf("%d", n)
+				pos = 0
+				n++
+			}
+			r := int(s[pos] - '0')
+			pos++
+			return r
+		}
+		return d
+	}
+	d := gen()
+	ans := 1
+	for i := 0; i < 1000000; i++ {
+		x := d()
+		switch i {
+		case 0, 9, 99, 999, 9999, 99999, 999999:
+			ans *= x
+		}
+	}
+	fmt.Println(ans)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1231,6 +1260,8 @@ func main() {
 		prob38()
 	case 39:
 		prob39()
+	case 40:
+		prob40()
 	default:
 		fmt.Println("not solved")
 	}
