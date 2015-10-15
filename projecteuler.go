@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"math/big"
 	"os"
 	"sort"
@@ -25,6 +26,22 @@ var primes Primes
 func init() {
 	primeTbl = MakePrimeTable(10000000)
 	primes = MakePrime(primeTbl)
+}
+
+func IsPrime(n int) bool {
+	if n < 2 {
+		return false
+	}
+	rootn := int(math.Sqrt(float64(n)))
+	for _, p := range primes {
+		if p > rootn {
+			return true
+		}
+		if n%p == 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func MakePrimeTable(n int) PrimeTable {
@@ -654,42 +671,40 @@ func prob23() {
 	fmt.Println(sum)
 }
 
-func PermutationGen(n int) func() (*[]int, bool) {
-	v := make([]int, n)
-	for i := 0; i < n; i++ {
+func NextPermutation(v []int) bool {
+	n := len(v)
+	i := n - 2
+	for ; i >= 0; i-- {
+		if v[i] < v[i+1] {
+			break
+		}
+	}
+	if i < 0 {
+		return false
+	}
+	a := v[i]
+	for j := n - 1; j > 0; j-- {
+		b := v[j]
+		if b > a {
+			v[i], v[j] = v[j], v[i]
+			sort.Sort(sort.IntSlice(v[i+1:]))
+			return true
+		}
+	}
+	return false
+}
+
+func prob24() {
+	v := make([]int, 10)
+	for i := 0; i < 10; i++ {
 		v[i] = i
 	}
-	perm := func() (*[]int, bool) {
-		i := n - 2
-		for ; i >= 0; i-- {
-			if v[i] < v[i+1] {
-				break
-			}
-		}
-		if i < 0 {
-			return nil, false
-		}
-		a := v[i]
-		for j := n - 1; j > 0; j-- {
-			b := v[j]
-			if b > a {
-				v[i], v[j] = v[j], v[i]
-				sort.Sort(sort.IntSlice(v[i+1:]))
-				return &v, true
-			}
-		}
-		return nil, false
-	}
-	return perm
-}
-func prob24() {
-	p := PermutationGen(10)
 	i := 1
 	for {
-		v, _ := p()
+		NextPermutation(v)
 		i++
 		if i == 1000000 {
-			for _, x := range *v {
+			for _, x := range v {
 				fmt.Printf("%d", x)
 			}
 			fmt.Println()
@@ -1175,6 +1190,9 @@ func prob40() {
 	fmt.Println(ans)
 }
 
+func prob41() {
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1262,6 +1280,8 @@ func main() {
 		prob39()
 	case 40:
 		prob40()
+	case 41:
+		prob41()
 	default:
 		fmt.Println("not solved")
 	}
