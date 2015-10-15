@@ -1030,30 +1030,42 @@ func prob36() {
 }
 
 func prob37() {
-	extend := func(xv []int, d int) (r []int) {
-		for _, x := range xv {
-			tbl := []int{1, 3, 5, 7, 9}
-			for _, i := range tbl {
-				y := d*i + x
-				if primeTbl[y] {
-					z1 := 30*d + y
-					z2 := 70*d + y
-					if primeTbl[z1] || primeTbl[z2] {
-						r = append(r, y)
-					}
-				}
+	valid1 := func(x int) bool {
+		for {
+			if !primeTbl[x] {
+				return false
+			}
+			x /= 10
+			if x == 0 {
+				return true
 			}
 		}
-		return
 	}
-	xv := []int{3, 7}
-	for d := 10; ; d *= 10 {
-		xv = extend(xv, d)
-		if len(xv) == 0 {
-			break
+	valid2 := func(x int) bool {
+		for d := 1000000000; d > 0; d /= 10 {
+			if d > x {
+				continue
+			}
+			x -= (x / d) * d
+			if x == 0 {
+				return true
+			}
+			if !primeTbl[x] {
+				return false
+			}
 		}
-		fmt.Println(xv)
+		return true
 	}
+	sum := 0
+	for _, p := range primes {
+		if p < 10 {
+			continue
+		}
+		if valid1(p) && valid2(p) {
+			sum += p
+		}
+	}
+	fmt.Println(sum)
 }
 
 func prob38() {
