@@ -29,8 +29,8 @@ func init() {
 }
 
 func IsPrime(n int) bool {
-	if n < 2 {
-		return false
+	if n < len(primeTbl) {
+		return primeTbl[n]
 	}
 	rootn := int(math.Sqrt(float64(n)))
 	for _, p := range primes {
@@ -687,7 +687,7 @@ func NextPermutation(v []int) bool {
 		b := v[j]
 		if b > a {
 			v[i], v[j] = v[j], v[i]
-			for a, b:= i+1, n-1; a < b; {
+			for a, b := i+1, n-1; a < b; {
 				v[a], v[b] = v[b], v[a]
 				a++
 				b--
@@ -1197,34 +1197,71 @@ func prob40() {
 func prob41() {
 	// 1+...+9 = 45 = 0 mod 3
 	// 1+...+8 = 36 = 0 mod 3
-/*
-	v := []int{-10,-9,-8,-7,-6,-5,-4,-3,-2,-1}
-	c := 0
-	for {
-		next := NextPermutation2(v)
-		c++
-		if !next {
-			break
+	/*
+		v := []int{-10,-9,-8,-7,-6,-5,-4,-3,-2,-1}
+		c := 0
+		for {
+			next := NextPermutation2(v)
+			c++
+			if !next {
+				break
+			}
 		}
-	}
-	fmt.Println(c)
-*/
-	v := []int{-7,-6,-5,-4,-3,-2,-1}
+		fmt.Println(c)
+	*/
+	v := []int{-7, -6, -5, -4, -3, -2, -1}
 	toI := func(v []int) int {
 		r := 0
 		for _, x := range v {
-			r = r * 10 + x
+			r = r*10 + x
 		}
 		return -r
 	}
 	for {
 		p := toI(v)
-		if v[len(v) - 1] % 2 != 0 && IsPrime(p) {
+		if v[len(v)-1]%2 != 0 && IsPrime(p) {
 			fmt.Println(p)
 			break
 		}
 		NextPermutation(v)
 	}
+}
+
+func prob42() {
+	fp, _ := os.Open("words.txt")
+	defer fp.Close()
+	r := csv.NewReader(fp)
+	sv, _ := r.Read()
+	sort.StringSlice(sv).Sort()
+	toi := func(s string) (r int) {
+		for i := 0; i < len(s); i++ {
+			r += int(s[i] - 'A' + 1)
+		}
+		return
+	}
+	max := 0
+	for _, s := range sv {
+		x := toi(s)
+		if x > max {
+			max = x
+		}
+	}
+	tbl := make([]bool, max+1)
+	for i := 0; ; i++ {
+		n := i * (i + 1) / 2
+		if n > len(tbl) {
+			break
+		}
+		tbl[n] = true
+	}
+	n := 0
+	for _, s := range sv {
+		x := toi(s)
+		if tbl[x] {
+			n++
+		}
+	}
+	fmt.Println(n)
 }
 
 func main() {
@@ -1316,6 +1353,8 @@ func main() {
 		prob40()
 	case 41:
 		prob41()
+	case 42:
+		prob42()
 	default:
 		fmt.Println("not solved")
 	}
