@@ -12,6 +12,9 @@ import (
 	"strings"
 	//	"io"
 	"encoding/csv"
+	"os/signal"
+	"runtime/pprof"
+	"syscall"
 )
 
 type PrimeTable []bool
@@ -1195,21 +1198,27 @@ func prob40() {
 }
 
 func prob41() {
-	// 1+...+9 = 45 = 0 mod 3
-	// 1+...+8 = 36 = 0 mod 3
-	/*
-		v := []int{-10,-9,-8,-7,-6,-5,-4,-3,-2,-1}
-		c := 0
-		for {
-			next := NextPermutation2(v)
-			c++
-			if !next {
-				break
-			}
+	f, _ := os.Create("a.prof")
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		s := <-c
+		switch s {
+		case syscall.SIGINT:
+			pprof.StopCPUProfile()
+			os.Exit(1)
 		}
-		fmt.Println(c)
-	*/
-	v := []int{-7, -6, -5, -4, -3, -2, -1}
+	}()
+
+	mk := func(n int) []int {
+		v := make([]int, n)
+		for i := 0; i < n; i++ {
+			v[i] = -(n - i)
+		}
+		return v
+	}
 	toI := func(v []int) int {
 		r := 0
 		for _, x := range v {
@@ -1217,13 +1226,25 @@ func prob41() {
 		}
 		return -r
 	}
+	// 1+...+9 = 45 = 0 mod 3
+	// 1+...+8 = 36 = 0 mod 3
+	// so, you can start with n := 7
+	n := 9
+	v := mk(n)
 	for {
 		p := toI(v)
 		if v[len(v)-1]%2 != 0 && IsPrime(p) {
 			fmt.Println(p)
 			break
 		}
-		NextPermutation(v)
+		b := NextPermutation(v)
+		if !b {
+			n--
+			if n == 1 {
+				break
+			}
+			v = mk(n)
+		}
 	}
 }
 
