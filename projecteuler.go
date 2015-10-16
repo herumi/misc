@@ -687,7 +687,11 @@ func NextPermutation(v []int) bool {
 		b := v[j]
 		if b > a {
 			v[i], v[j] = v[j], v[i]
-			sort.Sort(sort.IntSlice(v[i+1:]))
+			for a, b:= i+1, n-1; a < b; {
+				v[a], v[b] = v[b], v[a]
+				a++
+				b--
+			}
 			return true
 		}
 	}
@@ -1193,6 +1197,18 @@ func prob40() {
 func prob41() {
 	// 1+...+9 = 45 = 0 mod 3
 	// 1+...+8 = 36 = 0 mod 3
+/*
+	v := []int{-10,-9,-8,-7,-6,-5,-4,-3,-2,-1}
+	c := 0
+	for {
+		next := NextPermutation2(v)
+		c++
+		if !next {
+			break
+		}
+	}
+	fmt.Println(c)
+*/
 	v := []int{-7,-6,-5,-4,-3,-2,-1}
 	toI := func(v []int) int {
 		r := 0
