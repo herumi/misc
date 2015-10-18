@@ -1317,6 +1317,69 @@ func prob43() {
 	fmt.Println(sum)
 }
 
+func prob44() {
+	f := func(x int) int {
+		return x * (3 * x - 1)
+	}
+	hasAns := func(a, b int) bool {
+		d := 1 + 12 * (f(a) + f(b))
+		r := int(math.Sqrt(float64(d)))
+		return r * r == d && (1 + r) % 6 == 0
+	}
+	/*
+		fa + fb = fc
+		fa - fb = fd
+		c > a > b > d
+	*/
+	for d:= 1; ; d++ {
+		fd := f(d)
+		for b := d + 1; ; b++ {
+			t := f(b) + fd
+			a := b + 1
+			if f(a) > t {
+				break
+			}
+			for {
+				if f(a) == t {
+					if hasAns(a, b) {
+						fmt.Println(fd / 2)
+						os.Exit(0)
+					}
+				}
+				a++
+				if f(a) > t {
+					break
+				}
+			}
+		}
+	}
+}
+
+func isqrt(x int) int {
+	return int(math.Sqrt(float64(x)))
+}
+
+func prob46() {
+	for q := 3; ; q += 2 {
+		if primeTbl[q] {
+			continue
+		}
+		n := isqrt(q / 2)
+		found := false
+		for j := 1; j <=n; j++ {
+			p := q - 2 * j * j
+			if primeTbl[p] {
+				found = true
+				break
+			}
+		}
+		if !found {
+			fmt.Println(q)
+			break
+		}
+	}
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1410,6 +1473,10 @@ func main() {
 		prob42()
 	case 43:
 		prob43()
+	case 44:
+		prob44()
+	case 46:
+		prob46()
 	default:
 		fmt.Println("not solved")
 	}
