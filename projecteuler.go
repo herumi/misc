@@ -1285,6 +1285,38 @@ func prob42() {
 	fmt.Println(n)
 }
 
+func prob43() {
+	d := []int{1, 0, 2, 3, 4, 5, 6, 7, 8, 9}
+
+	toi := func(x, y, z int) int {
+		return d[x]*100 + d[y]*10 + d[z]
+	}
+	toi2 := func() int {
+		r := d[0]
+		for i := 1; i < len(d); i++ {
+			r = r*10 + d[i]
+		}
+		return r
+	}
+	sum := 0
+	for {
+		if d[3]%2 == 0 &&
+			(d[2]+d[3]+d[4])%3 == 0 &&
+			(d[5] == 0 || d[5] == 5) &&
+			toi(4, 5, 6)%7 == 0 &&
+			toi(5, 6, 7)%11 == 0 &&
+			toi(6, 7, 8)%13 == 0 &&
+			toi(7, 8, 9)%17 == 0 {
+			sum += toi2()
+		}
+		next := NextPermutation(d)
+		if !next {
+			break
+		}
+	}
+	fmt.Println(sum)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1376,6 +1408,8 @@ func main() {
 		prob41()
 	case 42:
 		prob42()
+	case 43:
+		prob43()
 	default:
 		fmt.Println("not solved")
 	}
