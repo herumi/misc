@@ -1420,6 +1420,68 @@ func prob48() {
 	fmt.Println(s[len(s)-10:])
 }
 
+func prob49() {
+	mk := func(a, b, c, d int) int {
+		return a*1000 + b*100 + c*10 + d
+	}
+	toa := func(x int) []int {
+		r := []int{}
+		s := strconv.Itoa(x)
+		if len(s) != 4 {
+			fmt.Println("x=", x)
+			os.Exit(1)
+		}
+		for i := 0; i < 4; i++ {
+			r = append(r, int(s[i]-'0'))
+		}
+		return r
+	}
+	eq := func(a, b []int) bool {
+		an := len(a)
+		bn := len(b)
+		if an != bn {
+			return false
+		}
+		for i := 0; i < an; i++ {
+			if a[i] != b[i] {
+				return false
+			}
+		}
+		return true
+	}
+	for a := 1; a < 10; a++ {
+		for b := 1; b < 10; b++ {
+			for c := 1; c < 10; c++ {
+				for d := 1; d < 10; d++ {
+					x := mk(a, b, c, d)
+					if primeTbl[x] {
+						v := []int{a, b, c, d}
+						for {
+							next := NextPermutation(v)
+							y := mk(v[0], v[1], v[2], v[3])
+							if y > x && primeTbl[y] {
+								z := y + (y - x)
+								if z < 10000 && primeTbl[z] {
+									v1 := toa(z)
+									sort.IntSlice(v1).Sort()
+									v2 := []int{a, b, c, d}
+									sort.IntSlice(v2).Sort()
+									if eq(v1, v2) {
+										fmt.Printf("%d%d%d\n", x, y, z)
+									}
+								}
+							}
+							if !next {
+								break
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1523,6 +1585,8 @@ func main() {
 		prob47()
 	case 48:
 		prob48()
+	case 49:
+		prob49()
 	default:
 		fmt.Println("not solved")
 	}
