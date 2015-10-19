@@ -1508,6 +1508,32 @@ func prob50() {
 	fmt.Println(maxP)
 }
 
+func prob52() {
+	tov := func(x int) (r int) {
+		s := strconv.Itoa(x)
+		for i := 0; i < len(s); i++ {
+			r |= 1 << uint(s[i]-'0')
+		}
+		return
+	}
+	x := 1
+	for ; ; x++ {
+		v := tov(x)
+		found := true
+		for d := 2; d <= 6; d++ {
+			w := tov(x * d)
+			if (v | w) != v {
+				found = false
+				break
+			}
+		}
+		if found {
+			break
+		}
+	}
+	fmt.Println(x)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1615,6 +1641,8 @@ func main() {
 		prob49()
 	case 50:
 		prob50()
+	case 52:
+		prob52()
 	default:
 		fmt.Println("not solved")
 	}
