@@ -1408,6 +1408,18 @@ func prob47() {
 	fmt.Println(n)
 }
 
+func prob48() {
+	r := big.NewInt(0)
+	m := big.NewInt(10000000000)
+	for i := 1; i <= 1000; i++ {
+		x := big.NewInt(int64(i))
+		x = x.Exp(x, x, m)
+		r = r.Add(r, x)
+	}
+	s := r.String()
+	fmt.Println(s[len(s)-10:])
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1509,6 +1521,8 @@ func main() {
 		prob46()
 	case 47:
 		prob47()
+	case 48:
+		prob48()
 	default:
 		fmt.Println("not solved")
 	}
