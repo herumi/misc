@@ -1534,6 +1534,28 @@ func prob52() {
 	fmt.Println(x)
 }
 
+func prob53() {
+	combi := func(n, r int) *big.Int {
+		r1 := new(big.Int)
+		r1.MulRange(int64(n-r+1), int64(n))
+		r2 := new(big.Int)
+		r2.MulRange(1, int64(r))
+		r1.Div(r1, r2)
+		return r1
+	}
+	limit := big.NewInt(1000000)
+	a := 0
+	for n := 1; n <= 100; n++ {
+		for r := 1; r <= n; r++ {
+			c := combi(n, r)
+			if c.Cmp(limit) > 0 {
+				a++
+			}
+		}
+	}
+	fmt.Println(a)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1643,6 +1665,8 @@ func main() {
 		prob50()
 	case 52:
 		prob52()
+	case 53:
+		prob53()
 	default:
 		fmt.Println("not solved")
 	}
