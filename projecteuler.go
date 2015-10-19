@@ -1388,6 +1388,26 @@ func prob46() {
 	}
 }
 
+func prob47() {
+	n := 2
+	for {
+		found := true
+		for j := 0; j < 4; j++ {
+			v := FactorInt(n + j)
+			if len(v) != 4 {
+				n = n + j + 1
+				found = false
+				break
+			}
+		}
+		if found {
+			break
+		}
+		n++
+	}
+	fmt.Println(n)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1487,6 +1507,8 @@ func main() {
 		prob45()
 	case 46:
 		prob46()
+	case 47:
+		prob47()
 	default:
 		fmt.Println("not solved")
 	}
