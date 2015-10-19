@@ -1323,24 +1323,46 @@ func prob43() {
 
 func prob44() {
 	pen := func(x int) int {
-		return x * (3 * x - 1)
+		return x * (3*x - 1)
 	}
 	candi := func(x int) int {
-		return (1 + isqrt(1 + 12 * x)) / 6
+		return (1 + isqrt(1+12*x)) / 6
 	}
 	hasSol := func(x int) bool {
 		n := candi(x)
 		return pen(n) == x
 	}
-	for a:= 1; ; a++ {
+	for a := 1; ; a++ {
 		pa := pen(a)
-		for b := a-1; b > 0; b-- {
+		for b := a - 1; b > 0; b-- {
 			pb := pen(b)
-			if hasSol(pa + pb) && hasSol(pa - pb) {
+			if hasSol(pa+pb) && hasSol(pa-pb) {
 				ans := (pa - pb) / 2
 				fmt.Println(ans)
 				os.Exit(0)
 			}
+		}
+	}
+}
+
+func prob45() {
+	invTri := func(a int) int {
+		return (isqrt(1+8*a) - 1) / 2
+	}
+	isTri := func(n, a int) bool {
+		return n*n+n == 2*a
+	}
+	invPen := func(a int) int {
+		return (isqrt(1+24*a) + 1) / 6
+	}
+	isPen := func(n, a int) bool {
+		return 3*n*n-n == 2*a
+	}
+	for i := 1; ; i++ {
+		n := i * (2*i - 1)
+		if n > 40755 && isTri(invTri(n), n) && isPen(invPen(n), n) {
+			fmt.Println(n)
+			os.Exit(0)
 		}
 	}
 }
@@ -1352,8 +1374,8 @@ func prob46() {
 		}
 		n := isqrt(q / 2)
 		found := false
-		for j := 1; j <=n; j++ {
-			p := q - 2 * j * j
+		for j := 1; j <= n; j++ {
+			p := q - 2*j*j
 			if primeTbl[p] {
 				found = true
 				break
@@ -1461,6 +1483,8 @@ func main() {
 		prob43()
 	case 44:
 		prob44()
+	case 45:
+		prob45()
 	case 46:
 		prob46()
 	default:
