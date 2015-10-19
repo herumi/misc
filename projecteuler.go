@@ -31,11 +31,15 @@ func init() {
 	primes = MakePrime(primeTbl)
 }
 
+func isqrt(x int) int {
+	return int(math.Sqrt(float64(x)))
+}
+
 func IsPrime(n int) bool {
 	if n < len(primeTbl) {
 		return primeTbl[n]
 	}
-	rootn := int(math.Sqrt(float64(n)))
+	rootn := isqrt(n)
 	for _, p := range primes {
 		if p > rootn {
 			return true
@@ -1318,45 +1322,27 @@ func prob43() {
 }
 
 func prob44() {
-	f := func(x int) int {
+	pen := func(x int) int {
 		return x * (3 * x - 1)
 	}
-	hasAns := func(a, b int) bool {
-		d := 1 + 12 * (f(a) + f(b))
-		r := int(math.Sqrt(float64(d)))
-		return r * r == d && (1 + r) % 6 == 0
+	candi := func(x int) int {
+		return (1 + isqrt(1 + 12 * x)) / 6
 	}
-	/*
-		fa + fb = fc
-		fa - fb = fd
-		c > a > b > d
-	*/
-	for d:= 1; ; d++ {
-		fd := f(d)
-		for b := d + 1; ; b++ {
-			t := f(b) + fd
-			a := b + 1
-			if f(a) > t {
-				break
-			}
-			for {
-				if f(a) == t {
-					if hasAns(a, b) {
-						fmt.Println(fd / 2)
-						os.Exit(0)
-					}
-				}
-				a++
-				if f(a) > t {
-					break
-				}
+	hasSol := func(x int) bool {
+		n := candi(x)
+		return pen(n) == x
+	}
+	for a:= 1; ; a++ {
+		pa := pen(a)
+		for b := a-1; b > 0; b-- {
+			pb := pen(b)
+			if hasSol(pa + pb) && hasSol(pa - pb) {
+				ans := (pa - pb) / 2
+				fmt.Println(ans)
+				os.Exit(0)
 			}
 		}
 	}
-}
-
-func isqrt(x int) int {
-	return int(math.Sqrt(float64(x)))
 }
 
 func prob46() {
