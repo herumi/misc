@@ -1482,6 +1482,32 @@ func prob49() {
 	}
 }
 
+func prob50() {
+	maxLen := 0
+	maxP := 0
+	const limit = 1000000
+	for i := 0; i < len(primes); i++ {
+		s := primes[i]
+		q := 0
+		n := 0
+		for j := i + 1; j < len(primes); j++ {
+			s += primes[j]
+			if s > limit {
+				break
+			}
+			if primeTbl[s] {
+				q = s
+				n = j - i + 1
+			}
+		}
+		if n > maxLen {
+			maxLen = n
+			maxP = q
+		}
+	}
+	fmt.Println(maxP)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1587,6 +1613,8 @@ func main() {
 		prob48()
 	case 49:
 		prob49()
+	case 50:
+		prob50()
 	default:
 		fmt.Println("not solved")
 	}
