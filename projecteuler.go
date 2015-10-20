@@ -1556,6 +1556,36 @@ func prob53() {
 	fmt.Println(a)
 }
 
+func prob55() {
+	rev := func(s string) (r string) {
+		n := len(s)
+		for i := 0; i < n; i++ {
+			r = r + string(s[n-i-1])
+		}
+		return
+	}
+	lychrel := func(n int) bool {
+		x := big.NewInt(int64(n))
+		for c := 0; c <= 50; c++ {
+			s := x.String()
+			t := rev(s)
+			if c > 0 && s == t {
+				return false
+			}
+			ti, _ := new(big.Int).SetString(t, 10)
+			x.Add(x, ti)
+		}
+		return true
+	}
+	c := 0
+	for i := 1; i < 10000; i++ {
+		if lychrel(i) {
+			c++
+		}
+	}
+	fmt.Println(c)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1667,6 +1697,8 @@ func main() {
 		prob52()
 	case 53:
 		prob53()
+	case 55:
+		prob55()
 	default:
 		fmt.Println("not solved")
 	}
