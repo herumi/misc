@@ -1610,6 +1610,26 @@ func prob56() {
 	fmt.Println(max)
 }
 
+func prob57() {
+	a := big.NewInt(1)
+	b := big.NewInt(2)
+	t := new(big.Int)
+	c := 0
+	for i := 0; i < 1000; i++ {
+		// sqrt(2) = (b-a)/a
+		// a, b = b, 2 * b + a
+		t.Set(b)
+		b.Add(b, b)
+		b.Add(b, a)
+		a.Set(t)
+		t.Sub(b, a)
+		if len(t.String()) > len(a.String()) {
+			c++
+		}
+	}
+	fmt.Println(c)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1725,6 +1745,8 @@ func main() {
 		prob55()
 	case 56:
 		prob56()
+	case 57:
+		prob57()
 	default:
 		fmt.Println("not solved")
 	}
