@@ -1586,6 +1586,30 @@ func prob55() {
 	fmt.Println(c)
 }
 
+func prob56() {
+	sum := func(s string) (r int) {
+		for i := 0; i < len(s); i++ {
+			r += int(s[i] - '0')
+		}
+		return
+	}
+	f := func(a, b int) int {
+		x := big.NewInt(int64(a))
+		x = x.Exp(x, big.NewInt(int64(b)), nil)
+		return sum(x.String())
+	}
+	max := 0
+	for a := 1; a < 100; a++ {
+		for b := 1; b < 100; b++ {
+			n := f(a, b)
+			if n > max {
+				max = n
+			}
+		}
+	}
+	fmt.Println(max)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1699,6 +1723,8 @@ func main() {
 		prob53()
 	case 55:
 		prob55()
+	case 56:
+		prob56()
 	default:
 		fmt.Println("not solved")
 	}
