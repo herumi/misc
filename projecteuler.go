@@ -1630,6 +1630,27 @@ func prob57() {
 	fmt.Println(c)
 }
 
+func prob58() {
+	pn := 0
+	total := 1
+	n := 1
+	for {
+		p := 4*n*n - 2*n + 1
+		for i := 0; i < 3; i++ {
+			if IsPrime(p) {
+				pn++
+			}
+			p += 2 * n
+		}
+		total += 4
+		n++
+		if pn*10 < total {
+			break
+		}
+	}
+	fmt.Println(2*n - 1)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1747,6 +1768,8 @@ func main() {
 		prob56()
 	case 57:
 		prob57()
+	case 58:
+		prob58()
 	default:
 		fmt.Println("not solved")
 	}
