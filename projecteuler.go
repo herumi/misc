@@ -1651,6 +1651,83 @@ func prob58() {
 	fmt.Println(2*n - 1)
 }
 
+func prob60() {
+	min := 100000000
+	cat := func(a, b int) int {
+		for n := 10; ; n *= 10 {
+			if n > a {
+				return b*n + a
+			}
+		}
+	}
+	L := len(primes)
+	f := func(a, b int) bool {
+		return IsPrime(cat(a, b)) && IsPrime(cat(b, a))
+	}
+	for a := 1; a < L; a++ {
+		p0 := primes[a]
+		if p0*5 > min {
+			break
+		}
+		for b := a + 1; b < L; b++ {
+			p1 := primes[b]
+			if p1*4 > min-p0 {
+				break
+			}
+			p1mod := p1 % 3
+			if !f(p0, p1) {
+				continue
+			}
+			for c := b + 1; c < L; c++ {
+				p2 := primes[c]
+				if p2*3 > min-p0-p1 {
+					break
+				}
+				p2mod := p2 % 3
+				if p1mod != p2mod {
+					continue
+				}
+				if !(f(p0, p2) && f(p1, p2)) {
+					continue
+				}
+				for d := c + 1; d < L; d++ {
+					p3 := primes[d]
+					if p3*2 > min-p0-p1-p2 {
+						break
+					}
+					p3mod := p3 % 3
+					if p3mod != p2mod {
+						continue
+					}
+					if !(f(p0, p3) && f(p1, p3) && f(p2, p3)) {
+						continue
+					}
+					for e := d + 1; e < L; e++ {
+						p4 := primes[e]
+						if p4 > min-p0-p1-p2-p3 {
+							break
+						}
+						p4mod := p4 % 3
+						if p4mod != p3mod {
+							continue
+						}
+						if !(f(p0, p4) && f(p1, p4) && f(p2, p4) && f(p3, p4)) {
+							continue
+						}
+						n := p0 + p1 + p2 + p3 + p4
+						fmt.Println(n, p0, p1, p2, p3, p4)
+						if n < min {
+							min = n
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+	fmt.Println(min)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1770,6 +1847,8 @@ func main() {
 		prob57()
 	case 58:
 		prob58()
+	case 60:
+		prob60()
 	default:
 		fmt.Println("not solved")
 	}
