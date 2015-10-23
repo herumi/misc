@@ -1747,7 +1747,7 @@ func prob62() {
 		}
 		return r
 	}
-	for n := 1; n < 4 ; n++ {
+	for n := 1; ; n++ {
 		for x := ipow(10, n); x < ipow(10, n+1); x++ {
 			s := sortStr(strconv.Itoa(x * x * x))
 			m[s] = append(m[s], x)
@@ -1755,13 +1755,13 @@ func prob62() {
 		min := ipow(10, n+1)
 		minv := []int{}
 		for _, v := range m {
-			if len(v) == 3 && v[0] < min {
+			if len(v) == 5 && v[0] < min {
 				min = v[0]
 				minv = v
 			}
 		}
 		if len(minv) > 0 {
-			fmt.Println(minv)
+			fmt.Println(min * min * min)
 			break
 		}
 	}
