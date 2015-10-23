@@ -35,6 +35,10 @@ func isqrt(x int) int {
 	return int(math.Sqrt(float64(x)))
 }
 
+func ipow(x, y int) int {
+	return int(math.Pow(float64(x), float64(y)))
+}
+
 func IsPrime(n int) bool {
 	if n < len(primeTbl) {
 		return primeTbl[n]
@@ -1728,6 +1732,41 @@ func prob60() {
 	fmt.Println(min)
 }
 
+func prob62() {
+	m := map[string][]int{}
+	sortStr := func(s string) string {
+		n := len(s)
+		v := make([]int, n)
+		for i := 0; i < n; i++ {
+			v[i] = int(s[i])
+		}
+		sort.Sort(sort.IntSlice(v))
+		r := ""
+		for i := 0; i < n; i++ {
+			r += string(v[i])
+		}
+		return r
+	}
+	for n := 1; n < 4 ; n++ {
+		for x := ipow(10, n); x < ipow(10, n+1); x++ {
+			s := sortStr(strconv.Itoa(x * x * x))
+			m[s] = append(m[s], x)
+		}
+		min := ipow(10, n+1)
+		minv := []int{}
+		for _, v := range m {
+			if len(v) == 3 && v[0] < min {
+				min = v[0]
+				minv = v
+			}
+		}
+		if len(minv) > 0 {
+			fmt.Println(minv)
+			break
+		}
+	}
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1849,6 +1888,8 @@ func main() {
 		prob58()
 	case 60:
 		prob60()
+	case 62:
+		prob62()
 	default:
 		fmt.Println("not solved")
 	}
