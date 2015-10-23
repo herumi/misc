@@ -1807,7 +1807,49 @@ func prob63() {
 	*/
 }
 
+	type P struct {
+		a, b, n int
+	}
+	type R struct {
+		p P
+		ls []P
+	}
+	func f(p P) P {
+		ap := (p.n - p.b * p.b) / p.a
+		an := int((math.Sqrt(float64(p.n)) + float64(p.b)) / float64(ap))
+		bp := an * ap - p.b
+		return P{ap, bp, an}
+	}
+	func g(p P, ls []P) R {
+		pp := f(p)
+		pn := P{p.a, p.b, pp.n}
+		for i := 0; i < len(ls); i++ {
+			if pn == ls[i] {
+				return R{p, ls}
+			}
+		}
+		return g(P{pp.a, pp.b, p.n}, append(ls, pn))
+	}
 func prob64() {
+	periodic := func(n int) []int {
+		sn := isqrt(n)
+		if sn * sn == n {
+			return []int{}
+		}
+		v := []int{}
+		r := g(P{1, isqrt(n), n}, []P{})
+		for i := 0; i < len(r.ls); i++ {
+			v = append(v, r.ls[i].n)
+		}
+		return v
+	}
+	c := 0
+	for i := 2; i < 10000; i++ {
+		if len(periodic(i)) %2 == 1 {
+			c++
+		}
+	}
+	fmt.Println(c)
 }
 
 func main() {
