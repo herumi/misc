@@ -1767,6 +1767,49 @@ func prob62() {
 	}
 }
 
+func prob63() {
+	r := map[string]bool{}
+	c := int(math.Log(10.0) / (math.Log(10.0) - math.Log(9.0)))
+	bigPow := func(x, y int) *big.Int {
+		r := new(big.Int)
+		r.Exp(big.NewInt(int64(x)), big.NewInt(int64(y)), nil)
+		return r
+	}
+	for m := 1; m <= c; m++ {
+		a := bigPow(10, m-1)
+		b := new(big.Int).Mul(a, big.NewInt(10))
+		for x := 1; x < 10; x++ {
+			n := bigPow(x, m)
+			if a.Cmp(n) <= 0 && n.Cmp(b) < 0 {
+				r[n.String()] = true
+			}
+		}
+	}
+	fmt.Println(len(r))
+	/*
+		// overflow
+		r := map[int]bool{}
+		c := int(math.Log(10.0) / (math.Log(10.0) - math.Log(9.0)))
+		ipow := func(x, y int) int {
+			return int(math.Pow(float64(x), float64(y)))
+		}
+		for m := 1; m <= c; m++ {
+			a := ipow(10, m - 1)
+			b := a * 10
+			for x := 1; x < 10; x++ {
+				n := ipow(x, m)
+				if a <= n && n < b {
+					r[n] = true
+				}
+			}
+		}
+		fmt.Println(r)
+	*/
+}
+
+func prob64() {
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1890,6 +1933,10 @@ func main() {
 		prob60()
 	case 62:
 		prob62()
+	case 63:
+		prob63()
+	case 64:
+		prob64()
 	default:
 		fmt.Println("not solved")
 	}
