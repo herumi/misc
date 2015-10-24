@@ -1852,6 +1852,17 @@ func prob64() {
 	fmt.Println(c)
 }
 
+func prob65() {
+	makeE := func(n int) []int {
+		v := []int{}
+		for i := 0; i < n; i++ {
+			v = append(v, []int{1, 2 * i, 1})
+		}
+		return v
+	}
+	fmt.Println(makeE(5))
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Println("ans num")
@@ -1979,6 +1990,8 @@ func main() {
 		prob63()
 	case 64:
 		prob64()
+	case 65:
+		prob65()
 	default:
 		fmt.Println("not solved")
 	}
