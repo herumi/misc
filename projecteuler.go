@@ -1852,15 +1852,78 @@ func prob64() {
 	fmt.Println(c)
 }
 
+type Frac struct {
+	nume, deno int
+}
+
+func MakeFrac(nume, deno int) Frac {
+	g := gcd(nume, deno)
+	return Frac{nume / g, deno / g}
+}
+
+func (p *Frac) Add(rhs *Frac) {
+	a := p.nume
+	b := p.deno
+	c := rhs.nume
+	d := rhs.deno
+	*p = MakeFrac(a * d + b * c, b * d)
+}
+
+func (p *Frac) Sub(rhs *Frac) {
+	a := p.nume
+	b := p.deno
+	c := rhs.nume
+	d := rhs.deno
+	*p = MakeFrac(a * d - b * c, b * d)
+}
+
+func (p *Frac) Mul(rhs *Frac) {
+	a := p.nume
+	b := p.deno
+	c := rhs.nume
+	d := rhs.deno
+	*p = MakeFrac(a * c, b * d)
+}
+
+func (p *Frac) Div(rhs *Frac) {
+	a := p.nume
+	b := p.deno
+	c := rhs.nume
+	d := rhs.deno
+	*p = MakeFrac(a * d, b * c)
+}
+
 func prob65() {
-	makeE := func(n int) []int {
-		v := []int{}
-		for i := 0; i < n; i++ {
-			v = append(v, []int{1, 2 * i, 1})
+	/*
+	genRevE := func(n int) func() int {
+		i := n
+		f := func() int {
+			if i == 0 {
+				return 0
+			}
+			switch (i % 3) {
+			default:
+				return 1
+			case 1:
+				i--
+				return i * 2
+			}
 		}
-		return v
+		return f
 	}
-	fmt.Println(makeE(5))
+	f := genRevE(5)
+	for i := 0; i < 3; i++ {
+		a := f()
+		if a == 0 {
+			break
+		}
+		fmt.Println(a)
+	}
+	*/
+	x := Frac{1, 2}
+	y := Frac{1, 3}
+	x.Add(&y)
+	fmt.Println(x)
 }
 
 func main() {
