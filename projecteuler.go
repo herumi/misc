@@ -1807,33 +1807,34 @@ func prob63() {
 	*/
 }
 
-	type P struct {
-		a, b, n int
-	}
-	type R struct {
-		p P
-		ls []P
-	}
-	func f(p P) P {
-		ap := (p.n - p.b * p.b) / p.a
-		an := int((math.Sqrt(float64(p.n)) + float64(p.b)) / float64(ap))
-		bp := an * ap - p.b
-		return P{ap, bp, an}
-	}
-	func g(p P, ls []P) R {
-		pp := f(p)
-		pn := P{p.a, p.b, pp.n}
-		for i := 0; i < len(ls); i++ {
-			if pn == ls[i] {
-				return R{p, ls}
-			}
+type P struct {
+	a, b, n int
+}
+type R struct {
+	p  P
+	ls []P
+}
+
+func f(p P) P {
+	ap := (p.n - p.b*p.b) / p.a
+	an := int((math.Sqrt(float64(p.n)) + float64(p.b)) / float64(ap))
+	bp := an*ap - p.b
+	return P{ap, bp, an}
+}
+func g(p P, ls []P) R {
+	pp := f(p)
+	pn := P{p.a, p.b, pp.n}
+	for i := 0; i < len(ls); i++ {
+		if pn == ls[i] {
+			return R{p, ls}
 		}
-		return g(P{pp.a, pp.b, p.n}, append(ls, pn))
 	}
+	return g(P{pp.a, pp.b, p.n}, append(ls, pn))
+}
 func prob64() {
 	periodic := func(n int) []int {
 		sn := isqrt(n)
-		if sn * sn == n {
+		if sn*sn == n {
 			return []int{}
 		}
 		v := []int{}
@@ -1845,7 +1846,7 @@ func prob64() {
 	}
 	c := 0
 	for i := 2; i < 10000; i++ {
-		if len(periodic(i)) %2 == 1 {
+		if len(periodic(i))%2 == 1 {
 			c++
 		}
 	}
@@ -1853,77 +1854,80 @@ func prob64() {
 }
 
 type Frac struct {
-	nume, deno int
+	nume, deno *big.Int
 }
 
-func MakeFrac(nume, deno int) Frac {
-	g := gcd(nume, deno)
-	return Frac{nume / g, deno / g}
+func (p *Frac) Set(nume, deno int) {
+	p.nume = big.NewInt(int64(nume))
+	p.deno = big.NewInt(int64(deno))
+	g := new(big.Int).GCD(nil, nil, p.nume, p.deno)
+	p.nume.Div(p.nume, g)
+	p.deno.Div(p.deno, g)
 }
 
-func (p *Frac) Add(rhs *Frac) {
+func (p *Frac) Add(rhs Frac) {
 	a := p.nume
 	b := p.deno
 	c := rhs.nume
 	d := rhs.deno
-	*p = MakeFrac(a * d + b * c, b * d)
+	// a/b + c/d = ad + bc / bd
+	a.Mul(a, d)
+	d.Mul(d, b)
+	b.Mul(b, c)
+	a.Add(a, b)
+	p.nume.Set(a)
+	p.deno.Set(d)
 }
 
-func (p *Frac) Sub(rhs *Frac) {
-	a := p.nume
-	b := p.deno
-	c := rhs.nume
-	d := rhs.deno
-	*p = MakeFrac(a * d - b * c, b * d)
+func (p *Frac) AddInt(x int) {
+	t := big.NewInt(int64(x))
+	t.Mul(p.deno, t)
+	p.nume.Add(p.nume, t)
 }
 
-func (p *Frac) Mul(rhs *Frac) {
-	a := p.nume
-	b := p.deno
-	c := rhs.nume
-	d := rhs.deno
-	*p = MakeFrac(a * c, b * d)
-}
-
-func (p *Frac) Div(rhs *Frac) {
-	a := p.nume
-	b := p.deno
-	c := rhs.nume
-	d := rhs.deno
-	*p = MakeFrac(a * d, b * c)
+func (p *Frac) Rev() {
+	p.nume, p.deno = p.deno, p.nume
 }
 
 func prob65() {
-	/*
 	genRevE := func(n int) func() int {
-		i := n
+		i := n - 1
 		f := func() int {
-			if i == 0 {
+			dec := func() { i-- }
+			defer dec()
+			if i < 0 {
 				return 0
 			}
-			switch (i % 3) {
-			default:
+			if (i % 3) == 1 {
+				return (i/3)*2 + 2
+			} else {
 				return 1
-			case 1:
-				i--
-				return i * 2
 			}
 		}
 		return f
 	}
-	f := genRevE(5)
-	for i := 0; i < 3; i++ {
+	frac := func(n int) *Frac {
+		f := genRevE(n - 1)
 		a := f()
-		if a == 0 {
-			break
+		r := new(Frac)
+		r.Set(1, a)
+		for {
+			x := f()
+			if x == 0 {
+				break
+			}
+			r.AddInt(x)
+			r.Rev()
 		}
-		fmt.Println(a)
+		r.AddInt(2)
+		return r
 	}
-	*/
-	x := Frac{1, 2}
-	y := Frac{1, 3}
-	x.Add(&y)
-	fmt.Println(x)
+	ans := 0
+	s := frac(100).nume.String()
+	for i := 0; i < len(s); i++ {
+		ans += int(s[i] - '0')
+	}
+	fmt.Println(ans)
 }
 
 func main() {
