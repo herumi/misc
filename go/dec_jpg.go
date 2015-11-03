@@ -369,10 +369,7 @@ func FindNum(tbl [][]byte, a []byte) int {
 }
 
 func PutHex(b []byte) {
-	for i := 0; i < len(b); i++ {
-		fmt.Printf("%x", b[i])
-	}
-	fmt.Println("")
+	fmt.Printf("%02x\n", b)
 }
 
 func ReadBinary(tbl [][]byte, name string) (r []byte) {
@@ -381,14 +378,14 @@ func ReadBinary(tbl [][]byte, name string) (r []byte) {
 	gh := image.Bounds().Max.Y
 	for y := 12; y < gh; y += 22 {
 		for x := 9; x < gw; x += 36 {
-			H := FindNum(tbl, SplitImage(image, W, H, x, y))
-			if H >= 0 {
-				L := FindNum(tbl, SplitImage(image, W, H, x+12, y))
-				if L < 0 {
+			a := FindNum(tbl, SplitImage(image, W, H, x, y))
+			if a >= 0 {
+				b := FindNum(tbl, SplitImage(image, W, H, x+12, y))
+				if b < 0 {
 					fmt.Println("bad char", name)
 					os.Exit(1)
 				}
-				v := H * 16 + L
+				v := a * 16 + b
 				r = append(r, byte(v))
 			}
 		}
@@ -408,18 +405,13 @@ func main() {
 	}
 	const W int = 10
 	tbl := setup()
-	b := ReadBinary(tbl, "img/0.png")
-	PutHex(b)
-	fmt.Printf("%02x\n", b)
-	/*
-		var ss []string
-		ReadDirAll(os.Args[1], &ss, ".jpg")
-		for _, name := range ss {
-			image := GetPngData(name)
-			PutByte(SplitImage(image, W, H, 9, 12), W)
-			PutByte(SplitImage(image, W, H, 9 + 36, 12), W)
-			PutByte(SplitImage(image, W, H, 9 + 36 * 2, 12), W)
-			PutByte(SplitImage(image, W, H, 9, 12 + 22), W)
-		}
-	*/
+//	PutHex(ReadBinary(tbl, "img/0.png"))
+//	PutHex(ReadBinary(tbl, "img/1.png"))
+	var ss []string
+	ReadDirAll(os.Args[1], &ss, ".jpg")
+	for _, name := range ss {
+		image := GetPngData(name)
+		fmt.Printf("%s ", name)
+		PutHex(ReadBinary(tbl, name))
+	}
 }
