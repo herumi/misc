@@ -61,7 +61,7 @@ func SplitImage(image image.Image, w, h, x0, y0 int) []byte {
 	return b
 }
 
-func PutByte(b []byte, w int) {
+func PutPattern(b []byte, w int) {
 	for i := 0; i < len(b); i++ {
 		fmt.Printf("%d,", b[i])
 		if i%w == w-1 {
@@ -341,18 +341,26 @@ func setup() [][]byte {
 		for y := 12; y < gh; y += 22 {
 			for x := 9; x < gw; x += 36 {
 				b := SplitImage(image, W, H, x, y)
-				PutByte(b, W)
+				PutPattern(b, W)
 				b = SplitImage(image, W, H, x + 12, y)
-				PutByte(b, W)
+				PutPattern(b, W)
 			}
 		}
 		return r
 	*/
 }
 
-func IsSameImage(a, b []byte) bool {
+func IsSameImage(a, b []byte) (s int) {
 	for i := 0; i < len(a); i++ {
-		if a[i] != b[i] {
+		d := int(a[i]) - int(b[i])
+		s += d * d
+	}
+	return
+}
+
+func IsOne(a []byte) bool {
+	for i := 0; i < len(a); i++ {
+		if a[i] != 1 {
 			return false
 		}
 	}
@@ -361,41 +369,58 @@ func IsSameImage(a, b []byte) bool {
 
 func FindNum(tbl [][]byte, a []byte) int {
 	for i := 0; i < 16; i++ {
-		if IsSameImage(tbl[i], a) {
+		d := IsSameImage(tbl[i], a)
+		if d <= 2 {
 			return i
 		}
 	}
 	return -1
 }
 
-func PutHex(b []byte) {
-	fmt.Printf("%02x\n", b)
-}
-
-func ReadBinary(tbl [][]byte, name string) (r []byte) {
+func ReadBinary(tbl [][]byte, name string) (r string) {
 	image := GetPngData(name)
 	gw := image.Bounds().Max.X
 	gh := image.Bounds().Max.Y
-	for y := 12; y < gh; y += 22 {
-		for x := 9; x < gw; x += 36 {
-			a := FindNum(tbl, SplitImage(image, W, H, x, y))
-			if a >= 0 {
-				b := FindNum(tbl, SplitImage(image, W, H, x+12, y))
-				if b < 0 {
-					fmt.Println("bad char", name)
-					os.Exit(1)
-				}
-				v := a * 16 + b
-				r = append(r, byte(v))
+	for y := 12; y < gh - H; y += 22 {
+		for x := 9; x < gw - W; x += 36 {
+			s0 := SplitImage(image, W, H, x, y)
+			if IsOne(s0) {
+				continue
 			}
+			a := FindNum(tbl, s0)
+			s1 := SplitImage(image, W, H, x+12, y)
+			b := FindNum(tbl, s1)
+			if a < 0 || b < 0 {
+				fmt.Println("bad char", name, x, y, len(r))
+				fmt.Println("a", a)
+				PutPattern(s0, W)
+				fmt.Println("b", b)
+				PutPattern(s1, W)
+				os.Exit(1)
+			}
+			v := a * 16 + b
+			r = r + fmt.Sprintf("%02x", v)
 		}
 	}
-	if len(r) != 31 {
-		fmt.Println("bad byte", name)
-		PutHex(r)
+	if len(r) != 62 {
+		fmt.Println("bad byte", name, len(r))
+		fmt.Println(r)
 		os.Exit(1)
 	}
 	return
+}
+
+func candidate(s string) bool {
+	tbl := []string {
+		"30363039", // '0609'
+		"cd80", // int 80h
+	}
+	for i := 0; i < len(tbl); i++ {
+		if !strings.Contains(s, tbl[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 func main() {
@@ -405,13 +430,12 @@ func main() {
 	}
 	const W int = 10
 	tbl := setup()
-//	PutHex(ReadBinary(tbl, "img/0.png"))
-//	PutHex(ReadBinary(tbl, "img/1.png"))
 	var ss []string
 	ReadDirAll(os.Args[1], &ss, ".jpg")
 	for _, name := range ss {
-		image := GetPngData(name)
-		fmt.Printf("%s ", name)
-		PutHex(ReadBinary(tbl, name))
+		s := ReadBinary(tbl, name)
+		if candidate(s) {
+			fmt.Printf("%s %s\n", name, s)
+		}
 	}
 }
