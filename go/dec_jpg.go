@@ -368,21 +368,35 @@ func FindNum(tbl [][]byte, a []byte) int {
 	return -1
 }
 
+func PutHex(b []byte) {
+	for i := 0; i < len(b); i++ {
+		fmt.Printf("%x", b[i])
+	}
+	fmt.Println("")
+}
+
 func ReadBinary(tbl [][]byte, name string) (r []byte) {
 	image := GetPngData(name)
 	gw := image.Bounds().Max.X
 	gh := image.Bounds().Max.Y
 	for y := 12; y < gh; y += 22 {
 		for x := 9; x < gw; x += 36 {
-			idx := FindNum(tbl, SplitImage(image, W, H, x, y))
-			if idx >= 0 {
-				r = append(r, byte(idx))
-			}
-			idx = FindNum(tbl, SplitImage(image, W, H, x+12, y))
-			if idx >= 0 {
-				r = append(r, byte(idx))
+			H := FindNum(tbl, SplitImage(image, W, H, x, y))
+			if H >= 0 {
+				L := FindNum(tbl, SplitImage(image, W, H, x+12, y))
+				if L < 0 {
+					fmt.Println("bad char", name)
+					os.Exit(1)
+				}
+				v := H * 16 + L
+				r = append(r, byte(v))
 			}
 		}
+	}
+	if len(r) != 31 {
+		fmt.Println("bad byte", name)
+		PutHex(r)
+		os.Exit(1)
 	}
 	return
 }
@@ -395,6 +409,7 @@ func main() {
 	const W int = 10
 	tbl := setup()
 	b := ReadBinary(tbl, "img/0.png")
+	PutHex(b)
 	fmt.Printf("%02x\n", b)
 	/*
 		var ss []string
