@@ -21,7 +21,7 @@ int GetDLP(const Ec& P, const Ec& Q)
 int main()
 	try
 {
-	Fp::setModulo("7654319", 10, mcl::fp::FP_GMP);
+	Fp::setModulo("7654319");
 	Zn::setModulo("7654319");
 	Ec::setParam("1234577", "3213242");
 	const Ec base(Fp("5234568"), Fp("2287747"));
