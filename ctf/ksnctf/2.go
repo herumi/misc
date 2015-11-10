@@ -2,15 +2,14 @@ package main
 
 import "fmt"
 
-
 func shift(s string, n int) (r string) {
 	for i := 0; i < len(s); i++ {
 		c := s[i]
 		if c != ' ' {
 			if 'a' <= c && c <= 'z' {
-				c = byte((int(c) - 'a' + n) % 26 + 'a')
+				c = byte((int(c)-'a'+n)%26 + 'a')
 			} else {
-				c = byte((int(c) - 'A' + n) % 26 + 'A')
+				c = byte((int(c)-'A'+n)%26 + 'A')
 			}
 		}
 		r += string(c)
