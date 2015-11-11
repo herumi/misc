@@ -1,13 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
 	"image/png"
 	"io/ioutil"
 	"os"
-	"fmt"
 )
 
 func main() {
@@ -34,7 +34,7 @@ func main() {
 			fmt.Printf(" ")
 		}
 		x++
-		if x == w + 1 {
+		if x == w+1 {
 			x = 0
 			y++
 			fmt.Printf("\n")
