@@ -1,4 +1,5 @@
 import struct
+import sys
 
 def genSetCode(addr, val, offset):
 	code = ""
@@ -11,4 +12,9 @@ def genSetCode(addr, val, offset):
 		n += t
 	return code
 
-print genSetCode(0x80499e0, 0x08048691, 6)
+#print genSetCode(0x80499e0, 0x08048691, 6)
+
+if len(sys.argv) != 4:
+	print "ERR addr val offset"
+else:
+	print genSetCode(eval(sys.argv[1]), eval(sys.argv[2]), int(sys.argv[3]))
