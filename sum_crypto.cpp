@@ -37,22 +37,12 @@ struct Param {
 	Param(int argc, const char *const argv[])
 	{
 		cybozu::Option opt;
-		std::string addList;
-		opt.appendOpt(&addList, "1 5 3 2", "l", ": quoted list of int(eg. \"1 5 3 2\")");
+		opt.appendVec(&iv, "l", ": list of int(eg. 1 5 3 2)");
 		opt.appendHelp("h", ": put this message");
-		opt.appendParam(&mode, "mode", ": init/enc/add/dec");
+		opt.appendParam(&mode, "mode", ": init/enc/sum/dec");
 		if (!opt.parse(argc, argv)) {
 			opt.usage();
 			exit(1);
-		}
-		printf("mode=%s\n", mode.c_str());
-		if (mode == "add") {
-			printf("addList=%s\n", addList.c_str());
-			std::istringstream iss(addList);
-			int i;
-			while (iss >> i) {
-				iv.push_back(i);
-			}
 		}
 	}
 };
@@ -63,6 +53,7 @@ void SysInit()
 	Zn::setModulo(para.n);
 	Fp::setModulo(para.p);
 	Ec::setParam(para.a, para.b);
+	Ec::setCompressedExpression(true);
 }
 
 template<class T>
@@ -104,45 +95,57 @@ void Init()
 
 void Enc(const IntVec& iv)
 {
-	puts("enc");
 	Elgamal::PublicKey pub;
 	Load(pub, pubFile);
 	for (size_t i = 0; i < iv.size(); i++) {
 		Elgamal::CipherText c;
 		pub.enc(c, iv[i], rg);
-		const std::string sheetName = GetSheetName(i);
-		printf("make %s\n", sheetName.c_str());
-		Save(sheetName, c);
+		std::cout << '"' << c << '"';
+		if (i < iv.size() - 1) {
+			std::cout << ',';
+		}
 	}
 }
 
 void Sum()
 {
-	puts("sum");
 	Elgamal::PublicKey pub;
 	Load(pub, pubFile);
 	Elgamal::CipherText result;
-	for (size_t i = 0; ; i++) {
-		const std::string sheetName = GetSheetName(i);
-		Elgamal::CipherText c;
-		if (!Load(c, sheetName, false)) break;
-		printf("add %s\n", sheetName.c_str());
-		result.add(c);
+	std::string line;
+	while (std::getline(std::cin, line, ',')) {
+		if (!line.empty() && line[line.size() - 1] == '\n') {
+			line.resize(line.size() - 1);
+		}
+		const char *begin = line.c_str();
+		const char *end = begin + line.size();
+		if (begin != end) {
+			if (*begin == '"') begin++;
+			if (begin != end) {
+				if (end[-1] == '"') end--;
+				if (begin != end) {
+					Elgamal::CipherText c;
+					std::string s(begin, end);
+					std::istringstream is(s);
+					if (is >> c) {
+						result.add(c);
+					}
+				}
+			}
+		}
 	}
-	printf("create result file : %s\n", resultFile.c_str());
-	Save(resultFile, result);
+	std::cout << result << std::endl;
 }
 
 void Dec()
 {
-	puts("dec");
 	Elgamal::PrivateKey prv;
 	Load(prv, prvFile);
 	prv.setCache(0, 10000);
 	Elgamal::CipherText c;
-	Load(c, resultFile);
+	std::cin >> c;
 	int sum = prv.dec(c);
-	std::cout << "result of sum " << sum << std::endl;
+	std::cout << sum << std::endl;
 }
 
 int main(int argc, char *argv[])
