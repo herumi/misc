@@ -3,28 +3,28 @@
 >FCCpx: Fujitsu C/C++ Compiler Driver Version 1.2.1
 FCCpx -Kfast -S intpair.cpp
 */
-typedef struct IntPair {
-    int i, j;
-} IntPair;
+struct IntPair {
+  int i, j;
+  IntPair(int i, int j) : i(i), j(j){}
+};
 IntPair add(IntPair x, IntPair y) {
-    return (IntPair){x.i + y.i, x.j + y.j};
-}
-IntPair addp(IntPair* x, IntPair* y) {
-    return (IntPair){x->i + y->i, x->j + y->j};
+  return IntPair(x.i+y.i,x.j+y.j);
 }
 void func(int *x, int *y) {
-    IntPair a = {1, 2}, b = {3, 4};
-    IntPair c = add(a, b);
-    *x = c.i;
-    *y = c.j;
+  IntPair a(1,2), b(3,4);
+  IntPair c = add(a,b);
+  *x = c.i;
+  *y = c.j;
+}
+IntPair addp(const IntPair& x, const IntPair& y) {
+  return IntPair(x.i+y.i,x.j+y.j);
 }
 void funcp(int *x, int *y) {
-    IntPair a = {1, 2}, b = {3, 4};
-    IntPair c = addp(&a, &b);
-    *x = c.i;
-    *y = c.j;
+  IntPair a(1,2), b(3,4);
+  IntPair c = addp(a, b);
+  *x = c.i;
+  *y = c.j;
 }
-
 /*
 func:
     save    %sp,-240,%sp

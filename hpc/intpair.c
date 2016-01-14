@@ -22,7 +22,6 @@ void funcp(int *x, int *y) {
     *x = c.i;
     *y = c.j;
 }
-
 /*
 func:
     save    %sp,-240,%sp
