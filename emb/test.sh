@@ -1,5 +1,5 @@
 #objdump -CS -M intel --no-show-raw-insn ./a.out > a.asm
-g++ t.cpp -m32 -I ../../xbyak
+g++ t.cpp -m32
 ./a.out
 python embed-str.py a.out
 
