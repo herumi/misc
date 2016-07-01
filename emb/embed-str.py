@@ -136,7 +136,7 @@ def main():
 	parser.add_argument('-s', '--msg', default='hello')
 	arg = parser.parse_args()
 	(embL, byteL) = getList(arg.inFile)
-	print 'charLen=', len(byteL) / 8
+#	print 'charLen=', len(byteL) / 8
 #	for (addr, c, r1, r2) in embL[0:10]:
 #		print hex(addr), hex(c), r1, r2
 #	print byteL[0:10]
