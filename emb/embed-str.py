@@ -4,6 +4,7 @@ see test.sh
 
 """
 import sys
+import os
 import argparse
 import subprocess
 
@@ -18,7 +19,6 @@ codeTbl = [
 	"add", "adc", "and", "xor", "or", "sbb", "sub", "cmp", "mov"
 ]
 
-baseAddr = 0x8048000
 
 def dec(code, rm):
 	r1 = (rm >> 3) & 7
@@ -53,10 +53,20 @@ def getAsm(inName):
 
 #  80483c2:   01 d0                   add    eax,edx
 def getList(inName):
+	baseAddr32 = 0x8048000
+	baseAddr64 = 0x400000
+	baseAddr = 0
 	text = getAsm(inName).split('\n')
 	embL = []
 	byteL = []
 	for line in text:
+		if baseAddr == 0:
+			if line.find('elf64-x86-64') > 0:
+				baseAddr = baseAddr64
+				print 'not supported elf64 binary'
+				os._exit(1)
+			elif line.find('elf32-i386') > 0:
+				baseAddr = baseAddr32
 		sv = line.split()
 		if len(sv) != 5:
 			continue
@@ -136,13 +146,13 @@ def main():
 	parser.add_argument('-s', '--msg', default='hello')
 	arg = parser.parse_args()
 	(embL, byteL) = getList(arg.inFile)
-#	print 'charLen=', len(byteL) / 8
 #	for (addr, c, r1, r2) in embL[0:10]:
 #		print hex(addr), hex(c), r1, r2
 #	print byteL[0:10]
-	print list2str(byteL)
+	print 'embeded string', list2str(byteL)
 
 	if arg.outFile:
+		print 'max char len=', len(byteL) / 8
 		L = str2list(arg.msg)
 		modifyFile(arg.outFile, arg.inFile, embL, L)
 
