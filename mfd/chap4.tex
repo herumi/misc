@@ -1,0 +1,398 @@
+% ptex2pdf -l -synctex=1 main.tex
+\documentclass{jsarticle}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{amscd}
+\usepackage{xypic}
+\usepackage{ascmac}
+\usepackage[hyphens]{url}
+\usepackage{braket}
+\usepackage[dvipdfmx,hiresbb,final]{graphicx}
+\newcommand{\CC}{\mathbb{C}}
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\QQ}{\mathbb{Q}}
+\newcommand{\ZZ}{\mathbb{Z}}
+\newcommand{\NN}{\mathbb{N}}
+\newcommand{\FF}{\mathbb{F}}
+\newcommand{\PP}{\mathbb{P}}
+\newcommand{\GG}{\mathbb{G}}
+\newcommand{\PhiT}{\trans{\Phi}}
+\newcommand{\calN}{{\cal N}}
+\newcommand{\calD}{{\cal D}}
+\newcommand{\calL}{{\cal L}}
+\newcommand{\calQ}{{\cal Q}}
+\newcommand{\calW}{{\cal W}}
+\newcommand{\half}{\frac{1}{2}}
+\newcommand{\ignore}[1]{}
+\newcommand{\con}{\nabla}
+\newcommand{\dcon}{\con^{*}}
+\newcommand{\mcon}{\overline{\con}}
+\newcommand{\cris}[3]{\Gamma_{#1 #2}^{#3}}
+\newcommand{\marud}[1]{\partial_{#1}}
+\newcommand{\marudd}[1]{\frac{\partial}{\partial #1}}
+
+\newcommand{\makeop}[1]{\mathop{\mathrm{#1}}\nolimits}
+\newcommand{\supp}{\makeop{supp}}
+
+\theoremstyle{definition}
+\newtheorem{theorem}{ê°Ôé¿æ}
+\newtheorem*{theorem*}{ê°Ôé¿æ}
+\newtheorem{lemma}{ğ¥Øë¡·Ş
+\newtheorem*{lemma*}{ğ¥Øë¡·Ş
+\newtheorem{definition}[theorem]{ê°Ôé¾©}
+\newtheorem*{definition*}{ê°Ôé¾©}
+
+\newcommand{\mydescription}[1]{
+\begin{description}
+\setlength{\itemindent}{2zw}
+\setlength{\leftskip}{-2zw}
+\setlength{\labelsep}{1zw}
+#1
+\end{description}
+}
+
+\numberwithin{theorem}{section}
+
+\begin{document}
+åà¼è¥åê¢±ê»¾è¿Êç­¦åá®ê¡ºî¦¼å€¾ñ¼°êÎ¦éîŞç½°ê¦«ş¾²ê¼ªğ¬­è¾š4î­ ğµ®èËù by @herumi
+
+\section{êÀ©îÁÃŞ
+$M$åâ’$C^\infty$ê¦Ôè§Ğæ½“, $\chi(M)$åâ’$M$åá®åãÒå¤±åã°å¦­ê¢´éå¨è¿Æå¢ªåáÒå£ë.
+\begin{definition}[Riemannê¦Ôè§Ğæ½Å¾
+$(M,g)$åá·³iemannê¦Ôè§Ğæ½Æå¢©åá¤å£ëåá¨åá¯è½»ëä¾å¢°$p \in M$åá«åáŞå¡äåáÎå¢¨
+\[
+g_p : T_pM \times T_pM \rightarrow \RR\text{åá¸ç«åî«¹Ş
+\]
+åá§åá¤å¢¥åá¦è½»ëä¾å¢°$X$, $Y \in \chi(M)$åá«åáŞå¡äåáÎå¢¨
+\[
+g:M \ni p \mapsto g_p(X_p,Y_p)\in \RR
+\]
+åáŒ$C^\infty$ñö¢ëõ°åá§åá¤å£ëåâ¤å¢°. $g$åâ’$M$åá®Riemannğª°ë­ïåá¨åá¨å¡æ.
+\end{definition}
+
+\begin{definition}[åãÂå¦«åâ³åã³åãÂå¤±åã¯¾
+è¿ºéÖºî«ºñö“$X$åá«åáŞå¡äåáÎå¢¨è½»ëä¾å¢°ñö¶ê¢«ğ¨¬å¡ìê³€ëé€ëü²ëÑğåáªî¶°éè¬å£òëì¢å¢¦åá¨åáºå¥ñåã©åâ³åã³åãÂå¤±åã°å¢ªåá¨å¡æ.
+\end{definition}
+
+\begin{definition}[ñö¶ê¢«ğ¨«¾
+è¿ºéÖºî«ºñö“$X$åá«åáŞå¡äåáÎå¢¨åáÚå¢°ñã¨éè¬ëÕæéğ°å¢°ñû¬å¢ÀåâŠ$\Set{U_i}$åá§$X=\cup_i U_i$åá¨åáªåâ¶å£âåá®åâ’$X$åá®ğ¤«ğ¨¬å¢ªåá¨å¡æ.
+$U_i$åá¸çªªåá¦$X$åá®ñö¶ëÕæéğ°å¢°åá¨åáºëËëğ¤«ğ¨¬å¢ªåá¨å¡æ.
+\end{definition}
+
+\begin{definition}[î¶°éè«¾
+è¿ºéÖºî«ºñö“$X$åá®ğ¤«ğ¨†$\Set{U_i}$åá«åáŞå¡äåáÎå¢¨ğ¤«ğ¨†$\Set{V_j}$åá¸é´°éè¬å¢©åá¤å£ëåá¨åá¯,
+è½»ëä¾å¢°$j$åá«åáŞå¡äåáÎå¢¨$V_j \subset U_i$åá¨åáªåâ‹$i$åá¸ç­ĞçØªåáÒå£ëåá¨åáºå£òåá¨å¡æ.
+\end{definition}
+
+\begin{definition}[ê³€ëé€ëü²ëÑğ]
+è¿ºéÖºî«ºñö“$X$åá®ğ¤«ğ¨†$\Set{U_i}$åá¸ç±€ëé€ëü²ëÑğåá§åá¤å£ëåá¨åá¯, è½»ëä¾å¢°$x \in X$åá«åáŞå¡äåáÎå¢¨$x$åá®åá¤å£ëğÁÂç£í$V$åá¸ç­ĞçØªåáÎå¢¨$\#\Set{i|U_i \cap V \ne \emptyset}<\infty$åá¨åáªåâ¶å¢ªåáºå£òåá¨å¡æ.
+\end{definition}
+
+\begin{definition}[1åá®éè¬ç²´ş¾°å¢ÀåáŞå¢±éè¬ê§£ş¾±¾
+$X$èº´å¢°ñà£î¸ÔëÌ¤ëõ°$f:X \rightarrow \RR$åá«åáŞå¡äåáÎå¢¨$\supp{f}:=\overline{\Set{x\in X:f(x) \neq 0}}$ş¾ˆ$\overline{A}$åá¯$A$åá®ñö²ç·åş¾²å£ò$f$åá®éï°åá¨åá¨å¡æ.
+
+è¿ºéÖºî«ºñö“$X$åá®ñö¶ê¢«ğ¨†$\Set{U_i}$åá«åáŞå¡äåáÎå¢¨ñà£î¸ÔëÌ¤ëõ°åá®ñû¬ç¿è$\Set{f_i:X \rightarrow [0,1]}$åá§$\Set{\supp{f_i}}$åáŒ$\Set{U_i}$åá®î¶°éè¬å¢©
+\[
+\sum_i f_i=1
+\]
+åá¨åáªåâ¶å¢ªåá$\Set{f_i}$åâ’$\Set{U_i}$åá«êÀÆç±Üå¡ùåâ‹1åá®éè¬ç²´åá¨åá¨å¡æ.
+\end{definition}
+
+\begin{theorem}
+$M$åâÃ©ausdorffåãÂå¦«åâ³åã³åãÂå¤±åãˆ$C^\infty$ê¦Ôè§Ğæ½Æå¢ªåáÒå£ë.
+åáÆå¢°åá¨åá$M$åá®ê³€ëé€ëü²ëÑğåáªñö¶ê¢«ğ¨†$\Set{U_i}$åá§éğ„$\overline{U_i}$åá¸å¤µåã³åãÂå¤±åã°å¢¬åâ¤å¢°åá¸ç­ĞçØªåáÒå£ë.
+åáÊå£éåá«åáÚå¢°$\Set{U_i}$åá«ê³Üå¡ùåâ‹1åá®éè¬ç²´$\Set{f_i}$åá§éğ„$f_i$åáŒ$C^\infty$ñö¢ëõ°åá§åá¤å£ëåâ¤å¢°åá¸ç­ĞçØªåáÒå£ë.
+\end{theorem}
+
+\begin{theorem}
+HausdorffåãÂå¦«åâ³åã³åãÂå¤±åãˆ$C^\infty$ê¦Ôè§Ğæ½Æå¢­åá¯Riemannğª°ë­ïåá¸ç­ĞçØªåáÒå£ë.
+\end{theorem}
+ê³€ëé€ëü²ëÑğåáªñö¶ê¢«ğ¨¬å¢ªåáÚå£ìåá«ê³Üå¡ùåâ‹1åá®éè¬ç²´åâÄæ½¿åá£åá¦, ê³€ëé€íú¨å¢­ê°Ôé¾©åáÎå¢¡éæªé©ºå£òê¾µåâ´ç¿èåâ¾å¡ûåâ‹.
+
+
+è½¥èº‹$M$åá¯HausdorffåãÂå¦«åâ³åã³åãÂå¤±åã°å¢¬$C^\infty$ê¦Ôè§Ğæ½Æå¢ªåáÒå£ë.
+
+\begin{definition}[ëî¥î¸Ó¾
+$M$èº´å¢°ëî¥î¸š
+\[
+\con:\chi(M) \times \chi(M)\ni (X,Y)\mapsto \con_X Y \in \chi(M)
+\]
+åá¨åá¯ì®¡åâÄèº€åáŞå¡ùéæÒç¥ï. $\con_X Y$åâ’$Y$åá®$X$åá«åâ°å£ëéå±ê¦²ç¾®éè¬å¢ªåá¨å¡æ.
+\begin{itemize}
+\item[1.] $\con_X(Y+Z)=\con_X Y + \con_X Z$
+\item[2.] $\con_X(fY)=(Xf)Y+f\con_X Y$ for $f \in C^\infty(M)$
+\item[3.] $\con_{X+Y}Z=\con_X Z+\con_Y Z$
+\item[4.] $\con_{fX}Y=f\con_X Y$
+\end{itemize}
+\end{definition}
+ş¾°è³¨ëä¾ñ¼‰$\con_1$, $\con_2$åá¸è¼§î¸Ôå¢°åá¨åá$\con_1+\con_2$åá¯2íõªíû®åâÄèº€åáŞå¡õåáªåá¨å¢°åá§ëî¥î¸Ôå¢©åá¯åáªåá„.
+$(\con_1+\con_2)/2$åá¯ëî¥î¸Ôå¢©åá¤å£ë. $\con_1-\con_2$åâ¤è¼§î¸Ôå¢©åá¯åáªåá¨å¡ì(1,2)éş¶å¥æåã³åâ½åã«.
+
+$\con_X Y=0$åá®åá¨åá$Y$åá¯$X$åá«ì´¿åá£åá¦ê»³ğ£¸å¢ªåá¨å¡æ.
+
+\begin{definition}[åá­åáĞå£ìíî®å¥æåã³åâ½åã«]
+$M$èº´å¢°ëî¥î¸š$\con$åá«ê±¾åáÎå¢¨$T(X,Y)=\con_X Y-\con_Y X-[X,Y]$åâÄå¢¯åáĞå£ìíî®å¥æåã³åâ½åã«åá¨åá¨å¡æ. $T:\chi(M) \times \chi(M) \rightarrow \chi(M)$.
+\end{definition}
+
+\begin{definition}[Riemannëî¥î¸Ó¾
+Riemannê¦Ôè§Ğæ½“$(M,g)$åá«åáŞå¡äåáÎå¢¨ì®¡åâÄèº€åáŞå¡ùëî¥î¸š$\con$åâÃ³iemannëî¥î¸Ôå¢ªåá†.
+\begin{itemize}
+\item[ğª°ë­ïíú§¾ è½»ëä¾å¢°$X$, $Y$, $Z \in \chi(M)$åá«åáŞå¡äåáÎå¢¨
+\[
+Xg(Y,Z)=g(\con_X Y,Z)+g(Y,\con_X Z).
+\]
+\item[ê±¾î©°íú§¾ T=0.
+\end{itemize}
+\end{definition}
+èº€åá¤íû®åá®ëı¡è½¶åá¯ëû²î¹š$C=\Set{p(t)}$åá«ê±¾åáÎå¢¨$Y$, $Z$åá¸ç¹³ğ£¸å¢¬åâ‰$\con_{\dot{p}(t)} Y=\con_{\dot{p}(t)} Z=0$åáªåá®åá§
+\[
+\frac{d}{dt}g(Y,Z)=g(\con_{\dot{p}(t)} Y,Z)+g(Y,\con_{\dot{p}(t)})=0.
+\]
+åá¤åá¾åâŠ$g(Y,Z)$åá¯èººç¤²å¢©åá¤å£ëåáÆå¢ªåâÄé¤ºåá™.
+
+\begin{definition}[éï¸ç¯¾ëî¥î¸Ó¾
+$(M,g)$åá®ëî¥î¸š$\con$åá«åáŞå¡äåáÎå¢¨ì®¡åâÄèº€åáŞå¡ùëî¥î¸š$\dcon$åâ’$g$åá«ñö¢åáÒå£ë$\con$åá®éï¸ç¯¾affineëî¥î¸Ôå¢ªåá¨å¡æ.
+è½»ëä¾å¢°$X$, $Y$, $Z \in \chi(M)$åá«åáŞå¡äåáÎå¢¨
+\[
+Xg(Y,Z)=g(\con_X Y,Z)+g(Y,\dcon_X Z).
+\]
+\end{definition}
+
+\begin{theorem}
+$(M,g)$åá®ëî¥î¸š$\con$åá«ê±¾åáÎå¢¨éï¸ç¯¾ëî¥î¸š$\dcon$åá¯èº€ëä¾å¢­ê¯ĞçØªåáÒå£ë.
+\end{theorem}
+
+ş¾°ç­ĞçØªş¾²ç±€ëé€ê¼§ìª™$(U_i,x^1, \dots x^n)$åâÄå¢ªåâ‹.
+\begin{eqnarray*}
+& \marud{i}:=\frac{\partial}{\partial x^i}\\
+& \con_{\marud{i}}\marud{j}:=\cris{i}{j}{s}\marud{s}\\
+& g_{jk}:=g(\marud{j},\marud{k})\\
+& \dcon_{\marud{i}}\marud{k}=:z^s_{ik}\marud{s}
+\end{eqnarray*}
+åá¨åáÒå£ë.
+\begin{eqnarray*}
+\marud{i}g_{jk}&=&\marud{i} g(\marud{j},\marud{k}) = g(\con_{\marud{i}}\marud{j},\marud{k})+g(\marud{j},\dcon_{\marud{i}} \marud{s})\\
+&=&g(\cris{i}{j}{s}\marud{s},\marud{k})+g(\marud{j},z^s_{ik}\marud{s})=\cris{i}{j}{s}g(\marud{s},\marud{k})+z^s_{ik}g(\marud{j},\marud{s})\\
+&=&\cris{i}{j}{s}g_{sk}+z^s_{ik}g_{js}.
+\end{eqnarray*}
+$g_{js}g^{ju}=\delta_{s}^u$åâ°å£ê
+\[
+z^u_{ik}=(\marud{i}g_{jk}g^{ju}-\cris{i}{j}{s}g_{sk})g^{ju}.
+\]
+ê³€ëé€íú¨å¢­ê°Ôé¾©åáÎå¢¡$z^u_{ik}$åá§ê¾µåâ´ç¿èåâ¾å¡ûåâ²å£ìåâ¶å¡óåá¨åâÄé¢ºğ¬ºå¡ùåâ¶ñ¼°éÊ§ş¾‰.
+
+ş¾°æ¸€ëä¾è€§ş¾‰
+\begin{lemma}
+$X \in \chi(M)$åá«åá¤åá¨å¢¨è½»ëä¾å¢°$Y\in\chi(M)$åá«åáŞå¡äåáÎå¢¨$g(X,Y)=0$åáªåâ‰$X=0$.
+\end{lemma}
+ê³€ëé€íú¨å¢­$X=x^i \marud{i}$, $Y=\marud{j}$åá¨åáÎå¢¨$g(X,Y)=x^i g_{ij}=0$åâ°å£ê$x^i=0$.
+
+éè¥åá®$\tilde{\dcon}$åá¸ç­ĞçØªåáÎå¢¡åá¨åáÒå£ëåá¨
+\[
+g(Y,\dcon_X Z)=Xg(Y,Z)-g(\con_X Y,Z)=g(Y,\tilde{\dcon}_X Z).
+\]
+åâ°å¢¥åá¦$\dcon_X Z = \tilde{\dcon}_X Z$.
+
+\begin{definition}[éï¸ç¯¾ì©¶ë€ ]
+$(M,g,\con,\dcon)$åâ’$M$åá®éï¸ç¯¾ì©¶ë€ åá¨åá¨å¡æ.
+\end{definition}
+\begin{itemize}
+\item $(\dcon)^{*}=\con$.
+\item
+\begin{eqnarray*}
+\con\text{ åá·³iemannëî¥î¸š } &\iff& Xg(Y,Z)=g(\con_X Y,Z)+g(Y,\con_X Z) \text{ åá¶å¢¦ }T=0\\
+&\iff& \dcon = \con \text{ åá¶å¢¦ }T=0.
+\end{eqnarray*}
+\end{itemize}
+
+$\con$, $\dcon$åá¯èº€ïè¬åá«åá¯ğª°ë­ïíú¨å¢ªåá¯ñùÀå£éåáªåá„.
+\begin{lemma}
+$\mcon:=(\con+\dcon)/2$åá¯ğª°ë­ïíú„.
+\end{lemma}
+ş¾°ê¨¼ëø¼ñ¼‰
+\begin{eqnarray*}
+Xg(Y,Z)&=&g(\con_X Y, Z)+g(Y, \dcon_X Z)\\
+&+&\\
+Xg(Z,Y)&=&g(\con_X Z, Y)+g(Z, \dcon_X Y)\\
+&||&\\
+2Xg(Y,Z)&=&g((\con_X+\dcon_X)Y,Z)+g(Y,(\con_X+\dcon_X)Z).
+\end{eqnarray*}
+åâ°å¢¥åá¦
+\[
+Xg(Y,Z)=g(\mcon_X Y, Z)+g(Y, \mcon_X Z).
+\]
+\begin{theorem}
+ëû²î¹š$C=\Set{p(t)|a\leq t \leq b}$åá«ì´¿åá£åáŸ$\con$, $\dcon$åá«ñö¢åáÒå£ëê»³ğ£¸é§»éë•$\Pi_C$, $\Pi^{*}_C$åá«åá¤åá¨å¢¨
+è½»ëä¾å¢°$v$, $w \in T_{p(a)}M$åá«åáŞå¡äåá—
+\[
+g_{p(b)}(\Pi_C v, \Pi^{*}_C w)=g_{p(a)}(v,w).
+\]
+åá¤åá¾åâ´é±çëö¹åâ’$\con$åá«ñö¢åáÎå¢¨, åâ¤å¡æíé®èÌ»åâ’$\dcon$åá«ñö¢åáÎå¢¨ëî¥åãÒå¤±åã°å¦­åâÄç¹³ğ£¸é§»éëÊå¡ùåâ¶å¢ªåáÚå¢°éæªé©ºå¢±èÁÚç­Ğå¡õåâ¸å£ë.
+\end{theorem}
+
+ş¾°ê¨¼ëø¼ñ¼‰$Y$, $Z$åâ’$C$åá«ì´¿åá£åá¦$\con$ê»³ğ£Œ, $\dcon$ê»³ğ£¸å¢¬åãÒå¤±åã°å¦­ê¢´åá¨åáÒå£ë.
+åá¤åá¾åâŠ$\con_{\frac{d}{dt}}Y=\dcon_{\frac{d}{dt}}Z=0$.
+åâ°å¢¥åá¦
+\[
+\frac{d}{dt}g(Y,Z)=g(\con_{\frac{d}{dt}}Y,Z)+g(Y,\dcon_{\frac{d}{dt}}Z)=0.
+\]
+\begin{definition}[ëû²íî­¾
+è½»ëä¾å¢°$X$, $Y \in \chi(M)$åá«åáŞå¡äåáÎå¢¨ëû²íî‡$R$åâ’$R(X,Y):=[\con_X, \con_Y] - \con_{[X,Y]}$åá§ê°Ôé¾©åáÒå£ë.
+\end{definition}
+
+\begin{theorem}
+$\con$ëû²íî‡$R=0$åá§åá¤å£ëêÁªê¦¢ç¹áéè¬èÚ£è½¶åá¯$\dcon$ëû²íî‡$R^{*}=0$.
+\end{theorem}
+
+ş¾°ê¨¼ëø¼ñ¼‰
+\begin{eqnarray*}
+& [X,Y]g(Z,W)&=g(\con_{[X,Y]}Z,W)+g(Z,\dcon_{[X,Y]}W)\\
+&||&\\
+&XYg(Z,W)-YXg(Z,W)&=X(g(\con_Y Z,W)+g(Z,\dcon_Y W))
+-Y(g(\con_X Z,W)+g(Z,\dcon_X W))\\
+&&= g(\con_X \con_Y Z,W)+g(\con_Y Z,\dcon_X W)
++(g\con_X Z,\dcon_Y W)+g(Z,\dcon_X \dcon_Y W)\\
+&&-g(\con_Y \con_X Z,W)-g(\con_X Z,\dcon_Y W)
+-g(\con_Y Z,\dcon_X W)-g(Z,\dcon_Y \dcon_X W)\\
+&&= g([\con_X,\con_Y]Z,W)+g(Z,[\dcon_X,\dcon_Y]W)
+\end{eqnarray*}
+åâ°å¢¥åá¦
+\[
+g(R(X,Y,Z),W)=-g(Z,R^*(X,Y,W)).
+\]
+åâ°å¢¥åá¦$R=0 \iff R^*=0$.
+
+\begin{definition}[ğª°ë­ïåá®éå±ê¦²ç¾®éè«¾
+\[
+(\con g)(X,Y,Z):=Xg(Y,Z)-g(\con_X Y,Z)-g(Y,\con_X Z).
+\]
+\end{definition}
+\begin{theorem}
+$\con$, $\dcon$åâÄç½ìê±¾åáªëî¥î¸Ôå¢ªåáÒå£ëåá¨åà¢è¬¡åá®åá¬å¢£2ëı¡è½¶åá¸è¯ğåâ´é«¶å¢¦åá¨ì°¶å£êåá®2ëı¡è½¶åâ¤è¯ğåâ´é«¶å¢¦.
+\begin{itemize}
+\item[(1)] $T_{\con}=0$.
+\item[(2)] $T_{\dcon}=0$.
+\item[(3)] $(\con g)(X,Y,Z)$åá¯$X$, $Y$, $Z$åá«åá¤åá¨å¢¨ê±¾î©°.
+\item[(4)] $\mcon :=(\con+\dcon)/2$åá·³iemannëî¥î¸š.
+\end{itemize}
+\end{theorem}
+
+ş¾°ê¨¼ëø¼ñ¼‰
+$(\con g)(X,Y,Z)$åá¯$Y$, $Z$åá«åá¤åá¨å¢¨ê±¾î©°åáªåá®åá¯ëø¼å£éåá‹.
+
+$Xg(Y,Z)=g(\con_X Y,Z)+g(Y,\dcon_X Z)$åâ°å£ê
+\begin{eqnarray*}
+(\con g)(X,Y,Z)&=&g(\con_X Y,Z)+g(Y,\dcon_X,Z)-g(\con_X Y,Z)-g(Y,\con_X Z)\\
+&=&g(Y,(\dcon_X-\con_X)Z).
+\end{eqnarray*}
+åâ°å¢¥åá¦
+\begin{eqnarray*}
+&&g(T_{\dcon}(X,Y),Z)-g(T_{\con}(X,Y),Z)=g(\dcon_X Y-\dcon_Y X-[X,Y],Z)-g(\con_X Y-\con_Y X-[X,Y],Z)\\
+&=&g((\dcon_X-\con_X)Y,Z)-g((\dcon_Y-\con_Y)X,Z)\\
+&=&(\con g)(X,Y,Z)-(\con g)(Y,X,Z).
+\end{eqnarray*}
+
+åáÆå£ìåá«åâ°å£ê
+\begin{itemize}
+\item (1), (2)åá¸è¯ğî­‹. $\rightarrow (\con g)(X,Y,Z)=(\con g)(Y,X,Z) \rightarrow$(3).
+
+$\mcon$åá¯ğª°ë­ïíú¨å¡ëåá¤
+\[
+T_{\mcon}=((\con_X+\dcon_X)/2) Y-((\con_Y+\dcon_Y)/2) X-[X,Y]=(T_{\con}+T_{\dcon})/2=0.
+\]
+åâ°å¢¥åá¦(4)åá¸è¯ğåâ´é«¶å¢¦.
+
+\item (1), (3)åá¸è¯ğî­‹. $\rightarrow g(T_{\dcon}(X,Y),Z)=(\con g)(X,Y,Z)-(\con g)(Y,X,Z)=0$.
+åâ°å¢¥åá¦$T_{\dcon}=0$åá§(2)åá¸è¯ğî­‹.
+
+\item (2), (3)åá¸è¯ğî­‹. $\rightarrow -g(T_{\con}(X,Y),Z)=0 \rightarrow T_{\con}=0$.
+
+\item (1), (4)åá¸è¯ğî­‹. $\rightarrow T_{\con}=T_{\mcon}=0 \rightarrow T_{\dcon}=0$åá§(2)åá¸è¯ğî­‹. åâ°å¢¥åá¦(3)åá¸è¯ğî­‹.
+
+\item (2), (4)åá¸è¯ğî­‹. éğ¸è§˜.
+\item (3), (4)åá¸è¯ğî­‹. $\rightarrow g(T_{\dcon}(X,Y),Z)=g(T(X,Y),Z)$.
+$T_{\mcon}=(T_{\con}+T_{\dcon})/2=0$åâ°å£ê$g(T_{\con}(X,Y)+T_{\dcon}(X,Y),Z)=0$
+åâ°å¢¥åá¦$T_{\con}(X,Y)=T_{\dcon}(X,Y)=0$.
+\end{itemize}
+\begin{definition}[éï¸ç¯¾ê»³éı¦]
+éï¸ç¯¾ì©¶ë€ åâÄå£âåá¤ê¦Ôè§Ğæ½“$(M,g,\con,\dcon)$åá«åá¤åá¨å¢¨$T_{\con}=T_{\dcon}=0$, $R_{\con}=0$åá®åá¨åá$M$åâÄç½ìê±¾ê»³éı¦åá¨åá¨å¡æ.
+\end{definition}
+ş¾°è³¨ëä¾ñ¼²å¡óåá®åá¨åá$R_{\dcon}=0$.
+
+$(U, x^1, \dots, x^n)$, $(V, y^1, \dots, y^n)$åâÄå¡ıåâ¸å¡şåâŒ$\con$, $\dcon$åá«ñö¢åáÒå£ëaffineê¼§ìªÒê¿Âç£íåá¨åáÒå£ë.
+affineğÁÂç£íéğ¸ç£«åá¯affineê¦²è½ûåá®ïçªíô±ê¼¦åá®åá¿åá¤å¢¥åáŸ(ê°Ôé¿æ3.5.2).
+ê¼§ìªÒå£òåá¬å¢Àåá¾å¢ªåâ¶å¡óåá¨åá§ì®¡åá®åâ°å¡æåá«åá§åáºå£ë.
+\begin{theorem}
+éï¸ç¯¾ê»³éı¦åáªê¦Ôè§Ğæ½“$(M,g,\con,\dcon)$åá«åá¤åá¨å¢¨
+\[
+g(\marudd{x^i}, \marudd{y^j})=\delta_{ij}
+\]
+åá¨åáªåâ¶ç±€ëé€$\con$ affineê¼§ìªÒé³», ê³€ëé€$\dcon$ affineê¼§ìªÒé³»åá®î·„$\Set{(x^i),(y^j)}$åâÄå¢ªåâ¸å£ë.
+\end{theorem}
+
+ş¾°ê¨¼ëø¼ñ¼²é¤»$p_0 \in M$åá§$\con$åá«ñö¢åáÒå£ëaffineê¼§ìªÒê¿Âç£í$(U,x^i)$, $\dcon$åá«ñö¢åáÒå£ëaffineê¼§ìªÒê¿Âç£í$(V,\eta^j)$åâÄå¢ªåâ‹.
+åá¤åá¾åâŠ
+\[
+\con_X\left(\marudd{x^i}\right)=0, \quad \dcon_X\left(\marudd{\eta^j}\right)=0.
+\]
+
+\[
+a_{ij}:=g_p((\marudd{x^i})_p, (\marudd{\eta^j})_p), \quad A:=(a_{ij})
+\]
+åá¨åáÎå¢¨$y^i:=\sum_j a_{ij} \eta^j$åá¨åáÒå£ë.
+affineê¼§ìªÒé³»åá®affneê¦²è½ûåáªåá®åá§$y^i$åá¯affineê¼§ìªÒé³».
+\[
+\marudd{\eta^j}=\sum_k a_{kj} \marudd{y^k}
+\]
+åáªåá®åá§
+\[
+\marudd{y^k}=(A^{-1})_{jk} \marudd{\eta^j}.
+\]
+åâ°å¢¥åá¦
+\[
+g_p(\marudd{x^i},\marudd{y^k})=(A^{-1})_{jk}g(\marudd{x^i},\marudd{\eta^j})=(A^{-1})_{jk}A_{ij}=\delta_{jk}.
+\]
+
+åá¤å¢ªåá¯åáÆå¢°ê¼§ìªÒé³»åá®åá¾åâ¾å£êåá§åâ¤è¡òî¯²éÓäåá«ëèÀå£êî­¶å¢¦åáÆå¢ªåâÄé¢ºğ¬ºå¡ùåâ‹.
+$x^i$, $y^j$åá·Âffineê¼§ìªÒé³»åáªåá®åá§è½»ëä¾å¢°$X \in \chi(M)$åá«åáŞå¡äåáÎå¢¨
+\[
+Xg(\marud{x^i},\marud{y^j})=g(\con_X(\marudd{x^i}),\marudd{y^j})+g(\marudd{x^i},\dcon_X(\marudd{y^j}))=0
+\]
+åá¨åáªåâŠ$g(\marud{x^i},\marud{y^j})=\delta_{jk}$åá¯åáŒ$p$åá®ğÁÂç£íåá§ëèÀå£êî­¶å¢¦.
+
+è½¥ñù$M:=U \cap V$åá¨åá—, $\con$-affineê¼§ìªÒé³»åâ’$(\theta^i)$, $\dcon$-affineê¼§ìªÒé³»åâ’$(\eta_j)$åá¨åá¶å¡ï.
+ëû´åá«$\partial_i:=\marudd{\theta^i}$, $\partial^i:=\marudd{\eta_i}$åá¨åáÒå£ë.
+\[
+g(\partial_i,\partial^j)=\delta_i^j.
+\]
+
+\begin{lemma}
+$g_{ij}:=g(\partial_i,\partial_j)$, $g^{ij}:=g(\partial^i, \partial^j)$åá¨åáÒå£ëåá¨
+\[
+g_{ij}=\partial_i \eta_j=\partial_j \eta_i, \quad g^{ij}=\partial^i \eta^j = \partial^j \eta^i, \quad g_{ij}g^{jk}=\delta_i^k.
+\]
+\end{lemma}
+
+\begin{lemma}
+åá¤å£ë$C^\infty$ñö¢ëõ°$\Set{\psi(\theta^i,\dots,\theta^n), \phi(\eta_i,\dots,\eta_n)}$åá¸ç­ĞçØªåáÎå¢¨
+\[
+\eta_i=\partial_i\psi, \quad \theta^i=\partial^i \phi, \quad \psi(\theta^1, \dots, \theta^n)+\phi(\eta_i,\dots,\eta_n)-\theta^i \eta_i=0.
+\]
+\end{lemma}
+ş¾°è³¨ëä¾ñ¼‰$y_1(x_1,x_2)$, $y_2(x_1,x_2)$åá¸å¡âåá£åá¦$\frac{\partial y_1}{\partial x_2}=\frac{\partial y_2}{\partial_x1}$åá¨åáÒå£ë.
+ê³€ëé€íú¨å¢­
+\begin{eqnarray*}
+y_1&=a x_1+b x_2,\\
+y_2&=c x_1+d x_2
+\end{eqnarray*}
+åá¨ëû¸åá¨å¢¨ëı¡è½¶åâÄë¢«íô¨åáÒå£ëåá¨$b=c$.
+åá¤åá¾åâŠ$f=\half a x_1^2+b x_1 x_2 + \half d x_2^2$åá¨åáÒå£ëåá¨$y_1=\frac{\partial f}{\partial x_1}$, $y_2=\frac{\partial f}{\partial x_2}$åá¨åá¶å¡ñåâ‹.
+
+\begin{lemma}
+$g_{ij}=\partial_i \partial_j \psi$, $g^{ij}=\partial^i \partial^j \phi$
+åá¨åá¶å¡ñåâ¶å¢°åá§$\psi$, $\phi$åá¯$\theta^i$, $\eta_j$åá«ñö¢åáÒå£ëíë­îÀ©éç¸ñö¢ëõ°åá§åá¤å£ë.
+\end{lemma}
+
+
+\end{document}
