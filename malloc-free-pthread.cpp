@@ -4,14 +4,19 @@
 #include <vector>
 #include <pthread.h>
 
-void task(int idx)
+int task(int idx)
 {
 	const int size = 100;
+	int s = 0;
 	for (int i = 1; i < size; i++) {
 		char *p = (char*)malloc(i);
 		memset(p, idx, i);
+		for (int j = 0; j < i; j++) {
+			s += p[j];
+		}
 		free(p);
 	}
+	return s;
 }
 
 struct Range {
@@ -25,10 +30,12 @@ void* run(void *arg)
 	int begin = range->begin;
 	int end = range->end;
 	printf("begin=%d, end=%d\n", begin, end);
+	int s = 0;
 	while (begin != end) {
-		task(begin);
+		s += task(begin);
 		begin++;
 	}
+	printf("s=%d\n", s);
 	return 0;
 }
 
