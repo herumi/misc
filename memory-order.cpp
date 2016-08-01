@@ -40,7 +40,7 @@ struct Code : Xbyak::CodeGenerator {
 		ret();
 	}
 	Code()
-		: Xbyak::CodeGenerator(4096 * 1280)
+		: Xbyak::CodeGenerator(4096 * 2000)
 	{
 		p0 = getCurr<void (*)()>();
 		proc0();
@@ -55,11 +55,14 @@ void verify()
 	int count[2][2] = {};
 	for (int i = 0; i < N; i++) {
 		count[x[i].r1][x[i].r2]++;
+		if (x[i].r1 == 0 && x[i].r2 == 0) printf("ERR %d\n", i);
 	}
-	printf("r 0 0 : %d\n", count[0][0]);
-	printf("r 0 1 : %d\n", count[0][1]);
-	printf("r 1 0 : %d\n", count[1][0]);
-	printf("r 1 1 : %d\n", count[1][1]);
+	if (count[0][0] > 0) {
+		printf("r 0 0 : %d\n", count[0][0]);
+		printf("r 0 1 : %d\n", count[0][1]);
+		printf("r 1 0 : %d\n", count[1][0]);
+		printf("r 1 1 : %d\n", count[1][1]);
+	}
 }
 
 int main()
@@ -67,12 +70,10 @@ int main()
 {
 	Code code;
 //	verify();
-	std::thread t0(p1);
-	std::thread t1(p0);
-	puts("run");
+	std::thread t0(p0);
+	std::thread t1(p1);
 	t0.join();
 	t1.join();
-	puts("verify");
 	verify();
 } catch (std::exception& e) {
 	printf("ERR %s\n", e.what());
