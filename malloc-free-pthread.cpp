@@ -1,3 +1,8 @@
+/*
+env LD_PRELOAD=/usr/lib/libtcmalloc_minimal.so.4 ./a.out 4
+
+g++ -Ofast -march=native -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -ltcmalloc_minimal malloc-free-pthread.cpp -pthread
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -6,7 +11,7 @@
 
 int task(int idx)
 {
-	const int size = 100;
+	const int size = 1000;
 	int s = 0;
 	for (int i = 1; i < size; i++) {
 		char *p = (char*)malloc(i);

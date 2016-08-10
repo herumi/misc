@@ -10,7 +10,7 @@ template<class T, class RG>
 void shuffle1(T& v, RG& rg)
 {
 	if (v.size() <= 1) return;
-	for (size_t i = 0, n = v.size(); i < n - 1; i++) {
+	for (size_t i = 0, n = v.size(); i < n; i++) {
 		size_t r = size_t(rg.get64() % n);
 		std::swap(v[i], v[r]);
 	}
