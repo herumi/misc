@@ -36,12 +36,12 @@
 \newcommand{\supp}{\makeop{supp}}
 
 \theoremstyle{definition}
-\newtheorem{theorem}{к°Фйїж}
-\newtheorem*{theorem*}{к°Фйїж}
-\newtheorem{lemma}{рҐШлЋЎ·Ю
-\newtheorem*{lemma*}{рҐШлЋЎ·Ю
-\newtheorem{definition}[theorem]{к°ФйЋѕЋ©}
-\newtheorem*{definition*}{к°ФйЋѕЋ©}
+\newtheorem{theorem}{е®љзђ†}
+\newtheorem*{theorem*}{е®љзђ†}
+\newtheorem{lemma}{иЈњйЎЊ}
+\newtheorem*{lemma*}{иЈњйЎЊ}
+\newtheorem{definition}[theorem]{е®љзѕ©}
+\newtheorem*{definition*}{е®љзѕ©}
 
 \newcommand{\mydescription}[1]{
 \begin{description}
@@ -55,70 +55,70 @@
 \numberwithin{theorem}{section}
 
 \begin{document}
-еајиҐекўЋ±к»ЋѕиїКзЋ­Ћ¦ебЋ®кЎЋєо¦јеЂѕсЋј°кО¦йоЮзЋЅЋ°к¦Ћ«юѕІкЋјЋЄр¬Ћ­иѕљ4о­Ћ рµ®иЛщ by @herumi
+гЂЋжѓ…е ±е№ѕдЅ•е­¦гЃ®еџєз¤ЋгЂЏпј€и—¤еЋџеЅ°е¤«пј‰ијЄиЄ­дјљ4з« иі‡ж–™ by @herumi
 
-\section{кАЋ©оБГЮ
-$M$ев’$C^\infty$к¦ФиЋ§РжЋЅ“, $\chi(M)$ев’$M$ебЋ®егТе¤±ег°е¦­кўЋґйеЋЁиїЖеўЄебТеЈл.
-\begin{definition}[Riemannк¦ФиЋ§РжЋЅЕѕ
-$(M,g)$еб·іiemannк¦ФиЋ§РжЋЅЖеў©еб¤еЈлебЋЁебЋЇиЅЋ»лдѕеў°$p \in M$ебЋ«ебЮеЎдебОеўЁ
+\section{еѕ©зї’}
+$M$г‚’$C^\infty$е¤љж§дЅ“, $\chi(M)$г‚’$M$гЃ®гѓ™г‚Їгѓ€гѓ«е ґе…ЁдЅ“гЃЁгЃ™г‚‹.
+\begin{definition}[Riemannе¤љж§дЅ“]
+$(M,g)$гЃЊRiemannе¤љж§дЅ“гЃ§гЃ‚г‚‹гЃЁгЃЇд»»ж„ЏгЃ®$p \in M$гЃ«гЃџгЃ„гЃ—гЃ¦
 \[
-g_p : T_pM \times T_pM \rightarrow \RR\text{ебёз«ео«№Ю
+g_p : T_pM \times T_pM \rightarrow \RR\text{гЃЊе†…з©Ќ}
 \]
-ебЋ§еб¤еўҐебЋ¦иЅЋ»лдѕеў°$X$, $Y \in \chi(M)$ебЋ«ебЮеЎдебОеўЁ
+гЃ§гЃ‚гЃЈгЃ¦д»»ж„ЏгЃ®$X$, $Y \in \chi(M)$гЃ«гЃџгЃ„гЃ—гЃ¦
 \[
 g:M \ni p \mapsto g_p(X_p,Y_p)\in \RR
 \]
-ебЊ$C^\infty$сцЋўлхЋ°ебЋ§еб¤еЈлев¤еў°. $g$ев’$M$ебЋ®RiemannрЄ°л­пебЋЁебЁеЎж.
+гЃЊ$C^\infty$й–ўж•°гЃ§гЃ‚г‚‹г‚‚гЃ®. $g$г‚’$M$гЃ®RiemannиЁ€й‡ЏгЃЁгЃ„гЃ†.
 \end{definition}
 
-\begin{definition}[егВе¦«евЋіегЋіегВе¤±егЇѕ
-иїєйЦєо«Ћєсц“$X$ебЋ«ебЮеЎдебОеўЁиЅЋ»лдѕеў°сц¶кЋўЋ«рЁ¬еЎмкіЂлйЂльІлСребЋЄо¶Ћ°йи¬еЈтлмўеў¦ебЋЁебєеҐсегЋ©евЋіегЋіегВе¤±ег°еўЄебЁеЎж.
+\begin{definition}[гѓ‘гѓ©г‚ігѓігѓ‘г‚Їгѓ€]
+дЅЌз›ёз©єй–“$X$гЃ«гЃџгЃ„гЃ—гЃ¦д»»ж„ЏгЃ®й–‹иў«и¦†гЃЊе±Ђж‰Ђжњ‰й™ђгЃЄзґ°е€†г‚’жЊЃгЃ¤гЃЁгЃЌгѓ‘гѓ©г‚ігѓігѓ‘г‚Їгѓ€гЃЁгЃ„гЃ†.
 \end{definition}
 
-\begin{definition}[сц¶кЋўЋ«рЁ«ѕ
-иїєйЦєо«Ћєсц“$X$ебЋ«ебЮеЎдебОеўЁебЪеў°сгЋЁйи¬лХжйр°еў°сы¬еўАевЉ$\Set{U_i}$ебЋ§$X=\cup_i U_i$ебЋЁебЋЄев¶еЈвебЋ®ев’$X$ебЋ®р¤Ћ«рЁ¬еўЄебЁеЎж.
-$U_i$ебёзЄЄебЋ¦$X$ебЋ®сц¶лХжйр°еў°ебЋЁебєлЛлр¤Ћ«рЁ¬еўЄебЁеЎж.
+\begin{definition}[й–‹иў«и¦†]
+дЅЌз›ёз©єй–“$X$гЃ«гЃџгЃ„гЃ—гЃ¦гЃќгЃ®йѓЁе€†й›†еђ€гЃ®й›†гЃѕг‚Љ$\Set{U_i}$гЃ§$X=\cup_i U_i$гЃЁгЃЄг‚‹г‚‚гЃ®г‚’$X$гЃ®иў«и¦†гЃЁгЃ„гЃ†.
+$U_i$гЃЊе…ЁгЃ¦$X$гЃ®й–‹й›†еђ€гЃ®гЃЁгЃЌй–‹иў«и¦†гЃЁгЃ„гЃ†.
 \end{definition}
 
-\begin{definition}[о¶Ћ°йи«ѕ
-иїєйЦєо«Ћєсц“$X$ебЋ®р¤Ћ«рЁ†$\Set{U_i}$ебЋ«ебЮеЎдебОеўЁр¤Ћ«рЁ†$\Set{V_j}$ебёйЋґЋ°йи¬еў©еб¤еЈлебЋЁебЋЇ,
-иЅЋ»лдѕеў°$j$ебЋ«ебЮеЎдебОеўЁ$V_j \subset U_i$ебЋЁебЋЄев‹$i$ебёзЋ­РзШЄебТеЈлебЋЁебєеЈтебЁеЎж.
+\begin{definition}[зґ°е€†]
+дЅЌз›ёз©єй–“$X$гЃ®иў«и¦†$\Set{U_i}$гЃ«гЃџгЃ„гЃ—гЃ¦иў«и¦†$\Set{V_j}$гЃЊзґ°е€†гЃ§гЃ‚г‚‹гЃЁгЃЇ,
+д»»ж„ЏгЃ®$j$гЃ«гЃџгЃ„гЃ—гЃ¦$V_j \subset U_i$гЃЁгЃЄг‚‹$i$гЃЊе­ењЁгЃ™г‚‹гЃЁгЃЌг‚’гЃ„гЃ†.
 \end{definition}
 
-\begin{definition}[кіЂлйЂльІлСр]
-иїєйЦєо«Ћєсц“$X$ебЋ®р¤Ћ«рЁ†$\Set{U_i}$ебёзЋ±ЂлйЂльІлСребЋ§еб¤еЈлебЋЁебЋЇ, иЅЋ»лдѕеў°$x \in X$ебЋ«ебЮеЎдебОеўЁ$x$ебЋ®еб¤еЈлрБВзЈн$V$ебёзЋ­РзШЄебОеўЁ$\#\Set{i|U_i \cap V \ne \emptyset}<\infty$ебЋЁебЋЄев¶еўЄебєеЈтебЁеЎж.
+\begin{definition}[е±Ђж‰Ђжњ‰й™ђ]
+дЅЌз›ёз©єй–“$X$гЃ®иў«и¦†$\Set{U_i}$гЃЊе±Ђж‰Ђжњ‰й™ђгЃ§гЃ‚г‚‹гЃЁгЃЇ, д»»ж„ЏгЃ®$x \in X$гЃ«гЃџгЃ„гЃ—гЃ¦$x$гЃ®гЃ‚г‚‹иї‘е‚Ќ$V$гЃЊе­ењЁгЃ—гЃ¦$\#\Set{i|U_i \cap V \ne \emptyset}<\infty$гЃЁгЃЄг‚‹гЃЁгЃЌг‚’гЃ„гЃ†.
 \end{definition}
 
-\begin{definition}[1ебЋ®йи¬зІґюѕ°еўАебЮеў±йи¬кЋ§ЋЈюѕ±ѕ
-$X$иєґеў°саЋЈоёФлМ¤лхЋ°$f:X \rightarrow \RR$ебЋ«ебЮеЎдебОеўЁ$\supp{f}:=\overline{\Set{x\in X:f(x) \neq 0}}$юѕ€$\overline{A}$ебЋЇ$A$ебЋ®сцІз·еюѕІеЈт$f$ебЋ®йпЋ°ебЋЁебЁеЎж.
+\begin{definition}[1гЃ®е€†е‰Іпј€гЃѕгЃџгЃЇе€†и§Јпј‰]
+$X$дёЉгЃ®йЂЈз¶љй–ўж•°$f:X \rightarrow \RR$гЃ«гЃџгЃ„гЃ—гЃ¦$\supp{f}:=\overline{\Set{x\in X:f(x) \neq 0}}$пј€$\overline{A}$гЃЇ$A$гЃ®й–‰еЊ…пј‰г‚’$f$гЃ®еЏ°гЃЁгЃ„гЃ†.
 
-иїєйЦєо«Ћєсц“$X$ебЋ®сц¶кЋўЋ«рЁ†$\Set{U_i}$ебЋ«ебЮеЎдебОеўЁсаЋЈоёФлМ¤лхЋ°ебЋ®сы¬зїи$\Set{f_i:X \rightarrow [0,1]}$ебЋ§$\Set{\supp{f_i}}$ебЊ$\Set{U_i}$ебЋ®о¶Ћ°йи¬еў©
+дЅЌз›ёз©єй–“$X$гЃ®й–‹иў«и¦†$\Set{U_i}$гЃ«гЃџгЃ„гЃ—гЃ¦йЂЈз¶љй–ўж•°гЃ®й›†еђ€$\Set{f_i:X \rightarrow [0,1]}$гЃ§$\Set{\supp{f_i}}$гЃЊ$\Set{U_i}$гЃ®зґ°е€†гЃ§
 \[
 \sum_i f_i=1
 \]
-ебЋЁебЋЄев¶еўЄебЌ$\Set{f_i}$ев’$\Set{U_i}$ебЋ«кАЖзЋ±ЬеЎщев‹1ебЋ®йи¬зІґебЋЁебЁеЎж.
+гЃЁгЃЄг‚‹гЃЁгЃЌ$\Set{f_i}$г‚’$\Set{U_i}$гЃ«еѕ“е±ћгЃ™г‚‹1гЃ®е€†е‰ІгЃЁгЃ„гЃ†.
 \end{definition}
 
 \begin{theorem}
-$M$евГ©ausdorffегВе¦«евЋіегЋіегВе¤±ег€$C^\infty$к¦ФиЋ§РжЋЅЖеўЄебТеЈл.
-ебЖеў°ебЋЁебЌ$M$ебЋ®кіЂлйЂльІлСребЋЄсц¶кЋўЋ«рЁ†$\Set{U_i}$ебЋ§йр„$\overline{U_i}$ебёе¤µегЋіегВе¤±ег°еў¬ев¤еў°ебёзЋ­РзШЄебТеЈл.
-ебКеЈйебЋ«ебЪеў°$\Set{U_i}$ебЋ«кіЬеЎщев‹1ебЋ®йи¬зІґ$\Set{f_i}$ебЋ§йр„$f_i$ебЊ$C^\infty$сцЋўлхЋ°ебЋ§еб¤еЈлев¤еў°ебёзЋ­РзШЄебТеЈл.
+$M$г‚’Hausdorffгѓ‘гѓ©г‚ігѓігѓ‘г‚Їгѓ€$C^\infty$е¤љж§дЅ“гЃЁгЃ™г‚‹.
+гЃ“гЃ®гЃЁгЃЌ$M$гЃ®е±Ђж‰Ђжњ‰й™ђгЃЄй–‹иў«и¦†$\Set{U_i}$гЃ§еђ„$\overline{U_i}$гЃЊг‚ігѓігѓ‘г‚Їгѓ€гЃЄг‚‚гЃ®гЃЊе­ењЁгЃ™г‚‹.
+гЃ•г‚‰гЃ«гЃќгЃ®$\Set{U_i}$гЃ«е±ћгЃ™г‚‹1гЃ®е€†е‰І$\Set{f_i}$гЃ§еђ„$f_i$гЃЊ$C^\infty$й–ўж•°гЃ§гЃ‚г‚‹г‚‚гЃ®гЃЊе­ењЁгЃ™г‚‹.
 \end{theorem}
 
 \begin{theorem}
-HausdorffегВе¦«евЋіегЋіегВе¤±ег€$C^\infty$к¦ФиЋ§РжЋЅЖеў­ебЋЇRiemannрЄ°л­пебёзЋ­РзШЄебТеЈл.
+Hausdorffгѓ‘гѓ©г‚ігѓігѓ‘г‚Їгѓ€$C^\infty$е¤љж§дЅ“гЃ«гЃЇRiemannиЁ€й‡ЏгЃЊе­ењЁгЃ™г‚‹.
 \end{theorem}
-кіЂлйЂльІлСребЋЄсц¶кЋўЋ«рЁ¬еўЄебЪеЈмебЋ«кіЬеЎщев‹1ебЋ®йи¬зІґевДжЋЅЋїебЋЈебЋ¦, кіЂлйЂнъЁеў­к°ФйЋѕЋ©ебОеўЎйжЄйЋ©єеЈткѕЋµевґзїиевѕеЎыев‹.
+е±Ђж‰Ђжњ‰й™ђгЃЄй–‹иў«и¦†гЃЁгЃќг‚ЊгЃ«е±ћгЃ™г‚‹1гЃ®е€†е‰Іг‚’дЅїгЃЈгЃ¦, е±Ђж‰Ђзљ„гЃ«е®љзѕ©гЃ—гЃџе†…з©Ќг‚’ејµг‚Љеђ€г‚ЏгЃ›г‚‹.
 
 
-иЅЋҐиє‹$M$ебЋЇHausdorffегВе¦«евЋіегЋіегВе¤±ег°еў¬$C^\infty$к¦ФиЋ§РжЋЅЖеўЄебТеЈл.
+д»Ґдё‹$M$гЃЇHausdorffгѓ‘гѓ©г‚ігѓігѓ‘г‚Їгѓ€гЃЄ$C^\infty$е¤љж§дЅ“гЃЁгЃ™г‚‹.
 
-\begin{definition}[лоЋҐоёУѕ
-$M$иєґеў°лоЋҐоёљ
+\begin{definition}[жЋҐз¶љ]
+$M$дёЉгЃ®жЋҐз¶љ
 \[
 \con:\chi(M) \times \chi(M)\ni (X,Y)\mapsto \con_X Y \in \chi(M)
 \]
-ебЋЁебЋЇм®ЋЎевДиЋєЂебЮеЎщйжТзҐп. $\con_X Y$ев’$Y$ебЋ®$X$ебЋ«ев°еЈлйеЋ±к¦ІзЋѕЋ®йи¬еўЄебЁеЎж.
+гЃЁгЃЇж¬Ўг‚’жєЂгЃџгЃ™е†™еѓЏ. $\con_X Y$г‚’$Y$гЃ®$X$гЃ«г‚€г‚‹е…±е¤‰еѕ®е€†гЃЁгЃ„гЃ†.
 \begin{itemize}
 \item[1.] $\con_X(Y+Z)=\con_X Y + \con_X Z$
 \item[2.] $\con_X(fY)=(Xf)Y+f\con_X Y$ for $f \in C^\infty(M)$
@@ -126,91 +126,91 @@ $M$иєґеў°лоЋҐоёљ
 \item[4.] $\con_{fX}Y=f\con_X Y$
 \end{itemize}
 \end{definition}
-юѕ°иЋіЋЁлдѕсЋј‰$\con_1$, $\con_2$ебёиј§оёФеў°ебЋЁебЌ$\con_1+\con_2$ебЋЇ2нхЋЄныЋ®евДиЋєЂебЮеЎхебЋЄебЁеў°ебЋ§лоЋҐоёФеў©ебЋЇебЋЄеб„.
-$(\con_1+\con_2)/2$ебЋЇлоЋҐоёФеў©еб¤еЈл. $\con_1-\con_2$ев¤иј§оёФеў©ебЋЇебЋЄебЁеЎм(1,2)йю¶еҐжегЋіевЋЅегЋ«.
+пј€жіЁж„Џпј‰$\con_1$, $\con_2$гЃЊжЋҐз¶љгЃ®гЃЁгЃЌ$\con_1+\con_2$гЃЇ2з•Єз›®г‚’жєЂгЃџгЃ•гЃЄгЃ„гЃ®гЃ§жЋҐз¶љгЃ§гЃЇгЃЄгЃ„.
+$(\con_1+\con_2)/2$гЃЇжЋҐз¶љгЃ§гЃ‚г‚‹. $\con_1-\con_2$г‚‚жЋҐз¶љгЃ§гЃЇгЃЄгЃ„гЃЊ(1,2)ећ‹гѓ†гѓіг‚Ѕгѓ«.
 
-$\con_X Y=0$ебЋ®ебЋЁебЌ$Y$ебЋЇ$X$ебЋ«мґЋїебЋЈебЋ¦к»ЋірЈёеўЄебЁеЎж.
+$\con_X Y=0$гЃ®гЃЁгЃЌ$Y$гЃЇ$X$гЃ«жІїгЃЈгЃ¦е№іиЎЊгЃЁгЃ„гЃ†.
 
-\begin{definition}[ебЋ­ебРеЈмно®еҐжегЋіевЋЅегЋ«]
-$M$иєґеў°лоЋҐоёљ$\con$ебЋ«к±ЋѕебОеўЁ$T(X,Y)=\con_X Y-\con_Y X-[X,Y]$евДеўЇебРеЈмно®еҐжегЋіевЋЅегЋ«ебЋЁебЁеЎж. $T:\chi(M) \times \chi(M) \rightarrow \chi(M)$.
+\begin{definition}[гЃ­гЃг‚ЊзЋ‡гѓ†гѓіг‚Ѕгѓ«]
+$M$дёЉгЃ®жЋҐз¶љ$\con$гЃ«еЇѕгЃ—гЃ¦$T(X,Y)=\con_X Y-\con_Y X-[X,Y]$г‚’гЃ­гЃг‚ЊзЋ‡гѓ†гѓіг‚Ѕгѓ«гЃЁгЃ„гЃ†. $T:\chi(M) \times \chi(M) \rightarrow \chi(M)$.
 \end{definition}
 
-\begin{definition}[RiemannлоЋҐоёУѕ
-Riemannк¦ФиЋ§РжЋЅ“$(M,g)$ебЋ«ебЮеЎдебОеўЁм®ЋЎевДиЋєЂебЮеЎщлоЋҐоёљ$\con$евГіiemannлоЋҐоёФеўЄеб†.
+\begin{definition}[RiemannжЋҐз¶љ]
+Riemannе¤љж§дЅ“$(M,g)$гЃ«гЃџгЃ„гЃ—гЃ¦ж¬Ўг‚’жєЂгЃџгЃ™жЋҐз¶љ$\con$г‚’RiemannжЋҐз¶љгЃЁгЃ†.
 \begin{itemize}
-\item[рЄ°л­пнъ§ѕ иЅЋ»лдѕеў°$X$, $Y$, $Z \in \chi(M)$ебЋ«ебЮеЎдебОеўЁ
+\item[иЁ€й‡Џзљ„] д»»ж„ЏгЃ®$X$, $Y$, $Z \in \chi(M)$гЃ«гЃџгЃ„гЃ—гЃ¦
 \[
 Xg(Y,Z)=g(\con_X Y,Z)+g(Y,\con_X Z).
 \]
-\item[к±Ћѕо©Ћ°нъ§ѕ T=0.
+\item[еЇѕз§°зљ„] T=0.
 \end{itemize}
 \end{definition}
-иєЂебЋ¤ныЋ®ебЋ®лэЋЎиЅЋ¶ебЋЇлыЋІо№љ$C=\Set{p(t)}$ебЋ«к±ЋѕебОеўЁ$Y$, $Z$ебёзЋ№ЋірЈёеў¬ев‰$\con_{\dot{p}(t)} Y=\con_{\dot{p}(t)} Z=0$ебЋЄебЋ®ебЋ§
+дёЂгЃ¤з›®гЃ®жќЎд»¶гЃЇж›Із·љ$C=\Set{p(t)}$гЃ«еЇѕгЃ—гЃ¦$Y$, $Z$гЃЊе№іиЎЊгЃЄг‚‰$\con_{\dot{p}(t)} Y=\con_{\dot{p}(t)} Z=0$гЃЄгЃ®гЃ§
 \[
 \frac{d}{dt}g(Y,Z)=g(\con_{\dot{p}(t)} Y,Z)+g(Y,\con_{\dot{p}(t)})=0.
 \]
-ебЋ¤ебЋѕевЉ$g(Y,Z)$ебЋЇиєєзЋ¤Іеў©еб¤еЈлебЖеўЄевДйЋ¤Ћєеб™.
+гЃ¤гЃѕг‚Љ$g(Y,Z)$гЃЇдёЌе¤‰гЃ§гЃ‚г‚‹гЃ“гЃЁг‚’з¤єгЃ™.
 
-\begin{definition}[йпёзЋЇЋѕлоЋҐоёУѕ
-$(M,g)$ебЋ®лоЋҐоёљ$\con$ебЋ«ебЮеЎдебОеўЁм®ЋЎевДиЋєЂебЮеЎщлоЋҐоёљ$\dcon$ев’$g$ебЋ«сцЋўебТеЈл$\con$ебЋ®йпёзЋЇЋѕaffineлоЋҐоёФеўЄебЁеЎж.
-иЅЋ»лдѕеў°$X$, $Y$, $Z \in \chi(M)$ебЋ«ебЮеЎдебОеўЁ
+\begin{definition}[еЏЊеЇѕжЋҐз¶љ]
+$(M,g)$гЃ®жЋҐз¶љ$\con$гЃ«гЃџгЃ„гЃ—гЃ¦ж¬Ўг‚’жєЂгЃџгЃ™жЋҐз¶љ$\dcon$г‚’$g$гЃ«й–ўгЃ™г‚‹$\con$гЃ®еЏЊеЇѕaffineжЋҐз¶љгЃЁгЃ„гЃ†.
+д»»ж„ЏгЃ®$X$, $Y$, $Z \in \chi(M)$гЃ«гЃџгЃ„гЃ—гЃ¦
 \[
 Xg(Y,Z)=g(\con_X Y,Z)+g(Y,\dcon_X Z).
 \]
 \end{definition}
 
 \begin{theorem}
-$(M,g)$ебЋ®лоЋҐоёљ$\con$ебЋ«к±ЋѕебОеўЁйпёзЋЇЋѕлоЋҐоёљ$\dcon$ебЋЇиєЂлдѕеў­кЇРзШЄебТеЈл.
+$(M,g)$гЃ®жЋҐз¶љ$\con$гЃ«еЇѕгЃ—гЃ¦еЏЊеЇѕжЋҐз¶љ$\dcon$гЃЇдёЂж„ЏгЃ«е­ењЁгЃ™г‚‹.
 \end{theorem}
 
-юѕ°зЋ­РзШЄюѕІзЋ±ЂлйЂкјЋ§мЄ™$(U_i,x^1, \dots x^n)$евДеўЄев‹.
+пј€е­ењЁпј‰е±Ђж‰Ђеє§жЁ™$(U_i,x^1, \dots x^n)$г‚’гЃЁг‚‹.
 \begin{eqnarray*}
 & \marud{i}:=\frac{\partial}{\partial x^i}\\
 & \con_{\marud{i}}\marud{j}:=\cris{i}{j}{s}\marud{s}\\
 & g_{jk}:=g(\marud{j},\marud{k})\\
 & \dcon_{\marud{i}}\marud{k}=:z^s_{ik}\marud{s}
 \end{eqnarray*}
-ебЋЁебТеЈл.
+гЃЁгЃ™г‚‹.
 \begin{eqnarray*}
 \marud{i}g_{jk}&=&\marud{i} g(\marud{j},\marud{k}) = g(\con_{\marud{i}}\marud{j},\marud{k})+g(\marud{j},\dcon_{\marud{i}} \marud{s})\\
 &=&g(\cris{i}{j}{s}\marud{s},\marud{k})+g(\marud{j},z^s_{ik}\marud{s})=\cris{i}{j}{s}g(\marud{s},\marud{k})+z^s_{ik}g(\marud{j},\marud{s})\\
 &=&\cris{i}{j}{s}g_{sk}+z^s_{ik}g_{js}.
 \end{eqnarray*}
-$g_{js}g^{ju}=\delta_{s}^u$ев°еЈк
+$g_{js}g^{ju}=\delta_{s}^u$г‚€г‚Љ
 \[
 z^u_{ik}=(\marud{i}g_{jk}g^{ju}-\cris{i}{j}{s}g_{sk})g^{ju}.
 \]
-кіЂлйЂнъЁеў­к°ФйЋѕЋ©ебОеўЎ$z^u_{ik}$ебЋ§кѕЋµевґзїиевѕеЎыевІеЈмев¶еЎуебЋЁевДйЋўЋєр¬єеЎщев¶сЋј°йК§юѕ‰.
+е±Ђж‰Ђзљ„гЃ«е®љзѕ©гЃ—гЃџ$z^u_{ik}$гЃ§ејµг‚Љеђ€г‚ЏгЃ›г‚‰г‚Њг‚‹гЃ“гЃЁг‚’зўєиЄЌгЃ™г‚‹пј€з•Ґпј‰.
 
-юѕ°жЋёЂлдѕиЂЋ§юѕ‰
+пј€дёЂж„ЏжЂ§пј‰
 \begin{lemma}
-$X \in \chi(M)$ебЋ«ебЋ¤ебЁеўЁиЅЋ»лдѕеў°$Y\in\chi(M)$ебЋ«ебЮеЎдебОеўЁ$g(X,Y)=0$ебЋЄев‰$X=0$.
+$X \in \chi(M)$гЃ«гЃ¤гЃ„гЃ¦д»»ж„ЏгЃ®$Y\in\chi(M)$гЃ«гЃџгЃ„гЃ—гЃ¦$g(X,Y)=0$гЃЄг‚‰$X=0$.
 \end{lemma}
-кіЂлйЂнъЁеў­$X=x^i \marud{i}$, $Y=\marud{j}$ебЋЁебОеўЁ$g(X,Y)=x^i g_{ij}=0$ев°еЈк$x^i=0$.
+е±Ђж‰Ђзљ„гЃ«$X=x^i \marud{i}$, $Y=\marud{j}$гЃЁгЃ—гЃ¦$g(X,Y)=x^i g_{ij}=0$г‚€г‚Љ$x^i=0$.
 
-йиЋҐебЋ®$\tilde{\dcon}$ебёзЋ­РзШЄебОеўЎебЋЁебТеЈлебЋЁ
+е€ҐгЃ®$\tilde{\dcon}$гЃЊе­ењЁгЃ—гЃџгЃЁгЃ™г‚‹гЃЁ
 \[
 g(Y,\dcon_X Z)=Xg(Y,Z)-g(\con_X Y,Z)=g(Y,\tilde{\dcon}_X Z).
 \]
-ев°еўҐебЋ¦$\dcon_X Z = \tilde{\dcon}_X Z$.
+г‚€гЃЈгЃ¦$\dcon_X Z = \tilde{\dcon}_X Z$.
 
-\begin{definition}[йпёзЋЇЋѕм©¶лЂЋ ]
-$(M,g,\con,\dcon)$ев’$M$ебЋ®йпёзЋЇЋѕм©¶лЂЋ ебЋЁебЁеЎж.
+\begin{definition}[еЏЊеЇѕж§‹йЂ ]
+$(M,g,\con,\dcon)$г‚’$M$гЃ®еЏЊеЇѕж§‹йЂ гЃЁгЃ„гЃ†.
 \end{definition}
 \begin{itemize}
 \item $(\dcon)^{*}=\con$.
 \item
 \begin{eqnarray*}
-\con\text{ еб·іiemannлоЋҐоёљ } &\iff& Xg(Y,Z)=g(\con_X Y,Z)+g(Y,\con_X Z) \text{ еб¶еў¦ }T=0\\
-&\iff& \dcon = \con \text{ еб¶еў¦ }T=0.
+\con\text{ гЃЊRiemannжЋҐз¶љ } &\iff& Xg(Y,Z)=g(\con_X Y,Z)+g(Y,\con_X Z) \text{ гЃ‹гЃ¤ }T=0\\
+&\iff& \dcon = \con \text{ гЃ‹гЃ¤ }T=0.
 \end{eqnarray*}
 \end{itemize}
 
-$\con$, $\dcon$ебЋЇиєЂпиЋ¬ебЋ«ебЋЇрЄ°л­пнъЁеўЄебЋЇсщАеЈйебЋЄеб„.
+$\con$, $\dcon$гЃЇдёЂи€¬гЃ«гЃЇиЁ€й‡Џзљ„гЃЁгЃЇй™ђг‚‰гЃЄгЃ„.
 \begin{lemma}
-$\mcon:=(\con+\dcon)/2$ебЋЇрЄ°л­пнъ„.
+$\mcon:=(\con+\dcon)/2$гЃЇиЁ€й‡Џзљ„.
 \end{lemma}
-юѕ°кЋЁЋјлшјсЋј‰
+пј€иЁјжЋпј‰
 \begin{eqnarray*}
 Xg(Y,Z)&=&g(\con_X Y, Z)+g(Y, \dcon_X Z)\\
 &+&\\
@@ -218,34 +218,34 @@ Xg(Z,Y)&=&g(\con_X Z, Y)+g(Z, \dcon_X Y)\\
 &||&\\
 2Xg(Y,Z)&=&g((\con_X+\dcon_X)Y,Z)+g(Y,(\con_X+\dcon_X)Z).
 \end{eqnarray*}
-ев°еўҐебЋ¦
+г‚€гЃЈгЃ¦
 \[
 Xg(Y,Z)=g(\mcon_X Y, Z)+g(Y, \mcon_X Z).
 \]
 \begin{theorem}
-лыЋІо№љ$C=\Set{p(t)|a\leq t \leq b}$ебЋ«мґЋїебЋЈебџ$\con$, $\dcon$ебЋ«сцЋўебТеЈлк»ЋірЈёйЋ§Ћ»йл•$\Pi_C$, $\Pi^{*}_C$ебЋ«ебЋ¤ебЁеўЁ
-иЅЋ»лдѕеў°$v$, $w \in T_{p(a)}M$ебЋ«ебЮеЎдеб—
+ж›Із·љ$C=\Set{p(t)|a\leq t \leq b}$гЃ«жІїгЃЈгЃџ$\con$, $\dcon$гЃ«й–ўгЃ™г‚‹е№іиЎЊз§»е‹•$\Pi_C$, $\Pi^{*}_C$гЃ«гЃ¤гЃ„гЃ¦
+д»»ж„ЏгЃ®$v$, $w \in T_{p(a)}M$гЃ«гЃџгЃ„гЃ—
 \[
 g_{p(b)}(\Pi_C v, \Pi^{*}_C w)=g_{p(a)}(v,w).
 \]
-ебЋ¤ебЋѕевґй±злцЋ№ев’$\con$ебЋ«сцЋўебОеўЁ, ев¤еЎжнй®иМ»ев’$\dcon$ебЋ«сцЋўебОеўЁлоЋҐегТе¤±ег°е¦­евДзЋ№ЋірЈёйЋ§Ћ»йлКеЎщев¶еўЄебЪеў°йжЄйЋ©єеў±иБЪзЋ­РеЎхевёеЈл.
+гЃ¤гЃѕг‚Љз‰‡ж–№г‚’$\con$гЃ«й–ўгЃ—гЃ¦, г‚‚гЃ†з‰‡ж–№г‚’$\dcon$гЃ«й–ўгЃ—гЃ¦жЋҐгѓ™г‚Їгѓ€гѓ«г‚’е№іиЎЊз§»е‹•гЃ™г‚‹гЃЁгЃќгЃ®е†…з©ЌгЃЇдїќе­гЃ•г‚Њг‚‹.
 \end{theorem}
 
-юѕ°кЋЁЋјлшјсЋј‰$Y$, $Z$ев’$C$ебЋ«мґЋїебЋЈебЋ¦$\con$к»ЋірЈЊ, $\dcon$к»ЋірЈёеў¬егТе¤±ег°е¦­кўЋґебЋЁебТеЈл.
-ебЋ¤ебЋѕевЉ$\con_{\frac{d}{dt}}Y=\dcon_{\frac{d}{dt}}Z=0$.
-ев°еўҐебЋ¦
+пј€иЁјжЋпј‰$Y$, $Z$г‚’$C$гЃ«жІїгЃЈгЃ¦$\con$е№іиЎЊ, $\dcon$е№іиЎЊгЃЄгѓ™г‚Їгѓ€гѓ«е ґгЃЁгЃ™г‚‹.
+гЃ¤гЃѕг‚Љ$\con_{\frac{d}{dt}}Y=\dcon_{\frac{d}{dt}}Z=0$.
+г‚€гЃЈгЃ¦
 \[
 \frac{d}{dt}g(Y,Z)=g(\con_{\frac{d}{dt}}Y,Z)+g(Y,\dcon_{\frac{d}{dt}}Z)=0.
 \]
-\begin{definition}[лыЋІно­ѕ
-иЅЋ»лдѕеў°$X$, $Y \in \chi(M)$ебЋ«ебЮеЎдебОеўЁлыЋІно‡$R$ев’$R(X,Y):=[\con_X, \con_Y] - \con_{[X,Y]}$ебЋ§к°ФйЋѕЋ©ебТеЈл.
+\begin{definition}[ж›ІзЋ‡]
+д»»ж„ЏгЃ®$X$, $Y \in \chi(M)$гЃ«гЃџгЃ„гЃ—гЃ¦ж›ІзЋ‡$R$г‚’$R(X,Y):=[\con_X, \con_Y] - \con_{[X,Y]}$гЃ§е®љзѕ©гЃ™г‚‹.
 \end{definition}
 
 \begin{theorem}
-$\con$лыЋІно‡$R=0$ебЋ§еб¤еЈлкБЄкЋ¦ўз№бйи¬иЪЈиЅЋ¶ебЋЇ$\dcon$лыЋІно‡$R^{*}=0$.
+$\con$ж›ІзЋ‡$R=0$гЃ§гЃ‚г‚‹еї…и¦ЃеЌЃе€†жќЎд»¶гЃЇ$\dcon$ж›ІзЋ‡$R^{*}=0$.
 \end{theorem}
 
-юѕ°кЋЁЋјлшјсЋј‰
+пј€иЁјжЋпј‰
 \begin{eqnarray*}
 & [X,Y]g(Z,W)&=g(\con_{[X,Y]}Z,W)+g(Z,\dcon_{[X,Y]}W)\\
 &||&\\
@@ -257,82 +257,82 @@ $\con$лыЋІно‡$R=0$ебЋ§еб¤еЈлкБЄкЋ¦ўз№бйи¬иЪЈиЅЋ¶ебЋЇ$\dcon$лыЋІно‡$R^{*}=0$.
 -g(\con_Y Z,\dcon_X W)-g(Z,\dcon_Y \dcon_X W)\\
 &&= g([\con_X,\con_Y]Z,W)+g(Z,[\dcon_X,\dcon_Y]W)
 \end{eqnarray*}
-ев°еўҐебЋ¦
+г‚€гЃЈгЃ¦
 \[
 g(R(X,Y,Z),W)=-g(Z,R^*(X,Y,W)).
 \]
-ев°еўҐебЋ¦$R=0 \iff R^*=0$.
+г‚€гЃЈгЃ¦$R=0 \iff R^*=0$.
 
-\begin{definition}[рЄ°л­пебЋ®йеЋ±к¦ІзЋѕЋ®йи«ѕ
+\begin{definition}[иЁ€й‡ЏгЃ®е…±е¤‰еѕ®е€†]
 \[
 (\con g)(X,Y,Z):=Xg(Y,Z)-g(\con_X Y,Z)-g(Y,\con_X Z).
 \]
 \end{definition}
 \begin{theorem}
-$\con$, $\dcon$евДзЅмк±ЋѕебЋЄлоЋҐоёФеўЄебТеЈлебЋЁеаўиЋ¬ЋЎебЋ®еб¬еўЈ2лэЋЎиЅЋ¶ебёиЇревґйЋ«¶еў¦ебЋЁм°¶еЈкебЋ®2лэЋЎиЅЋ¶ев¤иЇревґйЋ«¶еў¦.
+$\con$, $\dcon$г‚’еЏЊеЇѕгЃЄжЋҐз¶љгЃЁгЃ™г‚‹гЃЁгЂЃж¬ЎгЃ®гЃ†гЃЎ2жќЎд»¶гЃЊж€ђг‚Љз«‹гЃ¤гЃЁж®‹г‚ЉгЃ®2жќЎд»¶г‚‚ж€ђг‚Љз«‹гЃ¤.
 \begin{itemize}
 \item[(1)] $T_{\con}=0$.
 \item[(2)] $T_{\dcon}=0$.
-\item[(3)] $(\con g)(X,Y,Z)$ебЋЇ$X$, $Y$, $Z$ебЋ«ебЋ¤ебЁеўЁк±Ћѕо©Ћ°.
-\item[(4)] $\mcon :=(\con+\dcon)/2$еб·іiemannлоЋҐоёљ.
+\item[(3)] $(\con g)(X,Y,Z)$гЃЇ$X$, $Y$, $Z$гЃ«гЃ¤гЃ„гЃ¦еЇѕз§°.
+\item[(4)] $\mcon :=(\con+\dcon)/2$гЃЊRiemannжЋҐз¶љ.
 \end{itemize}
 \end{theorem}
 
-юѕ°кЋЁЋјлшјсЋј‰
-$(\con g)(X,Y,Z)$ебЋЇ$Y$, $Z$ебЋ«ебЋ¤ебЁеўЁк±Ћѕо©Ћ°ебЋЄебЋ®ебЋЇлшјеЈйеб‹.
+пј€иЁјжЋпј‰
+$(\con g)(X,Y,Z)$гЃЇ$Y$, $Z$гЃ«гЃ¤гЃ„гЃ¦еЇѕз§°гЃЄгЃ®гЃЇжЋг‚‰гЃ‹.
 
-$Xg(Y,Z)=g(\con_X Y,Z)+g(Y,\dcon_X Z)$ев°еЈк
+$Xg(Y,Z)=g(\con_X Y,Z)+g(Y,\dcon_X Z)$г‚€г‚Љ
 \begin{eqnarray*}
 (\con g)(X,Y,Z)&=&g(\con_X Y,Z)+g(Y,\dcon_X,Z)-g(\con_X Y,Z)-g(Y,\con_X Z)\\
 &=&g(Y,(\dcon_X-\con_X)Z).
 \end{eqnarray*}
-ев°еўҐебЋ¦
+г‚€гЃЈгЃ¦
 \begin{eqnarray*}
 &&g(T_{\dcon}(X,Y),Z)-g(T_{\con}(X,Y),Z)=g(\dcon_X Y-\dcon_Y X-[X,Y],Z)-g(\con_X Y-\con_Y X-[X,Y],Z)\\
 &=&g((\dcon_X-\con_X)Y,Z)-g((\dcon_Y-\con_Y)X,Z)\\
 &=&(\con g)(X,Y,Z)-(\con g)(Y,X,Z).
 \end{eqnarray*}
 
-ебЖеЈмебЋ«ев°еЈк
+гЃ“г‚ЊгЃ«г‚€г‚Љ
 \begin{itemize}
-\item (1), (2)ебёиЇро­‹. $\rightarrow (\con g)(X,Y,Z)=(\con g)(Y,X,Z) \rightarrow$(3).
+\item (1), (2)гЃЊж€ђз«‹. $\rightarrow (\con g)(X,Y,Z)=(\con g)(Y,X,Z) \rightarrow$(3).
 
-$\mcon$ебЋЇрЄ°л­пнъЁеЎлебЋ¤
+$\mcon$гЃЇиЁ€й‡Џзљ„гЃ‹гЃ¤
 \[
 T_{\mcon}=((\con_X+\dcon_X)/2) Y-((\con_Y+\dcon_Y)/2) X-[X,Y]=(T_{\con}+T_{\dcon})/2=0.
 \]
-ев°еўҐебЋ¦(4)ебёиЇревґйЋ«¶еў¦.
+г‚€гЃЈгЃ¦(4)гЃЊж€ђг‚Љз«‹гЃ¤.
 
-\item (1), (3)ебёиЇро­‹. $\rightarrow g(T_{\dcon}(X,Y),Z)=(\con g)(X,Y,Z)-(\con g)(Y,X,Z)=0$.
-ев°еўҐебЋ¦$T_{\dcon}=0$ебЋ§(2)ебёиЇро­‹.
+\item (1), (3)гЃЊж€ђз«‹. $\rightarrow g(T_{\dcon}(X,Y),Z)=(\con g)(X,Y,Z)-(\con g)(Y,X,Z)=0$.
+г‚€гЃЈгЃ¦$T_{\dcon}=0$гЃ§(2)гЃЊж€ђз«‹.
 
-\item (2), (3)ебёиЇро­‹. $\rightarrow -g(T_{\con}(X,Y),Z)=0 \rightarrow T_{\con}=0$.
+\item (2), (3)гЃЊж€ђз«‹. $\rightarrow -g(T_{\con}(X,Y),Z)=0 \rightarrow T_{\con}=0$.
 
-\item (1), (4)ебёиЇро­‹. $\rightarrow T_{\con}=T_{\mcon}=0 \rightarrow T_{\dcon}=0$ебЋ§(2)ебёиЇро­‹. ев°еўҐебЋ¦(3)ебёиЇро­‹.
+\item (1), (4)гЃЊж€ђз«‹. $\rightarrow T_{\con}=T_{\mcon}=0 \rightarrow T_{\dcon}=0$гЃ§(2)гЃЊж€ђз«‹. г‚€гЃЈгЃ¦(3)гЃЊж€ђз«‹.
 
-\item (2), (4)ебёиЇро­‹. йрёиЋ§.
-\item (3), (4)ебёиЇро­‹. $\rightarrow g(T_{\dcon}(X,Y),Z)=g(T(X,Y),Z)$.
-$T_{\mcon}=(T_{\con}+T_{\dcon})/2=0$ев°еЈк$g(T_{\con}(X,Y)+T_{\dcon}(X,Y),Z)=0$
-ев°еўҐебЋ¦$T_{\con}(X,Y)=T_{\dcon}(X,Y)=0$.
+\item (2), (4)гЃЊж€ђз«‹. еђЊж§.
+\item (3), (4)гЃЊж€ђз«‹. $\rightarrow g(T_{\dcon}(X,Y),Z)=g(T(X,Y),Z)$.
+$T_{\mcon}=(T_{\con}+T_{\dcon})/2=0$г‚€г‚Љ$g(T_{\con}(X,Y)+T_{\dcon}(X,Y),Z)=0$
+г‚€гЃЈгЃ¦$T_{\con}(X,Y)=T_{\dcon}(X,Y)=0$.
 \end{itemize}
-\begin{definition}[йпёзЋЇЋѕк»ЋійэЋ¦]
-йпёзЋЇЋѕм©¶лЂЋ евДеЈвебЋ¤к¦ФиЋ§РжЋЅ“$(M,g,\con,\dcon)$ебЋ«ебЋ¤ебЁеўЁ$T_{\con}=T_{\dcon}=0$, $R_{\con}=0$ебЋ®ебЋЁебЌ$M$евДзЅмк±Ћѕк»ЋійэЋ¦ебЋЁебЁеЎж.
+\begin{definition}[еЏЊеЇѕе№іеќ¦]
+еЏЊеЇѕж§‹йЂ г‚’г‚‚гЃ¤е¤љж§дЅ“$(M,g,\con,\dcon)$гЃ«гЃ¤гЃ„гЃ¦$T_{\con}=T_{\dcon}=0$, $R_{\con}=0$гЃ®гЃЁгЃЌ$M$г‚’еЏЊеЇѕе№іеќ¦гЃЁгЃ„гЃ†.
 \end{definition}
-юѕ°иЋіЋЁлдѕсЋјІеЎуебЋ®ебЋЁебЌ$R_{\dcon}=0$.
+пј€жіЁж„Џпј‰гЃ“гЃ®гЃЁгЃЌ$R_{\dcon}=0$.
 
-$(U, x^1, \dots, x^n)$, $(V, y^1, \dots, y^n)$евДеЎэевёеЎюевЊ$\con$, $\dcon$ебЋ«сцЋўебТеЈлaffineкјЋ§мЄТкЋїВзЈнебЋЁебТеЈл.
-affineрБВзЈнйрёзЋЈЋ«ебЋЇaffineк¦ІиЅыебЋ®пзЋЄнфЋ±кјЋ¦ебЋ®ебЋїеб¤еўҐебџ(к°Фйїж3.5.2).
-кјЋ§мЄТеЈтеб¬еўАебѕеўЄев¶еЎуебЋЁебЋ§м®ЋЎебЋ®ев°еЎжебЋ«ебЋ§ебєеЈл.
+$(U, x^1, \dots, x^n)$, $(V, y^1, \dots, y^n)$г‚’гЃќг‚ЊгЃћг‚Њ$\con$, $\dcon$гЃ«й–ўгЃ™г‚‹affineеє§жЁ™иї‘е‚ЌгЃЁгЃ™г‚‹.
+affineиї‘е‚ЌеђЊеЈ«гЃЇaffineе¤‰жЏ›гЃ®и‡Єз”±еє¦гЃ®гЃїгЃ‚гЃЈгЃџ(е®љзђ†3.5.2).
+еє§жЁ™г‚’гЃ†гЃѕгЃЏгЃЁг‚‹гЃ“гЃЁгЃ§ж¬ЎгЃ®г‚€гЃ†гЃ«гЃ§гЃЌг‚‹.
 \begin{theorem}
-йпёзЋЇЋѕк»ЋійэЋ¦ебЋЄк¦ФиЋ§РжЋЅ“$(M,g,\con,\dcon)$ебЋ«ебЋ¤ебЁеўЁ
+еЏЊеЇѕе№іеќ¦гЃЄе¤љж§дЅ“$(M,g,\con,\dcon)$гЃ«гЃ¤гЃ„гЃ¦
 \[
 g(\marudd{x^i}, \marudd{y^j})=\delta_{ij}
 \]
-ебЋЁебЋЄев¶зЋ±ЂлйЂ$\con$ affineкјЋ§мЄТйЋіЋ», кіЂлйЂ$\dcon$ affineкјЋ§мЄТйЋіЋ»ебЋ®о·„$\Set{(x^i),(y^j)}$евДеўЄевёеЈл.
+гЃЁгЃЄг‚‹е±Ђж‰Ђ$\con$ affineеє§жЁ™зі», е±Ђж‰Ђ$\dcon$ affineеє§жЁ™зі»гЃ®зµ„$\Set{(x^i),(y^j)}$г‚’гЃЁг‚Њг‚‹.
 \end{theorem}
 
-юѕ°кЋЁЋјлшјсЋјІй¤»$p_0 \in M$ебЋ§$\con$ебЋ«сцЋўебТеЈлaffineкјЋ§мЄТкЋїВзЈн$(U,x^i)$, $\dcon$ебЋ«сцЋўебТеЈлaffineкјЋ§мЄТкЋїВзЈн$(V,\eta^j)$евДеўЄев‹.
-ебЋ¤ебЋѕевЉ
+пј€иЁјжЋпј‰з‚№$p_0 \in M$гЃ§$\con$гЃ«й–ўгЃ™г‚‹affineеє§жЁ™иї‘е‚Ќ$(U,x^i)$, $\dcon$гЃ«й–ўгЃ™г‚‹affineеє§жЁ™иї‘е‚Ќ$(V,\eta^j)$г‚’гЃЁг‚‹.
+гЃ¤гЃѕг‚Љ
 \[
 \con_X\left(\marudd{x^i}\right)=0, \quad \dcon_X\left(\marudd{\eta^j}\right)=0.
 \]
@@ -340,59 +340,110 @@ g(\marudd{x^i}, \marudd{y^j})=\delta_{ij}
 \[
 a_{ij}:=g_p((\marudd{x^i})_p, (\marudd{\eta^j})_p), \quad A:=(a_{ij})
 \]
-ебЋЁебОеўЁ$y^i:=\sum_j a_{ij} \eta^j$ебЋЁебТеЈл.
-affineкјЋ§мЄТйЋіЋ»ебЋ®affneк¦ІиЅыебЋЄебЋ®ебЋ§$y^i$ебЋЇaffineкјЋ§мЄТйЋіЋ».
+гЃЁгЃ—гЃ¦$y^i:=\sum_j a_{ij} \eta^j$гЃЁгЃ™г‚‹.
+affineеє§жЁ™зі»гЃ®affneе¤‰жЏ›гЃЄгЃ®гЃ§$y^i$гЃЇaffineеє§жЁ™зі».
 \[
 \marudd{\eta^j}=\sum_k a_{kj} \marudd{y^k}
 \]
-ебЋЄебЋ®ебЋ§
+гЃЄгЃ®гЃ§
 \[
 \marudd{y^k}=(A^{-1})_{jk} \marudd{\eta^j}.
 \]
-ев°еўҐебЋ¦
+г‚€гЃЈгЃ¦
 \[
 g_p(\marudd{x^i},\marudd{y^k})=(A^{-1})_{jk}g(\marudd{x^i},\marudd{\eta^j})=(A^{-1})_{jk}A_{ij}=\delta_{jk}.
 \]
 
-еб¤еўЄебЋЇебЖеў°кјЋ§мЄТйЋіЋ»ебЋ®ебЋѕевѕеЈкебЋ§ев¤иЎтоЇІйУдебЋ«лиАеЈко­¶еў¦ебЖеўЄевДйЋўЋєр¬єеЎщев‹.
-$x^i$, $y^j$еб·ВffineкјЋ§мЄТйЋіЋ»ебЋЄебЋ®ебЋ§иЅЋ»лдѕеў°$X \in \chi(M)$ебЋ«ебЮеЎдебОеўЁ
+гЃ‚гЃЁгЃЇгЃ“гЃ®еє§жЁ™зі»гЃ®гЃѕг‚Џг‚ЉгЃ§г‚‚жЃ’з­‰зљ„гЃ«ж€ђг‚Љз«‹гЃ¤гЃ“гЃЁг‚’зўєиЄЌгЃ™г‚‹.
+$x^i$, $y^j$гЃЊaffineеє§жЁ™зі»гЃЄгЃ®гЃ§д»»ж„ЏгЃ®$X \in \chi(M)$гЃ«гЃџгЃ„гЃ—гЃ¦
 \[
 Xg(\marud{x^i},\marud{y^j})=g(\con_X(\marudd{x^i}),\marudd{y^j})+g(\marudd{x^i},\dcon_X(\marudd{y^j}))=0
 \]
-ебЋЁебЋЄевЉ$g(\marud{x^i},\marud{y^j})=\delta_{jk}$ебЋЇебЊ$p$ебЋ®рБВзЈнебЋ§лиАеЈко­¶еў¦.
+гЃЁгЃЄг‚Љ$g(\marud{x^i},\marud{y^j})=\delta_{jk}$гЃЇгЃЊ$p$гЃ®иї‘е‚ЌгЃ§ж€ђг‚Љз«‹гЃ¤.
 
-иЅЋҐсщЌ$M:=U \cap V$ебЋЁеб—, $\con$-affineкјЋ§мЄТйЋіЋ»ев’$(\theta^i)$, $\dcon$-affineкјЋ§мЄТйЋіЋ»ев’$(\eta_j)$ебЋЁеб¶еЎп.
-лыЋґебЋ«$\partial_i:=\marudd{\theta^i}$, $\partial^i:=\marudd{\eta_i}$ебЋЁебТеЈл.
+д»Ґй™Ќ$M:=U \cap V$гЃЁгЃ—, $\con$-affineеє§жЁ™зі»г‚’$(\theta^i)$, $\dcon$-affineеє§жЁ™зі»г‚’$(\eta_j)$гЃЁгЃ‹гЃЏ.
+ж›ґгЃ«$\partial_i:=\marudd{\theta^i}$, $\partial^i:=\marudd{\eta_i}$гЃЁгЃ™г‚‹.
 \[
 g(\partial_i,\partial^j)=\delta_i^j.
 \]
 
 \begin{lemma}
-$g_{ij}:=g(\partial_i,\partial_j)$, $g^{ij}:=g(\partial^i, \partial^j)$ебЋЁебТеЈлебЋЁ
+$g_{ij}:=g(\partial_i,\partial_j)$, $g^{ij}:=g(\partial^i, \partial^j)$гЃЁгЃ™г‚‹гЃЁ
 \[
 g_{ij}=\partial_i \eta_j=\partial_j \eta_i, \quad g^{ij}=\partial^i \eta^j = \partial^j \eta^i, \quad g_{ij}g^{jk}=\delta_i^k.
 \]
 \end{lemma}
 
 \begin{lemma}
-еб¤еЈл$C^\infty$сцЋўлхЋ°$\Set{\psi(\theta^i,\dots,\theta^n), \phi(\eta_i,\dots,\eta_n)}$ебёзЋ­РзШЄебОеўЁ
+гЃ‚г‚‹$C^\infty$й–ўж•°$\Set{\psi(\theta^i,\dots,\theta^n), \varphi(\eta_i,\dots,\eta_n)}$гЃЊе­ењЁгЃ—гЃ¦
 \[
-\eta_i=\partial_i\psi, \quad \theta^i=\partial^i \phi, \quad \psi(\theta^1, \dots, \theta^n)+\phi(\eta_i,\dots,\eta_n)-\theta^i \eta_i=0.
+\eta_i=\partial_i\psi, \quad \theta^i=\partial^i \varphi, \quad \psi(\theta^1, \dots, \theta^n)+\varphi(\eta_i,\dots,\eta_n)-\theta^i \eta_i=0.
 \]
 \end{lemma}
-юѕ°иЋіЋЁлдѕсЋј‰$y_1(x_1,x_2)$, $y_2(x_1,x_2)$ебёеЎвебЋЈебЋ¦$\frac{\partial y_1}{\partial x_2}=\frac{\partial y_2}{\partial_x1}$ебЋЁебТеЈл.
-кіЂлйЂнъЁеў­
+пј€жіЁж„Џпј‰$y_1(x_1,x_2)$, $y_2(x_1,x_2)$гЃЊгЃ‚гЃЈгЃ¦$\frac{\partial y_1}{\partial x_2}=\frac{\partial y_2}{\partial_x1}$гЃЁгЃ™г‚‹.
+е±Ђж‰Ђзљ„гЃ«
 \begin{eqnarray*}
 y_1&=a x_1+b x_2,\\
 y_2&=c x_1+d x_2
 \end{eqnarray*}
-ебЋЁлыЋёебЁеўЁлэЋЎиЅЋ¶евДлў«нфЋЁебТеЈлебЋЁ$b=c$.
-ебЋ¤ебЋѕевЉ$f=\half a x_1^2+b x_1 x_2 + \half d x_2^2$ебЋЁебТеЈлебЋЁ$y_1=\frac{\partial f}{\partial x_1}$, $y_2=\frac{\partial f}{\partial x_2}$ебЋЁеб¶еЎсев‹.
+гЃЁж›ёгЃ„гЃ¦жќЎд»¶г‚’йЃ©з”ЁгЃ™г‚‹гЃЁ$b=c$.
+гЃ¤гЃѕг‚Љ$f=\half a x_1^2+b x_1 x_2 + \half d x_2^2$гЃЁгЃ™г‚‹гЃЁ$y_1=\frac{\partial f}{\partial x_1}$, $y_2=\frac{\partial f}{\partial x_2}$гЃЁгЃ‹гЃ‘г‚‹.
 
 \begin{lemma}
-$g_{ij}=\partial_i \partial_j \psi$, $g^{ij}=\partial^i \partial^j \phi$
-ебЋЁеб¶еЎсев¶еў°ебЋ§$\psi$, $\phi$ебЋЇ$\theta^i$, $\eta_j$ебЋ«сцЋўебТеЈлнлЋ­оАЋ©йзЋёсцЋўлхЋ°ебЋ§еб¤еЈл.
+$g_{ij}=\partial_i \partial_j \psi$, $g^{ij}=\partial^i \partial^j \varphi$
+гЃЁгЃ‹гЃ‘г‚‹гЃ®гЃ§$\psi$, $\varphi$гЃЇ$\theta^i$, $\eta_j$гЃ«й–ўгЃ™г‚‹з‹­зѕ©е‡ёй–ўж•°гЃ§гЃ‚г‚‹.
 \end{lemma}
+
+\begin{lemma}
+$p \in M$гЃ«гЃ¤гЃ„гЃ¦
+\[
+\theta(p)=(\theta^1(p), \dots, \theta^n(p)), \quad \eta(p)=(\eta_1(p), \dots, \eta_n(p))
+\]
+гЃЁгЃ™г‚‹гЃЁ
+\begin{eqnarray*}
+\varphi(\eta(p))&=&\max_{q\in M}(\theta^i(q) \eta_i(p)-\psi(\theta(q)))\\
+\psi(\theta(p))&=&\max_{q\in M}(\eta_i(q)\theta^i(p)-\varphi(\eta(q))).
+\end{eqnarray*}
+\end{lemma}
+
+пј€иЁјжЋпј‰$p$г‚’е›єе®љгЃ™г‚‹. дёЂгЃ¤з›®гЃ®еЏіиѕєгЃ®г‚«гѓѓг‚ігЃ®дё­гЃЇз¬¬дёЂй …гЃЊ$\theta^i$гЃ«й–ўгЃ—гЃ¦з·љеЅўгЃ§з¬¬дєЊй …гЃЇдёЉгЃ«е‡ёпј€$G$гЃЊж­Је®љеЂ¤гЃЄгЃ®гЃ§пј‰.
+г‚€гЃЈгЃ¦еѕ®е€†гЃЊ0гЃЄг‚‰гЃќгЃ“гЃЇе±Ђж‰Ђзљ„гЃ«жњЂе¤§.
+
+\[
+d(\theta^i(q) \eta_i(p)-\psi(\theta(q)))=\eta_i(p) d \theta^i(q) - \partial_i \psi(\theta(q))d\theta^i(q)=(\eta_i(p)-\eta_i(q))d\theta^i(q)
+\]
+гЃ гЃ‹г‚‰е…ЁгЃ¦гЃ®$i$гЃ«гЃ¤гЃ„гЃ¦$\eta_i(p)=\eta_i(q)$гЃЄг‚‰жњЂе¤§гЃЁгЃЄг‚‹. гЃќг‚ЊгЃЇ$p=q$гЃ®гЃЁгЃЌгЃ§
+\[
+\theta^i(p) \eta_i(p)-\psi(\theta(p))=\varphi(\eta(p)).
+\]
+
+\begin{definition}[гѓЂг‚¤гѓђгѓјг‚ёг‚§гѓіг‚№]
+еЏЊеЇѕж§‹йЂ $(g,\con,\dcon)$г‚’г‚‚гЃ¤е¤љж§дЅ“$M$гЃ«гЃ¤гЃ„гЃ¦$p, q \in M$гЃ«гЃџгЃ„гЃ—гЃ¦
+\[
+D(p||q):=\psi(\theta(p))+\varphi(\eta(q))-\theta^i(p)\eta_i(q)
+\]
+г‚’$\con$гѓЂг‚¤гѓђгѓјг‚ёг‚§гѓіг‚№гЃЁгЃ„гЃ†.
+\end{definition}
+
+\begin{lemma}
+$D(p||q)$гЃЇеє§жЁ™зі»гЃ®еЏ–г‚Љж–№гЃ«г‚€г‚‰гЃЄгЃ„еЂ¤гЃ§гЃ‚г‚‹.
+
+гЃ¤гЃѕг‚Љ$\Set{\theta^i,\eta_i}$, $\Set{\theta'^s, \eta'_t}$г‚’$M$гЃ®еЏЊеЇѕaffineеє§жЁ™зі»,
+гЃќг‚ЊгЃћг‚ЊгЃ®еЏЊеЇѕгѓќгѓ†гѓіг‚·гѓЈгѓ«г‚’$\Set{\psi(\theta),\varphi(\eta)}$, $\Set{\psi'(\theta'),\varphi'(\eta')}$гЃЁгЃ™г‚‹.
+гЃ“гЃ®гЃЁгЃЌ
+\[
+\psi(\theta(p))+\varphi(\eta(q))-\theta^i(p)\eta_i(q)=\psi'(\theta'(p))+\varphi'(\eta'(q))-\theta'^i(p)\eta'_i(q).
+\]
+\end{lemma}
+
+пј€иЁјжЋпј‰affineеє§жЁ™зі»гЃЇдє’гЃ„гЃ«affineе¤‰жЏ›гЃ§з§»г‚ЉгЃ‚гЃЈгЃџ. гЃ¤гЃѕг‚ЉгЃ‚г‚‹$A$, $B$, $a$, $b$гЃЊе­ењЁгЃ—гЃ¦
+\[
+\theta'^s=A_i^s \theta^i+a^s, \quad \eta'_t=B^i_t \eta_i + b_t.
+\]
+\[
+\delta_i^j=g(\marudd{\theta^i},\marudd{\eta_j})=g(A^s_i \marudd{\theta'^s},B^j_t\marudd{\eta'_j})=A^s_i B^j_t \delta^t_s=A^s_i B^j_s.
+\]
+г‚€гЃЈгЃ¦$B=A^{-1}$гЃЁгЃЄг‚Љ$\marudd{\theta'^s}=B^i_s \marud{i}$, $\marudd{\eta'^t}=A^t_j \partial^j$.
 
 
 \end{document}
