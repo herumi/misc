@@ -359,7 +359,7 @@ $x^i$, $y^j$がaffine座標系なので任意の$X \in \chi(M)$にたいして
 \[
 Xg(\marud{x^i},\marud{y^j})=g(\con_X(\marudd{x^i}),\marudd{y^j})+g(\marudd{x^i},\dcon_X(\marudd{y^j}))=0
 \]
-となり$g(\marud{x^i},\marud{y^j})=\delta_{jk}$はが$p$の近傍で成り立つ.
+となり$g(\marud{x^i},\marud{y^j})=\delta_{jk}$が$p$の近傍で成り立つ.
 
 以降$M:=U \cap V$とし, $\con$-affine座標系を$(\theta^i)$, $\dcon$-affine座標系を$(\eta_j)$とかく.
 更に$\partial_i:=\marudd{\theta^i}$, $\partial^i:=\marudd{\eta_i}$とする.
@@ -395,6 +395,7 @@ $g_{ij}=\partial_i \partial_j \psi$, $g^{ij}=\partial^i \partial^j \varphi$
 \end{lemma}
 
 \begin{lemma}
+\label{legendre}
 $p \in M$について
 \[
 \theta(p)=(\theta^1(p), \dots, \theta^n(p)), \quad \eta(p)=(\eta_1(p), \dots, \eta_n(p))
@@ -443,7 +444,78 @@ $D(p||q)$は座標系の取り方によらない値である.
 \[
 \delta_i^j=g(\marudd{\theta^i},\marudd{\eta_j})=g(A^s_i \marudd{\theta'^s},B^j_t\marudd{\eta'_j})=A^s_i B^j_t \delta^t_s=A^s_i B^j_s.
 \]
-よって$B=A^{-1}$となり$\marudd{\theta'^s}=B^i_s \marud{i}$, $\marudd{\eta'^t}=A^t_j \partial^j$.
+よって$B=A^{-1}$.
+\[
+\marudd{\theta^j}(\psi'-\psi)=\frac{\partial \theta'^s}{\partial \theta^j}\frac{\partial \psi'}{\partial \theta'^s}-\eta_j=A^s_j \eta'_s-\eta_j=A^s_j (B^i_s \eta_i+b_s)-\eta_j=A^s_j b_s
+\]
+なので
+\[
+\psi'-\psi=A^s_j b_s \theta^j + c, \quad c\text{ は定数}.
+\]
+次に
+\begin{eqnarray*}
+\varphi'(\eta')-\varphi(\eta)
+&=& (\theta'^s \eta'_s - \psi'(\theta')-(\theta^i \eta_i - \psi(\theta))=(A^s_i \theta^i + a^s)(B^j_s \eta_j+b_s)-\theta^i \eta_i - (\psi'(\theta')-\psi(\theta))=\\
+&=& (\theta ^i \eta_j + A^s_i \theta^i b_s + a^s B^j_s \eta_j+a^s b_s)-\theta^i \eta_i-(A^s_j b_s \theta^j + c)=\\
+&=& a^s B^j_s \eta_j+a^s b_s - c.
+\end{eqnarray*}
+最後に
+\begin{eqnarray*}
+&&(\psi'(\theta'(p))+\varphi'(\eta'(q))-\theta'^s(p)\eta'_s(q))-(\psi(\theta(p))+\varphi(\eta(q))-\theta^s(p)\eta_s(q))\\
+&=&(A^s_j b_s \theta^j(p)+c)+(a^s B^j_s \eta_j(q)+a^s b_s-c)-(A^s_i\theta^i(p)+a^s)(B^i_s \eta_i(q)+b_s)+\theta^s(p)\eta_s(q)\\
+&=&0.
+\end{eqnarray*}
 
+多様体$M$双の対構造$(g,\con,\dcon)$に対して$(g,\dcon,{\dcon}^*)$を考えると$\dcon$ダイバージェンス$D^*(p||q)$は$D(q||p)$に等しい.
 
+補題\ref{legendre}より
+\[
+D(p||q)=\varphi(\eta(q))-(\theta^i(p)\eta_i(q)-\psi(\theta(p)))\geq \varphi(\eta(q))-\max_{p\in M}(\theta^i(p)\eta_i(q)-\psi(\theta(p)))=0.
+\]
+等号は$p=q$のときのみ成立.
+ただし一般に$D(p||q)=D(q||p)$や三角不等式は成り立たない.
+
+（Euclid空間のダイバージェンス）
+$n$次元Euclid空間の座標を$(x_i)$とすると
+\[
+\psi(x)=\varphi(x)=\half \sum_{i=1}^n x_i^2.
+\]
+よって
+\[
+D(p||q)=\half \sum_i x_i(p)^2+ \half \sum_i x_i(q)^2-\sum_i x_i(p) x_i(q) = \half \sum_i (x_i(p)-x_i(q))^2.
+\]
+
+\begin{theorem}[一般化されたピタゴラスの定理]
+双対平坦多様体$(M,g,\con,\dcon)$の3点$p$, $q$, $r$をとる.
+$p$と$q$を結ぶ$\con$測地線$C_1$, $q$と$r$を結ぶ$\dcon$測地線$C_2$について$q$で$g$に関して直交しているなら
+\[
+D(p||q)+D(q||r)=D(p||r).
+\]
+\end{theorem}
+
+（証明）
+$\con$affine座標系$\theta^i$と$\dcon$affine座標系$\eta_j$をとる.
+測地線は1次元の自己平行部分多様体なのでそれらの一次式で表せる.
+よって
+\begin{eqnarray*}
+C_1&=&\Set{p(t)=(\theta^1(t), \dots, \theta^n(t))| 0 \leq t \leq 1, p(0)=q, p(1)=p},\\
+\theta^i(t)&=&\theta^i(0)+(\theta^i(1)-\theta^i(0))t,\\
+C_2&=&\Set{q(t)=(\eta^1(t), \dots, \eta^n(t))| 0 \leq t \leq 1, q(0)=q, q(1)=r},\\
+\eta_i(t)&=&\eta_i(0)+(\eta_i(1)-\eta_i(0))t
+\end{eqnarray*}
+とする.
+$q$で直交しているので
+\begin{eqnarray*}
+0&=&=g_q(\frac{dp}{dt}(0),\frac{dq}{dt}(0))=g_q((\theta^i(p)-\theta^i(q))\marudd{\theta^i},(\eta_j(r)-\eta_j(q))\marudd{\eta_j})\\
+&=&(\theta^i(p)-\theta^i(q))(\eta_j(r)-\eta_j(q))\delta_i^j\\
+&=&(\theta^i(p)-\theta^i(q))(\eta_i(r)-\eta_i(q)).
+\end{eqnarray*}
+よって
+\begin{eqnarray*}
+&&D(p||q)+D(q||r)-D(p||r)\\
+&=&(\psi(\theta(p))+\varphi(\eta(q))-\theta^i(p)\eta_i(q))+(\psi(\theta(q))+\varphi(\eta(r))-\theta^i(q)\eta_i(r))-(\psi(\theta(p))+\varphi(\eta(r))-\theta^i(p)\eta_i(r))\\
+&=&(\varphi(\eta(q))+\psi(\theta(q)))-\theta^i(p)\eta_i(q)-\theta^i(q)\eta_i(r)+\theta^i(p)\eta_i(r)\\
+&=&\theta^i(q)\eta_i(q)-\theta^i(p)\eta_i(q)-\theta^i(q)\eta_i(r)+\theta^i(p)\eta_i(r)\\
+&=&(\theta^i(p)-\theta^i(q))(\eta_i(r)-\eta_i(q))=0.
+\end{eqnarray*}
 \end{document}
