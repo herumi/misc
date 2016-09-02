@@ -1,0 +1,136 @@
+% ptex2pdf -l -synctex=1 main.tex
+\documentclass{jsarticle}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{amscd}
+\usepackage{xypic}
+\usepackage{ascmac}
+\usepackage[hyphens]{url}
+\usepackage{braket}
+\usepackage[dvipdfmx,hiresbb,final]{graphicx}
+\newcommand{\CC}{\mathbb{C}}
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\QQ}{\mathbb{Q}}
+\newcommand{\ZZ}{\mathbb{Z}}
+\newcommand{\NN}{\mathbb{N}}
+\newcommand{\FF}{\mathbb{F}}
+\newcommand{\PP}{\mathbb{P}}
+\newcommand{\GG}{\mathbb{G}}
+\newcommand{\PhiT}{\trans{\Phi}}
+\newcommand{\calN}{{\cal N}}
+\newcommand{\calD}{{\cal D}}
+\newcommand{\calL}{{\cal L}}
+\newcommand{\calQ}{{\cal Q}}
+\newcommand{\calW}{{\cal W}}
+\newcommand{\half}{\frac{1}{2}}
+\newcommand{\ignore}[1]{}
+\newcommand{\con}{\nabla}
+\newcommand{\dcon}{\con^{*}}
+\newcommand{\mcon}{\overline{\con}}
+\newcommand{\cris}[3]{\Gamma_{#1 #2}^{#3}}
+\newcommand{\marud}[1]{\partial_{#1}}
+\newcommand{\marudd}[1]{\frac{\partial}{\partial #1}}
+
+\newcommand{\makeop}[1]{\mathop{\mathrm{#1}}\nolimits}
+\newcommand{\supp}{\makeop{supp}}
+
+\theoremstyle{definition}
+\newtheorem{theorem}{定理}
+\newtheorem*{theorem*}{定理}
+\newtheorem{lemma}{補題}
+\newtheorem*{lemma*}{補題}
+\newtheorem{definition}[theorem]{定義}
+\newtheorem*{definition*}{定義}
+
+\newcommand{\mydescription}[1]{
+\begin{description}
+\setlength{\itemindent}{2zw}
+\setlength{\leftskip}{-2zw}
+\setlength{\labelsep}{1zw}
+#1
+\end{description}
+}
+
+\numberwithin{theorem}{section}
+
+\begin{document}
+『情報幾何学の基礎』（藤原彰夫）輪読会5章資料 by @herumi
+
+\section{復習}
+$M$を$C^\infty$多様体, $\chi(M)$を$M$のベクトル場全体とする.
+
+多様体$M$, $N$に対して$f:M \rightarrow N$を考える。
+$df:TM \rightarrow TN$を$X \in TM$, $g:N \rightarrow \RR$に対して
+\[
+f_*(X)(g):=X(f^*g)
+\]
+と定義する. $f_*$を$df$と書くこともある.
+
+$\RR^n_+:=\Set{(x_1, \dots, x_n)|x_i>0}$とする.
+
+$S_{n-1}:=\Set{(x_1, \dots, x_n)|x_i>0, \sum_i x_i = 1}$とする.
+$S_{n-1}$に$\RR^n_+$の相対位相を入れる（開集合が$U \cap \RR^n_+$の形）.
+\[
+\varphi:S_{n-1} \ni (x_1, \dots, x_n) \mapsto (x_1, \dots, x_{n-1}) \in \RR^{n-1}_+
+\]
+$T^{n-1}:=\Set{(x_1, \dots, x_n)|x_i>0, \sum_i x_i < 1}$
+とすると$\varphi:S_{n-1} \rightarrow T^{n-1}$はhomeo.
+
+$n$行$l$列$Q_{ij}>0$, $\sum_j Q_{ij}=1$をとる（$1 \le i \le n$, $1 \le j \le l$）. 縦に$n$個, 横に$l$個.
+\[
+f:S_{n-1} \ni (x_i) \mapsto (\sum_i x_i Q_{ij}) \in S_{l-1}
+\]
+とする.
+
+$|x|:=\sum_i x_i$とすると
+\[
+|f(x)|=\sum_j (\sum_i x_i Q_{ij})=\sum_i x_i (\sum_j Q_{ij})=\sum_i x_i =|x|.
+\]
+
+特に$|x|=1$なら$|f(x)|=1$なので$f$を$S_{n-1}$に制限した写像$f$について$f:S_{n-1}\rightarrow S_{l-1}$がwell-defined.
+
+$h_n:\RR^n_+ \rightarrow S_{n-1}$を$h_n(x):=(1/|x|)x$とする.
+
+$h_n$を$S_{n-1}$に制限すると$h_n=id_{S_{n-1}}$.
+
+また
+\[
+f(h_n(x))=f(x/|x|)=(1/|x|)f(x)=(1/|f(x)|)f(x)=h_l(f(x)).
+\]
+つまり次が可換.
+\[
+\begin{array}{ccc}
+& f & \\
+\RR^n_+ & \longrightarrow & \RR^l_+ \\
+\rotatebox{90}{$\longleftarrow$}h_n &             & \rotatebox{90}{$\longleftarrow$}h_l \\
+S_{n-1}             & \longmapsto & S_{l-1} \\
+& f &
+\end{array}
+\]
+
+$g^{[n]}:TS_{n-1} \times TS_{n-1} \rightarrow \RR$について
+\[
+g^{[n]}(X,Y)=g^{[l]}(f_* X, f_* Y) \quad \text{ for } X, Y \in TS_{n-1}
+\]
+が成り立つとする.
+
+このとき$\overline{g}^{[n]} : T\RR^n_+ \times T\RR^n_+ \rightarrow \RR$を
+\[
+\overline{g}^{[n]}(\overline{X}, \overline{Y}):=g^{[n]}(h_{n*} \overline{X}, h_{n*} \overline{Y}) \quad \text{ for } \overline{X}, \overline{Y} \in T\RR^n_+
+\]
+とする.
+
+$\iota:S_{n-1}\rightarrow \RR^n_+$とすると$x \in S_{n-1}$について$h_n(\iota(x))=x$.
+よって
+\[
+\overline{g}^{[n]}(\iota_* X, \iota_* Y)=g^{[n]}(h_{n*}  \iota_* X, h_{n*} \iota_* Y)=g^{[n]}(X,Y).
+\]
+
+また
+\begin{eqnarray*}
+\overline{g}^{[l]}(f_* \overline{X}, f_* \overline{Y})&=&g^{[l]}(h_{l*} f_* \overline{X}, h_{l*} f_* \overline{Y})=g^{[l]}(f_* h_{n*} \overline{X}, f_* h_{n*} \overline{Y})\\
+&=&g^{[n]}(h_{n*} \overline{X}, h_{n*} \overline{Y})=\overline{g}^{[n]}(\overline{X}, \overline{Y})
+\end{eqnarray*}
+
+\end{document}
