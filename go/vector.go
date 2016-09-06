@@ -46,13 +46,29 @@ func (a *A) put() {
 }
 
 func main() {
-	v := make([]A, 10)
-	for i := 0; i < len(v); i++ {
-		v[i] = *newA()
+	n := 10
+	fmt.Println("make([]A, n)")
+	{
+		v := make([]A, n)
+		for i := 0; i < len(v); i++ {
+			v[i] = *newA()
+		}
+		fmt.Println("&v   =", &v)
+		fmt.Println("&v[0]=", &v[0])
+		for i := 0; i < len(v); i++ {
+			v[i].put()
+		}
 	}
-	fmt.Println("&v   =", &v)
-	fmt.Println("&v[0]=", &v[0])
-	for i := 0; i < len(v); i++ {
-		v[i].put()
+	fmt.Println("make([]*A, n)")
+	{
+		v := make([]*A, 10)
+		for i := 0; i < len(v); i++ {
+			v[i] = newA()
+		}
+		fmt.Println("&v   =", &v)
+		fmt.Println("&v[0]=", &v[0])
+		for i := 0; i < len(v); i++ {
+			v[i].put()
+		}
 	}
 }
