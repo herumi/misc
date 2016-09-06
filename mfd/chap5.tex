@@ -61,15 +61,24 @@
 $M$を$C^\infty$多様体, $\chi(M)$を$M$のベクトル場全体とする.
 
 多様体$M$, $N$に対して$f:M \rightarrow N$を考える。
-$df:TM \rightarrow TN$を$X \in TM$, $g:N \rightarrow \RR$に対して
+$f_*:TM \rightarrow TN$を$X \in TM$, $g:N \rightarrow \RR$に対して
 \[
 f_*(X)(g):=X(f^*g)
 \]
 と定義する. $f_*$を$df$と書くこともある.
 
-$\RR^n_+:=\Set{(x_1, \dots, x_n)|x_i>0}$とする.
+多様体$S$と写像$g:N \rightarrow S$があると
+\[
+TM \xrightarrow{f_*} TN \xrightarrow{g_*} TS
+\]
+が誘導される.
+\[
+g_* \circ f_* = (g \circ f)_*.
+\]
 
+$\RR^n_+:=\Set{(x_1, \dots, x_n)|x_i>0}$,
 $S_{n-1}:=\Set{(x_1, \dots, x_n)|x_i>0, \sum_i x_i = 1}$とする.
+
 $S_{n-1}$に$\RR^n_+$の相対位相を入れる（開集合が$U \cap \RR^n_+$の形）.
 \[
 \varphi:S_{n-1} \ni (x_1, \dots, x_n) \mapsto (x_1, \dots, x_{n-1}) \in \RR^{n-1}_+
@@ -77,7 +86,7 @@ $S_{n-1}$に$\RR^n_+$の相対位相を入れる（開集合が$U \cap \RR^n_+$�
 $T^{n-1}:=\Set{(x_1, \dots, x_n)|x_i>0, \sum_i x_i < 1}$
 とすると$\varphi:S_{n-1} \rightarrow T^{n-1}$はhomeo.
 
-$n$行$l$列$Q_{ij}>0$, $\sum_j Q_{ij}=1$をとる（$1 \le i \le n$, $1 \le j \le l$）. 縦に$n$個, 横に$l$個.
+$n$行$l$列の行列$Q=(Q_{ij})$, $Q_{ij}>0$, $\sum_j Q_{ij}=1$をとる（$1 \le i \le n$, $1 \le j \le l$）. 縦に$n$個, 横に$l$個.
 \[
 f:S_{n-1} \ni (x_i) \mapsto (\sum_i x_i Q_{ij}) \in S_{l-1}
 \]
@@ -100,15 +109,13 @@ f(h_n(x))=f(x/|x|)=(1/|x|)f(x)=(1/|f(x)|)f(x)=h_l(f(x)).
 \]
 つまり次が可換.
 \[
-\begin{array}{ccc}
-& f & \\
-\RR^n_+ & \longrightarrow & \RR^l_+ \\
-\rotatebox{90}{$\longleftarrow$}h_n &             & \rotatebox{90}{$\longleftarrow$}h_l \\
-S_{n-1}             & \longmapsto & S_{l-1} \\
-& f &
-\end{array}
+\xymatrix{
+\RR^n_+ \ar[r]^-f \ar[d]_{h_n} & \RR^l_+ \ar[d]^-{h_l} \\
+S_{n-1} \ar[r]_-f & S_{l-1} \ar@{}[lu]|{\circlearrowright}
+}
 \]
 
+\begin{lemma}
 $g^{[n]}:TS_{n-1} \times TS_{n-1} \rightarrow \RR$について
 \[
 g^{[n]}(X,Y)=g^{[l]}(f_* X, f_* Y) \quad \text{ for } X, Y \in TS_{n-1}
@@ -119,7 +126,9 @@ g^{[n]}(X,Y)=g^{[l]}(f_* X, f_* Y) \quad \text{ for } X, Y \in TS_{n-1}
 \[
 \overline{g}^{[n]}(\overline{X}, \overline{Y}):=g^{[n]}(h_{n*} \overline{X}, h_{n*} \overline{Y}) \quad \text{ for } \overline{X}, \overline{Y} \in T\RR^n_+
 \]
-とする.
+とすると$\overline{g}$は$g$の拡張となっている.
+\end{lemma}
+（証明）
 
 $\iota:S_{n-1}\rightarrow \RR^n_+$とすると$x \in S_{n-1}$について$h_n(\iota(x))=x$.
 よって
@@ -130,7 +139,7 @@ $\iota:S_{n-1}\rightarrow \RR^n_+$とすると$x \in S_{n-1}$について$h_n(\i
 また
 \begin{eqnarray*}
 \overline{g}^{[l]}(f_* \overline{X}, f_* \overline{Y})&=&g^{[l]}(h_{l*} f_* \overline{X}, h_{l*} f_* \overline{Y})=g^{[l]}(f_* h_{n*} \overline{X}, f_* h_{n*} \overline{Y})\\
-&=&g^{[n]}(h_{n*} \overline{X}, h_{n*} \overline{Y})=\overline{g}^{[n]}(\overline{X}, \overline{Y})
+&=&g^{[n]}(h_{n*} \overline{X}, h_{n*} \overline{Y})=\overline{g}^{[n]}(\overline{X}, \overline{Y}).
 \end{eqnarray*}
 
 \end{document}
