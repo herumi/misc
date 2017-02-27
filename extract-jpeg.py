@@ -33,12 +33,12 @@ while i < size:
 			L = ord(data[i + 3])
 			len = H * 256 + L
 			if c1 == COMMENT:
-				print "found comment({0}, {1}). skip {2}".format(hex(H), hex(L), len)
+				print "found comment({0}, {1}). skip len={2}".format(hex(H), hex(L), len)
 				i += len + 2
 				print "next pos", hex(i)
 				continue
 			if c1 == APP0:
-				print "found segment 0xff {0} at {1} len={2}".format(hex(c1), hex(i), hex(len))
+				print "found segment 0xff {0} at {1} len={2}".format(hex(c1), hex(i), len)
 				app0pos = i
 		i += 1
 	else:
