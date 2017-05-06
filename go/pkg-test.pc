@@ -1,0 +1,4 @@
+Name: pkg-test
+Description: test
+Version: 1.0
+Cflags: -DAAA=5
