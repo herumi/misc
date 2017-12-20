@@ -2,14 +2,14 @@
 	verify the report
 	http://eli.thegreenplace.net/2013/12/03/intel-i7-loop-performance-anomaly/
 
-	                i7 4770 i7-3930K   i7-2600
+	                i7 4770 i7-3930K   i7-2600  i7-7700
 	mov + add + mov
-	loopCall           6.00     5.16      6.31
-	loopNoCall         6.49     5.76      6.79
+	loopCall           6.00     5.16      6.31    4.02
+	loopNoCall         6.49     5.76      6.79    4.79
 
 	read-modify-write
-	loopCall           6.00     5.06      5.41
-	loopNoCall         6.02     6.16      6.74
+	loopCall           6.00     5.06      5.41    4.04
+	loopNoCall         6.02     6.16      6.74    4.73
 */
 #define XBYAK_NO_OP_NAMES
 #include <xbyak/xbyak.h>
@@ -39,7 +39,7 @@ struct Code : Xbyak::CodeGenerator {
 		Xbyak::Label Loop, JustRet;
 	L(Loop);
 		if (doCall) call(JustRet);
-#if 0
+#if 1
 		add(ptr [rcx], rax);
 #else
 		mov(rdx, ptr [rcx]);
