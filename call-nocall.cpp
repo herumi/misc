@@ -36,38 +36,38 @@ struct Code : Xbyak::CodeGenerator {
 	{
 		mov(rax, N);
 		mov(rcx, (size_t)&counter);
-	L("@@");
-		if (doCall) call("f");
-#if 0 // read-modify-write is faster
+		Xbyak::Label Loop, JustRet;
+	L(Loop);
+		if (doCall) call(JustRet);
+#if 0
 		add(ptr [rcx], rax);
 #else
 		mov(rdx, ptr [rcx]);
 		add(rdx, rax);
 		mov(ptr [rcx], rdx);
 #endif
-//		dec(rax);
 		sub(rax, 1);
-		jnz("@b");
+		jnz(Loop);
 		ret();
 		if (doCall) {
 			align(16);
-	L("f");
+	L(JustRet);
 			ret();
 		}
 	}
 } s_code;
 
-void test(void (*f)())
+void test(const char *msg, void (*f)())
 {
 	Xbyak::util::Clock clk;
 	counter = 0;
 	clk.begin();
 	f();
 	clk.end();
-	printf("%.2f clk/loop counter=%lld\n", clk.getClock() / double(clk.getCount() * N), (long long)counter);
+	printf("%s %.2f clk/loop counter=%lld\n", msg, clk.getClock() / double(clk.getCount() * N), (long long)counter);
 }
 int main()
 {
-	test(loopCall);
-	test(loopNoCall);
+	test("w/call ", loopCall);
+	test("wo/call", loopNoCall);
 }
