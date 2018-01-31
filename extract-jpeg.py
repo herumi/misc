@@ -26,7 +26,7 @@ while i < size:
 		if c0 == 0xff:
 			c1 = ord(data[i + 1])
 			if c1 == EOI:
-				print "found EOI at", hex(i)
+				print "found EOI at", i
 				fo.write(data[app0pos:i + 2])
 				break
 			H = ord(data[i + 2])
@@ -35,7 +35,7 @@ while i < size:
 			if c1 == COMMENT:
 				print "found comment({0}, {1}). skip len={2}".format(hex(H), hex(L), len)
 				i += len + 2
-				print "next pos", hex(i)
+				print "next pos", i
 				continue
 			if c1 == APP0:
 				print "found segment 0xff {0} at {1} len={2}".format(hex(c1), hex(i), len)
@@ -45,7 +45,7 @@ while i < size:
 		if c0 == 0xff:
 			c1 = ord(data[i + 1])
 			if c1 == SOI:
-				print "found SOI at {0}".format(hex(i))
+				print "found SOI at {0}".format(i)
 				fo.write(data[i])
 				fo.write(data[i + 1])
 				i += 2

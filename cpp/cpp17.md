@@ -131,6 +131,55 @@ if (auto [i, inserted] = s.insert(22); inserted) {
    printf("inseted %d\n", *i);
 }
 ```
+## std::*_v<T>
+
+`std::なんとか<T>::value`を`std::*_v<T>`とかけるようになった。
+
+
+## static_assertの第2引数省略
+
+```
+static_assert(true, "foo"); // C++14
+static_assert(true); // C++17
+```
+
+## constexpr if
+今までSFINAEで苦労して書いていたコンパイル時の条件分岐を簡潔にかけるようになった。
+```
+#include <iostream>
+#include <stdio.h>
+#include <type_traits>
+
+template<class T>
+void put(const T& x)
+{
+    if constexpr (std::is_integral_v<T>) {
+        printf("int %d\n", x);
+    } else if constexpr (std::is_convertible_v<T, const char*>) {
+        printf("str %s\n", x);
+    } else {
+        std::cout << "other " << x << std::endl;
+    }
+}
+
+int main()
+{
+    put(123); // int 123
+    put("abc"); // str abc
+    put(1.2); // other 1.2
+}
+```
+
+## constexprラムダ
+constepxrラムダを使えるようになった。
+```
+int main()
+{
+    constexpr auto sqr = [](int x) { return x * x; };
+    constexpr int s = sqr(10);
+    static_assert(s == 100);
+}
+```
 
 ## 並括弧初期化のauto型推論の変更
 
