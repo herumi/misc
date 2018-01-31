@@ -10,8 +10,8 @@ void put(const std::initializer_list<int>& v)
 }
 int main()
 {
-//	auto x1 = {1};
+	auto x1 = {1};
 //	put(x1);
 	auto x2 {2, 3};
-	put(x2);
+//	put(x2);
 }

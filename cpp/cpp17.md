@@ -106,7 +106,24 @@ for (const auto& [key, val] : m) {
 
 ## `if`と`switch`での初期化
 
-`if`と`switch`の中で変数を初期化できるようになった。
+`for`に合わせて`if`と`switch`の中で変数を初期化できるようになった。
+
+今までは
+```
+{
+    int x = func();
+    if (x == NO_ERROR) {
+        ...
+    }
+}
+```
+としていたのを
+```
+if (int x = func(); x == NO_ERROR) {
+ ...
+}
+```
+とかけるようになった。例。
 
 ```
 std::set s = { 1, 5, 9, 2, 4 };
