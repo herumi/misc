@@ -6,7 +6,7 @@
 
 ```
 std::pair<int, double> p = { 234, 4.2 };
-std::array<int, 4> = { 5, 9, 2, 3 };
+std::array<int, 4> a = { 5, 9, 2, 3 };
 std::mutex m;
 std::lock_guard<std::mutex> al(m);
 ```
@@ -15,7 +15,7 @@ std::lock_guard<std::mutex> al(m);
 
 ```
 std::pair p = { 234, 4.2 };
-std::array = { 5, 9, 2, 3 };
+std::array a = { 5, 9, 2, 3 };
 std::mutex m;
 std::lock_guard al(m);
 ```
