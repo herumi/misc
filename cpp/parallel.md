@@ -103,36 +103,6 @@ std::for_each(par, v.begin(), v.end(), [](auto& x) { x *= 2; });
 * 実行中に必要なメモリがなければstd::bad_allocを投げる。
 * 要素アクセス関数が補足されなかった例外を出したときは(多分)std::terminate()が呼ばれる。
 
-
-# アルゴリズム一覧
-
-第1引数にポリシーが入る(古い情報なので要確認)。
-
-    adjacent_difference adjacent_find all_of any_of copy copy_if copy_n count
-    count_if equal exclusive_scan fill fill_n find find_end find_first_of find_if
-    find_if_not for_each for_each_n generate generate_n includes inclusive_scan
-    inner_product inplace_merge is_heap is_heap_until is_partitioned is_sorted
-    is_sorted_until lexicographical_compare max_element merge min_element
-    minmax_element mismatch move none_of nth_element partial_sort partial_sort_copy
-    partition partition_copy reduce remove remove_copy remove_copy_if remove_if
-    replace replace_copy replace_copy_if replace_if reverse reverse_copy rotate
-    rotate_copy search search_n set_difference set_intersection
-    set_symmetric_difference set_union sort stable_partition stable_sort swap_ranges
-    transform uninitialized_copy uninitialized_copy_n uninitialized_fill
-    uninitialized_fill_n unique unique_copy
-
-
-## 標準関数にあるけど上記一覧にないもの(抜けがあるかも)
-
-   accumulate binary_search copy_backward equal_range is_permutation
-   make_heap next_permutation lower_bound
-   partial_sum partition_point pop_heap prev_permutation push_heap
-   sort_heap suffle upper_bound
-
-## 標準関数に無くて上記一覧に入っているもの
-
-   for_each_n reduce inclusive_scan exclusive_scan
-
 ## 一般和の定義
 
    * g_sum(op, a_1, ..., a_N) ; 可換な和
@@ -148,22 +118,31 @@ std::for_each(par, v.begin(), v.end(), [](auto& x) { x *= 2; });
 
 ## for_each
 ```
-    template<class ExecutionPolicy, class InputIterator, class Function>
-    void for_each(ExecutionPolicy&& exec,
-                  InputIterator first, InputIterator last,
-                  Function f);
+template<class ExecutionPolicy,
+         class ForwardIterator,
+         class Function>
+void for_each(
+  ExecutionPolicy&& exec,
+  ForwardIterator first,
+  ForwardIterator last,
+  Function f);
 ```
 
-std::for_eachと違い並列実行させるときはFunctionはCopyConstructibleでなければならない。
+逐次for_eachと違い並列実行させるときはFunctionはCopyConstructibleでなければならない。
 
 ## for_each_n
 
-サイズ指定のfor_each
+サイズ指定のfor_each。ExecutionPolicyなしの場合はCopyConstructibleでなくてもよいが、
+ExecutionPolicyありの場合はCopyConstructibleでなければならない(他も同様)。
 ```
-    template<class ExecutionPolicy, class InputIterator, class Size, class Function>
-    void for_each_n(ExecutionPolicy&& exec,
-                  InputIterator first, Size n,
-                  Function f);
+template<class ExecutionPolicy,
+         class ForwardIterator,
+         class Size, class Function>
+ForwardIterator for_each_n(
+  ExecutionPolicy&& exec,
+  ForwardIterator first,
+  Size n,
+  Function f);
 ```
 
 ## reduce
