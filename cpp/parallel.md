@@ -13,7 +13,7 @@ C++標準ライブラリに実際に普及している並列プログラミン�
 * `seq` : 従来通り先頭から順に処理する。
 * `par` : 複数スレッドを用いて並列実行される。
 * `par_unseq` : `par`かつSIMD的なベクトル実行される。
-    * スレッドは自分で管理してSIMDだけコンパイラに任せたいことがあるので`unseq`のみも欲しいとC++WGで提案したけどdeniedされた。
+    スレッドは自分で管理してSIMDだけコンパイラに任せたいことがあるので`unseq`のみも欲しいとC++WGで提案したけど却下された。
 
 ## 制約
 
@@ -197,3 +197,69 @@ g_noncomm_sum(op, init, *first, ..., *(first + (i - result) - 1))を返す。
 
 * inclusiveとexclusiveの差はi番目の要素に対して*(first + (i - result))を含むか含まないかの違い。
 * opが結合的でなければ結果は非決定的。
+
+## Q&A
+
+### inclusive_scanなどでoutputしたとき順序は保証されないと使えないのでは?
+
+Outputiteratorがあるのは通常版のみ
+
+```
+template<
+  class InputIterator,
+  class OutputIterator,
+  class BinaryOperation,
+  class T>
+OutputIterator inclusive_scan(
+  InputIterator first,
+  InputIterator last,
+  OutputIterator result,
+  BinaryOperation binary_op,
+  T init);
+```
+
+### for_eachで関数オブジェクトは何が返るの?
+
+並列版のfor_eachの戻り値の型はvoid。通常版と並列版で異なってることが多いので一つ一つアルゴリズムの宣言をちゃんとみないといけない。
+
+### par_unseqの場合にどうしてロックがかかる?
+
+たとえば
+```
+std::for_each(par_unseq, v.begin(), v.end(), [](auto& x) { x = x * 2 + 5; });
+
+v = [v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 va vb vc vd ve vf]
+```
+を4個ずつSIMDで処理する場合、`[v0 v1 v2 v3]`に対して
+
+```
+t = [v0 v1 v2 v3]
+t *= [2 2 2 2]
+t += [5 5 5 5]
+```
+というような処理に変換される。`[](auto& x){ m.lock(); x++; m.unlock(); }`の場合、
+```
+t = [v0 v1 v2 v3]
+[m.lock() m.lock() m.lock() m.lock()]
+t += [1 1 1 1]
+```
+となって、同じスレッドで複数回mをlockしようとしてデッドロックになっても文句は言えない。
+
+### 可換な和と非可換な和が分かりにくかった。
+
+たとえばS = v0 + v1 + v2 + v3 + v4 + v5 + v6 + v7の場合、viが整数なら順序を入れ換えて足しても結果は同じ(整数の足し算は可換である)。
+だから
+```
+S = [v0 v1 v2 v3 v4] + [v5 v6 v7 v8] = (v0 + v5) + (v1 + v6) + (v2 + v7) + (v3 + v8)
+```
+と計算してもよい。よってpar_unseqを使って高速化できる。
+
+別の例として
+M = M0 * M1 * M2 * M3 * M4 * M5 * M6 * M7の場合、Miが行列なら順序を変えると結果は異なる(行列A, Bに対してAB = BAとは限らない)。
+けれども(A * B) * C = A * (B * C)という性質(結合律)が成り立っているので、Mを求めるときに
+```
+M = ((M0 * M1) * (M2 * M3)) * ((M4 * M5) * (M6 * M7))
+```
+という順序で計算してもよい。つまり`M0 * M1`, `M2 * M3`, `M4 * M5`, `M6 * M7`を並列に同時に計算し、次に
+`(M0 * M1) * (M2 * M3)`と`(M4 * M5) * (M6 * M7)`を計算して最後に掛けるという方法をとれる。
+よって`par`を使って高速化できる。
