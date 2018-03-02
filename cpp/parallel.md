@@ -472,7 +472,7 @@ for_loop(vec, 0, n, [&](int i) {
 ```
 
 ## Task block
-[P0155R0 | Task Block R5](www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0155r0.pdf)
+[P0155R0 | Task Block R5](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0155r0.pdf)
 タスクブロックは並列タスクをforkしたりjoinしたりする。
 
 ### 例
@@ -492,7 +492,7 @@ int traverse(node *n, Func&& compute)
 }
 ```
 
-### `defne_task_block`
+### `define_task_block`
 
 ```
 namespace std::experimental {
