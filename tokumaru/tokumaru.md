@@ -609,7 +609,7 @@ const name = document.getElementById('js_name').value
 ```
 属性値のエスケープの原則だけ守ればよいのでルールがシンプルになる
 
-## DOMベースMXSS
+## DOMベースXSS
 JavaScriptのクライアント側での処理の問題(サーバで生成したHTMLには攻撃者の注入したJavaScriptは現れない)
 ```
 <body>
