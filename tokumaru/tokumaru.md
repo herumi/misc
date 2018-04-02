@@ -491,14 +491,14 @@ script要素内の文字列リテラル|解釈されない   |</      |JavaScrip
 
 ```
 <body>
-<a hrf="<?php echo htmlspecialchars($_GET['url']); ?>">bookmark</a>
+<a href="<?php echo htmlspecialchars($_GET['url']); ?>">bookmark</a>
 </body>
 ```
 を`http://trap.com/?url=javascript:alert(document.cookie)`で起動すると
 
 ```
 <body>
-<a hrf="javascript:alert(document.cookie)">bookmark</a>
+<a href="javascript:alert(document.cookie)">bookmark</a>
 </body>
 ```
 になる. このリンクを選択するとJavaScriptが起動する
@@ -531,8 +531,8 @@ init('');alert(document.cookie)//')
 
 * データをJavaScript文字列リテラルとしてエスケープする
     * \ → \\\\
-    * ' → \'
-    * " → \"
+    * ' → \\'
+    * " → \\"
     * 改行 → \n
 * その結果をHTMLエスケープする
 
