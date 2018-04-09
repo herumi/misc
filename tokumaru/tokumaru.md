@@ -626,3 +626,229 @@ document.write(unescape(RegExp.$1))
 http://sample.com/?name=<script>alert(document.cookie)</script>
 ```
 はJavaScriptが実行される
+
+# SQL呼び出しに伴う脆弱性
+
+## SQLインジェクション
+
+SQLインジェクション : SQLの呼び出し方に不備がある場合に発生する脆弱性
+
+## 想定される影響
+* データベース(以下DB)内の情報が盗まれる
+* DBの内容が書き換えられる
+* 認証を回避される
+* DB上のファイルの読み書き、プログラムの実行など
+
+SQLインジェクションは絶対に起こらないようにする必要がある
+
+対策 : 静的プレースホルダを利用してSQLを呼び出す
+
+## エラーメッセージ経由の情報漏洩
+
+```
+<?php
+$author = $_GET['author'];
+$con = pg_connect(...)
+$sqlstm = "SELECT id, title, author, publisher, date, price FROM books WHERE author = '$author' ORDER BY id";
+...
+```
+このページを
+```
+http://sample.com/?author='+and+cast((select+id||':'||pwd+from+users+offset+0+limit+1)+as+integer)>1--
+```
+でアクセスすると
+```
+WHERE author = '' and cast((select id||':'||pwd from users offset 0 limit 1) as integer)...
+```
+というSQLになる。これは表の先頭のidとpwdを':'で連結して文字列にしてintegerにしようとしてエラーになる。
+その結果
+
+```
+Warning pg_query()...入力構文が無効です:"yamada:pass1" in...
+```
+とエラーメッセージの中にパスワードが表示される。
+
+エラーメッセージに内部的なエラー内容を含ませないようにする。
+
+## UNION SELECTを用いた情報漏洩
+
+UNION SELECTは2個のSQL文の結果の和集合を求める演算
+先ほどのページを
+
+```
+http://sample.com?author='+union+select+id,pwd,name,addr,null,null,null+from+users--
+```
+でアクセスすると(本のID, タイトル, 著者名, 出版社)のところに(ユーザID, パスワード, 名前, 住所)が表示されてしまう。
+
+UNION SELECTによる攻撃は一度に大量の情報が漏洩させられる可能性がある。
+
+## SQLインジェクションによる認証回避
+
+ログイン画面
+
+```
+<form action="login.php" method="POST">
+  ユーザ名<input type="text" name="id"><br>
+  パスワード<input type="text" name="pwd"><br>
+  <input type="submit" value="ログイン">
+</form>
+```
+
+ログイン処理
+
+```
+<?php
+  session_start();
+  $id = @$_POST['id'];
+  $pwd = @$_POST['pwd'];
+  $con = pg_connect8"...");
+  $sql = "SELECT * FROM users WHERE id='$id' and pwd = '$pwd'";
+  $rs = pg_query($con, "sql);
+?>
+
+...
+if (pg_num_rows($rs) > 0) {... SELECTの結果が空でなければログイン成功
+```
+
+パスワードを`' or 'a'='a`にするとSQLは
+
+```
+SELECT * FROM users WHERE id='$id' and pwd = '' or 'a'='a'
+```
+となりWHERE句がtrueとなりログインできる
+
+## SQLインジェクション攻撃によるデータ改竄
+
+```
+http://sample.com/?author=';update+books+set+title%3D'<>cracked!</i>'+where+id%3d'1001'--
+```
+
+次のSQLが実行される
+
+```
+SELECT * FROM books WHERE author=''; update books set title='<i>craced!</i>' where id='1001'--'ORDER BY id
+```
+
+## その他の攻撃
+SQLの拡張機能でOSのコマンド実行やファイルの読み書きなどができることもある。
+
+
+# 脆弱性の原因
+
+開発者の意図しない形にSQL文が改変されることで発生する。
+
+## 文字列リテラルの問題
+ルール
+* SQLの文字列リテラルはシングルクォート'で文字列を囲む。
+* 文字列の中にシングルクォートを入れる場合はシングルクォートを重ねる。
+
+「O'Reilly」は「'O''Reilly'」になる。
+
+シングルクォートの処理を忘れると
+
+```
+SELECT * FROM books WHERE author='O'Reilly'
+```
+
+となる。`author='O'`で終わって残りの`Reilly'`でエラー。
+この部分がSQL文として意味があると攻撃になる。
+
+## 数値項目
+
+```
+SELECT * FROM employees WHERE age < $age
+```
+
+の`$age`に`1;DELETE FROM employees`が入ると
+
+```
+SELECT * FROM employees WHERE age < 1;DELETE FROM employees
+```
+
+となり;の後ろが実行される。
+
+# 対策
+
+SQL文を組み立てるときにSQL文の変更を防ぐ
+* プレースホルダでSQL文を組み立てる
+* リテラルを正しく構成してSQL文が変更されないようにする
+
+二つ目は難しいので一つ目で行うのがよい。
+
+```
+SELECT * FROM books WHERE author = ? ORDER BY id
+```
+
+?を使ってSQL文を組み立てる。
+
+* 静的プレースホルダ
+    * 値のバインドをDB側で行う
+    * プレースホルダの状態でSQL文がコンパイルされるので後からSQL文が変更されることはない
+* 動的プレースホルダ
+    * SQLを呼び出すライブラリが適切にバインドしてSQLを構成する
+    * ライブラリにバグがなければ安全
+
+## LIKE述語とワイルドカード
+
+LIKE述語の検索パターン
+* `_`は任意の一文字にマッチ
+* `%`はゼロ個以上の任意の文字列にマッチ
+
+LIEK述語ではこれらのワイルドカード文字をエスケープする必要がある
+
+SQLインジェクションではないが忘れると攻撃される可能性がある
+
+```
+WHERE name LIKE '%山田%'
+```
+
+## プレースホルダを用いた処理
+
+### 検索条件が動的に変わる場合
+
+「?」を含んだSQL文を文字列連結で動的に生成し、実パラメータをSQL呼び出しのときにバインドすると安全
+
+### 様々な条件でのソート
+
+ORDER BY句で列をソートする場合、
+
+```
+SELECT * FROM books ORDER BY $row
+```
+
+とすると`$row`に`cast((select id||':'||pwd FROM users limit 1) as integer)`が入ると攻撃される。
+
+```
+ERROR: 型intgerの入力構文が無効です: "yamada:pass1"
+```
+
+対策 : 指定可能な列名かどうかを確認してORDER BY句を組み立てる
+
+## SQLインジェクションの保険的対策
+
+ミドルウェアに脆弱性があった場合に攻撃の被害を低減する対策
+
+* 詳細なエラーメッセージの抑止
+    * SQLのエラー表示は攻撃者に情報を提供しやすい
+* 入力値の妥当性検証
+    * 数値しか入らない場合は数値のみであることをチェック
+* DBの権限設定
+    * アプリを実現する必要最小限の権限のみをDBに与える
+
+# 重要な処理の際に混入する脆弱性
+
+ここではログインした利用者が取り消しできない処理のことを重要な処理と呼ぶ。
+特定副作用と呼ばれることもある。
+
+重要な処理に脆弱性があるとクロスサイト・リクエストフォージェリ(CSRF:Cross-Site Request Forgeries)脆弱性の可能性がある。
+
+## CSRF
+* 重要な処理では利用者の意図した操作であることを確認する必要がある。
+* 確認処理が抜けると意図せずに実行されることがある。
+
+### 例
+利用者のアカウントによる
+* 物品の購入
+* 退会処理
+* 掲示板への書き込み
+* メールアドレスやパスワードの変更
