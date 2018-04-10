@@ -4,7 +4,7 @@
 int calc(int a, int b, int s)
 {
 	const int Q = 1 << s, Q2 = Q * 2, Q3 = Q * 3;
-	assert(s <= 16 && b < a && a < Q * 4);
+	assert(0 <= s && s <= 16 && b < a && a < Q * 4);
 	int n = 0;
 	for (;;) {
 		if (a < Q2) {
@@ -28,7 +28,7 @@ int calc(int a, int b, int s)
 int main()
 {
 	int s = 3;
-	for (int a = 1; a < 32; a++) {
+	for (int a = 1; a < (1 << s) * 4; a++) {
 		printf("a=%2d ", a);
 		for (int b = 0; b < a; b++) {
 			printf("%2d ", calc(a, b, s));
