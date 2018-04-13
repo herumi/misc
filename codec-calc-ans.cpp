@@ -25,6 +25,23 @@ int calc(int a, int b, int s)
 	return n;
 }
 
+static inline int bsr(int x)
+{
+	assert(x > 0);
+	union {
+		int i;
+		float f;
+	} ui;
+	ui.f = (float)x;
+	return (ui.i >> 23) - 127; /* equal to "bsr eax, x" */
+}
+
+int calc2(int a, int b, int)
+{
+	return a >> (bsr(a ^ b) + 1);
+//	return b >> (bsr(a ^ b) + 1); // same
+}
+
 int main()
 {
 	int s = 3;
@@ -32,6 +49,7 @@ int main()
 		printf("a=%2d ", a);
 		for (int b = 0; b < a; b++) {
 			printf("%2d ", calc(a, b, s));
+			if (calc(a, b, s) != calc2(a, b, s)) puts("ERR");
 		}
 		printf("\n");
 	}
