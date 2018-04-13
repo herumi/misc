@@ -38,7 +38,8 @@ static inline int bsr(int x)
 
 int calc2(int a, int b, int)
 {
-	return b >> (bsr(a ^ b) + 1);
+	return a >> (bsr(a ^ b) + 1);
+//	return b >> (bsr(a ^ b) + 1); // same
 }
 
 int main()
