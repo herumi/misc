@@ -1067,7 +1067,7 @@ CSRF対策が必要なページに対して第三者が知らない秘密情報(
 <form action="change.php" method="POST">
   新パスワード<input name="pwd" type="password"><br>
   <input type="hidden" name="token"
-   value="<?php echo htmlspecialchars(sha2(session_id()), ENT_COMPAT, 'UTF-8'); ?>">
+   value="<?php echo sha2(session_id()); ?>">
   <input type="submit" value="パスワード変更">
 </form>
 ```
