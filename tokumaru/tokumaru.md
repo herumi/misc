@@ -1053,17 +1053,21 @@ pwd=pass1
 ### 秘密情報(トークン)の埋め込み
 
 CSRF対策が必要なページに対して第三者が知らない秘密情報(=トークン)を要求することで不正なリクエストを識別する
-* セッションIDをトークンとして利用する
 * リクエストはPOSTにする
     * GETだとクエリパラメータにトークンが入ってしまう可能性がある
     * Refererで機密情報が外部に漏れる可能性がある
+
+* セッションIDをトークンとして利用すべきではない
+    * httpOnly属性でセッションIDをXSSから守っていてもトークンとしてHTMLに存在すると値がとられてしまう
+    * HTMLソースが漏洩したときにセッションハイジャックされるリスクを冒すべきではない
+
 
 ```
 // 確認画面
 <form action="change.php" method="POST">
   新パスワード<input name="pwd" type="password"><br>
   <input type="hidden" name="token"
-   value="<?php echo htmlspecialchars(session_id(), ENT_COMPAT, 'UTF-8'); ?>">
+   value="<?php echo htmlspecialchars(sha2(session_id()), ENT_COMPAT, 'UTF-8'); ?>">
   <input type="submit" value="パスワード変更">
 </form>
 ```
@@ -1071,7 +1075,7 @@ CSRF対策が必要なページに対して第三者が知らない秘密情報(
 ```
 // トークン確認
 session_start();
-if (session_id() !== $_POST['token']) {
+if (sha2(session_id()) !== $_POST['token']) {
   die('正規の画面から利用してください');
 }
 ```
