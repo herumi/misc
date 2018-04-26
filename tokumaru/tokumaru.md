@@ -1157,3 +1157,91 @@ URLにセッションIDを埋め込まずCookieにIDを保存する
 * 利用者にそのセッションIDを強制する
 * 利用者が標的アプリにログインする
 * 攻撃者はそのセッションIDでアプリを操作する
+
+### 攻撃手法
+セッションIDをクッキーとURLに保存している場合の例
+
+* ユーザIDの入力画面
+* 認証画面
+* 個人情報表示画面
+
+```
+<?php
+  session_start();
+?>
+<body>
+<form action="login.php" method="POST">
+  ユーザID:<input name="id" type="text"><br>
+  <input type="submit" value="ログイン">
+</form>
+</body>
+```
+
+```
+<?php
+  session_start();
+  $id = $_POST['id'];
+  // 簡単にするため確認せずにログイン成功とする
+  $_SESSION['id'] = $id;
+?>
+<body>
+<?php echo htmlescape($id); ?>さん
+<a href="info.php"></a>
+</body>
+```
+
+```
+<?php
+  session_start();
+?>
+<body>
+現在のユーザID : <?php echo htmlescape($_SESSION['id]); ?>
+</body>
+```
+
+罠URL`http://target.com/login.php?PHPSESSID=ABC`
+をクリックしてログイン画面でIDを入力してログインボタンを押すと
+セッションIDがABCになった状態で認証される
+
+ユーザが認証された状態で攻撃者が
+`http://target.com/info.php?PHPSESSID=ABC`
+をクリックすると現在のユーザIDが表示される
+
+### セッションアダプション
+* PHP(5.4以前)は未知のセッションIDを受け入れる仕様
+* セッションアダプションがない場合は有効なセッションIDを取得してそのIDを指定する
+
+### セッションIDをクッキーにのみ保存する場合
+* XSS脆弱性, HTTPヘッダインジェクション脆弱性があるとクッキーのセッションIDを外部から設定できる可能性
+
+## 脆弱性の原因
+セッションIDを外部から強制できるとセッションID固定化攻撃になりえる
+* セッションIDをURLに埋め込まない
+* XSS脆弱性対策
+* HTTPヘッダインジェクション対策
+
+## セッションIDが強制されてもセッションIDの固定化攻撃を受けない対策
+
+### 認証後にセッションIDを変更する
+PHPではsession_regenerate_id(true)を使う
+
+```
+<?php
+  session_start();
+  $id = $_POST['id']; // 簡単にするため確認せずにログイン成功とする
+  session_regenerate_id(true); // セッションIDの変更
+  $_SESSION['id'] = $id;
+?>
+<body>
+<?php echo htmlescape($id); ?>さん
+<a href="info.php"></a>
+</body>
+```
+
+### トークンによる対策
+セッションIDの変更ができない場合
+
+* ログイン時にランダム文字列(トークン)を生成し, クッキーとセッション変数の両方を記憶させる
+* 各ページの認証確認時にクッキー上のトークンとセッション変数のトークンが一致していなければエラー
+
+トークンが外部に出力されるのはログイン時のクッキー生成時のみなので外部の攻撃者は知れない
