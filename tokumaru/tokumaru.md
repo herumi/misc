@@ -1245,3 +1245,494 @@ PHPではsession_regenerate_id(true)を使う
 * 各ページの認証確認時にクッキー上のトークンとセッション変数のトークンが一致していなければエラー
 
 トークンが外部に出力されるのはログイン時のクッキー生成時のみなので外部の攻撃者は知れない
+
+```
+<?php
+  session_start();
+  $token = createToken();
+  setcookie('token', $token);
+  $_SESSION['token'] = $token;
+  ...
+```
+
+```
+<?php
+  session_start();
+  // ユーザIDの確認(省略)
+  $token = $_COOKIE['token'];
+  if (!$token || $token != $_SESSION['token']) die('認証エラー');
+```
+
+### ログイン前のセッションIDの固定化攻撃
+* 対策は困難
+* ログイン前はセッション管理機構を使わない
+* hiddenパラメータで値を引き回す
+
+# リダイレクト処理にまつわる脆弱性
+
+リダイレクタ : パラメータで指定したURLにリダイレクトする機能
+
+例 : ログインページのパラメータにURLを指定しておきログイン後にそのURLにリダイレクト
+
+## オープンリダイレクタ脆弱性
+オープンリダイレクタ : 任意のドメインにリダイレクトできるもの
+
+`http://sample.com/?url=http://trap.com/`で`http://trap.com/`に移動する
+
+### フィッシング詐欺に悪用される可能性
+フィッシング : 著名なWebサイトに偽装したサイトに利用者を誘導して個人情報を入力させる手口
+
+利用者が信頼しているドメインにオープンリダイレクタ脆弱性があると, 知らない間に罠サイトに誘導される可能性
+
+### 攻撃手法
+
+アプリ
+
+```
+// https://target.com/start.php
+<?php
+  $url = @$_GET['url'];
+  if (!isset($url)) $url = 'https://target.com/main.php';
+?>
+<html><body>
+  <form action="login.php" method="POST">
+    ユーザ名<input type="text" name="id">
+    パスワード<input tpye="password" name="pwd">
+    <input type="hidden" name="url"
+      value="<?php echo escapeHtml($url) ?>">
+    <input type="submit" value="ログイン">
+  </form>
+</body></html>
+
+```
+
+```
+// https://target.com/login.php
+<?php
+  $id = $_POST['id'];
+  $pwd = $_POST['pwd'];
+  $url = $_POST['url'];
+  if ($idと$pwdが正しい) {
+    header('Location: '. $url); // リダイレクト
+    exit();
+  }
+?>
+<body>
+IDまたはパスワードが違います
+</body>
+```
+
+```
+// https://target.com/main.php
+<html><body>
+ログインしました
+</body></html>
+```
+
+攻撃ページ
+```
+// https://trap.com/
+<html><body>
+  IDまたはパスワードが違います
+  <form action="fake-login.php" method="POST">
+    ユーザ名<input type="text" name="id">
+    パスワード<input tpye="password" name="pwd">
+    <input type="hidden" name="url"
+      value="<?php echo escapeHtml($url) ?>">
+    <input type="submit" value="ログイン">
+  </form>
+</body></html>
+```
+ユーザに`https://target.com/start.php?url=https://trap.com/`を指定させる
+
+* ドメインが本物で証明書のエラーも出ないので安心してIDとパスワードを入力
+* login.phpで認証された後リダイレクタが攻撃ページに遷移
+* パスワードを間違えたかなと再入力
+
+### 脆弱性の原因
+* リダイレクト先のURLを外部から指定できる, かつ
+* リダイレクト先のドメインのチェックがない
+
+### オープンリダイレクタが問題ない場合
+* もともと外部のドメインに遷移する仕様
+* 利用者にとって外部ドメインに遷移することが自明なとき(バナー広告)
+
+### 対策
+
+* リダイレクト先のURLを固定する
+* リダイレクト先のURLを直接指定ではなく番号などの間接指定にする
+* リダイレクト先のドメインをチェックする
+
+チェックは失敗しないように気を付ける
+
+駄目な例1
+```
+if (mb_ereg('example\.jp', $url)) {
+  // チェックOK
+}
+```
+これは`trap.example.com/example.jp.php`だとすり抜ける
+
+駄目な例2
+```
+if (mb_ereg('^/', $url)) {
+  // チェックOK
+}
+```
+先頭が/で始まっているのでパス指定のみと思ったけれども`//trap.example.com/`で外部に飛べる(ネットワークパス参照形式)
+
+
+駄目な例3
+```
+if (mb_ereg('^http://example\.jp/', $url)) {
+  // チェックOK
+}
+```
+* URLが`http://example.jp/`で始まっていることを確認
+* 次で説明するHTTPヘッダ・インジェクション攻撃に対して脆弱な場合がある
+
+正しい書き方
+```
+if (mb_ereg('/Ahttps?://example\.jp/[-_.!~*\'();\/?:@&=+\$,%#a-zA-Z0-9]*\z', $url)) {
+  // チェックOK
+}
+```
+`http://example.jp/`で始まり, かつURIで使用できる文字のみからなることを確認している
+
+### クッションページ
+* 利用者がURLを書き込むとリンクが生成されるサイトでフィッシングサイトに誘導される可能性
+* クッションページを置いて外部ドメインに遷移することを利用者に告知する
+
+## HTTPヘッダ・インジェクション脆弱性
+リダイレクトやクッキー発行など外部からのパラメータを元にHTTPレスポンスヘッダを精製する際に発生する脆弱性
+
+パラメータ中に改行を挿入してヘッダ出力をコントロール
+
+* 任意のレスポンスヘッダの追加
+* レスポンスボディの偽造
+* CrLfインジェクション攻撃, HTTPレスポンス分割攻撃とも
+
+
+### 影響
+* 任意のクッキー生成
+* 任意のURLへのリダイレクト
+* 表示内容の改変
+* 任意のJavaScript実行によるXSSと同等の被害
+
+### サンプル
+urlというクエリー文字列を受け取りurlが指すURLにリダイレクトする例
+```
+my $cgi = new CGI;
+my $url = $cgi->param('url'); // クエリー文字列urlを取得
+if ($url =~/^http:\/\/example\.jp\//) { # 不十分な対策
+  print "Location: $url\n\n";
+  exit 0;
+}
+# エラーメッセージ
+print <<END_OF_HTML;
+Content-Type: text/html; charset=UTF-8
+
+<body>
+Bad URL
+</body>
+END_OF_HTML
+```
+
+* `cgi?url=http://sample.com/`ならsample.comにリダイレクト
+
+### 攻撃
+```
+cgi?url=http://sample.com/%0D%0ALocation:+http://trap.com/
+```
+を渡すと罠サイトに移動する
+
+### 解説
+不十分な対策なので`sample`で始まっているとして`Location`ヘッダに
+```
+Location: http://sample.com/
+Location: http://trap.com/
+```
+が出力される。複数のLocationがあると前者が書きされて後者だけが出力される。
+
+### 任意のクッキー生成
+同じcgiに
+```
+cgi?url=http://sample.com/%0D%0ASet-Cookie:+SESSID=ABCD123
+```
+でアクセスすると
+```
+Set-Cookie: SESSID=ABCD123
+Location: http://sample.com/
+```
+任意のクッキー値を生成できるのでセッションIDの固定化攻撃の可能性
+
+### 偽画面の表示
+pageidクエリー文字列の値をPAGEIDという名前でクッキーを生成するCGIスクリプト
+```
+my $cgi = new CGI;
+my $pageid = $cgi->param('pageid');
+print encode('UTF-8', <<END_OF_HTML);
+Content-Type: text/html; charset=UTF-8
+Set-Cookie: PAGEID=$pageid
+
+<body>
+クッキーを設定
+</body>
+END_OF_HTML
+```
+
+```
+http://sample.com/cgi?pageid=P%0D%0A%0D%0A....
+```
+で開くとヘッダに
+```
+PAGEID=P
+```
+があり、レスポンスボディが
+```
+攻撃されました
+
+<body>
+クッキーを設定
+</body>
+```
+となる。CSSを工夫すれば元の画面を隠せる。
+
+### HTTPヘッダと改行
+* URLは改行文字を含めない
+* クッキーの値
+    * 改行を入れたい場合は`%0D%0A`とパーセントエンコードする
+
+### 対策
+* HTTPヘッダ出力部分を自前で作成せずに専用ライブラリやAPIを利用する
+    * 過去には0x0Aのみの対策で0x0Dは通ったこともあった
+    * よく仕様と実装を確認すること
+* 改行コードが含まれていればエラーとして処理を中止する
+
+## クッキー出力にまつわる脆弱性
+
+### クッキーの不適切な利用
+Webアプリの一般的な使い方
+* セッション管理機構ではセッションIDのみをクッキーに保存
+* データ自体はWebサーバ側で保存する
+
+クッキーに保存すべきでないデータをクッキーに保存すると脆弱性につながる可能性
+
+* セッション変数は外部から書き換えられない
+* クッキーの値は書き換えられる
+    * 書き換えられて困る情報をクッキーに保存すると脆弱性の原因
+
+クッキーとセッション変数の比較
+
+
+項目                          |クッキー                         |セッション変数
+------------------------------|---------------------------------|---------------
+使いやすさ                    |APIで設定・取得                  | 変数とほぼ同じ
+配列やオブジェクトの格納      |アプリ側で文字列に変換           |代入可能な場合が多い
+サイズの制限                  |あり                             |ほぼ無制限
+利用者による格納情報の直接参照|容易                             |不可能
+クッキーが漏洩した時          |データも漏洩                     |制御可能(パスワードありなど)
+利用者によるデータ改変        |容易                             |不可能
+第三者によるデータ改変        |XSSやHTTPヘッダ・インジェクション|不可能
+情報の寿命の制限              |容易                             |セッション限り
+異なるサーバとの情報共有      |ドメインが同じなら可能           |不可能
+
+
+* 寿命の制御と異なるサーバとの情報共有を除いてはセッション変数の方が便利
+    * セッション変数を利用すべき
+* ログイン状態の保持はクッキーを使う
+    * トークン(乱数)のみを保存
+* HTTPSのときのみ送信可能なsecure属性をつける
+* XSS対策のためhttpOnly属性をつける
+
+# メール送信の問題
+## メールヘッダ・インジェクション脆弱性
+メールメッセージの宛て先や件名などのヘッダフィールドに改行を挿入することで新たなフィールドを追加したり本文を改竄したりする手法
+## hiddenパラメータによる宛て先保持
+* メール送信先をhiddenパラメータで指定するメール送信用フォームは迷惑メールの送信に悪用される可能性がある
+* ソースコードにハードコーディングするか別のところに保存すべき
+
+## メールヘッダ・インジェクション攻撃の例
+メール送信フォーム
+```
+<body>
+問い合わせフォーム<br>
+<form action="post.php" method="POST">
+  メール:<input type="text" name="from"><br>
+  本文:<textarea name="body"></textarea>
+  <input type="submit" value="送信">
+</form>
+</body>
+```
+メール送信スクリプト
+```
+<?php
+ $from = $_POST['from'];
+ $body = $_POST['body'];
+ mb_language('Japanese');
+ mb_send_mail("q@sample.com", "問い合わせ", "送信内容\n\n" . $body, "From: " . $from);
+?>
+送信しました
+</body>
+```
+第4引数は改行区切りにより複数ヘッダ指定可能
+
+### 宛て先追加攻撃(form改変)
+```
+<form action="post.php" method="POST">
+  メール:<textarea name="from" rows="r" cols="30"></textarea>
+  本文:<textarea name="body"></textarea>
+  <input type="submit" value="送信">
+</form>
+```
+メール宛て先を複数行入力可能にして
+```
+alice@sample.com
+Bcc: bob@sample.com
+```
+と入力するとbobにbccで届く
+
+### 本文改竄
+```
+alice@sample.com
+Bcc: bob@sample.com
+
+discount PC!!!
+```
+とすると本文の最初に`discount PC!!!`と表示される
+
+ウイルスファイルを添付することも可能
+
+## 対策
+* メール送信専用ライブラリを利用する
+* 外部からのパラメータをメールヘッダに含ませないようにする
+* 外部からのパラメータに改行をふくまないように送信時にチェックする
+
+## ファイルアクセスにまつわる問題
+### ディレクトリ・トラバーサル脆弱性
+外部からパラメータの形でサーバのファイル名を指定できるWebアプリケーションではファイル名のチェックが不十分だと意図しない閲覧・改竄・削除ができる場合がある。
+
+* Webサーバ内のファイル閲覧
+    * 重要情報の漏洩
+* Webサーバ内のファイルの改竄・削除
+    * コンテンツ改竄
+    * マルウェアのサイトに誘導
+    * サーバ機能停止
+
+### 攻撃例
+`template=ファイル名`で画面テンプレートを指定できるスクリプト
+```
+<?php
+  define('TMPLDIR', '/var/www/tmpl/');
+  $tmpl = $_GET['template'];
+?>
+<body>
+  <?php readfile(TMPLDIR . $tmpl . '.html'); ?>
+  ...
+</body>
+```
+
+```
+http://sample...php?template=../../../etc/hosts%00
+```
+でアクセスすると`$tmpl`は
+```
+/var/www/tmpl/../../../etc/hosts'\0'.html
+```
+という形になり
+
+`/etc/hosts`の中身が表示される(ファイル名の中に'\0'が含まれるとエラーになることも多い)
+
+### 対策
+* 外部からファイル名を指定する仕様を避ける
+    * ファイル名を固定にする
+    * ファイル名を番号などで間接指定する
+* ファイル名にディレクトリ名が含まれないようにする
+    * `/`, `\`, `:`などをチェックする
+* ファイル名を英数字に限定する
+    * '\0'をはじく
+
+## 意図しないファイルの公開
+* ファイルが公開ディレクトリに置かれている
+* ファイルに対するURLを知る手段がある
+* ファイルに対するアクセス制限が掛かっていない
+
+## OSコマンド呼び出しの際に発生する脆弱性
+### OSコマンド・インジェクション
+* 外部から攻撃用ツールをダウンロードする
+* ダウンロードしたツールに実行権限を与える
+* 内部からOSの脆弱性を攻撃して管理者権限を得る
+
+### 例
+メール送信受け付けスクリプト
+```
+<?php
+  $mail = $_POST['mail'];
+  system("/usr/sbin/sendmail -i <template.txt $mail");
+  ...
+```
+問い合わせフォームに
+```
+a@example.com;cat /etc/passwd
+```
+とすると
+```
+/usr/sbin/sendmail -i <template.txt a@example.com;cat /etc/passwd
+```
+が実行されて`/etc/passwd`の中身が表示される
+
+### 脆弱性の原因
+* シェル経由でコマンド実行はパイプ、リダイレクトなどの便利な機能が使える
+* それが外部からの操作要因となる
+
+### 対策
+* OSコマンド呼び出しを使わない方法を選ぶ
+* シェル呼び出し機能のある関数の利用を避ける
+* パラメータを安全な関数でエスケープする
+
+### shellshock(2014)
+* bashの環境変数のパーサにバグがあった
+* 環境変数に値を書き込めると脆弱
+
+```
+env x='() { :;}; echo attack' bash -c "echo test"
+```
+で`echo attack`が実行されてしまった
+
+* その対策の修正漏れで6種類ぐらいの派生攻撃
+[hatena/Kango](http://d.hatena.ne.jp/Kango/20140925/1411612246#20140925f1)
+
+### PHPのregister_globals(PHP 5.4.0以降削除)
+リクエストパラメータがグローバル変数にセットされる機能
+```
+http://sample.com/?a=1&b=abc
+```
+でアクセスすると`$a="1"`, `$b="abc"`がセットされる
+
+```
+<?php
+ if (authenticated_user()) {
+    $authorized = true;
+ }
+ if ($authorized) {
+    // 認証後のロジック
+ }
+```
+に`...?authorized=true`でアクセスすると認証されてしまう
+
+### OGNL式インジェクション(Javaのライブラリ)
+Javaオブジェクトのプロパティを操作するJavaライクな言語
+
+* [cwiki.apache.org](https://cwiki.apache.org/confluence/display/WW/S2-013)
+```
+http://localhost:8080/example/HelloWorld.action?fakeParam=%25%7B(%23_memberAccess%5B'allowStaticMethodAccess'%5D%3Dtrue)(%23context%5B'xwork.MethodAccessor.denyMethodExecution'%5D%3Dfalse)(%23writer%3D%40org.apache.struts2.ServletActionContext%40getResponse().getWriter()%2C%23writer.println('hacked')%2C%23writer.close())%7D
+```
+
+Struts2が使っている
+* 多くの場所で使われているため対応漏れが多い
+* [例えば、Strutsを避ける](https://www.scutum.jp/information/waf_tech_blog/2014/04/waf-blog-036.html)
+* [Struts2が危険である理由](https://www.scutum.jp/information/waf_tech_blog/2017/03/waf-blog-046.html)
+
+JVMのSecurityManager
+* 悪意あるユーザからJVMの操作を保護する(遅くなることがある)
+* [サイボウズ Live アクセス障害の裏で起こっていたこと](http://blog.cybozu.io/entry/2017/12/28/080000)
