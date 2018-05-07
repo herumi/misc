@@ -1736,3 +1736,77 @@ Struts2が使っている
 JVMのSecurityManager
 * 悪意あるユーザからJVMの操作を保護する(遅くなることがある)
 * [サイボウズ Live アクセス障害の裏で起こっていたこと](http://blog.cybozu.io/entry/2017/12/28/080000)
+
+## ファイルアップロードにまつわる問題
+
+利用者がファイルをアップロードやダウンロードする機能に発生しがちな脆弱性
+
+### アップロード機能に対するDoS攻撃
+* 巨大なファイルを連続して送信することでWebサイトに過大な負荷を掛けるDoS攻撃
+* ファイルアップロードの容量制限をする
+* 画像ファイルを復元したときのサイズチェック
+
+### アップロードファイルによるサーバ側スクリプト実行
+* 外部からアップロードされたファイルがWebサーバ上で実行できてしまう可能性
+    * Webサーバ内のファイルの閲覧・改竄・削除
+    * 外部へのメール送信
+    * 別のサーバへの攻撃(踏み台)
+
+例
+```
+// ファイルアップロード
+<body>
+<form action="view.php" method="POST" enctype="multipart/form-data">
+  ファイル:<input type="file" name="imgfile" size="20"><br>
+  <input type="submit" vluae="アップロード">
+</form>
+</body>
+```
+
+```
+// ファイル表示
+<?php
+  $tmpfile = $_FILES["imgfile"]["tmp_name"];
+  $tofile = $_FILES["imgfile"]["name"];
+  if (!is_uploaded_file($tmpfile)) {
+    die('ファイルがアップロードされていません');
+  } else if (!move_uploaded_file($tmpfile, 'img/' . $tofile)) {
+    die('ファイルをアップロードできません');
+  }
+  $imgurl = 'img/' . urlencode($tofile); // %エンコード(ファイル名には<>"が可能)
+?>
+<body>
+<a href="<?php echo htmlspecialchars($imgurl); ?>">
+<?php echo htmlspecialchars($tofile, ENT_NOQUOTES, 'UTF-8'); ?> // XSS対策
+</a>をアップロードしました<br>
+<img src="<?php echo htmlspecialchars($imgurl); ?>">
+</body>
+```
+
+```
+<pre>
+<?php system('/bin/cat /etc/passwd'); ?>
+</pre>
+```
+をアップロードするとこのファイルは画像ではないので絵は表示されない
+
+しかしクリックするとスクリプトがサーバ上で実行されて`/etc/passwd`の中身が表示される
+
+対策
+* アップロードファイルは公開ディレクトリに置かない
+    * スクリプト経由で閲覧させる
+* ファイルの拡張子をスクリプト実行可能性のないものに制限する
+    * 漏れる可能性があるので頼りすぎない
+
+### 仕掛けを含むファイルを利用者にダウンロードさせることによる攻撃
+* ブラウザがファイルタイプを誤認することがある(あった)
+    * PNG画像を指定していても画像データの中にHTMLタグがあるとHTMLファイルと認識しJavaScriptが実行される
+    * 昔のIEはいろいろ大変だった
+* ファイルのContent-Typeを正しく設定する
+* 画像の拡張子と中身が対応していることを確認する
+* ダウンロードファイルには`Content-Disposition: attachment`を指定する
+* 画像を別ドメインで配信する
+    * ドメインを分けると画像によるXSS攻撃が可能だった場合もサービス自体への影響を減らせる
+
+### ファイルの権限を越えたダウンロード
+アップロードしたファイルが権限の無い利用者にもダウンロードできる問題
