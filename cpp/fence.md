@@ -1,3 +1,85 @@
+# volatileとコンパイラフェンスとメモリフェンス
+
+## なにもつけない
+```
+void f(int *a)
+{
+    *a = 1;
+    *a = 2;
+}
+```
+コンパイラは最適化して*a = 2;だけにしてもよい。
+
+```
+//g++ -Ofast -S -o -
+f:
+    movl    $2, (%rdi)
+    ret
+```
+
+## volatile
+```
+void f(volatile int *a)
+{
+    *a = 1;
+    *a = 2;
+}
+```
+それぞれ書き込み命令を生成する。
+
+```
+f:
+    movl    $1, (%rdi)
+    movl    $2, (%rdi)
+    ret
+```
+
+しかしvolatileとそうで無い変数の順序は入れ代えてもよい。
+```
+void f(int *a, volatile int *b)
+{
+    *a = 1;
+    *b = 2;
+    *a = 3;
+}
+```
+は
+```
+f:
+    movl    $2, (%rsi)
+    movl    $3, (%rdi)
+    ret
+```
+`*a = 1`と`*b = 2`が入れ代わり、`*a = 1`と`*a = 3`が結合した。
+
+## コンパイラフェンス(コンパイラのメモリバリア)
+コンパイル時に命令を入れ換えないようにする。
+
+```
+void f(int *a)
+{
+    *a = 1;
+#ifdef __GNUC__
+    asm volatile("" ::: "memory");
+#else
+    // for Visual Studio(#include <intrin.h>)
+    _ReadWriteBarrier();
+#endif
+    *a = 2;
+}
+```
+は
+```
+f:
+    movl    $1, (%rdi)
+    movl    $2, (%rdi)
+    ret
+```
+
+## CPUのメモリバリア
+
+CPUは必ずしもアセンブリコードで書かれた順序でプログラムを実行するわけではない。詳細は次章。
+
 # x86/x64におけるメモリオーダーの話
 
 ## 概要
@@ -286,6 +368,8 @@ x.store(1, release)    | int expected = 1;
 ```
 
 ### memory_order_consume
+
+C++17から一時的に非推奨 [P0371R1: Temporarily discourage memory_order_consume](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0371r1.html)
 
 carries a dependency toはis sequenced beforeのsubset。
 同じメモリに対して依存するもののみ依存関係を保証する。
