@@ -17,7 +17,7 @@ int main()
 }
 ```
 
-しかしstd::functionはまだnopexcetに対応していない。
+しかしstd::functionはまだnoexceptに対応していない。
 
 ```
 #include <functional>
