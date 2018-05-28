@@ -57,3 +57,41 @@ noexceptの他にconstやvolatileにも対応すべきという提案
 # Qualified std::function signatures
 [Qualified std::function signatures](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0045r1.pdf)
 
+# gcc-7.3のバグ
+
+```
+#include <stdio.h>
+#include <functional>
+#include <stdexcept>
+
+void f() noexcept
+{
+    puts("f");
+}
+
+void g()
+{
+    puts("g");
+    throw std::runtime_error("err");
+}
+
+int main()
+{
+    std::function<void()> a = f;
+    a();
+    try{
+        a();
+    } catch (...) {
+    }
+    std::function<void()> b = g;
+    try {
+        b();
+    } catch (...) {
+    }
+}
+```
+```
+g++ t.cpp -O2 -std=c++11 && ./a.out
+```
+が無限ループ
+[wrong exception handling of std::function](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=84858)
