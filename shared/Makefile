@@ -20,7 +20,6 @@ t: t.c
 
 run: t prem.so
 	env LD_PRELOAD=./prem.so ./t
-	./t
 
 clean:
 	rm -rf test b.so bb.so t mymalloc.so prem.so
