@@ -1,0 +1,20 @@
+@startuml
+title TLS1.2
+
+participant "クライアント" as C
+participant "サーバ" as S
+
+C -> S: ClientHello
+  S -> C: ServerHello
+  S -> C: ServerCertificate
+  S -> C: ServerKeyExchange
+  S -> C: ServerHelloDone
+C -> S: ClientKeyExchange
+C -> S: ChangeCipherSpec
+C -> S: Finished
+  S -> C: ChangeCipherSpec
+  note right: ここから暗号化する
+  S -> C: Finished
+
+@enduml
+

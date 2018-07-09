@@ -1,0 +1,22 @@
+@startuml
+title TLS1.3
+
+participant "クライアント" as C
+participant "サーバ" as S
+
+C -> S: ClientHello(KeyShare, signature_algorithms)
+  S -> C: ServerHello(KeyShare)
+  note right: ここから暗号化する
+  S -> C: EncryptedExtensions
+  S -> C: Certificate
+  S -> C: CertificateVerify
+  S -> C: Finished
+C -> S: Certificate
+C -> S: CertificateVerify
+C -> S: Finished
+  S -> C: NewSessionTicket(ticket)
+  note left: PSK取得
+C -> S: Application Data
+
+@enduml
+

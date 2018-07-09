@@ -1,0 +1,17 @@
+@startuml
+title 1-RTT
+
+participant "クライアント" as C
+participant "サーバ" as S
+
+C -> S: ClientHello(KeyShare, psk_key_exchange_modes, pre_shared_key)
+  note right: 事前に渡したPSKの使用許可
+  S -> C: ServerHello(KeyShare, pre_shared_key)
+  S -> C: EncryptedExtensions
+  S -> C: Finished
+  note left: サーバが指示したPSK仕様
+C -> S: Finished
+  S -> C: Application Data
+
+@enduml
+
