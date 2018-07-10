@@ -60,7 +60,9 @@ Windowsではint 3のハンドラがkernelにあるのでそこは特権レベ�
 
 RF(resume flag)を設定すると#DBが発生せずに処理を継続する。
 
-cf. [Windows Anti-Debug Reference](https://www.symantec.com/connect/articles/windows-anti-debug-reference)
+cf. 実は10年以上前からこのテクニックを使ったデバッガ対策があった。
+
+[Windows Anti-Debug Reference](https://www.symantec.com/connect/articles/windows-anti-debug-reference)
 
 ```
 push ss
