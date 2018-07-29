@@ -11,6 +11,11 @@ run: test
 	./test
 
 # make dll by gcc
+mingw0:
+	gcc $(CFLAGS) -shared -o lib/add.so add.cpp -Wl,--out-implib,lib/libadd.a
+	gcc -o test test.cpp -ladd -L./lib
+	env PATH=$(PATH):./lib ./test.exe
+
 mingw1:
 	gcc $(CFLAGS) -shared -o lib/add.dll add.cpp -Wl,--out-implib,lib/libadd.a
 	gcc -o test test.cpp -ladd -L./lib

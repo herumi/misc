@@ -73,6 +73,6 @@ NIST SP800-57でのビット安全性の取り扱い方針(p.18)
     * p.35にはRSA2048の計算量見積もり10^25～10^27FLOPS, ECDSA192ビット10^24～10^25FLOPS
 * 現時点で[EdDSA](https://tools.ietf.org/html/rfc8032)などは入っていない
 
-# [「SSL/TLS暗号設定ガイドライン改訂及び鍵管理ガイドライン作成のための調査・検討」報告書の公開](https://www.ipa.go.jp/security/fy30/reports/crypto_survey/index.html)
+# [「SSL/TLS暗号設定ガイドライン改訂及び鍵管理ガイドライン作成のための調査・検討」報告書の公開](https://www.ipa.go.jp/security/fy30/reports/crypto_survey/)
 
 各国の推奨暗号スイート、ブラウザ対応状況など
