@@ -1,6 +1,5 @@
 #include <stdio.h>
-
-extern "C" int add(int x, int y);
+#include "add.h"
 
 int main()
 {

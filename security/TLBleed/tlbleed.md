@@ -178,3 +178,9 @@ CATを有効にしてもTLBeeldは有効だった
 
 ## TLBeeldの緩和
 HTを止める
+
+* Intelの見解 [hothardware](https://hothardware.com/news/intel-no-plans-patch-tlbleed-hyper-threading-cpu-exploit)
+
+*TLBleed uses the Translation Lookaside Buffer (TLB), a cache common to many high performance microprocessors that stores recent address translations from virtual memory to physical memory. Software or software libraries such as Intel® Integrated Performance Primitives Cryptography version U3.1 - written to ensure constant execution time and data independent cache traces should be immune to TLBleed.*
+
+* OpenBSDはHTを[disable](https://www.mail-archive.com/source-changes@openbsd.org/msg99141.html)
