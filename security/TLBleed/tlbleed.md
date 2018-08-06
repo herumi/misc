@@ -131,9 +131,9 @@ mov (rax), rax
 これらを同じ物理アドレスにマップされる仮想アドレスに配置する
 
 ## 一時解析
-* libcryptのECCスカラー乗算コード(constant-time版)をターゲットにする
-    * 通常EdDSAはnon-constantアルゴリズム
-    * サイドチャネル攻撃に対して脆弱と言われるconstant-time版を使っていることに注意
+* libcryptのECCスカラー乗算コード(non-constant-time版)をターゲットにする
+    * 通常EdDSAはconstantアルゴリズム
+    * サイドチャネル攻撃に対して脆弱と言われるnon-constant-time版を使っていることに注意
 
 ### 秘密鍵でスカラー乗算する部分
 
