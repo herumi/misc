@@ -1,17 +1,26 @@
 CFLAGS=-O2 -Wall -Wextra
 CXXFLAGS=$(CFLAGS)
 
-t.o: t.cpp
-	$(CXX) -c t.cpp $(CXXFLAGS)
+.cpp: .o
+	$(CXX) -c $< $(CXXFLAGS)
 
-s.o: s.c
-	$(CC) -c s.c $(CFLAGS)
+.c: .o
+	$(CC) -c $< $(CFLAGS)
 
-t: t.o s.o
-	$(CXX) -o t t.o s.o $(LDFLAGS)
+t1: t.o s.o
+	$(CXX) -o t1 t.o s.o $(LDFLAGS)
 
-test: t
-	./t
+test1: t1
+	./t1
+
+t2: u.o v.o w.o
+	$(CXX) -o t2 u.o v.o w.o $(LDFLAGS)
+
+test1: t1
+	./t1
+
+test2: t2
+	./t2
 
 clean:
-	$(RM) -rf t.o s.o t
+	$(RM) -rf *.o t1 t2
