@@ -67,8 +67,9 @@
 * ERESUME ; 隔離領域に再度入る
 
 ## Foreshadow
+### 概要
 * 攻撃者が4KiB x 256のバッファ(buffer)を用意する
-* SGXの中で犠牲者のプログラムが秘密領域にアクセスして秘密のデータがL1Dに入る
+* SGXの中で犠牲者のプログラムが隔離領域にアクセスして秘密のデータがL1Dに入る
 * 秘密のページをnon-present(mprotect(PROT_NONE))にする
     * これで見えるのが今回の新しい知見
 * 攻撃者が
@@ -80,6 +81,16 @@ mov rax, [rdx + rax] ; rdx = buffer
 を実行する。
 * `mov al, [rsi]`で例外が発生するが後続の命令が投機実行される
 * bufferを読んで時間がかからないアドレス(al)を見つける
+
+### page alias(root権限)
+隔離領域がある物理アドレスにマップされる隔離ページと同じ物理アドレスに変換されるaliased pageを用意する
+
+### 例外抑制
+TSXの中で例外を発生させることで無かったことにする(MeltdownやTLBleedなどでも利用されている)
+
+### プリエンプティブに秘密を取り出す
+* [SGX-Step](https://github.com/jovanbulck/sgx-step)を使うと1命令の粒度でstep実行させられるらしい。
+* 犠牲者プログラムが秘密情報をL1Dに入れたところで処理を奪う。
 
 ## Foreshadow-NG
 * linearアドレスを物理アドレスに変換するときにはPT, EPT, SGXそれぞれのチェック機構が働く
