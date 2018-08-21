@@ -19,6 +19,7 @@
 * PDPTE(page directory pointer table entry)
     * ページマップ→PDPTE→ページディレクトリ(PDE)→ページテーブル(PTE)→物理メモリの順序で変換する
 ![Figure 4-5. SDM3 Linear-Address Translation with PAE Paging](figure4-5.png)
+図はIntel SDM3 Linear-Address Translation with PAE PagingのFigure 4-5.
 
 * SMM(System Management mode) システム管理モード ; BIOS/UEFIファームウェアのセキュアな部分で使われる特殊なモード
 * SMRR(System Management Range Registers) ; システム管理範囲レジスタ / SMMメモリを保護する範囲レジスタ
@@ -96,6 +97,7 @@ TSXの中で例外を発生させることで無かったことにする(Meltdow
 * linearアドレスを物理アドレスに変換するときにはPT, EPT, SGXそれぞれのチェック機構が働く
 * しかし該当アドレスがL1Dにあるとそれらを飛ばして投機実行されてしまうことがある
 ![Figure 1 in Foreshadow-NG](figure1.png)
+図はForeshadow-NGのFigure 1
 
 ## [Deep Dive:Intel Analysis of L1 Terminal Fault](https://software.intel.com/security-software-guidance/insights/deep-dive-intel-analysis-l1-terminal-fault)
 
