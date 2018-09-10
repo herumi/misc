@@ -3,6 +3,7 @@
 * [Foreshadow paper](https://foreshadowattack.eu/foreshadow.pdf)
 * [Foreshadow-NG](https://foreshadowattack.eu/foreshadow-NG.pdf)
 * [L1 terminal fault(Intel)](https://www.intel.com/content/www/us/en/architecture-and-technology/l1tf.html)
+* [Ubuntu](https://wiki.ubuntu.com/SecurityTeam/KnowledgeBase/L1TF)
 
 ## 経緯
 * Bulckたちのチーム(少し遅れてTechnionのチームも)がSGXに関するForeshadowの脆弱性を見つけてIntelに報告
