@@ -1,6 +1,8 @@
-# volatileとコンパイラフェンスとメモリフェンス
+# x86/x64におけるメモリオーダーの話
 
-## なにもつけない
+## volatileとコンパイラフェンスとメモリフェンス
+
+### なにもつけない
 ```
 void f(int *a)
 {
@@ -17,7 +19,7 @@ f:
     ret
 ```
 
-## volatile
+### volatile
 ```
 void f(volatile int *a)
 {
@@ -52,7 +54,7 @@ f:
 ```
 `*a = 1`と`*b = 2`が入れ代わり、`*a = 1`と`*a = 3`が結合した。
 
-## コンパイラフェンス(コンパイラのメモリバリア)
+### コンパイラフェンス(コンパイラのメモリバリア)
 コンパイル時に命令を入れ換えないようにする。
 
 ```
@@ -76,7 +78,7 @@ f:
     ret
 ```
 
-## CPUのメモリバリア
+### CPUのメモリバリア
 
 CPUは必ずしもアセンブリコードで書かれた順序でプログラムを実行するわけではない。詳細は次章。
 
@@ -302,7 +304,7 @@ mov r2, [y] |   mov r4, [x]
 通常C++ではデフォルトのmemory_orderを使うべき。加えて普通使うx86/x64ではそれで問題ない。
 下手にやってもバグになる可能性が高い。
 
-### releaxedで読み書きすると
+### relaxedで読み書きすると
 
 memory_order_relaxed ; 異なるメモリに関するhappned-beforeに関して何も制約が無い
 
@@ -313,8 +315,8 @@ y.store(true, relaxed)   |
 ```
 
 memory_order_seq_cst ; sequentially consistent
-どのスレッドでも同じ順序でメモリが見える。
-スレッド間で異なるメモリに対するhappned-beforeの推移律が成り立つ
+* どのスレッドでも同じ順序でメモリが見える。
+* スレッド間で異なるメモリに対するhappned-beforeの推移律が成り立つ
 
 ### seq_cstで読み書きすると
 
@@ -329,11 +331,13 @@ x = true | y = true
 ### acquire/release
 
 storeにrelease, 読み込みにacqure
-releaseで書き込んだメモリに対するacquireの読み込みは順序が成り立つ
+* releaseで書き込んだメモリに対するacquireの読み込みは順序が成り立つ
 
+```
 x = y = false
 x.store(true, relaxed)    | y.load(acuire)ならx.load(relaxed)は成り立つ
 y.store(true, relaese)    |
+```
 
 ```
 x = y = false
@@ -372,8 +376,8 @@ x.store(1, release)    | int expected = 1;
 C++17から一時的に非推奨 [P0371R1: Temporarily discourage memory_order_consume](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0371r1.html)
 
 carries a dependency toはis sequenced beforeのsubset。
-同じメモリに対して依存するもののみ依存関係を保証する。
-acquireしなくてもよいときにその最適化を行う。
+* 同じメモリに対して依存するもののみ依存関係を保証する。
+* acquireしなくてもよいときにその最適化を行う。
 
 ```
 struct X {
