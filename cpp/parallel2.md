@@ -1,3 +1,172 @@
+## [Working Draft, C++ Extensions for Parallelism Version 2](http://www.open-std.org/jtc1/sc22/wg21/prot/14882fdis/n4757.pdf)
+
+## Data-Parallel TYpes
+### 概要
+* データ並列ライブラリはデータ並列型とその操作を扱う
+* データ並列型は算術型(要素型という)からなる
+* データ並列型の要素数を型の幅という
+* 要素単位の操作
+    * 要素型のオブジェクトの各要素に指定した操作を行う
+    * 各操作は互いに順序づけされない
+
+## ` <experimental/simd>`
+### simd ABIタグ
+
+データ並列型のサイズやバイナリ表現を示す
+
+```
+namespace simd_abi {
+  using scalar = see below;
+  template<int N> using fixed_size = see below;
+  template<class T> inline constexpr int max_fixed_size = implementation-defined;
+  template<class T> using compatible = implementation-defined;
+  template<class T> using native = implementation-defined;
+}
+```
+* `scalar`は単一要素を指す
+    * simd<T, simd_abi::scalar>::size() == 1
+* `fixed_size<N>`はN個の要素を扱うデータ型を指す
+
+### simd型traits
+* simdのクラステンプレートであるかを示す`is_simd<T>`など
+
+### `where_expression`
+`const_where_expression`と`where_expression`はデータ並列型の要素の選択表記を抽象化したもの
+
+```
+template<class M, class T> class const_where_expression {
+  const M mask; // exposition only
+  T& data; // exposition only
+public:
+  const_where_expression(const const_where_expression&) = delete;
+  const_where_expression& operator=(const const_where_expression&) = delete;
+  T operator-() const && noexcept;
+  T operator+() const && noexcept;
+  T operator ~ () const && noexcept;
+  template<class U, class Flags> void copy_to(U* mem, Flags f) const &&;
+};
+```
+
+* copy_to(U* mem, Flags f)
+    * Flagの種類
+        * `vector_aligned_tag` ; `memory_alignment_v<T, U>`でアラインされたストレージ
+        * `overaligned_tag<N>` ; `N`でアラインされたストレージ
+        * `element_aligned_tag` ; `alignof(U)`でアラインされたストレージ
+    * データ型dataに対して`mem[i] = static_cast<U>(data[i])`のように振る舞う
+
+```
+template<class M, class T>
+class where_expression : public const_where_expression<M, T> {
+public:
+  template<class U> void operator=(U&& x) && noexcept;
+  template<class U> void operator+=(U&& x) && noexcept;
+  template<class U> void operator-=(U&& x) && noexcept;
+  template<class U> void operator*=(U&& x) && noexcept;
+  ...
+```
+
+* operator@@@(&& x)は`data[i] = static_cast<T>(data @@@ std::forward<U>(x))[i]`であるかのように振る舞う
+
+## クラステンプレートsimd
+
+```
+template<class T, class Abi> class simd {
+public:
+  using value_type = T;
+  using reference = see below;
+  using mask_type = simd_mask<T, Abi>;
+  using abi_type = Abi;
+  static constexpr size_t size() noexcept; // simdの幅を返す
+
+  ...
+  template<class U, class Flags> copy_from(const U* mem, Flags f);
+  template<class U, class Flags> copy_to(U* mem, Flags f);
+
+  reference operator[](size_t);
+
+  simd& operator++() noexcept;
+
+  friend simd operator+(const simd&, const simd&) noexcept;
+  ...
+};
+```
+Abiは`simd<T, simd_abi::__gpu_y>`とか`simd<double, simd_abi::__simd_x>`とかのイメージ
+
+### referenceはsimdやsimd_maskの要素を参照する
+* `reference operator[](size_t i)`で参照する
+* reference::value_typeはsimd::value_typeやsimd_mask::value_typeと同じ型
+* reference型は通常の`operator@@@=`やswapがある
+
+### simdコンストラクタ
+通常のコピーコンストラクタやメモリから読み込んで設定するものがある
+
+* `template<class U, class Flags> simd(const U* mem, Flags);`
+    * Flagsはcopy_toのと同じ
+
+### コピー関数
+* `template<class U, class Flags> void copy_from(const U* mem, Flags)`
+* `template<class U, class Flags> void copy_to(U* mem, Flags) const;`
+
+### binary/unary operation, compound assignment
+通常通り
+
+### 比較関数
+結果は要素ごとに比較した結果を格納する`simd_mask`型のオブジェクトになる。
+```
+friend mask_type operator==(const simd& lhs, const simd& rhs) noexcept;
+friend mask_type operator!=(const simd& lhs, const simd& rhs) noexcept;
+friend mask_type operator>=(const simd& lhs, const simd& rhs) noexcept;
+friend mask_type operator<=(const simd& lhs, const simd& rhs) noexcept;
+friend mask_type operator>(const simd& lhs, const simd& rhs) noexcept;
+friend mask_type operator<(const simd& lhs, const simd& rhs) noexcept;
+```
+
+## reduction
+```
+template<class T, class Abi, class BinaryOperation = plus<>>
+T reduce(const simd<T, Abi>& x, BinaryOperation binary_op = {});
+```
+xの全要素に対してbinary_opを適用した値
+```
+GENERALIZED_SUM(binary_op, x.data[i], ...) for all i in the range of [0, size())
+```
+を返す
+
+* 初期値`typename V::value_type identity_element`を与えるバージョンもある
+
+```
+template<class T, class Abi> T hmin(const simd<T, Abi>& x) noexcept;
+```
+すべての`i`に対して`x[j] <= x[i]`となる`x[j]`を返す
+
+```
+template<class T, class Abi> T hmax(const simd<T, Abi>& x) noexcept;
+```
+すべての`i`に対して`x[j] >= x[i]`となる`x[j]`を返す
+
+## Cast
+```
+template<class T, class U, class Abi> see below simd_cast(const simd<U, Abi>& x) noexcept;
+```
+`simd<U, Abi>`を`simd<T, Abi>`に変換する
+
+simdを分割し直すsplitなどもある
+
+## algorithm
+min, max, minmax, clamp(範囲制限)などがある
+
+## mathライブラリ
+* `<cmath>`相当の操作がoverloadされる
+* `<cmath>`のdomain, pole, range errorなどが起きたときは未定義
+
+## simd_mask
+通常の操作の他にreduction系の操作もある
+* all_of, any_of, none_of, some_of, popcount, find_first_set, find_last_setなど
+* popcountはtrueの個数を返す
+* find_first_setはany_of(k)がtrueのときにk[i]がtrueとなる最初のiを返す
+* find_last_setはany_of(k)がtrueのときにk[i]がtrueとなる最後のiを返す
+
+
 ## [Technical Specification for C++ Extensions for Parallelism Version 2](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/n4725.html)
 改定案
 
