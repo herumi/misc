@@ -1,6 +1,6 @@
 ## [Working Draft, C++ Extensions for Parallelism Version 2](http://www.open-std.org/jtc1/sc22/wg21/prot/14882fdis/n4757.pdf)
 
-## Data-Parallel TYpes
+## Data-Parallel Types
 ### 概要
 * データ並列ライブラリはデータ並列型とその操作を扱う
 * データ並列型は算術型(要素型という)からなる
