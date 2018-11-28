@@ -1972,6 +1972,7 @@ JVMのSecurityManager
 * PDFファイルはブラウザ内で開かないでダウンロードして使う
 * `X-Download-Options: noopen`でIEの「ファイルを開く」を表示させない
 * POSTリクエストでダウンロードさせる
+* [PDF特殊機能（FormCalc編）](https://shhnjk.blogspot.com/2016/10/pdfformcalc.html)
 
 ### ファイルの権限を越えたダウンロード
 アップロードしたファイルが権限の無い利用者にもダウンロードできる問題
