@@ -2055,8 +2055,9 @@ PHPでの対策
 * libxml_disable_entity_loader(true)で外部実体参照を禁止する
 
 Javaでの対策
+* 多くのXMLパーサで外部実体参照はデフォルトで有効
+    * DTDを禁止する
 * XMLの代わりにJSONを使う
-* DTDを禁止する
 
 ## 共有資源に関する問題
 ### 競合状態の脆弱性
@@ -2071,6 +2072,93 @@ Javaでの対策
 ### 対策
 * 可能な限り共有資源を避ける
 * 排他制御を使う
+
+### キャッシュからの情報漏洩(第2版)
+* Webアプリケーションの処理の高速化のためにキャッシュを使うことが多い
+* 過剰にキャッシュが働くと個人情報漏洩につながる可能性がある
+
+例 : ユーザとApache:88の間にキャッシュサーバnginx:80が入ってるとする
+* キャッシュから応答可能と判断されるとningxがレスポンス
+
+#### アプリ側のキャッシュ制御不備
+セッションstartの前にキャッシュありの設定をする
+```
+<body><?php
+  session_cache_limiter('public'); // 追加
+  session_cache_expire(1); // 追加
+  session_start();
+  if (empty($_SESSION['user'])) {
+    die('ログインしていません');
+  }
+  echo "ユーザ{$_SESSION['user']}でログイン";
+?></body>
+```
+* tanakaでログインする
+    * 「ユーザtanakaでログイン」と表示
+* yamadaでログインする
+    * 「ユーザtanakaでログイン」と表示
+
+#### キャッシュサーバの設定不備
+上記「// 追加」の部分を削除する代わりに
+nginxの設定に
+```
+location /.../ {
+  ...
+  proxy_ignore_headers Cache-Control Expires Set-Cookie;
+  ...
+}
+```
+を追加する
+
+キャッシュ無しなのに「ユーザtanakaでログイン」が表示されてしまう
+
+### 脆弱性が生まれる原因
+
+設定の不備
+```
+  session_cache_limiter('public');
+  session_cache_expire(1);
+```
+を追加するとHTTPレスポンスヘッダは
+```
+Cache-Control: public, max-age=60
+Expires: ...
+```
+となる
+
+Cache-Controlヘッダのキャッシュ方法の種類
+* no-store ; キャッシュしない
+* no-cache ; キャッシュの有効性を毎回サーバに確認
+* private ; 一人のユーザのためのキャッシュを許可(ブラウザのキャッシュは許可, キャッシュサーバのキャッシュは不許可)
+* public ; すべてのキャッシュを保存
+* must-revalidate ; キャッシュが陳腐化していないか確認
+* max-age ; リソースが陳腐化していないと考えられる最長時間(秒)
+
+上記設定では60秒間常にキャッシュする
+* そのため二度目以降は他人のキャッシュを返してしまう
+
+
+```
+  proxy_ignore_headers Cache-Control Expires Set-Cookie;
+```
+を追加するとキャッシュ制御のときにCache-Control, Expires, Set-Cookieを無視する
+* そのためアプリで正しくキャッシュ制御の設定をしていてもキャッシュサーバが無視してしまう
+
+### 対策
+* アプリでキャッシュ制御の適切なレスポンスヘッダを設定
+    * Cache-Controlにno-storeを設定
+    * Cache-Control: private, no-store, no-cache, must-revalidate
+    * cf. [Cache control tutorial](https://docs.fastly.com/guides/tutorials/cache-control-tutorial)
+        * Cache-Control: privateをつける no-storeでもキャッシュする
+* キャッシュサーバでキャッシュ制御の適切な設定を行う
+    * proxy_ignore_headersの行を消す
+* URLに乱数を付与
+    * キャッシュは再利用されない
+    * 無駄にキャッシュされるのでキャッシュストレージの負荷になる
+    * なんらかの理由でURLが分かるとキャッシュを閲覧されるリスクがある
+
+[CDN切り替え作業における、Web版メルカリの個人情報流出の原因につきまして](https://tech.mercari.com/entry/2017/06/22/204500)
+* CDNのプロバイダ切り替えのときに, キャッシュされるべきでない情報がCDNにキャッシュされて他のユーザ情報が表示された
 
 # 代表的なセキュリティ機能
 
