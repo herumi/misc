@@ -10,6 +10,10 @@ struct X {
 		printf("&x=%p\n", &x);
 		return m;
 	}
+	void inc()
+	{
+		x++;
+	}
 };
 
 template<class T>
