@@ -1,8 +1,5 @@
 #include "var.hpp"
 
-void put();
-void incX();
-
 int main()
 {
 	printf("msg=%p\n", X<int>::get());
@@ -10,5 +7,6 @@ int main()
 	incX();
 	incX();
 	X<int>().inc();
-	printf("main x=%d\n", X<int>::x);
+	int x = X<int>::x;
+	printf("main x=%d(%s)\n",x, x == 8 ? "ok" : "ng");
 }

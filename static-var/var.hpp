@@ -1,5 +1,13 @@
 #include <stdio.h>
-
+#ifdef _MSC_VER
+	#ifdef DLL_EXPORT
+		#define DLL_API __declspec(dllexport)
+	#else
+		#define DLL_API __declspec(dllimport)
+	#endif
+#else
+	#define DLL_API
+#endif
 template<class T>
 struct X {
 	static int x;
@@ -16,6 +24,13 @@ struct X {
 	}
 };
 
+//DLL_API
 template<class T>
 int X<T>::x = 5;
 
+extern "C" {
+
+DLL_API void put();
+DLL_API void incX();
+
+}

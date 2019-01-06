@@ -1,3 +1,4 @@
+#define DLL_EXPORT
 #include "var.hpp"
 
 void put()
