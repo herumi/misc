@@ -2685,7 +2685,55 @@ const url = menuTbl[location.hash.slice(1)]
 
 Webストレージに秘密情報は保存しない
 
+## postMessage呼び出しの不備
+異なるオリジン(iframeやwindow.openなど)で複数のウインドウ間でデータのやりとりをする仕組み
 
+### [postMessage demo](postmessage/index.html)
+1. 子(内側)が親(外側に)"secret-data"というmessageを送信する
+2. 親がそのmessageを受けて表示し子に"parent received"を送信する
+3. 子がそのmessageを受けて表示する
+
+挙動
+
+* Chrome, Edgeではparent msg:"secret-data"と表示される
+* Firefoxでは"parent received"と表示される(何故?)
+
+### postMessageの仕様
+
+`win.postMessage(msg, origin)`
+* win ; メッセージの送信先オブジェクト
+* msg ; メッセージ文字列
+* origin ; 送信先オリジン(任意の場合は'*')
+
+originを正しいURLにすると罠サイトの中にiframeとして入れられても親に送信しない
+
+### subが受け取ったmessageをそのままinnerHTMLで出力するとDOM Based XSSの危険性
+
+```
+  event.source.postMessage('<img src=/ onerror=alert("1")>', '*')
+```
+event.originに送信元オリジンが設定されているのでそれを確認すること
+
+### オープンリダイレクト(復習)
+```
+<body>
+<input type="button" value="run" onclick="go()">
+<script>
+function go() {
+  const url = location.hash.slice(1)
+  if (url.match(/^https?:\/\//)) { /* urlがhttp://かhttps://なら通す */
+    location.href = url
+  } else {
+    alert('error')
+  }
+}
+</script>
+</doby>
+```
+`http://sample.com/a.html#http://trap.com`でtrap.comにリダイレクトしてしまう
+
+### 対策
+* リダイレクト先のURLを固定するか番号指定にする
 
 ```
 ## 認証
@@ -2717,6 +2765,16 @@ Webストレージに秘密情報は保存しない
 * 複数のサービスでパスワードを使い回さない
 * パスワードの定期的変更は不要([総務省 国民のための情報セキュリティサイト](http://www.soumu.go.jp/main_sosiki/joho_tsusin/security/basic/privacy/01-2.html))
 
+## パスワードの要件と攻撃への対策(第2版)
+* 桁数を(たとえば)128桁以下に緩める
+* パスフレーズが使えるようになる
+    * パスフレーズは長いが覚えやすくて攻撃されにくいというメリットがある
+* 文字種の制約は入れすぎない方がよい
+    * 利用者が安全なパスワードを使おうというモチベーションが下がる可能性
+* 二段階認証
+    * 初回ログイン時のみ二段階認証. その後一定期間通常認証
+    * 通常の使い方でないとき / 重要な処理のとき二段階認証
+    * 常に二段階認証をすると利用者の負担が増える
 ## 総当たり攻撃への対策
 * アカウントロック ; パスワードの入力間違いが一定回数を越えるとロックする
 
