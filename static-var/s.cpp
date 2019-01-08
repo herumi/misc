@@ -12,3 +12,5 @@ void incX()
 	X<int>().inc();
 	printf("sub x=%d\n", X<int>::x);
 }
+
+int XX::x = 4;

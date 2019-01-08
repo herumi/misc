@@ -1,3 +1,4 @@
+#pragma once
 #include <stdio.h>
 #ifdef _MSC_VER
 	#ifdef DLL_EXPORT
@@ -34,3 +35,7 @@ DLL_API void put();
 DLL_API void incX();
 
 }
+
+struct XX {
+	DLL_API static int x;
+};

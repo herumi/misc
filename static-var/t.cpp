@@ -9,4 +9,5 @@ int main()
 	X<int>().inc();
 	int x = X<int>::x;
 	printf("main x=%d(%s)\n",x, x == 8 ? "ok" : "ng");
+	printf("XX::x=%d\n", XX::x);
 }
