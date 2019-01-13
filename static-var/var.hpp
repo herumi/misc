@@ -29,6 +29,8 @@ struct X {
 template<class T>
 int X<T>::x = 5;
 
+template struct DLL_API X<int>; // VC ok
+
 extern "C" {
 
 DLL_API void put();
