@@ -51,7 +51,13 @@ func createSlice(buf *C.char, n C.int) []byte {
 
 //export GoCallF
 func GoCallF(buf *C.char, n C.int) {
-	g_f(createSlice(buf, n))
+	ret, err := g_f(createSlice(buf, n))
+	if err != nil {
+		panic("err")
+	}
+	if ret != int(n) {
+		panic("err2")
+	}
 }
 
 /*
