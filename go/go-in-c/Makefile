@@ -1,7 +1,7 @@
 all: liblib.a libtest
 
 %.o: %.c
-	gcc -c -fPIC -O2 -fPIC -Wall -Wextra -o $@ -g $<
+	gcc -c -O2 -fPIC -Wall -Wextra -o $@ -g $<
 
 liblib.a: lib.o
 	ar r $@ $<

@@ -2,7 +2,8 @@
 
 extern void GoFunc1();
 extern void GoFunc2(const void *buf, int n);
-extern void GoFunc3(void (*)(void*, int), void *buf, int n);
+extern void GoFunc3(void *f, void *buf, int n);
+extern void GoCallF(void *buf, int n);
 
 void fill(void *buf, int n)
 {
@@ -39,10 +40,15 @@ void putput(const void *buf, int n)
 #define S_BUF_SIZE 8
 static char s_buf[S_BUF_SIZE];
 
-void callGoFunc3(void (*f)(void *, int))
+void callGoFunc3(void *f)
 {
 	printf("callGoFunc3\n");
 	GoFunc3(f, s_buf, S_BUF_SIZE);
+}
+
+void callGoCallF()
+{
+	GoCallF(s_buf, S_BUF_SIZE);
 }
 
 void putBuf()
@@ -53,3 +59,10 @@ void putBuf()
 	}
 	printf("\n");
 }
+
+void callCallback(void (*f)(void *, int))
+{
+	puts("callCallback");
+	f(s_buf, S_BUF_SIZE);
+}
+

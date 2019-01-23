@@ -8,7 +8,10 @@ void hhh();
 int fff();
 void putput(const void *buf, int n);
 void putBuf();
-void callGoFunc3(void (*f)(void *), void *buf, int n);
+void callGoFunc3(void *f);
+typedef void (*FuncType)(void *, int);
+void callCallback(FuncType f);
+void callGoCallF();
 #cgo LDFLAGS:-L./ -llib
 */
 import "C"
@@ -16,16 +19,39 @@ import "fmt"
 import "unsafe"
 import "crypto/rand"
 
+type FuncType func([]byte) (int, error)
+
+var g_f FuncType
+
+func SetOp(f FuncType) {
+	g_f = f
+}
+
+func RandFill(buf []byte) (int, error) {
+	for i := 0; i < len(buf); i++ {
+		buf[i] = byte(i + 9)
+	}
+	return len(buf), nil
+}
+
 func Fill(buf []byte, n int) {
 	for i := 0; i < n; i++ {
 		buf[i] = byte(i + 5)
 	}
 }
 
-type Pfunc func([]byte, int)
-
 type Op struct {
 	f func([]byte, int)
+}
+
+func createSlice(buf *C.char, n C.int) []byte {
+	size := int(n)
+	return (*[1 << 30]byte)(unsafe.Pointer(buf))[:size:size]
+}
+
+//export GoCallF
+func GoCallF(buf *C.char, n C.int) {
+	g_f(createSlice(buf, n))
 }
 
 /*
@@ -38,11 +64,10 @@ func GoFunc1() {
 //export GoFunc2
 func GoFunc2(buf *C.char, n C.int) {
 	fmt.Printf("call GoFunc2\n")
-	size := int(n)
 	fmt.Printf("buf=%p\n", buf)
 	fmt.Printf("n=%d\n", n)
-	slice := (*[1 << 30]byte)(unsafe.Pointer(buf))[:size:size]
-	for i := 0; i < size; i++ {
+	slice := createSlice(buf, n)
+	for i := 0; i < len(slice); i++ {
 		fmt.Printf("%02x ", slice[i])
 	}
 	fmt.Printf("\n")
@@ -50,12 +75,10 @@ func GoFunc2(buf *C.char, n C.int) {
 }
 
 //export GoFunc3
-func GoFunc3(callback func([]byte), buf *C.char, n C.int) {
+func GoFunc3(callback *C.char, buf *C.char, n C.int) {
 	fmt.Printf("call GoFunc3\n")
-	size := int(n)
-	slice := (*[1 << 30]byte)(unsafe.Pointer(buf))[:size:size]
+	slice := createSlice(buf, n)
 	fmt.Printf("slice=%x\n", slice)
-	callback(slice)
 }
 
 func main() {
@@ -75,7 +98,12 @@ func main() {
 	fmt.Printf("s=%x\n", s)
 	C.hhh() // call GoFunc1
 	C.putput(unsafe.Pointer(&s[0]), C.int(len(s)))
+
+	SetOp(rand.Read)
 	C.putBuf();
-//	C.callGoFunc3(op.f)
+	C.callGoCallF()
+	C.putBuf();
+	SetOp(RandFill)
+	C.callGoCallF()
 	C.putBuf();
 }
