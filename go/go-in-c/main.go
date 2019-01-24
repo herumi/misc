@@ -92,7 +92,7 @@ func main() {
 	s := make([]byte, 4)
 	fmt.Printf("s=%x\n", s)
 	C.fill(unsafe.Pointer(&s[0]), C.int(len(s)))
-//	C.ggg(C.fill, unsafe.Pointer(&s[0]), C.int(len(s)))
+	C.ggg((C.FuncType)(C.fill), unsafe.Pointer(&s[0]), C.int(len(s)))
 	fmt.Printf("s=%x\n", s)
 	Fill(s, len(s))
 	fmt.Printf("s=%x\n", s)

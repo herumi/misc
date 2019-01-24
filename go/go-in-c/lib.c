@@ -14,7 +14,7 @@ void fill(void *buf, int n)
 }
 void ggg(void f(void *, int), void *buf, int n)
 {
-	puts("callback");
+	puts("ggg callback");
 	f(buf, n);
 }
 void hhh()
