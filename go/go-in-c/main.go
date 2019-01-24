@@ -112,4 +112,7 @@ func main() {
 	SetOp(RandFill)
 	C.callGoCallF()
 	C.putBuf();
+
+	// pass NULL
+	C.putput(nil, C.int(0))
 }

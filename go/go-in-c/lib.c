@@ -29,6 +29,7 @@ int fff()
 void putput(const void *buf, int n)
 {
 	printf("putput buf=%p, n=%d\n", buf, n);
+	if (buf == 0) return;
 	const unsigned char *p = (const unsigned char *)buf;
 	for (int i = 0; i < n; i++) {
 		printf("%02x ", p[i]);
