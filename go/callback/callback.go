@@ -12,12 +12,14 @@ import (
 	"unsafe"
 )
 
-type FuncType func(int) int
+type CallbackIF interface {
+	read(int) int
+}
 
-var s_callbackGo FuncType
+var s_callbackIF *CallbackIF
 
-func setCallbackGo(f FuncType) {
-	s_callbackGo = f
+func setCallbackGo(f *CallbackIF) {
+	s_callbackIF = f
 	C.setCallbackC(C.FuncType(unsafe.Pointer(C.wrapCallbackCgo)))
 }
 
@@ -25,7 +27,7 @@ func setCallbackGo(f FuncType) {
 //export wrapCallbackGo
 func wrapCallbackGo(x int) int {
 	fmt.Printf("    wrapCallbackGo x=%d\n", x)
-	ret := s_callbackGo(x + 1)
+	ret := (*s_callbackIF).read(x + 1)
 	fmt.Printf("    wrapCallbackGo ret=%d\n", ret)
 	return ret
 }
