@@ -1,8 +1,8 @@
 #include <stdio.h>
+#include "lib.h"
 
 extern void GoFunc1();
 extern void GoFunc2(const void *buf, int n);
-extern void GoFunc3(void *f, void *buf, int n);
 extern void GoCallF(void *buf, int n);
 
 void fill(void *buf, int n)
@@ -41,12 +41,6 @@ void putput(const void *buf, int n)
 #define S_BUF_SIZE 8
 static char s_buf[S_BUF_SIZE];
 
-void callGoFunc3(void *f)
-{
-	printf("callGoFunc3\n");
-	GoFunc3(f, s_buf, S_BUF_SIZE);
-}
-
 void callGoCallF()
 {
 	GoCallF(s_buf, S_BUF_SIZE);
@@ -61,9 +55,8 @@ void putBuf()
 	printf("\n");
 }
 
-void callCallback(void (*f)(void *, int))
+FuncType s_f;
+void setCallback(FuncType f)
 {
-	puts("callCallback");
-	f(s_buf, S_BUF_SIZE);
+	s_f = f;
 }
-

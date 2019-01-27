@@ -2,15 +2,13 @@ package main
 
 /*
 // https://github.com/golang/go/wiki/cgo#function-variables
+#include "lib.h"
 void fill(void *buf, int n);
 void ggg(void f(void *, int), void *buf, int n);
 void hhh();
 int fff();
 void putput(const void *buf, int n);
 void putBuf();
-void callGoFunc3(void *f);
-typedef void (*FuncType)(void *, int);
-void callCallback(FuncType f);
 void callGoCallF();
 #cgo LDFLAGS:-L./ -llib
 */
@@ -46,7 +44,8 @@ type Op struct {
 
 func createSlice(buf *C.char, n C.int) []byte {
 	size := int(n)
-	return (*[1 << 30]byte)(unsafe.Pointer(buf))[:size:size]
+//	return (*[1 << 30]byte)(unsafe.Pointer(buf))[:size:size]
+	return (*[1 << 30]byte)(unsafe.Pointer(buf))[:size]
 }
 
 //export GoCallF
@@ -80,13 +79,6 @@ func GoFunc2(buf *C.char, n C.int) {
 	fmt.Printf("slice=%x\n", slice)
 }
 
-//export GoFunc3
-func GoFunc3(callback *C.char, buf *C.char, n C.int) {
-	fmt.Printf("call GoFunc3\n")
-	slice := createSlice(buf, n)
-	fmt.Printf("slice=%x\n", slice)
-}
-
 func main() {
 	fmt.Printf("%d\n", C.fff())
 	s := make([]byte, 4)
@@ -115,4 +107,5 @@ func main() {
 
 	// pass NULL
 	C.putput(nil, C.int(0))
+//	C.setCallback((C.FuncType)(unsafe.Pointer(C.wrapCallback)))
 }
