@@ -233,6 +233,7 @@ Go側で`setCallbackGo`でfを登録したとき`C.callCallbackC`でそのfが�
 ### Goの関数のラッパーを用意する。
 * Goの関数は直接Cの関数ポインタに変換できない。
 * exportされたGoの関数をCから直接呼ぶことはできる。
+    * がCのライブラリから直接その関数を呼ぶと密結合になるのでそれはしたくない。
 
 ### [callback.go](callback/callback.go)
 ```
