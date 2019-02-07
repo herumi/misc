@@ -19,7 +19,7 @@ type Add struct {
 	x int
 }
 
-func (self *Add) read(x int) int {
+func (self *Add) run(x int) int {
 	fmt.Printf("      Add.read (self=%x) x=%d\n", self.x, x)
 	return x + 1
 }
@@ -31,7 +31,13 @@ func main() {
 	var ifs CallbackIF = a
 	setCallbackGo(&ifs)
 	/*
-		callCallbackGo -> callCallbackC -> s_callbackC -> wrapCallbackCgo -> wrapCallbackGo -> s_callbackGo -> testCallbackGo
+		callCallbackGo
+		-> C.callCallbackC
+		-> s_callbackC ; function pointer of C
+		-> C.wrapCallbackCgo ; defined in sub.go
+		-> wrapCallbackGo ; defined in callback.go
+		-> s_callbackIF
+		-> Add.run
 	*/
 	callCallbackGo(5)
 	buf := make([]byte, 7)

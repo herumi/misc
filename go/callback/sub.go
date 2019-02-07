@@ -1,7 +1,7 @@
 package main
 /*
 #include "lib.h"
-int wrapCallbackGo(int); // exported from main.go
+int wrapCallbackGo(int); // exported from callback.go
 int wrapCallbackCgo(int x)
 {
 	printf("  wrapCallbackCgo x=%d\n", x);

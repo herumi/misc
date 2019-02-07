@@ -13,7 +13,7 @@ import (
 )
 
 type CallbackIF interface {
-	read(int) int
+	run(int) int
 }
 
 var s_callbackIF *CallbackIF
@@ -27,7 +27,7 @@ func setCallbackGo(f *CallbackIF) {
 //export wrapCallbackGo
 func wrapCallbackGo(x int) int {
 	fmt.Printf("    wrapCallbackGo x=%d\n", x)
-	ret := (*s_callbackIF).read(x + 1)
+	ret := (*s_callbackIF).run(x + 1)
 	fmt.Printf("    wrapCallbackGo ret=%d\n", ret)
 	return ret
 }
