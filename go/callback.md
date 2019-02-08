@@ -1,4 +1,4 @@
-# cgoからgoの関数をcallbackとして呼ぶ方法のまとめ
+# cgoからgoの関数をcallbackとして呼ぶ方法
 
 ## 本家マニュアル
 * [Command cgo](https://golang.org/cmd/cgo/)
@@ -226,7 +226,7 @@ type CallbackIF interface {
     run(int) int
 }
 
-func setCallbackGo(f *CallbackIF)
+func setCallbackGo(f CallbackIF)
 ```
 Go側で`setCallbackGo`でfを登録したとき`C.callCallbackC`でそのfが呼ばれるようにしたい。
 
@@ -234,12 +234,13 @@ Go側で`setCallbackGo`でfを登録したとき`C.callCallbackC`でそのfが�
 * Goの関数は直接Cの関数ポインタに変換できない。
 * exportされたGoの関数をCから直接呼ぶことはできる。
     * がCのライブラリから直接その関数を呼ぶと密結合になるのでそれはしたくない。
+* →cgoの中で定義した関数からGoのラッパー関数を呼ぶことになる。
 
 ### [callback.go](callback/callback.go)
 ```
 var s_callbackIF *CallbackIF
 
-func setCallbackGo(f *CallbackIF) {
+func setCallbackGo(f CallbackIF) {
     s_callbackIF = f
 }
 ```
@@ -248,7 +249,7 @@ func setCallbackGo(f *CallbackIF) {
 ```
 //export wrapCallbackGo
 func wrapCallbackGo(x int) int {
-   ret := (*s_callabckIF).run(x)
+   ret := s_callabckIF.run(x)
 }
 ```
 * コメントに`//export`と書くとその関数はglobalに見える。
@@ -258,6 +259,8 @@ func wrapCallbackGo(x int) int {
 * exportされた`wrapCallbackGo`を呼び出すCの関数`wrapCallbackCgo`を作る。
 
 ```
+package main
+/*
 #include "lib.h"
 int wrapCallbackGo(int); // exported from main.go
 int wrapCallbackCgo(int x)
@@ -273,7 +276,7 @@ import "C"
 
 先程の`setCallbackGo`で上記`wrapCallbackCgo`をsetCallbackCに渡す。
 ```
-func setCallbackGo(f *CallbackIF) {
+func setCallbackGo(f CallbackIF) {
     s_callbackIF = f
     C.setCallbackC(C.FuncType(unsafe.Pointer(C.wrapCallbackCgo)))
 }
@@ -303,9 +306,7 @@ func (self *Add) run(x int) int {
 ```
 func main() {
     a := new(Add)
-    a.x = 4
-    var ifs CallbackIF = a
-    setCallbackGo(&ifs)
+    setCallbackGo(a)
     callCallbackGo(5)
 }
 ```
