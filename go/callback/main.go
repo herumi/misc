@@ -26,10 +26,7 @@ func (self *Add) run(x int) int {
 
 func main() {
 	fmt.Printf("callback test\n")
-	a := new(Add)
-	a.x = 4
-	var ifs CallbackIF = a
-	setCallbackGo(&ifs)
+	setCallbackGo(new(Add))
 	/*
 		callCallbackGo
 		-> C.callCallbackC
