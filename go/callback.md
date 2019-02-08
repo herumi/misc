@@ -164,13 +164,14 @@ putBuf 00 01 02 03 04 05 06 07
 (*[1<<30]byte)(unsafe.Pointer(p))
 ```
 * `*C.char`なpを固定サイズ(1<<30バイト)のbyte列へのポインタに変換する。
-* そのプログラムで扱う1<<30は十分大きなサイズであればよい。
+* 1<<30はそのプログラムで扱う十分大きなサイズであればなんでもよい。
 * 固定長でないとエラーになる。
 * `(*[size]byte)(unsafe.Pointer(buf))`はnon-constant array bound sizeのエラー
 
 ## s[:size]とs[:size:size]の違い
 
-* s[:size]は元のbyte列の先頭から長さsizeのsliceでcapacityは元のbyte列の長さを受け継ぐ。
+* 3個目のパラメータはcapacityを表す。[Full slice expressions](https://golang.org/ref/spec#Slice_expressions)参照。
+* capacityを指定しないs[:size]は元のbyte列の先頭から長さsizeのsliceでcapacityは元のbyte列の長さを受け継ぐ。
 * この場合は`cap(s) = 1<<30`となってしまう。
     * `s = append(s, 'x')`とするとsizeを超えてメモリに追加してしまう。
 * s[:size:size]の場合はcapacityもsizeにする。
