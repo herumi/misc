@@ -238,7 +238,7 @@ Go側で`setCallbackGo`でfを登録したとき`C.callCallbackC`でそのfが�
 
 ### [callback.go](callback/callback.go)
 ```
-var s_callbackIF *CallbackIF
+var s_callbackIF CallbackIF
 
 func setCallbackGo(f CallbackIF) {
     s_callbackIF = f
@@ -252,7 +252,10 @@ func wrapCallbackGo(x int) int {
    ret := s_callabckIF.run(x)
 }
 ```
-* コメントに`//export`と書くとその関数はglobalに見える。
+* コメントに`//export 関数名`と書くとその関数はglobalに見える。
+* `//`と`export`の間にスペースがあるとエラー。
+* `export`と`func`の間に改行があるとエラー。
+* 関数名とその下で定義する関数名が異なるとエラー。
 * `wrapCallbackGo`の中で保存してある`s_callbackIF`を呼び出す。
 
 ### [sub.go](callback/sub.go)
@@ -262,7 +265,7 @@ func wrapCallbackGo(x int) int {
 package main
 /*
 #include "lib.h"
-int wrapCallbackGo(int); // exported from main.go
+int wrapCallbackGo(int); // exported in callback.go
 int wrapCallbackCgo(int x)
 {
     printf("  wrapCallbackCgo x=%d\n", x);
