@@ -1,4 +1,4 @@
-# cgoからgoの関数をcallbackとして呼ぶ方法
+# cgoからGoの関数をcallbackとして呼ぶ方法
 
 ## 本家マニュアル
 * [Command cgo](https://golang.org/cmd/cgo/)
