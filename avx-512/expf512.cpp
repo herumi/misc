@@ -71,8 +71,12 @@ struct Code : CodeGenerator {
 		vaddps(vmm_src, vmm_src, table_val(1));
 
 		// tmp = floorf(fx)
+#if 1
+		vrndscaleps(vmm_aux1, vmm_src, 1);
+#else
 		vcvtps2dq(vmm_aux1 | T_rd_sae, vmm_src);
 		vcvtdq2ps(vmm_aux1, vmm_aux1);
+#endif
 
 #if 0
 		Opmask k_mask = k1;
