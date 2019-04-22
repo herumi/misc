@@ -2,10 +2,12 @@
 cl /EHsc -I ../xbyak/ expf512.cpp /Zi /W4 /arch:AVX2 && ..\intel\sde -skx -- expf512.exe
 */
 #define XBYAK_NO_OP_NAMES
+#include <xbyak/xbyak_util.h>
 #include <xbyak/xbyak.h>
 #include <math.h>
 
 using namespace Xbyak;
+using namespace Xbyak::util;
 
 static const size_t N = 12;
 static uint32_t cvalTbl[N][16];
@@ -49,7 +51,11 @@ struct Code : CodeGenerator {
 		const Zmm & vmm_src = zmm0;
 		const Zmm & vmm_aux0 = zmm1;
 		const Zmm & vmm_aux1 = zmm2;
-		const Zmm & vmm_aux3 = zmm4;
+
+		StackFrame sf(this, 2);
+		const Reg64& dst = sf.p[0];
+		const Reg64& src = sf.p[1];
+#if 0
 
 #ifdef XBYAK64_WIN
 		const Reg64& dst = rcx;
@@ -57,6 +63,7 @@ struct Code : CodeGenerator {
 #else
 		const Reg64& dst = rdi;
 		const Reg64& src = rsi;
+#endif
 #endif
 		mov(rax, (size_t)cvalTbl);
 		vmovups(vmm_src, ptr[src]);
@@ -79,6 +86,7 @@ struct Code : CodeGenerator {
 #endif
 
 #if 0
+		const Zmm & vmm_aux3 = zmm4;
 		Opmask k_mask = k1;
 		vcmpps(k_mask, vmm_aux1, vmm_src, _cmp_nle_us);
 		vmovups(vmm_aux3 | k_mask | T_z, table_val(0));
@@ -115,6 +123,20 @@ struct Code : CodeGenerator {
 		vzeroupper();
 		ret();
 	}
+	void cvt(bool use_vrndscaleps)
+	{
+		align(16);
+		StackFrame sf(this, 2);
+		vmovups(zm0, ptr[sf.p[1]]);
+		if (use_vrndscaleps) {
+			vrndscaleps(zm0, zm0, 1);
+		} else {
+			vcvtps2dq(zm0 | T_rd_sae, zm0);
+			vcvtdq2ps(zm0, zm0);
+		}
+		vmovups(ptr[sf.p[0]], zm0);
+		ret();
+	}
 };
 
 int main()
@@ -131,6 +153,18 @@ int main()
 	exp512f(out2, in);
 	for (int i = 0; i < 5; i++) {
 		printf("in[%d] %7.5f %7.5f %7.5f %e\n", i, in[i], out1[i], out2[i], fabs(out1[i] - out2[i]));
+	}
+
+	auto cvt1 = c.getCurr<void (*)(float *, const float*)>();
+	c.cvt(false);
+	auto cvt2 = c.getCurr<void (*)(float *, const float*)>();
+	c.cvt(true);
+	float in2[16] = { 12.3f, -23.4f, 1.2345678909123e10f, -1.2345678909123e10f };
+	float iout1[16], iout2[16];
+	cvt1(iout1, in2);
+	cvt2(iout2, in2);
+	for (int i = 0; i < 4; i++) {
+		printf("%f -> %f %f\n", in2[i], iout1[i], iout2[i]);
 	}
 } catch (std::exception& e) {
 	printf("err %s\n", e.what());
