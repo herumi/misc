@@ -1,10 +1,17 @@
 CFLAGS=-Wall -Wextra -O3 -I./include
-lib/add.so: add.cpp
+
+add.o: add.cpp
+	gcc $(CFLAGS) -fPIC -o $@ -g $<
+
+lib/libadd.so: add.cpp
 	gcc $(CFLAGS) -fPIC -shared -o $@ -g $<
 
+lib/libadd.a: add.o
+	ar r lib/libadd.a add.o
+
 # linux
-test: test.cpp lib/add.so
-	gcc -o test $(CFLAGS) test.cpp lib/add.so
+test: test.cpp lib/libadd.so
+	gcc -o test $(CFLAGS) test.cpp -ladd -L./lib
 
 run: test
 #	env LD_RUN_PATH="./lib" ./test
