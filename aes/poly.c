@@ -229,6 +229,7 @@ int main()
 		if (!isOne(&xy)) {
 			printf("ERR %d\n", i);
 		}
+		printf("inv(0x%02x) = 0x%02x : ", getValue(&x), getValue(&y));
 		printf("inv(");
 		put(&x);
 		printf(")=");
