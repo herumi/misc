@@ -1,0 +1,94 @@
+#include <cybozu/socket.hpp>
+#include <cybozu/serializer.hpp>
+#include <cybozu/option.hpp>
+#include <cybozu/time.hpp>
+#include <thread>
+#include <vector>
+
+struct Timer {
+	const char *msg_;
+	double begin_;
+	void begin(const char *msg)
+	{
+		msg_ = msg;
+		begin_ = cybozu::GetCurrentTimeSec();
+	}
+	void end() const
+	{
+		printf("%s %.2f sec\n", msg_, cybozu::GetCurrentTimeSec() - begin_);
+	}
+};
+
+template<class Stream>
+void clientProcess(Stream& soc, int ds, int n, bool roundtrip)
+{
+	cybozu::save(soc, ds);
+	cybozu::save(soc, n);
+	cybozu::save(soc, roundtrip);
+	std::vector<char> buf(ds);
+	for (int i = 0; i < n; i++) {
+		soc.write(buf.data(), buf.size());
+		if (roundtrip) soc.read(buf.data(), buf.size());
+	}
+}
+
+template<class Stream>
+void serverProcess(Stream& soc)
+{
+	int ds, n;
+	int roundtrip;
+	cybozu::load(ds, soc);
+	cybozu::load(n, soc);
+	cybozu::load(roundtrip, soc);
+	printf("ds=%d, n=%d, roundtrip=%d\n", ds, n, roundtrip);
+	std::vector<char> buf(ds);
+	for (int i = 0; i < n; i++) {
+		soc.read(buf.data(), buf.size());
+		if (roundtrip) soc.write(buf.data(), buf.size());
+	}
+}
+
+int main(int argc, char *argv[])
+	try
+{
+	cybozu::Option opt;
+	std::string ip;
+	int port;
+	int ds;
+	int n;
+	bool roundtrip;
+	opt.appendOpt(&ip, "", "ip", ": ip address");
+	opt.appendOpt(&port, 10000, "p", ": port");
+	opt.appendOpt(&ds, 64 * 3 * 2 * 4, "ds", ": data size");
+	opt.appendOpt(&n, 1024, "n", ": num");
+	opt.appendBoolOpt(&roundtrip, "rt", ": roundtrip");
+	opt.appendHelp("h", "show this message");
+	if (!opt.parse(argc, argv)) {
+		opt.usage();
+		return 1;
+	}
+
+	if (ip.empty()) {
+		printf("server port=%d\n", port);
+		cybozu::Socket server;
+		server.bind(uint16_t(port));
+		for (;;) {
+			while (!server.queryAccept()) {
+			}
+			cybozu::Socket client;
+			server.accept(client);
+			serverProcess(client);
+		}
+	} else {
+		printf("client ip=%s port=%d\n", ip.c_str(), port);
+		printf("ds=%d, n=%d, roundtrip=%d\n", ds, n, roundtrip);
+		cybozu::SocketAddr sa(ip, uint16_t(port));
+		printf("addr=%s\n", sa.toStr().c_str());
+		cybozu::Socket client;
+		client.connect(sa);
+		clientProcess(client, ds, n, roundtrip);
+	}
+} catch (std::exception& e) {
+	printf("err %s\n", e.what());
+	return 1;
+}
