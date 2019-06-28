@@ -49,14 +49,14 @@ void writeProc(Stream& soc, std::vector<char>& buf, int n)
 }
 
 template<class Stream>
-void clientProcess(Stream& soc, int ds, int n)
+void clientProcess(Stream& soc, int ds, int n, Stream *soc2)
 {
 	cybozu::save(soc, ds);
 	cybozu::save(soc, n);
 	std::vector<char> bufW(ds), bufR(ds);
 
 	std::thread reader([&] {
-		readProc(soc, bufR, n);
+		readProc(*soc2, bufR, n);
 	});
 	std::thread writer([&] {
 		writeProc(soc, bufW, n);
@@ -64,10 +64,11 @@ void clientProcess(Stream& soc, int ds, int n)
 
 	reader.join();
 	writer.join();
+	printf("readS=%d, writeS=%d\n", (int)readS, (int)writeS);
 }
 
 template<class Stream>
-void serverProcess(Stream& soc)
+void serverProcess(Stream& soc, Stream *soc2)
 {
 	int ds, n;
 	cybozu::load(ds, soc);
@@ -80,7 +81,7 @@ void serverProcess(Stream& soc)
 		readProc(soc, bufR, n);
 	});
 	std::thread writer([&] {
-		writeProc(soc, bufW, n);
+		writeProc(*soc2, bufW, n);
 	});
 	reader.join();
 	writer.join();
@@ -91,11 +92,13 @@ int main(int argc, char *argv[])
 {
 	cybozu::Option opt;
 	std::string ip;
-	int port;
+	uint16_t port;
+	uint16_t port2;
 	int ds;
 	int n;
 	opt.appendOpt(&ip, "", "ip", ": ip address");
 	opt.appendOpt(&port, 10000, "p", ": port");
+	opt.appendOpt(&port2, 0, "p2", ": 2nd port");
 	opt.appendOpt(&ds, 64 * 3 * 2 * 4, "ds", ": data size");
 	opt.appendOpt(&n, 1024, "n", ": num");
 	opt.appendHelp("h", "show this message");
@@ -107,22 +110,38 @@ int main(int argc, char *argv[])
 	if (ip.empty()) {
 		printf("server port=%d\n", port);
 		cybozu::Socket server;
-		server.bind(uint16_t(port));
+		server.bind(port);
 		for (;;) {
 			while (!server.queryAccept()) {
 			}
 			cybozu::Socket client;
 			server.accept(client);
-			serverProcess(client);
+#if 1
+			cybozu::Socket server2;
+			cybozu::Socket client2;
+			if (port2) {
+				server2.bind(port2);
+				while (!server2.queryAccept()) {
+				}
+				printf("port2=%d\n", port2);
+				server2.accept(client2);
+			}
+#endif
+			serverProcess(client, port2 > 0 ? &client2 : &client);
 		}
 	} else {
 		printf("client ip=%s port=%d\n", ip.c_str(), port);
 		printf("ds=%d, n=%d\n", ds, n);
-		cybozu::SocketAddr sa(ip, uint16_t(port));
+		cybozu::SocketAddr sa(ip, port);
 		printf("addr=%s\n", sa.toStr().c_str());
 		cybozu::Socket client;
 		client.connect(sa);
-		clientProcess(client, ds, n);
+		cybozu::Socket client2;
+		if (port2) {
+			printf("port2=%d\n", port2);
+			client2.connect(ip, port2);
+		}
+		clientProcess(client, ds, n, port2 > 0 ? &client2 : &client);
 	}
 } catch (std::exception& e) {
 	printf("err %s\n", e.what());
