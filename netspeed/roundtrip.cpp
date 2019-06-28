@@ -4,6 +4,10 @@
 #include <cybozu/time.hpp>
 #include <thread>
 #include <vector>
+#include <atomic>
+
+std::atomic_uint64_t readS{};
+std::atomic_uint64_t writeS{};
 
 struct Timer {
 	const char *msg_;
@@ -19,33 +23,67 @@ struct Timer {
 	}
 };
 
+
 template<class Stream>
-void clientProcess(Stream& soc, int ds, int n, bool roundtrip)
+void readProc(Stream& soc, std::vector<char>& buf, int n)
+{
+	for (int i = 0; i < n; i++) {
+		soc.read(buf.data(), buf.size());
+		readS += buf.size();
+		if ((i % 1000) == 0) {
+			printf("readS=%d, writeS=%d\r", (int)readS, (int)writeS);
+		}
+	}
+}
+
+template<class Stream>
+void writeProc(Stream& soc, std::vector<char>& buf, int n)
+{
+	for (int i = 0; i < n; i++) {
+		soc.write(buf.data(), buf.size());
+		writeS += buf.size();
+		if ((i % 1000) == 0) {
+			printf("readS=%d, writeS=%d\r", (int)readS, (int)writeS);
+		}
+	}
+}
+
+template<class Stream>
+void clientProcess(Stream& soc, int ds, int n)
 {
 	cybozu::save(soc, ds);
 	cybozu::save(soc, n);
-	cybozu::save(soc, roundtrip);
-	std::vector<char> buf(ds);
-	for (int i = 0; i < n; i++) {
-		soc.write(buf.data(), buf.size());
-		if (roundtrip) soc.read(buf.data(), buf.size());
-	}
+	std::vector<char> bufW(ds), bufR(ds);
+
+	std::thread reader([&] {
+		readProc(soc, bufR, n);
+	});
+	std::thread writer([&] {
+		writeProc(soc, bufW, n);
+	});
+
+	reader.join();
+	writer.join();
 }
 
 template<class Stream>
 void serverProcess(Stream& soc)
 {
 	int ds, n;
-	int roundtrip;
 	cybozu::load(ds, soc);
 	cybozu::load(n, soc);
-	cybozu::load(roundtrip, soc);
-	printf("ds=%d, n=%d, roundtrip=%d\n", ds, n, roundtrip);
-	std::vector<char> buf(ds);
-	for (int i = 0; i < n; i++) {
-		soc.read(buf.data(), buf.size());
-		if (roundtrip) soc.write(buf.data(), buf.size());
-	}
+	printf("ds=%d, n=%d\n", ds, n);
+
+	std::vector<char> bufW(ds), bufR(ds);
+
+	std::thread reader([&] {
+		readProc(soc, bufR, n);
+	});
+	std::thread writer([&] {
+		writeProc(soc, bufW, n);
+	});
+	reader.join();
+	writer.join();
 }
 
 int main(int argc, char *argv[])
@@ -56,12 +94,10 @@ int main(int argc, char *argv[])
 	int port;
 	int ds;
 	int n;
-	bool roundtrip;
 	opt.appendOpt(&ip, "", "ip", ": ip address");
 	opt.appendOpt(&port, 10000, "p", ": port");
 	opt.appendOpt(&ds, 64 * 3 * 2 * 4, "ds", ": data size");
 	opt.appendOpt(&n, 1024, "n", ": num");
-	opt.appendBoolOpt(&roundtrip, "rt", ": roundtrip");
 	opt.appendHelp("h", "show this message");
 	if (!opt.parse(argc, argv)) {
 		opt.usage();
@@ -81,12 +117,12 @@ int main(int argc, char *argv[])
 		}
 	} else {
 		printf("client ip=%s port=%d\n", ip.c_str(), port);
-		printf("ds=%d, n=%d, roundtrip=%d\n", ds, n, roundtrip);
+		printf("ds=%d, n=%d\n", ds, n);
 		cybozu::SocketAddr sa(ip, uint16_t(port));
 		printf("addr=%s\n", sa.toStr().c_str());
 		cybozu::Socket client;
 		client.connect(sa);
-		clientProcess(client, ds, n, roundtrip);
+		clientProcess(client, ds, n);
 	}
 } catch (std::exception& e) {
 	printf("err %s\n", e.what());
