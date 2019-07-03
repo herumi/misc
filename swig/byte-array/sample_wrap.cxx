@@ -257,7 +257,7 @@ SWIGEXPORT jbyteArray JNICALL Java_sample_SampleJNI_getStr(JNIEnv *jenv, jclass 
   result = getStr(*arg1);
   {
     if (result == 0) {
-      return NULL;
+      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, "getStr");
     }
   }
   {

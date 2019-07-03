@@ -11,10 +11,10 @@
   $result = JCALL1(NewByteArray, jenv, $1->size());
   JCALL4(SetByteArrayRegion, jenv, $result, 0, $1->size(), (const jbyte*)$1->c_str());
 }
-// Optional: return NULL if the function returned false
+
 %typemap(out) size_t getStr {
   if ($1 == 0) {
-    return NULL;
+    SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, "getStr");
   }
 }
 
