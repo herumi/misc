@@ -235,8 +235,8 @@ static void SWIGUNUSED SWIG_JavaThrowException(JNIEnv *jenv, SWIG_JavaExceptionC
 
 
 size_t getStr(std::string& out) {
-    out = "abc";
-    return 1;
+    out = "abcd";
+    return out.size();
 }
 
 
@@ -261,8 +261,8 @@ SWIGEXPORT jbyteArray JNICALL Java_sample_SampleJNI_getStr(JNIEnv *jenv, jclass 
     }
   }
   {
-    jresult = jenv->NewByteArray(arg1->size());
-    jenv->SetByteArrayRegion(jresult, 0, arg1->size(), (const jbyte*)arg1->c_str());
+    jresult = jenv->NewByteArray(result);
+    jenv->SetByteArrayRegion(jresult, 0, result, (const jbyte*)arg1->c_str());
   }
   return jresult;
 }

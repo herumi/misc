@@ -8,8 +8,8 @@
 %typemap(javaout) size_t getStr { return $jnicall; }
 %typemap(in, numinputs=0) std::string& out (std::string temp) "$1=&temp;"
 %typemap(argout) std::string& out {
-  $result = JCALL1(NewByteArray, jenv, $1->size());
-  JCALL4(SetByteArrayRegion, jenv, $result, 0, $1->size(), (const jbyte*)$1->c_str());
+  $result = JCALL1(NewByteArray, jenv, result);
+  JCALL4(SetByteArrayRegion, jenv, $result, 0, result, (const jbyte*)$1->c_str());
 }
 
 %typemap(out) size_t getStr {
@@ -21,8 +21,8 @@
 %inline %{
 
 size_t getStr(std::string& out) {
-    out = "abc";
-    return 1;
+    out = "abcd";
+    return out.size();
 }
 
 %}
