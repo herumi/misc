@@ -234,9 +234,8 @@ static void SWIGUNUSED SWIG_JavaThrowException(JNIEnv *jenv, SWIG_JavaExceptionC
 
 
 
-size_t getStr(std::string& out) {
+void getStr(std::string& out) throw(std::exception) {
     out = "abcd";
-    return out.size();
 }
 
 
@@ -248,21 +247,23 @@ extern "C" {
 SWIGEXPORT jbyteArray JNICALL Java_sample_SampleJNI_getStr(JNIEnv *jenv, jclass jcls) {
   jbyteArray jresult = 0 ;
   std::string *arg1 = 0 ;
-  std::string temp1 ;
-  size_t result;
+  std::string buf1 ;
   
   (void)jenv;
   (void)jcls;
-  arg1=&temp1;
-  result = getStr(*arg1);
-  {
-    if (result == 0) {
-      SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, "getStr");
-    }
+  arg1=&buf1;
+  try {
+    getStr(*arg1);
   }
+  catch(std::exception &_e) {
+    (void)_e;
+    SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, "C++ std::exception exception thrown");
+    return 0; 
+  }
+  
   {
-    jresult = jenv->NewByteArray(result);
-    jenv->SetByteArrayRegion(jresult, 0, result, (const jbyte*)arg1->c_str());
+    jresult = jenv->NewByteArray(arg1->size());
+    jenv->SetByteArrayRegion(jresult, 0, arg1->size(), (const jbyte*)arg1->c_str());
   }
   return jresult;
 }
