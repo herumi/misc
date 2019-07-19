@@ -204,3 +204,15 @@ public:
   string_view assertion_level() const noexcept;
 };
 ```
+- contract_violationの詳細は処理系依存
+  - 事前条件違反のときのソース位置は処理系依存
+    - 呼び出した場所の報告を奨励する
+  - 事後条件違反のときのソース位置は呼び出した場所の一つ
+  - assertionはそれ自身の場所
+
+## 識別子としての契約属性
+
+```
+X f(X & audit) [[ensures audit: audit.valid()]];
+```
+これはvalid. ensures auditのauditは関数の引数として正しい
