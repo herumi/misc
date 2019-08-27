@@ -70,4 +70,6 @@ int main()
 {
 	test("w/call ", loopCall);
 	test("wo/call", loopNoCall);
+	test("w/call ", loopCall);
+	test("wo/call", loopNoCall);
 }

@@ -1,4 +1,4 @@
-CFLAGS=-Wall -Wextra -O3 -I../../cybozulib/include -pthread
+CFLAGS=-Wall -Wextra -O3 -I../../cybozulib/include -pthread -std=c++14
 LDFLAGS=-lpthread
 
 ALL_SRC=netspeed.cpp roundtrip.cpp
