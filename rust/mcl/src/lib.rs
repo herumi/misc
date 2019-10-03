@@ -5,9 +5,13 @@ use std::os::raw::{c_int};
 #[link(name = "gmp")]
 #[link(name = "stdc++")]
 #[link(name = "crypto")]
+
 extern "C" {
 	fn mclBn_getVersion() -> c_int;
 	fn mclBn_init(curve : c_int, compiledTimeVar : c_int) -> c_int;
+	fn mclBnFr_clear(x :*mut u64);
+	fn mclBnFr_setInt(y :*mut u64, x :isize);
+	fn mclBnFr_getStr(buf :*mut u8, maxBufSize: usize, x:*const u64, ioMode:c_int) -> usize;
 }
 
 pub enum CurveType {
@@ -21,26 +25,44 @@ const MCLBN_FP_UNIT_SIZE:usize = 6;
 const MCLBN_FR_UNIT_SIZE:usize = 4;
 const MCLBN_COMPILED_TIME_VAR:c_int = (MCLBN_FR_UNIT_SIZE as c_int * 10 + MCLBN_FP_UNIT_SIZE as c_int);
 
+#[allow(dead_code)]
+#[repr(C)]
 pub struct Fp {
-	#[allow(dead_code)]
 	d:[u64; MCLBN_FP_UNIT_SIZE]
 }
 
+#[allow(dead_code)]
+#[repr(C)]
+pub struct Fp2 {
+	d:[Fr; 2]
+}
+
+#[allow(dead_code)]
+#[repr(C)]
 pub struct Fr {
-	#[allow(dead_code)]
 	d:[u64; MCLBN_FR_UNIT_SIZE]
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
+#[allow(dead_code)]
+#[repr(C)]
+pub struct G1 {
+	x:Fp,
+	y:Fp,
+	z:Fp
 }
 
-pub fn hello() -> String {
-	"abc".to_string()
+#[allow(dead_code)]
+#[repr(C)]
+pub struct G2 {
+	x:Fp2,
+	y:Fp2,
+	z:Fp2
+}
+
+#[allow(dead_code)]
+#[repr(C)]
+pub struct GT {
+	d:[Fp; 12]
 }
 
 pub fn get_version() -> u32 {
@@ -53,5 +75,26 @@ pub fn init(curve:CurveType) -> bool {
 	unsafe {
 		let r = mclBn_init(curve as c_int, MCLBN_COMPILED_TIME_VAR);
 		r as u32 == 0
+	}
+}
+
+impl Fr {
+	pub fn clear(&mut self) {
+		unsafe {
+			mclBnFr_clear(self.d.as_mut_ptr());
+		}
+	}
+	pub fn to_string(&self) -> String {
+		let mut d:[u8; 1024] = unsafe { std::mem::uninitialized() };
+		let n:usize;
+		unsafe {
+			n = mclBnFr_getStr(d.as_mut_ptr(), d.len(), self.d.as_ptr(), 0);
+		}
+		println!("ret n={}", n);
+		if n == 0 {
+			println!("err getStr");
+			return "".to_string();
+		}
+		d[0..n].iter().map(|&s| s as char).collect::<String>()
 	}
 }
