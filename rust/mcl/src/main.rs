@@ -6,7 +6,10 @@ fn main() {
 	if !b {
 		println!("init err");
 	}
-	let mut x:mcl::Fr = unsafe { std::mem::uninitialized() };
+	let mut x = mcl::Fr::zero();
+	println!("x={}", x.to_string());
+	x.set_int(123456);
+	println!("x={}", x.to_string());
 	x.clear();
 	println!("x={}", x.to_string());
 }

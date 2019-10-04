@@ -10,7 +10,7 @@ extern "C" {
 	fn mclBn_getVersion() -> c_int;
 	fn mclBn_init(curve : c_int, compiledTimeVar : c_int) -> c_int;
 	fn mclBnFr_clear(x :*mut u64);
-	fn mclBnFr_setInt(y :*mut u64, x :isize);
+	fn mclBnFr_setInt32(y :*mut u64, x :i32);
 	fn mclBnFr_getStr(buf :*mut u8, maxBufSize: usize, x:*const u64, ioMode:c_int) -> usize;
 }
 
@@ -37,8 +37,8 @@ pub struct Fp2 {
 	d:[Fr; 2]
 }
 
-#[allow(dead_code)]
 #[repr(C)]
+#[derive(Default)]
 pub struct Fr {
 	d:[u64; MCLBN_FR_UNIT_SIZE]
 }
@@ -79,9 +79,17 @@ pub fn init(curve:CurveType) -> bool {
 }
 
 impl Fr {
+	pub fn zero() -> Fr {
+		Default::default()
+	}
 	pub fn clear(&mut self) {
 		unsafe {
 			mclBnFr_clear(self.d.as_mut_ptr());
+		}
+	}
+	pub fn set_int(&mut self, x :i32) {
+		unsafe {
+			mclBnFr_setInt32(self.d.as_mut_ptr(), x);
 		}
 	}
 	pub fn to_string(&self) -> String {
@@ -90,10 +98,8 @@ impl Fr {
 		unsafe {
 			n = mclBnFr_getStr(d.as_mut_ptr(), d.len(), self.d.as_ptr(), 0);
 		}
-		println!("ret n={}", n);
 		if n == 0 {
-			println!("err getStr");
-			return "".to_string();
+			panic!("mclBnFr_getStr");
 		}
 		d[0..n].iter().map(|&s| s as char).collect::<String>()
 	}
