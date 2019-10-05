@@ -9,7 +9,8 @@ use std::os::raw::{c_int};
 extern "C" {
 	fn mclBn_getVersion() -> c_int;
 	fn mclBn_init(curve : c_int, compiledTimeVar : c_int) -> c_int;
-	fn mclBnFr_setInt32(y :*mut u64, x :i32);
+	fn mclBnFr_setInt32(x :*mut u64, v :i32);
+	fn mclBnFr_setStr(x :*mut u64, buf: *const u64, bufSize: usize, ioMode:c_int) -> c_int;
 	fn mclBnFr_getStr(buf :*mut u8, maxBufSize: usize, x:*const u64, ioMode:c_int) -> usize;
 }
 
@@ -89,11 +90,12 @@ impl Fr {
 			mclBnFr_setInt32(self.d.as_mut_ptr(), x);
 		}
 	}
-	pub fn to_string(&self) -> String {
+//	pub fn set_str
+	pub fn get_str(&self, ioMode:i32) -> String {
 		let mut d:[u8; 1024] = unsafe { std::mem::uninitialized() };
 		let n:usize;
 		unsafe {
-			n = mclBnFr_getStr(d.as_mut_ptr(), d.len(), self.d.as_ptr(), 0);
+			n = mclBnFr_getStr(d.as_mut_ptr(), d.len(), self.d.as_ptr(), ioMode as c_int);
 		}
 		if n == 0 {
 			panic!("mclBnFr_getStr");

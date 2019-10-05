@@ -7,9 +7,11 @@ fn main() {
 		println!("init err");
 	}
 	let mut x = mcl::Fr::zero();
-	println!("x={}", x.to_string());
+	println!("x={}", x.get_str(10));
 	x.set_int(123456);
-	println!("x={}", x.to_string());
+	println!("x={}", x.get_str(10));
+	x.set_int(0xfff);
+	println!("x={}", x.get_str(16));
 	x.clear();
-	println!("x={}", x.to_string());
+	println!("x={}", x.get_str(10));
 }
