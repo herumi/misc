@@ -1,4 +1,5 @@
 use std::os::raw::{c_int};
+use std::mem::{MaybeUninit};
 
 #[link(name = "mcl", kind = "static")]
 #[link(name = "mclbn384_256", kind = "static")]
@@ -99,7 +100,7 @@ impl Fr {
 		n == 0
 	}
 	pub fn get_str(&self, io_mode:i32) -> String {
-		let mut d:[u8; 1024] = unsafe { std::mem::uninitialized() };
+		let mut d:[u8; 1024] = unsafe { MaybeUninit::uninit().assume_init() };
 		let n:usize;
 		unsafe {
 			n = mclBnFr_getStr(d.as_mut_ptr(), d.len(), self.d.as_ptr(), io_mode as c_int);
