@@ -14,4 +14,6 @@ fn main() {
 	println!("x={}", x.get_str(16));
 	x.clear();
 	println!("x={}", x.get_str(10));
+	x.set_str("0x123", 0);
+	println!("x={}", x.get_str(16));
 }
