@@ -10,10 +10,14 @@ use std::mem::{MaybeUninit};
 #[allow(non_snake_case)]
 extern "C" {
 	fn mclBn_getVersion() -> c_int;
+	fn mclBn_getFrByteSize() -> c_int;
+	fn mclBn_getFpByteSize() -> c_int;
 	fn mclBn_init(curve : c_int, compiledTimeVar : c_int) -> c_int;
 	fn mclBnFr_setInt32(x :*mut u64, v :i32);
 	fn mclBnFr_setStr(x :*mut u64, buf: *const u8, bufSize: usize, ioMode:c_int) -> c_int;
 	fn mclBnFr_getStr(buf :*mut u8, maxBufSize: usize, x:*const u64, ioMode:c_int) -> usize;
+	fn mclBnFr_serialize(buf :*mut u8, maxBufSize: usize, x:*const u64) -> usize;
+	fn mclBnFr_deserialize(x:*mut u64, buf:*const u8, bufSize: usize) -> usize;
 }
 
 pub enum CurveType {
@@ -109,5 +113,18 @@ impl Fr {
 			panic!("mclBnFr_getStr");
 		}
 		d[0..n].iter().map(|&s| s as char).collect::<String>()
+	}
+	pub fn serialize(&self) -> Vec<u8> {
+		let size = unsafe { mclBn_getFrByteSize() } as usize;
+		let mut buf:Vec<u8> = Vec::with_capacity(size);
+		let n:usize;
+		unsafe {
+			n = mclBnFr_serialize(buf.as_mut_ptr(), size, self.d.as_ptr());
+		}
+		if n == 0 {
+			panic!("serialize");
+		}
+		unsafe { buf.set_len(n); }
+		buf
 	}
 }
