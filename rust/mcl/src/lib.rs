@@ -76,10 +76,7 @@ pub fn get_version() -> u32 {
 }
 
 pub fn init(curve: CurveType) -> bool {
-    unsafe {
-        let r = mclBn_init(curve as c_int, MCLBN_COMPILED_TIME_VAR);
-        r as u32 == 0
-    }
+    unsafe { mclBn_init(curve as c_int, MCLBN_COMPILED_TIME_VAR) == 0 }
 }
 
 impl Fr {
@@ -98,15 +95,39 @@ impl Fr {
         unsafe { mclBnFr_setStr(self.d.as_mut_ptr(), s.as_ptr(), s.len(), base as c_int) == 0 }
     }
     pub fn get_str(&self, io_mode: i32) -> String {
-        let mut d: [u8; 1024] = unsafe { MaybeUninit::uninit().assume_init() };
+        let mut buf: [u8; 1024] = unsafe { MaybeUninit::uninit().assume_init() };
         let n: usize;
         unsafe {
-            n = mclBnFr_getStr(d.as_mut_ptr(), d.len(), self.d.as_ptr(), io_mode as c_int);
+            n = mclBnFr_getStr(
+                buf.as_mut_ptr(),
+                buf.len(),
+                self.d.as_ptr(),
+                io_mode as c_int,
+            );
         }
         if n == 0 {
             panic!("mclBnFr_getStr");
         }
-        d[0..n].iter().map(|&s| s as char).collect::<String>()
+        buf[0..n].iter().map(|&s| s as char).collect::<String>()
+    }
+    pub fn get_str2(&self, io_mode: i32) -> String {
+        let mut buf: Vec<u8> = Vec::with_capacity(1024);
+        let n: usize;
+        unsafe {
+            n = mclBnFr_getStr(
+                buf.as_mut_ptr(),
+                buf.capacity(),
+                self.d.as_ptr(),
+                io_mode as c_int,
+            );
+        }
+        if n == 0 {
+            panic!("mclBnFr_getStr");
+        }
+        unsafe {
+            buf.set_len(n);
+            String::from_utf8_unchecked(buf)
+        }
     }
     pub fn serialize(&self) -> Vec<u8> {
         let size = unsafe { mclBn_getFrByteSize() } as usize;
