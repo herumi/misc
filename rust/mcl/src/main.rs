@@ -16,5 +16,12 @@ fn main() {
 	println!("x={}", x.get_str(10));
 	x.set_str("0x123", 0);
 	println!("x={}", x.get_str(16));
-	println!("serialize={:?}", x.serialize());
+	let buf = x.serialize();
+	println!("serialize={:x?}", buf); // put hex byte
+	let mut y = mcl::Fr::zero();
+	if y.deserialize(&buf) {
+		println!("y={}", y.get_str(16));
+	} else {
+		println!("err deserialize");
+	}
 }

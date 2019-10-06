@@ -97,11 +97,9 @@ impl Fr {
 		}
 	}
 	pub fn set_str(&mut self, s:&str, base:i32) -> bool {
-		let n:c_int;
 		unsafe {
-			n = mclBnFr_setStr(self.d.as_mut_ptr(), s.as_ptr(), s.len(), base as c_int);
+			mclBnFr_setStr(self.d.as_mut_ptr(), s.as_ptr(), s.len(), base as c_int) == 0
 		}
-		n == 0
 	}
 	pub fn get_str(&self, io_mode:i32) -> String {
 		let mut d:[u8; 1024] = unsafe { MaybeUninit::uninit().assume_init() };
@@ -126,5 +124,10 @@ impl Fr {
 		}
 		unsafe { buf.set_len(n); }
 		buf
+	}
+	pub fn deserialize(&mut self, buf:&[u8]) -> bool {
+		unsafe {
+			mclBnFr_deserialize(self.d.as_mut_ptr(), buf.as_ptr(), buf.len()) > 0
+		}
 	}
 }
