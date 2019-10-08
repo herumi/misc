@@ -8,9 +8,9 @@ use std::os::raw::c_int;
 #[link(name = "crypto")]
 #[allow(non_snake_case)]
 extern "C" {
-    fn mclBn_getVersion() -> c_int;
-    fn mclBn_getFrByteSize() -> c_int;
-    fn mclBn_getFpByteSize() -> c_int;
+    fn mclBn_getVersion() -> u32;
+    fn mclBn_getFrByteSize() -> u32;
+    fn mclBn_getFpByteSize() -> u32;
     fn mclBn_init(curve: c_int, compiledTimeVar: c_int) -> c_int;
     fn mclBnFr_setInt32(x: *mut u64, v: i32);
     fn mclBnFr_setStr(x: *mut u64, buf: *const u8, bufSize: usize, ioMode: c_int) -> c_int;
@@ -31,6 +31,17 @@ const MCLBN_FR_UNIT_SIZE: usize = 4;
 const MCLBN_COMPILED_TIME_VAR: c_int =
     (MCLBN_FR_UNIT_SIZE as c_int * 10 + MCLBN_FP_UNIT_SIZE as c_int);
 
+macro_rules! serialize_impl {
+    ($t:ty, $size:expr, $serialize_fn:ident) => {
+        impl $t {
+            pub fn serialize(&self) -> Vec<u8> {
+                let size = unsafe { $size } as usize;
+                make_serialize(size, &self.d, $serialize_fn)
+            }
+        }
+    };
+}
+
 #[allow(dead_code)]
 #[repr(C)]
 pub struct Fp {
@@ -48,6 +59,7 @@ pub struct Fp2 {
 pub struct Fr {
     d: [u64; MCLBN_FR_UNIT_SIZE],
 }
+serialize_impl![Fr, mclBn_getFrByteSize(), mclBnFr_serialize];
 
 #[allow(dead_code)]
 #[repr(C)]
@@ -72,7 +84,7 @@ pub struct GT {
 }
 
 pub fn get_version() -> u32 {
-    unsafe { mclBn_getVersion() as u32 }
+    unsafe { mclBn_getVersion() }
 }
 
 pub fn init(curve: CurveType) -> bool {
@@ -148,10 +160,12 @@ impl Fr {
             String::from_utf8_unchecked(buf)
         }
     }
-    pub fn serialize(&self) -> Vec<u8> {
-        let size = unsafe { mclBn_getFrByteSize() } as usize;
-        make_serialize(size, &self.d, mclBnFr_serialize)
-    }
+    /*
+        pub fn serialize(&self) -> Vec<u8> {
+            let size = unsafe { mclBn_getFrByteSize() } as usize;
+            make_serialize(size, &self.d, mclBnFr_serialize)
+        }
+    */
     pub fn deserialize(&mut self, buf: &[u8]) -> bool {
         unsafe { mclBnFr_deserialize(self.d.as_mut_ptr(), buf.as_ptr(), buf.len()) > 0 }
     }
