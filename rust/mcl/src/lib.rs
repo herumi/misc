@@ -34,6 +34,9 @@ const MCLBN_COMPILED_TIME_VAR: c_int =
 macro_rules! serialize_impl {
     ($t:ty, $size:expr, $serialize_fn:ident, $deserialize_fn:ident) => {
         impl $t {
+            pub fn deserialize(&mut self, buf: &[u8]) -> bool {
+                unsafe { $deserialize_fn(self, buf.as_ptr(), buf.len()) > 0 }
+            }
             pub fn serialize(&self) -> Vec<u8> {
                 let size = unsafe { $size } as usize;
                 let mut buf: Vec<u8> = Vec::with_capacity(size);
@@ -49,20 +52,43 @@ macro_rules! serialize_impl {
                 }
                 buf
             }
-
-            pub fn deserialize(&mut self, buf: &[u8]) -> bool {
-                unsafe { $deserialize_fn(self, buf.as_ptr(), buf.len()) > 0 }
-            }
         }
     };
 }
 
 macro_rules! str_impl {
-    ($t:ty, $maxBufSize:expr, $set_str_fn:ident) => {
+    ($t:ty, $maxBufSize:expr, $get_str_fn:ident, $set_str_fn:ident) => {
         impl $t {
             pub fn set_str(&mut self, s: &str, base: i32) -> bool {
                 unsafe { $set_str_fn(self, s.as_ptr(), s.len(), base) == 0 }
             }
+            pub fn get_str(&self, io_mode: i32) -> String {
+                let mut buf: [u8; $maxBufSize] = unsafe { MaybeUninit::uninit().assume_init() };
+                let n: usize;
+                unsafe {
+                    n = $get_str_fn(buf.as_mut_ptr(), buf.len(), self, io_mode);
+                }
+                if n == 0 {
+                    panic!("mclBnFr_getStr");
+                }
+                buf[0..n].iter().map(|&s| s as char).collect::<String>()
+            }
+            /*
+                        pub fn get_str2(&self, io_mode: i32) -> String {
+                            let mut buf: Vec<u8> = Vec::with_capacity($maxBufSize);
+                            let n: usize;
+                            unsafe {
+                                n = $get_str_fn(buf.as_mut_ptr(), buf.capacity(), self, io_mode as c_int);
+                            }
+                            if n == 0 {
+                                panic!("mclBnFr_getStr");
+                            }
+                            unsafe {
+                                buf.set_len(n);
+                                String::from_utf8_unchecked(buf)
+                            }
+                        }
+            */
         }
     };
 }
@@ -90,7 +116,7 @@ serialize_impl![
     mclBnFr_serialize,
     mclBnFr_deserialize
 ];
-str_impl![Fr, 1024, mclBnFr_setStr];
+str_impl![Fr, 1024, mclBnFr_getStr, mclBnFr_setStr];
 
 #[allow(dead_code)]
 #[repr(C)]
@@ -134,36 +160,4 @@ impl Fr {
             mclBnFr_setInt32(self, x);
         }
     }
-    pub fn get_str(&self, io_mode: i32) -> String {
-        let mut buf: [u8; 1024] = unsafe { MaybeUninit::uninit().assume_init() };
-        let n: usize;
-        unsafe {
-            n = mclBnFr_getStr(buf.as_mut_ptr(), buf.len(), self, io_mode);
-        }
-        if n == 0 {
-            panic!("mclBnFr_getStr");
-        }
-        buf[0..n].iter().map(|&s| s as char).collect::<String>()
-    }
-    /*
-        pub fn get_str2(&self, io_mode: i32) -> String {
-            let mut buf: Vec<u8> = Vec::with_capacity(1024);
-            let n: usize;
-            unsafe {
-                n = mclBnFr_getStr(
-                    buf.as_mut_ptr(),
-                    buf.capacity(),
-                    self,
-                    io_mode as c_int,
-                );
-            }
-            if n == 0 {
-                panic!("mclBnFr_getStr");
-            }
-            unsafe {
-                buf.set_len(n);
-                String::from_utf8_unchecked(buf)
-            }
-        }
-    */
 }
