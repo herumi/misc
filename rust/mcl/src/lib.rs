@@ -12,9 +12,9 @@ extern "C" {
     fn mclBn_getFrByteSize() -> u32;
     fn mclBn_getFpByteSize() -> u32;
     fn mclBn_init(curve: c_int, compiledTimeVar: c_int) -> c_int;
-    fn mclBnFr_setInt32(x: *mut u64, v: i32);
-    fn mclBnFr_setStr(x: *mut u64, buf: *const u8, bufSize: usize, ioMode: c_int) -> c_int;
-    fn mclBnFr_getStr(buf: *mut u8, maxBufSize: usize, x: *const u64, ioMode: c_int) -> usize;
+    fn mclBnFr_setInt32(x: *mut Fr, v: i32);
+    fn mclBnFr_setStr(x: *mut Fr, buf: *const u8, bufSize: usize, ioMode: i32) -> c_int;
+    fn mclBnFr_getStr(buf: *mut u8, maxBufSize: usize, x: *const Fr, ioMode: i32) -> usize;
     fn mclBnFr_serialize(buf: *mut u8, maxBufSize: usize, x: *const Fr) -> usize;
     fn mclBnFr_deserialize(x: *mut Fr, buf: *const u8, bufSize: usize) -> usize;
 }
@@ -57,6 +57,16 @@ macro_rules! serialize_impl {
     };
 }
 
+macro_rules! str_impl {
+    ($t:ty, $maxBufSize:expr, $set_str_fn:ident) => {
+        impl $t {
+            pub fn set_str(&mut self, s: &str, base: i32) -> bool {
+                unsafe { $set_str_fn(self, s.as_ptr(), s.len(), base) == 0 }
+            }
+        }
+    };
+}
+
 #[allow(dead_code)]
 #[repr(C)]
 pub struct Fp {
@@ -80,6 +90,7 @@ serialize_impl![
     mclBnFr_serialize,
     mclBnFr_deserialize
 ];
+str_impl![Fr, 1024, mclBnFr_setStr];
 
 #[allow(dead_code)]
 #[repr(C)]
@@ -120,45 +131,39 @@ impl Fr {
     }
     pub fn set_int(&mut self, x: i32) {
         unsafe {
-            mclBnFr_setInt32(self.d.as_mut_ptr(), x);
+            mclBnFr_setInt32(self, x);
         }
-    }
-    pub fn set_str(&mut self, s: &str, base: i32) -> bool {
-        unsafe { mclBnFr_setStr(self.d.as_mut_ptr(), s.as_ptr(), s.len(), base as c_int) == 0 }
     }
     pub fn get_str(&self, io_mode: i32) -> String {
         let mut buf: [u8; 1024] = unsafe { MaybeUninit::uninit().assume_init() };
         let n: usize;
         unsafe {
-            n = mclBnFr_getStr(
-                buf.as_mut_ptr(),
-                buf.len(),
-                self.d.as_ptr(),
-                io_mode as c_int,
-            );
+            n = mclBnFr_getStr(buf.as_mut_ptr(), buf.len(), self, io_mode);
         }
         if n == 0 {
             panic!("mclBnFr_getStr");
         }
         buf[0..n].iter().map(|&s| s as char).collect::<String>()
     }
-    pub fn get_str2(&self, io_mode: i32) -> String {
-        let mut buf: Vec<u8> = Vec::with_capacity(1024);
-        let n: usize;
-        unsafe {
-            n = mclBnFr_getStr(
-                buf.as_mut_ptr(),
-                buf.capacity(),
-                self.d.as_ptr(),
-                io_mode as c_int,
-            );
+    /*
+        pub fn get_str2(&self, io_mode: i32) -> String {
+            let mut buf: Vec<u8> = Vec::with_capacity(1024);
+            let n: usize;
+            unsafe {
+                n = mclBnFr_getStr(
+                    buf.as_mut_ptr(),
+                    buf.capacity(),
+                    self,
+                    io_mode as c_int,
+                );
+            }
+            if n == 0 {
+                panic!("mclBnFr_getStr");
+            }
+            unsafe {
+                buf.set_len(n);
+                String::from_utf8_unchecked(buf)
+            }
         }
-        if n == 0 {
-            panic!("mclBnFr_getStr");
-        }
-        unsafe {
-            buf.set_len(n);
-            String::from_utf8_unchecked(buf)
-        }
-    }
+    */
 }
