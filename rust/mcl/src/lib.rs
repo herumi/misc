@@ -15,8 +15,8 @@ extern "C" {
     fn mclBnFr_setInt32(x: *mut u64, v: i32);
     fn mclBnFr_setStr(x: *mut u64, buf: *const u8, bufSize: usize, ioMode: c_int) -> c_int;
     fn mclBnFr_getStr(buf: *mut u8, maxBufSize: usize, x: *const u64, ioMode: c_int) -> usize;
-    fn mclBnFr_serialize(buf: *mut u8, maxBufSize: usize, x: *const u64) -> usize;
-    fn mclBnFr_deserialize(x: *mut u64, buf: *const u8, bufSize: usize) -> usize;
+    fn mclBnFr_serialize(buf: *mut u8, maxBufSize: usize, x: *const Fr) -> usize;
+    fn mclBnFr_deserialize(x: *mut Fr, buf: *const u8, bufSize: usize) -> usize;
 }
 
 pub enum CurveType {
@@ -32,11 +32,26 @@ const MCLBN_COMPILED_TIME_VAR: c_int =
     (MCLBN_FR_UNIT_SIZE as c_int * 10 + MCLBN_FP_UNIT_SIZE as c_int);
 
 macro_rules! serialize_impl {
-    ($t:ty, $size:expr, $serialize_fn:ident) => {
+    ($t:ty, $size:expr, $serialize_fn:ident, $deserialize_fn:ident) => {
         impl $t {
             pub fn serialize(&self) -> Vec<u8> {
                 let size = unsafe { $size } as usize;
-                make_serialize(size, &self.d, $serialize_fn)
+                let mut buf: Vec<u8> = Vec::with_capacity(size);
+                let n: usize;
+                unsafe {
+                    n = $serialize_fn(buf.as_mut_ptr(), size, self);
+                }
+                if n == 0 {
+                    panic!("serialize");
+                }
+                unsafe {
+                    buf.set_len(n);
+                }
+                buf
+            }
+
+            pub fn deserialize(&mut self, buf: &[u8]) -> bool {
+                unsafe { $deserialize_fn(self, buf.as_ptr(), buf.len()) > 0 }
             }
         }
     };
@@ -59,7 +74,12 @@ pub struct Fp2 {
 pub struct Fr {
     d: [u64; MCLBN_FR_UNIT_SIZE],
 }
-serialize_impl![Fr, mclBn_getFrByteSize(), mclBnFr_serialize];
+serialize_impl![
+    Fr,
+    mclBn_getFrByteSize(),
+    mclBnFr_serialize,
+    mclBnFr_deserialize
+];
 
 #[allow(dead_code)]
 #[repr(C)]
@@ -89,25 +109,6 @@ pub fn get_version() -> u32 {
 
 pub fn init(curve: CurveType) -> bool {
     unsafe { mclBn_init(curve as c_int, MCLBN_COMPILED_TIME_VAR) == 0 }
-}
-
-fn make_serialize(
-    size: usize,
-    d: &[u64],
-    serialize: unsafe extern "C" fn(buf: *mut u8, maxBufSize: usize, x: *const u64) -> usize,
-) -> Vec<u8> {
-    let mut buf: Vec<u8> = Vec::with_capacity(size);
-    let n: usize;
-    unsafe {
-        n = serialize(buf.as_mut_ptr(), size, d.as_ptr());
-    }
-    if n == 0 {
-        panic!("serialize");
-    }
-    unsafe {
-        buf.set_len(n);
-    }
-    buf
 }
 
 impl Fr {
@@ -159,14 +160,5 @@ impl Fr {
             buf.set_len(n);
             String::from_utf8_unchecked(buf)
         }
-    }
-    /*
-        pub fn serialize(&self) -> Vec<u8> {
-            let size = unsafe { mclBn_getFrByteSize() } as usize;
-            make_serialize(size, &self.d, mclBnFr_serialize)
-        }
-    */
-    pub fn deserialize(&mut self, buf: &[u8]) -> bool {
-        unsafe { mclBnFr_deserialize(self.d.as_mut_ptr(), buf.as_ptr(), buf.len()) > 0 }
     }
 }
