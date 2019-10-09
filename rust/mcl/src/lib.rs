@@ -29,6 +29,8 @@ extern "C" {
 	fn mclBnFr_sub(z:*mut Fr, x:*const Fr, y:*const Fr);
 	fn mclBnFr_mul(z:*mut Fr, x:*const Fr, y:*const Fr);
 	fn mclBnFr_div(z:*mut Fr, x:*const Fr, y:*const Fr);
+	fn mclBnFr_neg(y:*mut Fr, x:*const Fr);
+	fn mclBnFr_sqr(y:*mut Fr, x:*const Fr);
 }
 
 pub enum CurveType {
@@ -147,7 +149,7 @@ macro_rules! is_odd_neg_impl {
 }
 
 macro_rules! field_op_impl {
-	($t:ty, $add_fn:ident, $sub_fn:ident, $mul_fn:ident, $div_fn:ident) => {
+	($t:ty, $add_fn:ident, $sub_fn:ident, $mul_fn:ident, $div_fn:ident, $neg_fn:ident, $sqr_fn:ident) => {
 		impl $t {
 			pub fn add(z:&mut $t, x: &$t, y: &$t) {
 				unsafe { $add_fn(z, x, y) }
@@ -160,6 +162,12 @@ macro_rules! field_op_impl {
 			}
 			pub fn div(z:&mut $t, x: &$t, y: &$t) {
 				unsafe { $div_fn(z, x, y) }
+			}
+			pub fn neg(y:&mut $t, x: &$t) {
+				unsafe { $neg_fn(y, x) }
+			}
+			pub fn sqr(y:&mut $t, x: &$t) {
+				unsafe { $sqr_fn(y, x) }
 			}
 		}
 	};
@@ -192,7 +200,7 @@ str_impl![Fr, 1024, mclBnFr_getStr, mclBnFr_setStr];
 is_compare_base_impl![Fr, mclBnFr_isEqual, mclBnFr_isValid, mclBnFr_isZero];
 is_one_impl![Fr, mclBnFr_isOne];
 is_odd_neg_impl![Fr, mclBnFr_isOdd, mclBnFr_isNegative];
-field_op_impl![Fr, mclBnFr_add, mclBnFr_sub, mclBnFr_mul, mclBnFr_div];
+field_op_impl![Fr, mclBnFr_add, mclBnFr_sub, mclBnFr_mul, mclBnFr_div, mclBnFr_neg, mclBnFr_sqr];
 
 #[allow(dead_code)]
 #[repr(C)]
