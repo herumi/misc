@@ -24,4 +24,11 @@ fn main() {
     } else {
         println!("err deserialize");
     }
+    if (x == y) {
+        println!("ok");
+    }
+    x.set_int(3);
+    if (x != y) {
+        println!("ok");
+    }
 }

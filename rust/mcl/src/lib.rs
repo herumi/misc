@@ -17,6 +17,7 @@ extern "C" {
     fn mclBnFr_getStr(buf: *mut u8, maxBufSize: usize, x: *const Fr, ioMode: i32) -> usize;
     fn mclBnFr_serialize(buf: *mut u8, maxBufSize: usize, x: *const Fr) -> usize;
     fn mclBnFr_deserialize(x: *mut Fr, buf: *const u8, bufSize: usize) -> usize;
+    fn mclBnFr_isEqual(x: *const Fr, y: *const Fr) -> c_int;
 }
 
 pub enum CurveType {
@@ -93,6 +94,16 @@ macro_rules! str_impl {
     };
 }
 
+macro_rules! is_equal_impl {
+    ($t:ty, $is_equal_fn:ident) => {
+        impl PartialEq for $t {
+            fn eq(&self, rhs: &Self) -> bool {
+                unsafe { $is_equal_fn(self, rhs) == 1 }
+            }
+        }
+    };
+}
+
 #[allow(dead_code)]
 #[repr(C)]
 pub struct Fp {
@@ -117,6 +128,7 @@ serialize_impl![
     mclBnFr_deserialize
 ];
 str_impl![Fr, 1024, mclBnFr_getStr, mclBnFr_setStr];
+is_equal_impl![Fr, mclBnFr_isEqual];
 
 #[allow(dead_code)]
 #[repr(C)]
