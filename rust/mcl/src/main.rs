@@ -24,11 +24,14 @@ fn main() {
     } else {
         println!("err deserialize");
     }
-    if (x == y) {
-        println!("ok");
+    if x != y {
+        println!("ng");
     }
-    x.set_int(3);
-    if (x != y) {
-        println!("ok");
+    x.set_int(1);
+    if x == y {
+        println!("ng");
+    }
+    if !x.is_one() {
+        println!("ng");
     }
 }
