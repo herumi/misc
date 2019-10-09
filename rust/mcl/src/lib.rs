@@ -17,9 +17,14 @@ extern "C" {
     fn mclBnFr_getStr(buf: *mut u8, maxBufSize: usize, x: *const Fr, ioMode: i32) -> usize;
     fn mclBnFr_serialize(buf: *mut u8, maxBufSize: usize, x: *const Fr) -> usize;
     fn mclBnFr_deserialize(x: *mut Fr, buf: *const u8, bufSize: usize) -> usize;
+    fn mclBnFr_setLittleEndian(x: *mut Fr, buf: *const u8, bufSize: usize) -> i32;
     fn mclBnFr_isEqual(x: *const Fr, y: *const Fr) -> i32;
+    fn mclBnFr_isValid(x: *const Fr) -> i32;
     fn mclBnFr_isZero(x: *const Fr) -> i32;
     fn mclBnFr_isOne(x: *const Fr) -> i32;
+    fn mclBnFr_isOdd(x: *const Fr) -> i32;
+
+	fn mclBnFr_add(z:*mut Fr, x:*const Fr, y:*const Fr);
 }
 
 pub enum CurveType {
@@ -96,14 +101,17 @@ macro_rules! str_impl {
     };
 }
 
-macro_rules! is_compare_impl {
-    ($t:ty, $is_equal_fn:ident, $is_zero_fn:ident) => {
+macro_rules! is_compare_base_impl {
+    ($t:ty, $is_equal_fn:ident, $is_valid_fn:ident, $is_zero_fn:ident) => {
         impl PartialEq for $t {
             fn eq(&self, rhs: &Self) -> bool {
                 unsafe { $is_equal_fn(self, rhs) == 1 }
             }
         }
         impl $t {
+            pub fn is_valid(&self) -> bool {
+                unsafe { $is_valid_fn(self) == 1 }
+            }
             pub fn is_zero(&self) -> bool {
                 unsafe { $is_zero_fn(self) == 1 }
             }
@@ -119,6 +127,26 @@ macro_rules! is_one_impl {
             }
         }
     };
+}
+
+macro_rules! is_odd_impl {
+    ($t:ty, $is_odd_fn:ident) => {
+        impl $t {
+            pub fn is_odd(&self) -> bool {
+                unsafe { $is_odd_fn(self) == 1 }
+            }
+        }
+    };
+}
+
+macro_rules! field_op_impl {
+	($t:ty, $add_fn:ident) => {
+		impl $t {
+			pub fn add(z:&mut $t, x: &$t, y: &$t) {
+				unsafe { $add_fn(z, x, y) }
+			}
+		}
+	};
 }
 
 #[allow(dead_code)]
@@ -145,8 +173,10 @@ serialize_impl![
     mclBnFr_deserialize
 ];
 str_impl![Fr, 1024, mclBnFr_getStr, mclBnFr_setStr];
-is_compare_impl![Fr, mclBnFr_isEqual, mclBnFr_isZero];
+is_compare_base_impl![Fr, mclBnFr_isEqual, mclBnFr_isValid, mclBnFr_isZero];
 is_one_impl![Fr, mclBnFr_isOne];
+is_odd_impl![Fr, mclBnFr_isOdd];
+field_op_impl![Fr, mclBnFr_add];
 
 #[allow(dead_code)]
 #[repr(C)]
