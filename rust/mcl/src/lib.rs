@@ -18,6 +18,7 @@ extern "C" {
     fn mclBnFr_serialize(buf: *mut u8, maxBufSize: usize, x: *const Fr) -> usize;
     fn mclBnFr_deserialize(x: *mut Fr, buf: *const u8, bufSize: usize) -> usize;
     fn mclBnFr_setLittleEndian(x: *mut Fr, buf: *const u8, bufSize: usize) -> i32;
+    fn mclBnFr_setLittleEndianMod(x: *mut Fr, buf: *const u8, bufSize: usize) -> i32;
     fn mclBnFr_isEqual(x: *const Fr, y: *const Fr) -> i32;
     fn mclBnFr_isValid(x: *const Fr) -> i32;
     fn mclBnFr_isZero(x: *const Fr) -> i32;
@@ -25,12 +26,12 @@ extern "C" {
     fn mclBnFr_isOdd(x: *const Fr) -> i32;
     fn mclBnFr_isNegative(x: *const Fr) -> i32;
 
-	fn mclBnFr_add(z:*mut Fr, x:*const Fr, y:*const Fr);
-	fn mclBnFr_sub(z:*mut Fr, x:*const Fr, y:*const Fr);
-	fn mclBnFr_mul(z:*mut Fr, x:*const Fr, y:*const Fr);
-	fn mclBnFr_div(z:*mut Fr, x:*const Fr, y:*const Fr);
-	fn mclBnFr_neg(y:*mut Fr, x:*const Fr);
-	fn mclBnFr_sqr(y:*mut Fr, x:*const Fr);
+    fn mclBnFr_add(z: *mut Fr, x: *const Fr, y: *const Fr);
+    fn mclBnFr_sub(z: *mut Fr, x: *const Fr, y: *const Fr);
+    fn mclBnFr_mul(z: *mut Fr, x: *const Fr, y: *const Fr);
+    fn mclBnFr_div(z: *mut Fr, x: *const Fr, y: *const Fr);
+    fn mclBnFr_neg(y: *mut Fr, x: *const Fr);
+    fn mclBnFr_sqr(y: *mut Fr, x: *const Fr);
 }
 
 pub enum CurveType {
@@ -107,6 +108,19 @@ macro_rules! str_impl {
     };
 }
 
+macro_rules! set_little_endian_impl {
+    ($t:ty, $set_little_endian_fn:ident, $set_little_endian_mod_fn:ident) => {
+        impl $t {
+            pub fn set_little_endian(&mut self, buf: &[u8]) -> bool {
+                unsafe { $set_little_endian_fn(self, buf.as_ptr(), buf.len()) == 0 }
+            }
+            pub fn set_little_endian_mod(&mut self, buf: &[u8]) -> bool {
+                unsafe { $set_little_endian_mod_fn(self, buf.as_ptr(), buf.len()) == 0 }
+            }
+        }
+    };
+}
+
 macro_rules! is_compare_base_impl {
     ($t:ty, $is_equal_fn:ident, $is_valid_fn:ident, $is_zero_fn:ident) => {
         impl PartialEq for $t {
@@ -149,28 +163,28 @@ macro_rules! is_odd_neg_impl {
 }
 
 macro_rules! field_op_impl {
-	($t:ty, $add_fn:ident, $sub_fn:ident, $mul_fn:ident, $div_fn:ident, $neg_fn:ident, $sqr_fn:ident) => {
-		impl $t {
-			pub fn add(z:&mut $t, x: &$t, y: &$t) {
-				unsafe { $add_fn(z, x, y) }
-			}
-			pub fn sub(z:&mut $t, x: &$t, y: &$t) {
-				unsafe { $sub_fn(z, x, y) }
-			}
-			pub fn mul(z:&mut $t, x: &$t, y: &$t) {
-				unsafe { $mul_fn(z, x, y) }
-			}
-			pub fn div(z:&mut $t, x: &$t, y: &$t) {
-				unsafe { $div_fn(z, x, y) }
-			}
-			pub fn neg(y:&mut $t, x: &$t) {
-				unsafe { $neg_fn(y, x) }
-			}
-			pub fn sqr(y:&mut $t, x: &$t) {
-				unsafe { $sqr_fn(y, x) }
-			}
-		}
-	};
+    ($t:ty, $add_fn:ident, $sub_fn:ident, $mul_fn:ident, $div_fn:ident, $neg_fn:ident, $sqr_fn:ident) => {
+        impl $t {
+            pub fn add(z: &mut $t, x: &$t, y: &$t) {
+                unsafe { $add_fn(z, x, y) }
+            }
+            pub fn sub(z: &mut $t, x: &$t, y: &$t) {
+                unsafe { $sub_fn(z, x, y) }
+            }
+            pub fn mul(z: &mut $t, x: &$t, y: &$t) {
+                unsafe { $mul_fn(z, x, y) }
+            }
+            pub fn div(z: &mut $t, x: &$t, y: &$t) {
+                unsafe { $div_fn(z, x, y) }
+            }
+            pub fn neg(y: &mut $t, x: &$t) {
+                unsafe { $neg_fn(y, x) }
+            }
+            pub fn sqr(y: &mut $t, x: &$t) {
+                unsafe { $sqr_fn(y, x) }
+            }
+        }
+    };
 }
 
 #[allow(dead_code)]
@@ -200,7 +214,16 @@ str_impl![Fr, 1024, mclBnFr_getStr, mclBnFr_setStr];
 is_compare_base_impl![Fr, mclBnFr_isEqual, mclBnFr_isValid, mclBnFr_isZero];
 is_one_impl![Fr, mclBnFr_isOne];
 is_odd_neg_impl![Fr, mclBnFr_isOdd, mclBnFr_isNegative];
-field_op_impl![Fr, mclBnFr_add, mclBnFr_sub, mclBnFr_mul, mclBnFr_div, mclBnFr_neg, mclBnFr_sqr];
+field_op_impl![
+    Fr,
+    mclBnFr_add,
+    mclBnFr_sub,
+    mclBnFr_mul,
+    mclBnFr_div,
+    mclBnFr_neg,
+    mclBnFr_sqr
+];
+set_little_endian_impl![Fr, mclBnFr_setLittleEndian, mclBnFr_setLittleEndianMod];
 
 #[allow(dead_code)]
 #[repr(C)]

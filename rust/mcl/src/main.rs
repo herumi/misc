@@ -34,12 +34,12 @@ fn main() {
     if !x.is_one() {
         println!("ng");
     }
-	x.set_int(123);
-	y.set_int(567);
+    x.set_int(123);
+    y.set_int(567);
     let mut z = unsafe { std::mem::uninitialized() };
-	mcl::Fr::add(&mut z, &x, &y);
+    mcl::Fr::add(&mut z, &x, &y);
 
-	println!("z={}", z.get_str(10));
-	println!("x={}", x.get_str(10));
-	println!("y={}", y.get_str(10));
+    println!("z={}", z.get_str(10));
+    println!("x={}", x.get_str(10));
+    println!("y={}", y.get_str(10));
 }
