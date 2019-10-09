@@ -19,6 +19,8 @@ extern "C" {
     fn mclBnFr_deserialize(x: *mut Fr, buf: *const u8, bufSize: usize) -> usize;
     fn mclBnFr_setLittleEndian(x: *mut Fr, buf: *const u8, bufSize: usize) -> i32;
     fn mclBnFr_setLittleEndianMod(x: *mut Fr, buf: *const u8, bufSize: usize) -> i32;
+    fn mclBnFr_setHashOf(x: *mut Fr, buf: *const u8, bufSize: usize) -> i32;
+    fn mclBnFr_setByCSPRNG(x: *mut Fr);
     fn mclBnFr_isEqual(x: *const Fr, y: *const Fr) -> i32;
     fn mclBnFr_isValid(x: *const Fr) -> i32;
     fn mclBnFr_isZero(x: *const Fr) -> i32;
@@ -32,6 +34,7 @@ extern "C" {
     fn mclBnFr_div(z: *mut Fr, x: *const Fr, y: *const Fr);
     fn mclBnFr_neg(y: *mut Fr, x: *const Fr);
     fn mclBnFr_sqr(y: *mut Fr, x: *const Fr);
+    fn mclBnFr_squareRoot(y: *mut Fr, x: *const Fr) -> i32;
 
     fn mclBnG1_hashAndMapTo(x: *mut G1, buf: *const u8, bufSize: usize) -> c_int;
     fn mclBnG2_hashAndMapTo(x: *mut G2, buf: *const u8, bufSize: usize) -> c_int;
@@ -115,9 +118,15 @@ macro_rules! str_impl {
     };
 }
 
-macro_rules! set_little_endian_impl {
-    ($t:ty, $set_little_endian_fn:ident, $set_little_endian_mod_fn:ident) => {
+macro_rules! base_field_impl {
+    ($t:ty, $set_by_csprng_fn:ident, $set_hash_of_fn:ident, $set_little_endian_fn:ident, $set_little_endian_mod_fn:ident) => {
         impl $t {
+            pub fn set_by_csprng(&mut self) {
+                unsafe { $set_by_csprng_fn(self) }
+            }
+            pub fn set_hash_of(&mut self, buf: &[u8]) -> bool {
+                unsafe { $set_hash_of_fn(self, buf.as_ptr(), buf.len()) == 0 }
+            }
             pub fn set_little_endian(&mut self, buf: &[u8]) -> bool {
                 unsafe { $set_little_endian_fn(self, buf.as_ptr(), buf.len()) == 0 }
             }
@@ -128,7 +137,7 @@ macro_rules! set_little_endian_impl {
     };
 }
 
-macro_rules! set_hash_and_map_impl {
+macro_rules! ec_impl {
     ($t:ty, $set_hash_and_map_fn:ident) => {
         impl $t {
             pub fn hash_and_map_to(&mut self, buf: &[u8]) -> bool {
@@ -180,7 +189,7 @@ macro_rules! is_odd_neg_impl {
 }
 
 macro_rules! field_op_impl {
-    ($t:ty, $add_fn:ident, $sub_fn:ident, $mul_fn:ident, $div_fn:ident, $neg_fn:ident, $sqr_fn:ident) => {
+    ($t:ty, $add_fn:ident, $sub_fn:ident, $mul_fn:ident, $div_fn:ident, $neg_fn:ident, $sqr_fn:ident, $square_root_fn:ident) => {
         impl $t {
             pub fn add(z: &mut $t, x: &$t, y: &$t) {
                 unsafe { $add_fn(z, x, y) }
@@ -199,6 +208,9 @@ macro_rules! field_op_impl {
             }
             pub fn sqr(y: &mut $t, x: &$t) {
                 unsafe { $sqr_fn(y, x) }
+            }
+            pub fn square_root(y: &mut $t, x: &$t) -> bool {
+                unsafe { $square_root_fn(y, x) == 0 }
             }
         }
     };
@@ -238,9 +250,16 @@ field_op_impl![
     mclBnFr_mul,
     mclBnFr_div,
     mclBnFr_neg,
-    mclBnFr_sqr
+    mclBnFr_sqr,
+    mclBnFr_squareRoot
 ];
-set_little_endian_impl![Fr, mclBnFr_setLittleEndian, mclBnFr_setLittleEndianMod];
+base_field_impl![
+    Fr,
+    mclBnFr_setByCSPRNG,
+    mclBnFr_setHashOf,
+    mclBnFr_setLittleEndian,
+    mclBnFr_setLittleEndianMod
+];
 
 #[allow(dead_code)]
 #[repr(C)]
@@ -249,7 +268,7 @@ pub struct G1 {
     y: Fp,
     z: Fp,
 }
-set_hash_and_map_impl![G1, mclBnG1_hashAndMapTo];
+ec_impl![G1, mclBnG1_hashAndMapTo];
 
 #[allow(dead_code)]
 #[repr(C)]
@@ -258,7 +277,7 @@ pub struct G2 {
     y: Fp2,
     z: Fp2,
 }
-set_hash_and_map_impl![G2, mclBnG2_hashAndMapTo];
+ec_impl![G2, mclBnG2_hashAndMapTo];
 
 #[allow(dead_code)]
 #[repr(C)]
