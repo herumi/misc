@@ -23,6 +23,7 @@ extern "C" {
     fn mclBnFr_isZero(x: *const Fr) -> i32;
     fn mclBnFr_isOne(x: *const Fr) -> i32;
     fn mclBnFr_isOdd(x: *const Fr) -> i32;
+    fn mclBnFr_isNegative(x: *const Fr) -> i32;
 
 	fn mclBnFr_add(z:*mut Fr, x:*const Fr, y:*const Fr);
 	fn mclBnFr_sub(z:*mut Fr, x:*const Fr, y:*const Fr);
@@ -132,11 +133,14 @@ macro_rules! is_one_impl {
     };
 }
 
-macro_rules! is_odd_impl {
-    ($t:ty, $is_odd_fn:ident) => {
+macro_rules! is_odd_neg_impl {
+    ($t:ty, $is_odd_fn:ident, $is_negative_fn:ident) => {
         impl $t {
             pub fn is_odd(&self) -> bool {
                 unsafe { $is_odd_fn(self) == 1 }
+            }
+            pub fn is_negative(&self) -> bool {
+                unsafe { $is_negative_fn(self) == 1 }
             }
         }
     };
@@ -187,7 +191,7 @@ serialize_impl![
 str_impl![Fr, 1024, mclBnFr_getStr, mclBnFr_setStr];
 is_compare_base_impl![Fr, mclBnFr_isEqual, mclBnFr_isValid, mclBnFr_isZero];
 is_one_impl![Fr, mclBnFr_isOne];
-is_odd_impl![Fr, mclBnFr_isOdd];
+is_odd_neg_impl![Fr, mclBnFr_isOdd, mclBnFr_isNegative];
 field_op_impl![Fr, mclBnFr_add, mclBnFr_sub, mclBnFr_mul, mclBnFr_div];
 
 #[allow(dead_code)]
