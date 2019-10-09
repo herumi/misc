@@ -32,6 +32,9 @@ extern "C" {
     fn mclBnFr_div(z: *mut Fr, x: *const Fr, y: *const Fr);
     fn mclBnFr_neg(y: *mut Fr, x: *const Fr);
     fn mclBnFr_sqr(y: *mut Fr, x: *const Fr);
+
+	fn mclBnG1_hashAndMapTo(x: *mut G1, buf: *const u8, bufSize: usize) -> c_int;
+	fn mclBnG2_hashAndMapTo(x: *mut G2, buf: *const u8, bufSize: usize) -> c_int;
 }
 
 pub enum CurveType {
@@ -119,6 +122,16 @@ macro_rules! set_little_endian_impl {
             }
         }
     };
+}
+
+macro_rules! set_hash_and_map_impl {
+    ($t:ty, $set_hash_and_map_fn:ident) => {
+		impl $t {
+			pub fn hash_and_map_to(&mut self, buf: &[u8]) -> bool {
+				unsafe { $set_hash_and_map_fn(self, buf.as_ptr(), buf.len()) == 0 }
+			}
+		}
+	}
 }
 
 macro_rules! is_compare_base_impl {
@@ -232,6 +245,7 @@ pub struct G1 {
     y: Fp,
     z: Fp,
 }
+set_hash_and_map_impl![G1, mclBnG1_hashAndMapTo];
 
 #[allow(dead_code)]
 #[repr(C)]
@@ -240,6 +254,7 @@ pub struct G2 {
     y: Fp2,
     z: Fp2,
 }
+set_hash_and_map_impl![G2, mclBnG2_hashAndMapTo];
 
 #[allow(dead_code)]
 #[repr(C)]
