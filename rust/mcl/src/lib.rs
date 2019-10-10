@@ -8,10 +8,14 @@ use std::os::raw::c_int;
 #[link(name = "crypto")]
 #[allow(non_snake_case)]
 extern "C" {
+	// global functions
     fn mclBn_getVersion() -> u32;
     fn mclBn_getFrByteSize() -> u32;
     fn mclBn_getFpByteSize() -> u32;
     fn mclBn_init(curve: c_int, compiledTimeVar: c_int) -> c_int;
+    fn mclBn_pairing(z: *mut GT, x: *const G1, y: *const G2);
+    fn mclBn_millerLoop(z: *mut GT, x: *const G1, y: *const G2);
+    fn mclBn_finalExp(y: *mut GT, x: *const GT);
 
 	// Fr
     fn mclBnFr_isEqual(x: *const Fr, y: *const Fr) -> i32;
@@ -109,9 +113,26 @@ extern "C" {
     fn mclBnG2_normalize(y: *mut G2, x: *const G2);
     fn mclBnG2_hashAndMapTo(x: *mut G2, buf: *const u8, bufSize: usize) -> c_int;
 
-    fn mclBn_pairing(z: *mut GT, x: *const G1, y: *const G2);
-    fn mclBn_millerLoop(z: *mut GT, x: *const G1, y: *const G2);
-    fn mclBn_finalExp(y: *mut GT, x: *const GT);
+	// GT
+    fn mclBnGT_isEqual(x: *const GT, y: *const GT) -> i32;
+    fn mclBnGT_isZero(x: *const GT) -> i32;
+    fn mclBnGT_isOne(x: *const GT) -> i32;
+
+    fn mclBnGT_setStr(x: *mut GT, buf: *const u8, bufSize: usize, ioMode: i32) -> c_int;
+    fn mclBnGT_getStr(buf: *mut u8, maxBufSize: usize, x: *const GT, ioMode: i32) -> usize;
+    fn mclBnGT_serialize(buf: *mut u8, maxBufSize: usize, x: *const GT) -> usize;
+    fn mclBnGT_deserialize(x: *mut GT, buf: *const u8, bufSize: usize) -> usize;
+
+    fn mclBnGT_setInt32(x: *mut GT, v: i32);
+
+    fn mclBnGT_add(z: *mut GT, x: *const GT, y: *const GT);
+    fn mclBnGT_sub(z: *mut GT, x: *const GT, y: *const GT);
+    fn mclBnGT_neg(y: *mut GT, x: *const GT);
+
+    fn mclBnGT_mul(z: *mut GT, x: *const GT, y: *const GT);
+    fn mclBnGT_div(z: *mut GT, x: *const GT, y: *const GT);
+    fn mclBnGT_inv(y: *mut GT, x: *const GT);
+    fn mclBnGT_sqr(y: *mut GT, x: *const GT);
 }
 
 pub enum CurveType {
@@ -418,11 +439,12 @@ pub struct G2 {
 }
 ec_impl![G2, mclBnG2_hashAndMapTo];
 
-#[allow(dead_code)]
+#[derive(Default, Debug, Clone)]
 #[repr(C)]
 pub struct GT {
     d: [Fp; 12],
 }
+init_impl![GT];
 
 pub fn get_version() -> u32 {
     unsafe { mclBn_getVersion() }
