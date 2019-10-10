@@ -242,14 +242,24 @@ macro_rules! str_impl {
     };
 }
 
-macro_rules! base_field_impl {
-    ($t:ty, $set_int_fn:ident, $set_little_endian_fn:ident, $set_little_endian_mod_fn:ident, $set_hash_of_fn:ident, $set_by_csprng_fn:ident, $is_one_fn:ident, $is_odd_fn:ident, $is_negative_fn:ident, $square_root_fn:ident) => {
+macro_rules! int_impl {
+    ($t:ty, $set_int_fn:ident, $is_one_fn:ident) => {
         impl $t {
             pub fn set_int(&mut self, x: i32) {
                 unsafe {
                     $set_int_fn(self, x);
                 }
             }
+            pub fn is_one(&self) -> bool {
+                unsafe { $is_one_fn(self) == 1 }
+            }
+        }
+    };
+}
+
+macro_rules! base_field_impl {
+    ($t:ty,  $set_little_endian_fn:ident, $set_little_endian_mod_fn:ident, $set_hash_of_fn:ident, $set_by_csprng_fn:ident, $is_odd_fn:ident, $is_negative_fn:ident, $square_root_fn:ident) => {
+        impl $t {
             pub fn set_little_endian(&mut self, buf: &[u8]) -> bool {
                 unsafe { $set_little_endian_fn(self, buf.as_ptr(), buf.len()) == 0 }
             }
@@ -261,9 +271,6 @@ macro_rules! base_field_impl {
             }
             pub fn set_by_csprng(&mut self) {
                 unsafe { $set_by_csprng_fn(self) }
-            }
-            pub fn is_one(&self) -> bool {
-                unsafe { $is_one_fn(self) == 1 }
             }
             pub fn is_odd(&self) -> bool {
                 unsafe { $is_odd_fn(self) == 1 }
@@ -337,6 +344,28 @@ macro_rules! ec_impl {
 pub struct Fp {
     d: [u64; MCLBN_FP_UNIT_SIZE],
 }
+common_impl![Fp, mclBnFp_isEqual, mclBnFp_isZero];
+is_valid_impl![Fp, mclBnFp_isValid];
+serialize_impl![
+    Fp,
+    mclBn_getFpByteSize(),
+    mclBnFp_serialize,
+    mclBnFp_deserialize
+];
+str_impl![Fp, 1024, mclBnFp_getStr, mclBnFp_setStr];
+int_impl![Fp, mclBnFp_setInt32, mclBnFp_isOne];
+base_field_impl![
+    Fp,
+    mclBnFp_setLittleEndian,
+    mclBnFp_setLittleEndianMod,
+    mclBnFp_setHashOf,
+    mclBnFp_setByCSPRNG,
+    mclBnFp_isOdd,
+    mclBnFp_isNegative,
+    mclBnFp_squareRoot
+];
+add_op_impl![Fp, mclBnFp_add, mclBnFp_sub, mclBnFp_neg];
+field_mul_op_impl![Fp, mclBnFp_mul, mclBnFp_div, mclBnFp_inv, mclBnFp_sqr];
 
 #[derive(Default, Debug, Clone)]
 #[repr(C)]
@@ -358,14 +387,13 @@ serialize_impl![
     mclBnFr_deserialize
 ];
 str_impl![Fr, 1024, mclBnFr_getStr, mclBnFr_setStr];
+int_impl![Fr, mclBnFr_setInt32, mclBnFr_isOne];
 base_field_impl![
     Fr,
-    mclBnFr_setInt32,
     mclBnFr_setLittleEndian,
     mclBnFr_setLittleEndianMod,
     mclBnFr_setHashOf,
     mclBnFr_setByCSPRNG,
-    mclBnFr_isOne,
     mclBnFr_isOdd,
     mclBnFr_isNegative,
     mclBnFr_squareRoot
@@ -390,7 +418,13 @@ serialize_impl![
 ];
 str_impl![G1, 1024, mclBnG1_getStr, mclBnG1_setStr];
 add_op_impl![G1, mclBnG1_add, mclBnG1_sub, mclBnG1_neg];
-ec_impl![G1, mclBnG1_dbl, mclBnG1_mul, mclBnG1_normalize, mclBnG1_hashAndMapTo];
+ec_impl![
+    G1,
+    mclBnG1_dbl,
+    mclBnG1_mul,
+    mclBnG1_normalize,
+    mclBnG1_hashAndMapTo
+];
 
 #[derive(Default, Debug, Clone)]
 #[repr(C)]
@@ -409,13 +443,30 @@ serialize_impl![
 ];
 str_impl![G2, 1024, mclBnG2_getStr, mclBnG2_setStr];
 add_op_impl![G2, mclBnG2_add, mclBnG2_sub, mclBnG2_neg];
-ec_impl![G2, mclBnG2_dbl, mclBnG2_mul, mclBnG2_normalize, mclBnG2_hashAndMapTo];
+ec_impl![
+    G2,
+    mclBnG2_dbl,
+    mclBnG2_mul,
+    mclBnG2_normalize,
+    mclBnG2_hashAndMapTo
+];
 
 #[derive(Default, Debug, Clone)]
 #[repr(C)]
 pub struct GT {
     d: [Fp; 12],
 }
+common_impl![GT, mclBnGT_isEqual, mclBnGT_isZero];
+serialize_impl![
+    GT,
+    mclBn_getFpByteSize() * 12,
+    mclBnGT_serialize,
+    mclBnGT_deserialize
+];
+str_impl![GT, 1024, mclBnGT_getStr, mclBnGT_setStr];
+int_impl![GT, mclBnGT_setInt32, mclBnGT_isOne];
+add_op_impl![GT, mclBnGT_add, mclBnGT_sub, mclBnGT_neg];
+field_mul_op_impl![GT, mclBnGT_mul, mclBnGT_div, mclBnGT_inv, mclBnGT_sqr];
 
 pub fn get_version() -> u32 {
     unsafe { mclBn_getVersion() }
