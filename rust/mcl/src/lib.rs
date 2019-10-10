@@ -8,7 +8,7 @@ use std::os::raw::c_int;
 #[link(name = "crypto")]
 #[allow(non_snake_case)]
 extern "C" {
-	// global functions
+    // global functions
     fn mclBn_getVersion() -> u32;
     fn mclBn_getFrByteSize() -> u32;
     fn mclBn_getFpByteSize() -> u32;
@@ -17,7 +17,7 @@ extern "C" {
     fn mclBn_millerLoop(z: *mut GT, x: *const G1, y: *const G2);
     fn mclBn_finalExp(y: *mut GT, x: *const GT);
 
-	// Fr
+    // Fr
     fn mclBnFr_isEqual(x: *const Fr, y: *const Fr) -> i32;
     fn mclBnFr_isValid(x: *const Fr) -> i32;
     fn mclBnFr_isZero(x: *const Fr) -> i32;
@@ -46,7 +46,7 @@ extern "C" {
     fn mclBnFr_sqr(y: *mut Fr, x: *const Fr);
     fn mclBnFr_squareRoot(y: *mut Fr, x: *const Fr) -> i32;
 
-	// Fp
+    // Fp
     fn mclBnFp_isEqual(x: *const Fp, y: *const Fp) -> i32;
     fn mclBnFp_isValid(x: *const Fp) -> i32;
     fn mclBnFp_isZero(x: *const Fp) -> i32;
@@ -75,7 +75,7 @@ extern "C" {
     fn mclBnFp_sqr(y: *mut Fp, x: *const Fp);
     fn mclBnFp_squareRoot(y: *mut Fp, x: *const Fp) -> i32;
 
-	// G1
+    // G1
     fn mclBnG1_isEqual(x: *const G1, y: *const G1) -> i32;
     fn mclBnG1_isValid(x: *const G1) -> i32;
     fn mclBnG1_isZero(x: *const G1) -> i32;
@@ -94,7 +94,7 @@ extern "C" {
     fn mclBnG1_normalize(y: *mut G1, x: *const G1);
     fn mclBnG1_hashAndMapTo(x: *mut G1, buf: *const u8, bufSize: usize) -> c_int;
 
-	// G2
+    // G2
     fn mclBnG2_isEqual(x: *const G2, y: *const G2) -> i32;
     fn mclBnG2_isValid(x: *const G2) -> i32;
     fn mclBnG2_isZero(x: *const G2) -> i32;
@@ -113,7 +113,7 @@ extern "C" {
     fn mclBnG2_normalize(y: *mut G2, x: *const G2);
     fn mclBnG2_hashAndMapTo(x: *mut G2, buf: *const u8, bufSize: usize) -> c_int;
 
-	// GT
+    // GT
     fn mclBnGT_isEqual(x: *const GT, y: *const GT) -> i32;
     fn mclBnGT_isZero(x: *const GT) -> i32;
     fn mclBnGT_isOne(x: *const GT) -> i32;
@@ -147,21 +147,39 @@ const MCLBN_FR_UNIT_SIZE: usize = 4;
 const MCLBN_COMPILED_TIME_VAR: c_int =
     (MCLBN_FR_UNIT_SIZE as c_int * 10 + MCLBN_FP_UNIT_SIZE as c_int);
 
-macro_rules! init_impl {
-	($t:ty) => {
-		impl $t {
-    pub fn zero() -> $t {
-        Default::default()
-    }
-	pub fn uninit() -> $t {
-		unsafe { std::mem::uninitialized() }
-	}
-    pub fn clear(&mut self) {
-        *self = <$t>::zero()
-    }
-		}
-	}
+macro_rules! common_impl {
+    ($t:ty, $is_equal_fn:ident, $is_zero_fn:ident) => {
+        impl PartialEq for $t {
+            fn eq(&self, rhs: &Self) -> bool {
+                unsafe { $is_equal_fn(self, rhs) == 1 }
+            }
+        }
+        impl $t {
+            pub fn zero() -> $t {
+                Default::default()
+            }
+            pub fn uninit() -> $t {
+                unsafe { std::mem::uninitialized() }
+            }
+            pub fn clear(&mut self) {
+                *self = <$t>::zero()
+            }
+            pub fn is_zero(&self) -> bool {
+                unsafe { $is_zero_fn(self) == 1 }
+            }
+        }
+    };
 }
+macro_rules! is_valid_impl {
+    ($t:ty, $is_valid_fn:ident) => {
+        impl $t {
+            pub fn is_valid(&self) -> bool {
+                unsafe { $is_valid_fn(self) == 1 }
+            }
+        }
+    };
+}
+
 macro_rules! serialize_impl {
     ($t:ty, $size:expr, $serialize_fn:ident, $deserialize_fn:ident) => {
         impl $t {
@@ -225,18 +243,12 @@ macro_rules! str_impl {
 }
 
 macro_rules! base_field_impl {
-    ($t:ty, $set_int_fn:ident, $set_by_csprng_fn:ident, $set_hash_of_fn:ident, $set_little_endian_fn:ident, $set_little_endian_mod_fn:ident) => {
+    ($t:ty, $set_int_fn:ident, $set_little_endian_fn:ident, $set_little_endian_mod_fn:ident, $set_hash_of_fn:ident, $set_by_csprng_fn:ident, $is_one_fn:ident, $is_odd_fn:ident, $is_negative_fn:ident, $square_root_fn:ident) => {
         impl $t {
-    pub fn set_int(&mut self, x: i32) {
-        unsafe {
-            $set_int_fn(self, x);
-        }
-    }
-            pub fn set_by_csprng(&mut self) {
-                unsafe { $set_by_csprng_fn(self) }
-            }
-            pub fn set_hash_of(&mut self, buf: &[u8]) -> bool {
-                unsafe { $set_hash_of_fn(self, buf.as_ptr(), buf.len()) == 0 }
+            pub fn set_int(&mut self, x: i32) {
+                unsafe {
+                    $set_int_fn(self, x);
+                }
             }
             pub fn set_little_endian(&mut self, buf: &[u8]) -> bool {
                 unsafe { $set_little_endian_fn(self, buf.as_ptr(), buf.len()) == 0 }
@@ -244,56 +256,23 @@ macro_rules! base_field_impl {
             pub fn set_little_endian_mod(&mut self, buf: &[u8]) -> bool {
                 unsafe { $set_little_endian_mod_fn(self, buf.as_ptr(), buf.len()) == 0 }
             }
-        }
-    };
-}
-
-macro_rules! ec_impl {
-    ($t:ty, $set_hash_and_map_fn:ident) => {
-        impl $t {
-            pub fn hash_and_map_to(&mut self, buf: &[u8]) -> bool {
-                unsafe { $set_hash_and_map_fn(self, buf.as_ptr(), buf.len()) == 0 }
+            pub fn set_hash_of(&mut self, buf: &[u8]) -> bool {
+                unsafe { $set_hash_of_fn(self, buf.as_ptr(), buf.len()) == 0 }
             }
-        }
-    };
-}
-
-macro_rules! is_compare_base_impl {
-    ($t:ty, $is_equal_fn:ident, $is_valid_fn:ident, $is_zero_fn:ident) => {
-        impl PartialEq for $t {
-            fn eq(&self, rhs: &Self) -> bool {
-                unsafe { $is_equal_fn(self, rhs) == 1 }
+            pub fn set_by_csprng(&mut self) {
+                unsafe { $set_by_csprng_fn(self) }
             }
-        }
-        impl $t {
-            pub fn is_valid(&self) -> bool {
-                unsafe { $is_valid_fn(self) == 1 }
-            }
-            pub fn is_zero(&self) -> bool {
-                unsafe { $is_zero_fn(self) == 1 }
-            }
-        }
-    };
-}
-
-macro_rules! is_one_impl {
-    ($t:ty, $is_one_fn:ident) => {
-        impl $t {
             pub fn is_one(&self) -> bool {
                 unsafe { $is_one_fn(self) == 1 }
             }
-        }
-    };
-}
-
-macro_rules! is_odd_neg_impl {
-    ($t:ty, $is_odd_fn:ident, $is_negative_fn:ident) => {
-        impl $t {
             pub fn is_odd(&self) -> bool {
                 unsafe { $is_odd_fn(self) == 1 }
             }
             pub fn is_negative(&self) -> bool {
                 unsafe { $is_negative_fn(self) == 1 }
+            }
+            pub fn square_root(y: &mut $t, x: &$t) -> bool {
+                unsafe { $square_root_fn(y, x) == 0 }
             }
         }
     };
@@ -316,7 +295,7 @@ macro_rules! add_op_impl {
 }
 
 macro_rules! field_mul_op_impl {
-    ($t:ty, $mul_fn:ident, $div_fn:ident, $inv_fn:ident, $sqr_fn:ident, $square_root_fn:ident) => {
+    ($t:ty, $mul_fn:ident, $div_fn:ident, $inv_fn:ident, $sqr_fn:ident) => {
         impl $t {
             pub fn mul(z: &mut $t, x: &$t, y: &$t) {
                 unsafe { $mul_fn(z, x, y) }
@@ -330,8 +309,24 @@ macro_rules! field_mul_op_impl {
             pub fn sqr(y: &mut $t, x: &$t) {
                 unsafe { $sqr_fn(y, x) }
             }
-            pub fn square_root(y: &mut $t, x: &$t) -> bool {
-                unsafe { $square_root_fn(y, x) == 0 }
+        }
+    };
+}
+
+macro_rules! ec_impl {
+    ($t:ty, $dbl_fn:ident, $mul_fn:ident, $normalize_fn:ident, $set_hash_and_map_fn:ident) => {
+        impl $t {
+            pub fn dbl(y: &mut $t, x: &$t) {
+                unsafe { $dbl_fn(y, x) }
+            }
+            pub fn mul(z: &mut $t, x: &$t, y: &Fr) {
+                unsafe { $mul_fn(z, x, y) }
+            }
+            pub fn normalize(y: &mut $t, x: &$t) {
+                unsafe { $normalize_fn(y, x) }
+            }
+            pub fn hash_and_map_to(&mut self, buf: &[u8]) -> bool {
+                unsafe { $set_hash_and_map_fn(self, buf.as_ptr(), buf.len()) == 0 }
             }
         }
     };
@@ -342,39 +337,6 @@ macro_rules! field_mul_op_impl {
 pub struct Fp {
     d: [u64; MCLBN_FP_UNIT_SIZE],
 }
-init_impl![Fp];
-is_compare_base_impl![Fp, mclBnFp_isEqual, mclBnFp_isValid, mclBnFp_isZero];
-is_one_impl![Fp, mclBnFp_isOne];
-is_odd_neg_impl![Fp, mclBnFp_isOdd, mclBnFp_isNegative];
-str_impl![Fp, 1024, mclBnFp_getStr, mclBnFp_setStr];
-serialize_impl![
-    Fp,
-    mclBn_getFpByteSize(),
-    mclBnFp_serialize,
-    mclBnFp_deserialize
-];
-base_field_impl![
-    Fp,
-	mclBnFp_setInt32,
-    mclBnFp_setByCSPRNG,
-    mclBnFp_setHashOf,
-    mclBnFp_setLittleEndian,
-    mclBnFp_setLittleEndianMod
-];
-add_op_impl![
-    Fp,
-    mclBnFp_add,
-    mclBnFp_sub,
-    mclBnFp_neg
-];
-field_mul_op_impl![
-    Fp,
-    mclBnFp_mul,
-    mclBnFp_div,
-    mclBnFp_inv,
-    mclBnFp_sqr,
-    mclBnFp_squareRoot
-];
 
 #[derive(Default, Debug, Clone)]
 #[repr(C)]
@@ -387,39 +349,29 @@ pub struct Fp2 {
 pub struct Fr {
     d: [u64; MCLBN_FR_UNIT_SIZE],
 }
-init_impl![Fr];
-is_compare_base_impl![Fr, mclBnFr_isEqual, mclBnFr_isValid, mclBnFr_isZero];
-is_one_impl![Fr, mclBnFr_isOne];
-is_odd_neg_impl![Fr, mclBnFr_isOdd, mclBnFr_isNegative];
-str_impl![Fr, 1024, mclBnFr_getStr, mclBnFr_setStr];
+common_impl![Fr, mclBnFr_isEqual, mclBnFr_isZero];
+is_valid_impl![Fr, mclBnFr_isValid];
 serialize_impl![
     Fr,
     mclBn_getFrByteSize(),
     mclBnFr_serialize,
     mclBnFr_deserialize
 ];
+str_impl![Fr, 1024, mclBnFr_getStr, mclBnFr_setStr];
 base_field_impl![
     Fr,
-	mclBnFr_setInt32,
-    mclBnFr_setByCSPRNG,
-    mclBnFr_setHashOf,
+    mclBnFr_setInt32,
     mclBnFr_setLittleEndian,
-    mclBnFr_setLittleEndianMod
-];
-add_op_impl![
-    Fr,
-    mclBnFr_add,
-    mclBnFr_sub,
-    mclBnFr_neg
-];
-field_mul_op_impl![
-    Fr,
-    mclBnFr_mul,
-    mclBnFr_div,
-    mclBnFr_inv,
-    mclBnFr_sqr,
+    mclBnFr_setLittleEndianMod,
+    mclBnFr_setHashOf,
+    mclBnFr_setByCSPRNG,
+    mclBnFr_isOne,
+    mclBnFr_isOdd,
+    mclBnFr_isNegative,
     mclBnFr_squareRoot
 ];
+add_op_impl![Fr, mclBnFr_add, mclBnFr_sub, mclBnFr_neg];
+field_mul_op_impl![Fr, mclBnFr_mul, mclBnFr_div, mclBnFr_inv, mclBnFr_sqr];
 
 #[derive(Default, Debug, Clone)]
 #[repr(C)]
@@ -428,7 +380,17 @@ pub struct G1 {
     y: Fp,
     z: Fp,
 }
-ec_impl![G1, mclBnG1_hashAndMapTo];
+common_impl![G1, mclBnG1_isEqual, mclBnG1_isZero];
+is_valid_impl![G1, mclBnG1_isValid];
+serialize_impl![
+    G1,
+    mclBn_getFpByteSize(),
+    mclBnG1_serialize,
+    mclBnG1_deserialize
+];
+str_impl![G1, 1024, mclBnG1_getStr, mclBnG1_setStr];
+add_op_impl![G1, mclBnG1_add, mclBnG1_sub, mclBnG1_neg];
+ec_impl![G1, mclBnG1_dbl, mclBnG1_mul, mclBnG1_normalize, mclBnG1_hashAndMapTo];
 
 #[derive(Default, Debug, Clone)]
 #[repr(C)]
@@ -437,14 +399,12 @@ pub struct G2 {
     y: Fp2,
     z: Fp2,
 }
-ec_impl![G2, mclBnG2_hashAndMapTo];
 
 #[derive(Default, Debug, Clone)]
 #[repr(C)]
 pub struct GT {
     d: [Fp; 12],
 }
-init_impl![GT];
 
 pub fn get_version() -> u32 {
     unsafe { mclBn_getVersion() }
