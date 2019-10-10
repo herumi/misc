@@ -399,6 +399,17 @@ pub struct G2 {
     y: Fp2,
     z: Fp2,
 }
+common_impl![G2, mclBnG2_isEqual, mclBnG2_isZero];
+is_valid_impl![G2, mclBnG2_isValid];
+serialize_impl![
+    G2,
+    mclBn_getFpByteSize() * 2,
+    mclBnG2_serialize,
+    mclBnG2_deserialize
+];
+str_impl![G2, 1024, mclBnG2_getStr, mclBnG2_setStr];
+add_op_impl![G2, mclBnG2_add, mclBnG2_sub, mclBnG2_neg];
+ec_impl![G2, mclBnG2_dbl, mclBnG2_mul, mclBnG2_normalize, mclBnG2_hashAndMapTo];
 
 #[derive(Default, Debug, Clone)]
 #[repr(C)]
