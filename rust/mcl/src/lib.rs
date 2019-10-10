@@ -126,6 +126,21 @@ const MCLBN_FR_UNIT_SIZE: usize = 4;
 const MCLBN_COMPILED_TIME_VAR: c_int =
     (MCLBN_FR_UNIT_SIZE as c_int * 10 + MCLBN_FP_UNIT_SIZE as c_int);
 
+macro_rules! init_impl {
+	($t:ty) => {
+		impl $t {
+    pub fn zero() -> $t {
+        Default::default()
+    }
+	pub fn uninit() -> $t {
+		unsafe { std::mem::uninitialized() }
+	}
+    pub fn clear(&mut self) {
+        *self = <$t>::zero()
+    }
+		}
+	}
+}
 macro_rules! serialize_impl {
     ($t:ty, $size:expr, $serialize_fn:ident, $deserialize_fn:ident) => {
         impl $t {
@@ -301,23 +316,57 @@ macro_rules! field_mul_op_impl {
     };
 }
 
-#[allow(dead_code)]
+#[derive(Default, Debug, Clone)]
 #[repr(C)]
 pub struct Fp {
     d: [u64; MCLBN_FP_UNIT_SIZE],
 }
+init_impl![Fp];
+is_compare_base_impl![Fp, mclBnFp_isEqual, mclBnFp_isValid, mclBnFp_isZero];
+is_one_impl![Fp, mclBnFp_isOne];
+is_odd_neg_impl![Fp, mclBnFp_isOdd, mclBnFp_isNegative];
+str_impl![Fp, 1024, mclBnFp_getStr, mclBnFp_setStr];
+serialize_impl![
+    Fp,
+    mclBn_getFpByteSize(),
+    mclBnFp_serialize,
+    mclBnFp_deserialize
+];
+base_field_impl![
+    Fp,
+	mclBnFp_setInt32,
+    mclBnFp_setByCSPRNG,
+    mclBnFp_setHashOf,
+    mclBnFp_setLittleEndian,
+    mclBnFp_setLittleEndianMod
+];
+add_op_impl![
+    Fp,
+    mclBnFp_add,
+    mclBnFp_sub,
+    mclBnFp_neg
+];
+field_mul_op_impl![
+    Fp,
+    mclBnFp_mul,
+    mclBnFp_div,
+    mclBnFp_inv,
+    mclBnFp_sqr,
+    mclBnFp_squareRoot
+];
 
-#[allow(dead_code)]
+#[derive(Default, Debug, Clone)]
 #[repr(C)]
 pub struct Fp2 {
     d: [Fr; 2],
 }
 
+#[derive(Default, Debug, Clone)]
 #[repr(C)]
-#[derive(Default)]
 pub struct Fr {
     d: [u64; MCLBN_FR_UNIT_SIZE],
 }
+init_impl![Fr];
 is_compare_base_impl![Fr, mclBnFr_isEqual, mclBnFr_isValid, mclBnFr_isZero];
 is_one_impl![Fr, mclBnFr_isOne];
 is_odd_neg_impl![Fr, mclBnFr_isOdd, mclBnFr_isNegative];
@@ -351,7 +400,7 @@ field_mul_op_impl![
     mclBnFr_squareRoot
 ];
 
-#[allow(dead_code)]
+#[derive(Default, Debug, Clone)]
 #[repr(C)]
 pub struct G1 {
     x: Fp,
@@ -360,7 +409,7 @@ pub struct G1 {
 }
 ec_impl![G1, mclBnG1_hashAndMapTo];
 
-#[allow(dead_code)]
+#[derive(Default, Debug, Clone)]
 #[repr(C)]
 pub struct G2 {
     x: Fp2,
@@ -381,15 +430,6 @@ pub fn get_version() -> u32 {
 
 pub fn init(curve: CurveType) -> bool {
     unsafe { mclBn_init(curve as c_int, MCLBN_COMPILED_TIME_VAR) == 0 }
-}
-
-impl Fr {
-    pub fn zero() -> Fr {
-        Default::default()
-    }
-    pub fn clear(&mut self) {
-        *self = Fr::zero()
-    }
 }
 
 pub fn pairing(z: &mut GT, x: &G1, y: &G2) {

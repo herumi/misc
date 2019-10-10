@@ -36,7 +36,7 @@ fn main() {
     }
     x.set_int(123);
     y.set_int(567);
-    let mut z = unsafe { std::mem::uninitialized() };
+    let mut z = mcl::Fr::uninit();
     mcl::Fr::add(&mut z, &x, &y);
 
     println!("z={}", z.get_str(10));
