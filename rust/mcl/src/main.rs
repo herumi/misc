@@ -40,16 +40,16 @@ fn main() {
     let mut z = Fr::uninit();
     Fr::add(&mut z, &x, &y);
 
-	let x1 = Fr::from_str("1234", 10).unwrap();
-	println!("x1={}", x1.get_str(10));
+    let x1 = Fr::from_str("1234", 10).unwrap();
+    println!("x1={}", x1.get_str(10));
 
     println!("z={}", z.get_str(10));
     println!("x={}", x.get_str(10));
     println!("y={}", y.get_str(10));
-	let mut P = G1::uninit();
-	let mut Q = G2::uninit();
-	let mut e = GT::uninit();
-	P.set_hash_of("abc".as_bytes());
-	Q.set_hash_of("abc".as_bytes());
-	pairing(&mut e, &P, &Q);
+    let mut P = G1::uninit();
+    let mut Q = G2::uninit();
+    let mut e = GT::uninit();
+    P.set_hash_of("abc".as_bytes());
+    Q.set_hash_of("abc".as_bytes());
+    pairing(&mut e, &P, &Q);
 }

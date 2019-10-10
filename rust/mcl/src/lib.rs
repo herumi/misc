@@ -208,13 +208,13 @@ macro_rules! serialize_impl {
 macro_rules! str_impl {
     ($t:ty, $maxBufSize:expr, $get_str_fn:ident, $set_str_fn:ident) => {
         impl $t {
-			pub fn from_str(s: &str, base: i32) -> Option<$t> {
-				let mut v = <$t>::uninit();
-				if v.set_str(s, base) {
-					return Some(v);
-				}
-				None
-			}
+            pub fn from_str(s: &str, base: i32) -> Option<$t> {
+                let mut v = <$t>::uninit();
+                if v.set_str(s, base) {
+                    return Some(v);
+                }
+                None
+            }
             pub fn set_str(&mut self, s: &str, base: i32) -> bool {
                 unsafe { $set_str_fn(self, s.as_ptr(), s.len(), base) == 0 }
             }
@@ -252,11 +252,11 @@ macro_rules! str_impl {
 macro_rules! int_impl {
     ($t:ty, $set_int_fn:ident, $is_one_fn:ident) => {
         impl $t {
-			pub fn from_int(x: i32) -> $t {
-				let mut v = <$t>::uninit();
-				v.set_int(x);
-				v
-			}
+            pub fn from_int(x: i32) -> $t {
+                let mut v = <$t>::uninit();
+                v.set_int(x);
+                v
+            }
             pub fn set_int(&mut self, x: i32) {
                 unsafe {
                     $set_int_fn(self, x);
