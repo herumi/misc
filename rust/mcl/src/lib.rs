@@ -158,8 +158,9 @@ macro_rules! common_impl {
             pub fn zero() -> $t {
                 Default::default()
             }
-            pub fn uninit() -> $t {
-                unsafe { std::mem::uninitialized() }
+            pub unsafe fn uninit() -> $t {
+                //           unsafe { std::mem::uninitialized() }
+                std::mem::uninitialized()
             }
             pub fn clear(&mut self) {
                 *self = <$t>::zero()
@@ -209,7 +210,7 @@ macro_rules! str_impl {
     ($t:ty, $maxBufSize:expr, $get_str_fn:ident, $set_str_fn:ident) => {
         impl $t {
             pub fn from_str(s: &str, base: i32) -> Option<$t> {
-                let mut v = <$t>::uninit();
+                let mut v = unsafe { <$t>::uninit() };
                 if v.set_str(s, base) {
                     return Some(v);
                 }
@@ -227,7 +228,7 @@ macro_rules! str_impl {
                 if n == 0 {
                     panic!("mclBnFr_getStr");
                 }
-                buf[0..n].iter().map(|&s| s as char).collect::<String>()
+                unsafe { std::str::from_utf8_unchecked(&buf[0..n]).into() }
             }
             /*
                         pub fn get_str2(&self, io_mode: i32) -> String {
@@ -253,7 +254,7 @@ macro_rules! int_impl {
     ($t:ty, $set_int_fn:ident, $is_one_fn:ident) => {
         impl $t {
             pub fn from_int(x: i32) -> $t {
-                let mut v = <$t>::uninit();
+                let mut v = unsafe { <$t>::uninit() };
                 v.set_int(x);
                 v
             }

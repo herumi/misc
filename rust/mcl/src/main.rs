@@ -37,7 +37,7 @@ fn main() {
     }
     x.set_int(123);
     y.set_int(567);
-    let mut z = Fr::uninit();
+    let mut z = unsafe { Fr::uninit() };
     Fr::add(&mut z, &x, &y);
 
     let x1 = Fr::from_str("1234", 10).unwrap();
@@ -46,9 +46,9 @@ fn main() {
     println!("z={}", z.get_str(10));
     println!("x={}", x.get_str(10));
     println!("y={}", y.get_str(10));
-    let mut P = G1::uninit();
-    let mut Q = G2::uninit();
-    let mut e = GT::uninit();
+    let mut P = unsafe { G1::uninit() };
+    let mut Q = unsafe { G2::uninit() };
+    let mut e = unsafe { GT::uninit() };
     P.set_hash_of("abc".as_bytes());
     Q.set_hash_of("abc".as_bytes());
     pairing(&mut e, &P, &Q);
