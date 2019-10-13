@@ -9,10 +9,12 @@ use std::os::raw::c_int;
 #[allow(non_snake_case)]
 extern "C" {
     // global functions
+    fn mclBn_init(curve: c_int, compiledTimeVar: c_int) -> c_int;
     fn mclBn_getVersion() -> u32;
     fn mclBn_getFrByteSize() -> u32;
     fn mclBn_getFpByteSize() -> u32;
-    fn mclBn_init(curve: c_int, compiledTimeVar: c_int) -> c_int;
+    fn mclBn_getCurveOrder(buf: *mut u8, maxBufSize: usize) -> usize;
+    fn mclBn_getFieldOrder(buf: *mut u8, maxBufSize: usize) -> usize;
     fn mclBn_pairing(z: *mut GT, x: *const G1, y: *const G2);
     fn mclBn_millerLoop(z: *mut GT, x: *const G1, y: *const G2);
     fn mclBn_finalExp(y: *mut GT, x: *const GT);
@@ -230,22 +232,6 @@ macro_rules! str_impl {
                 }
                 unsafe { std::str::from_utf8_unchecked(&buf[0..n]).into() }
             }
-            /*
-                        pub fn get_str2(&self, io_mode: i32) -> String {
-                            let mut buf: Vec<u8> = Vec::with_capacity($maxBufSize);
-                            let n: usize;
-                            unsafe {
-                                n = $get_str_fn(buf.as_mut_ptr(), buf.capacity(), self, io_mode as c_int);
-                            }
-                            if n == 0 {
-                                panic!("mclBnFr_getStr");
-                            }
-                            unsafe {
-                                buf.set_len(n);
-                                String::from_utf8_unchecked(buf)
-                            }
-                        }
-            */
         }
     };
 }
@@ -489,6 +475,48 @@ pub fn init(curve: CurveType) -> bool {
     unsafe { mclBn_init(curve as c_int, MCLBN_COMPILED_TIME_VAR) == 0 }
 }
 
+pub fn get_fr_serialized_size() -> u32 {
+    unsafe { mclBn_getFrByteSize() as u32 }
+}
+
+pub fn get_fp_serialized_size() -> u32 {
+    unsafe { mclBn_getFpByteSize() as u32 }
+}
+
+pub fn get_g1_serialized_size() -> u32 {
+    get_fp_serialized_size()
+}
+
+pub fn get_g2_serialized_size() -> u32 {
+    get_fp_serialized_size() * 2
+}
+
+pub fn get_gt_serialized_size() -> u32 {
+    get_fp_serialized_size() * 12
+}
+
+macro_rules! get_str_impl {
+    ($get_str_fn:ident) => {{
+        let mut buf: [u8; 256] = unsafe { MaybeUninit::uninit().assume_init() };
+        let n: usize;
+        unsafe {
+            n = $get_str_fn(buf.as_mut_ptr(), buf.len());
+        }
+        if n == 0 {
+            panic!("get_str");
+        }
+        unsafe { std::str::from_utf8_unchecked(&buf[0..n]).into() }
+    }};
+}
+
+pub fn get_field_order() -> String {
+    get_str_impl![mclBn_getFieldOrder]
+}
+
+pub fn get_curve_order() -> String {
+    get_str_impl![mclBn_getCurveOrder]
+}
+
 pub fn pairing(z: &mut GT, x: &G1, y: &G2) {
     unsafe {
         mclBn_pairing(z, x, y);
@@ -504,5 +532,54 @@ pub fn miller_loop(z: &mut GT, x: &G1, y: &G2) {
 pub fn final_exp(y: &mut GT, x: &GT) {
     unsafe {
         mclBn_finalExp(y, x);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn all_test() {
+        init_test();
+        fr_test();
+    }
+    fn init_test() {
+        assert!(init(CurveType::BLS12_381));
+        assert_eq!(get_fp_serialized_size(), 48);
+        assert_eq!(get_g1_serialized_size(), 48);
+        assert_eq!(get_g2_serialized_size(), 48 * 2);
+        assert_eq!(get_gt_serialized_size(), 48 * 12);
+        assert_eq!(get_fr_serialized_size(), 32);
+
+		// Fp
+        assert_eq!(get_field_order(), "4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787");
+		// Fr
+        assert_eq!(
+            get_curve_order(),
+            "52435875175126190479447740508185965837690552500527637822603658699938581184513"
+        );
+    }
+    fn fr_test() {
+        let mut x = Fr::zero();
+        assert!(x.is_zero());
+        assert!(!x.is_one());
+        x.set_int(1);
+        assert!(!x.is_zero());
+        assert!(x.is_one());
+        let mut y = Fr::from_int(1);
+        assert_eq!(x, y);
+        y.set_int(2);
+        assert!(x != y);
+        x.set_str("65535", 10);
+        y.set_str("ffff", 16);
+        assert_eq!(x, y);
+        x.set_int(123);
+        assert!(x.is_odd());
+        x.set_int(124);
+        assert!(!x.is_odd());
+        assert!(!x.is_negative());
+        x.set_int(-124);
+        assert!(x.is_negative());
     }
 }
