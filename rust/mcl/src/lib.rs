@@ -161,7 +161,6 @@ macro_rules! common_impl {
                 Default::default()
             }
             pub unsafe fn uninit() -> $t {
-                //           unsafe { std::mem::uninitialized() }
                 std::mem::uninitialized()
             }
             pub fn clear(&mut self) {
@@ -343,6 +342,11 @@ macro_rules! ec_impl {
 pub struct Fp {
     d: [u64; MCLBN_FP_UNIT_SIZE],
 }
+impl Fp {
+    pub fn get_order() -> String {
+        get_field_order()
+    }
+}
 common_impl![Fp, mclBnFp_isEqual, mclBnFp_isZero];
 is_valid_impl![Fp, mclBnFp_isValid];
 serialize_impl![
@@ -376,6 +380,11 @@ pub struct Fp2 {
 #[repr(C)]
 pub struct Fr {
     d: [u64; MCLBN_FR_UNIT_SIZE],
+}
+impl Fr {
+    pub fn get_order() -> String {
+        get_curve_order()
+    }
 }
 common_impl![Fr, mclBnFr_isEqual, mclBnFr_isZero];
 is_valid_impl![Fr, mclBnFr_isValid];
@@ -536,38 +545,15 @@ pub fn final_exp(y: &mut GT, x: &GT) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn all_test() {
-        init_test();
-        fr_test();
-    }
-    fn init_test() {
-        assert!(init(CurveType::BLS12_381));
-        assert_eq!(get_fp_serialized_size(), 48);
-        assert_eq!(get_g1_serialized_size(), 48);
-        assert_eq!(get_g2_serialized_size(), 48 * 2);
-        assert_eq!(get_gt_serialized_size(), 48 * 12);
-        assert_eq!(get_fr_serialized_size(), 32);
-
-		// Fp
-        assert_eq!(get_field_order(), "4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787");
-		// Fr
-        assert_eq!(
-            get_curve_order(),
-            "52435875175126190479447740508185965837690552500527637822603658699938581184513"
-        );
-    }
-    fn fr_test() {
-        let mut x = Fr::zero();
+macro_rules! field_test {
+    ($t:ty) => {{
+        let mut x = <$t>::zero();
         assert!(x.is_zero());
         assert!(!x.is_one());
         x.set_int(1);
         assert!(!x.is_zero());
         assert!(x.is_one());
-        let mut y = Fr::from_int(1);
+        let mut y = <$t>::from_int(1);
         assert_eq!(x, y);
         y.set_int(2);
         assert!(x != y);
@@ -581,5 +567,65 @@ mod tests {
         assert!(!x.is_negative());
         x.set_int(-124);
         assert!(x.is_negative());
+
+        let mut z = unsafe { <$t>::uninit() };
+        let mut w = unsafe { <$t>::uninit() };
+
+        let a = 256;
+        let b = 8;
+        x.set_int(a);
+        y.set_int(b);
+        <$t>::add(&mut z, &x, &y);
+        w.set_int(a + b);
+        assert_eq!(z, w);
+
+        <$t>::sub(&mut z, &x, &y);
+        w.set_int(a - b);
+        assert_eq!(z, w);
+
+        <$t>::mul(&mut z, &x, &y);
+        w.set_int(a * b);
+        assert_eq!(z, w);
+
+        <$t>::div(&mut z, &x, &y);
+        w.set_int(a / b);
+        assert_eq!(z, w);
+
+        assert!(x.set_little_endian_mod(&[1, 2, 3, 4, 5]));
+        assert_eq!(x.get_str(16), "504030201");
+        <$t>::sqr(&mut y, &x);
+        <$t>::mul(&mut z, &x, &x);
+        assert_eq!(y, z);
+
+        assert!(<$t>::square_root(&mut w, &y));
+        if w.is_odd() {
+            assert_eq!(x, w);
+        } else {
+            <$t>::neg(&mut z, &w);
+            assert_eq!(x, z);
+        }
+    }};
+}
+mod tests {
+    #[test]
+    fn test() {
+        use super::*;
+        assert!(init(CurveType::BLS12_381));
+        assert_eq!(get_fp_serialized_size(), 48);
+        assert_eq!(get_g1_serialized_size(), 48);
+        assert_eq!(get_g2_serialized_size(), 48 * 2);
+        assert_eq!(get_gt_serialized_size(), 48 * 12);
+        assert_eq!(get_fr_serialized_size(), 32);
+
+        // Fp
+        assert_eq!(get_field_order(), "4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787");
+        // Fr
+        assert_eq!(
+            get_curve_order(),
+            "52435875175126190479447740508185965837690552500527637822603658699938581184513"
+        );
+
+        field_test!(Fr);
+        field_test!(Fp);
     }
 }
