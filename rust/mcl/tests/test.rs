@@ -53,7 +53,7 @@ macro_rules! field_test {
         assert_eq!(y, z);
 
         assert!(<$t>::square_root(&mut w, &y));
-		if w != x {
+        if w != x {
             <$t>::neg(&mut z, &w);
             assert_eq!(x, z);
         }

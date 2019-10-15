@@ -1,4 +1,4 @@
-// env RUSTFLAGS="-L ../../../mcl/lib" cargo run
+// env RUSTFLAGS="-L <mcl>/lib" cargo run
 use mcl::*;
 
 fn main() {
@@ -46,10 +46,39 @@ fn main() {
     println!("z={}", z.get_str(10));
     println!("x={}", x.get_str(10));
     println!("y={}", y.get_str(10));
-    let mut P = unsafe { G1::uninit() };
-    let mut Q = unsafe { G2::uninit() };
-    let mut e = unsafe { GT::uninit() };
-    P.set_hash_of("abc".as_bytes());
-    Q.set_hash_of("abc".as_bytes());
-    pairing(&mut e, &P, &Q);
+
+    #[allow(non_snake_case)]
+    let mut P1 = unsafe { G1::uninit() };
+    #[allow(non_snake_case)]
+    let mut P2 = unsafe { G1::uninit() };
+    #[allow(non_snake_case)]
+    let mut Q1 = unsafe { G2::uninit() };
+    #[allow(non_snake_case)]
+    let mut Q2 = unsafe { G2::uninit() };
+    let mut e1 = unsafe { GT::uninit() };
+    let mut e2 = unsafe { GT::uninit() };
+    let mut e3 = unsafe { GT::uninit() };
+    P1.set_hash_of("abc".as_bytes());
+    Q1.set_hash_of("abc".as_bytes());
+    println!("P1={}", P1.get_str(16));
+    println!("Q1={}", Q1.get_str(16));
+    pairing(&mut e1, &P1, &Q1);
+    //	x.set_by_csprng();
+    //	y.set_by_csprng();
+    x.set_int(2);
+    y.set_int(1);
+    G1::mul(&mut P2, &P1, &x);
+    G2::mul(&mut Q2, &Q1, &y);
+    pairing(&mut e2, &P2, &Q2);
+    println!("e1={}", e1.get_str(16));
+    GT::pow(&mut e3, &e1, &x);
+    println!("e3={}", e3.get_str(16));
+    GT::pow(&mut e1, &e3, &y);
+    if e1 == e2 {
+        println!("ok");
+    } else {
+        println!("ng");
+        println!("e1={}", e1.get_str(16));
+        println!("e2={}", e2.get_str(16));
+    }
 }

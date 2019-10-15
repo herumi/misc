@@ -135,6 +135,8 @@ extern "C" {
     fn mclBnGT_div(z: *mut GT, x: *const GT, y: *const GT);
     fn mclBnGT_inv(y: *mut GT, x: *const GT);
     fn mclBnGT_sqr(y: *mut GT, x: *const GT);
+
+    fn mclBnGT_pow(z: *mut GT, x: *const GT, y: *const Fr);
 }
 
 pub enum CurveType {
@@ -475,6 +477,11 @@ str_impl![GT, 1024, mclBnGT_getStr, mclBnGT_setStr];
 int_impl![GT, mclBnGT_setInt32, mclBnGT_isOne];
 add_op_impl![GT, mclBnGT_add, mclBnGT_sub, mclBnGT_neg];
 field_mul_op_impl![GT, mclBnGT_mul, mclBnGT_div, mclBnGT_inv, mclBnGT_sqr];
+impl GT {
+    pub fn pow(z: &mut GT, x: &GT, y: &Fr) {
+        unsafe { mclBnGT_pow(z, x, y) }
+    }
+}
 
 pub fn get_version() -> u32 {
     unsafe { mclBn_getVersion() }
@@ -543,4 +550,3 @@ pub fn final_exp(y: &mut GT, x: &GT) {
         mclBn_finalExp(y, x);
     }
 }
-
