@@ -40,22 +40,22 @@ struct MapToG2_WB19 {
 		rootTbl[1].a = 0;
 		rootTbl[1].b = 1;
 		rootTbl[2].a = rv1;
-		rootTbl[2].b = rv1;
+		rootTbl[2].b = rv1; // rootTbl[2]^2 = -i
 		rootTbl[3].a = rv1;
-		rootTbl[3].b = -rv1;
+		rootTbl[3].b = -rv1; // rootTbl[3]^2 = i
 		Fp ev1, ev2;
 		ev1.setStr(&b, "0x2c4a7244a026bd3e305cc456ad9e235ed85f8b53954258ec8186bb3d4eccef7c4ee7b8d4b9e063a6c88d0aa3e03ba01");
 		assert(b); (void)b;
 		ev2.setStr(&b, "0x85fa8cd9105715e641892a0f9a4bb2912b58b8d32f26594c60679cc7973076dc6638358daf3514d6426a813ae01f51a");
 		assert(b); (void)b;
 		root2Tbl[0].a = ev1;
-		root2Tbl[0].b = 0;
+		root2Tbl[0].b = 0; // root2Tbl[0]^4 = -8
 		root2Tbl[1].a = 0;
-		root2Tbl[1].b = ev1;
+		root2Tbl[1].b = ev1; // root2Tbl[1]^4 = -8
 		root2Tbl[2].a = ev2;
-		root2Tbl[2].b = ev2;
+		root2Tbl[2].b = ev2; // root2Tbl[2]^4 = 8
 		root2Tbl[3].a = ev2;
-		root2Tbl[3].b = -ev2;
+		root2Tbl[3].b = -ev2; // root2Tbl[3]^4 = 8
 	}
 	bool osswu2_help(Fp2& x0, Fp2& y0, const Fp2& t) const
 	{
