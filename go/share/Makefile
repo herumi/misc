@@ -1,7 +1,7 @@
 CFLAGS=-Wall -Wextra -O3 -I./include
 
 add.o: add.cpp
-	gcc $(CFLAGS) -fPIC -o $@ -g $<
+	gcc $(CFLAGS) -fPIC -c -o $@ -g $<
 
 lib/libadd.so: add.cpp
 	gcc $(CFLAGS) -fPIC -shared -o $@ -g $<
