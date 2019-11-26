@@ -11,7 +11,7 @@ using namespace mcl::bn;
 void test_osswu2_help(const MapToG2_WB19& mapto)
 {
 	std::ifstream ifs("test.txt");
-	for (int i = 0; i < 200; i++) {
+	for (int i = 0; i < 201; i++) {
 		Fp2 t, x, y;
 		ifs >> t;
 		Fp2 x0, y0;
@@ -26,6 +26,7 @@ void test_osswu2_help(const MapToG2_WB19& mapto)
 			exit(1);
 		}
 	}
+	puts("ok");
 }
 
 int main()
