@@ -77,13 +77,14 @@ struct MapToG2_WB19 {
 		if (!x.b.isZero()) return false;
 		return false;
 	}
-	bool osswu2_help(Fp2& x0, Fp2& y0, const Fp2& t) const
+	bool osswu2_help(Fp2& x0, Fp2& y0, Fp2& z0, const Fp2& t) const
 	{
 		printf("t=%s\n", t.getStr(16).c_str());
-		Fp2 t2;
+		Fp2 t2, t2xi;
 		Fp2::sqr(t2, t);
 		Fp2 den, den2;
-		Fp2::mul(den, t2, xi);
+		Fp2::mul(t2xi, t2, xi);
+		den = t2xi;
 		Fp2::sqr(den2, den);
 		// (t^2 * xi)^2 + (t^2 * xi)
 		den += den2;
@@ -95,9 +96,10 @@ struct MapToG2_WB19 {
 		} else {
 			Fp2::mul(x0_den, -Ell2p_a, den);
 		}
-		Fp2 x0_den2, gx0_den, gx0_num;
+		Fp2 x0_den2, x0_den3, gx0_den, gx0_num;
 		Fp2::sqr(x0_den2, x0_den);
-		Fp2::mul(gx0_den, x0_den2, x0_den);
+		Fp2::mul(x0_den3, x0_den2, x0_den);
+		gx0_den = x0_den3;
 
 		Fp2::mul(gx0_num, Ell2p_b, gx0_den);
 		Fp2 tmp, tmp1, tmp2;
@@ -118,47 +120,47 @@ struct MapToG2_WB19 {
 		Fp2 candi;
 		Fp2::pow(candi, tmp1, sqrtConst);
 		candi *= tmp2;
-//ok
+		bool isNegT = isNegSign(t);
 		for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(root4); i++) {
 			Fp2::mul(y0, candi, root4[i]);
 			Fp2::sqr(tmp, y0);
 			tmp *= gx0_den;
 			if (tmp == gx0_num) {
-			}
-		}
-#if 0
-		Fp2 candi;
-		Fp2::pow(candi, gx0, sqrtConst);
-		for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(tbl); i++) {
-			Fp2::mul(y0, candi, tbl[i]);
-			Fp2 y2;
-			Fp2::sqr(y2, y0);
-			if (y2 == gx0) {
-				if (t.a > half) {
+				if (isNegSign(y0) != isNegT) {
 					Fp2::neg(y0, y0);
 				}
+				Fp2::mul(x0, x0_num, x0_den);
+				y0 *= x0_den3;
+				z0 = x0_den;
+// nocheck
 				return true;
 			}
 		}
-		Fp2 xi_t2;
-		Fp2::mul_xi(xi_t2, t2);
-		x0 *= xi_t2; // (xi t^2) x0
-		Fp2 gx1;
-		Fp2::sqr(gx1, xi_t2);
-		gx1 *= xi_t2;
-		gx1 *= gx0; // (xi t^2)^3 gx0
+		Fp2 x1_num, x1_den, gx1_num, gx1_den;
+		Fp2::mul(x1_num, t2xi, x0_num);
+		x1_den = x0_den;
+		Fp2::mul(gx1_num, den2, t2xi);
+		gx1_num *= gx0_num;
+		gx1_den = gx0_den;
 		candi *= t2;
 		candi *= t;
-		for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(tbl2); i++) {
-			Fp2::mul(y0, candi, tbl2[i]);
-			Fp2 y2;
-			Fp2::sqr(y2, y0);
-			if (y2 == gx1) {
+// ok
+		for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(etas); i++) {
+			Fp2::mul(y0, candi, etas[i]);
+			Fp2::sqr(tmp, y0);
+			tmp *= gx1_den;
+			if (tmp == gx1_num) {
+				if (isNegSign(y0) != isNegT) {
+					Fp2::neg(y0, y0);
+				}
+				Fp2::mul(x0, x1_num, x1_den);
+				Fp2::sqr(tmp, x1_den);
+				y0 *= tmp;
+				y0 *= x1_den;
+				z0 = x1_den;
 				return true;
 			}
 		}
-		return false;
-#endif
 		return false;
 	}
 };
