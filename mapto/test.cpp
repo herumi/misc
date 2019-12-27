@@ -29,6 +29,31 @@ void test_osswu2_help(const MapToG2_WB19& mapto)
 	puts("ok");
 }
 
+template<class T>
+void testSign(const T& mapto)
+{
+	const Fp& H = mapto.half;
+	const size_t N = 4;
+	const Fp tbl[N] = { 0, 1, H, H + 1 };
+	const int expect[N][N] = {
+		{  1, 1, 1, -1 },
+		{  1, 1, 1, -1 },
+		{  1, 1, 1, -1 },
+		{ -1, 1, 1, -1 },
+	};
+	Fp2 t;
+	for (size_t i = 0; i < N; i++) {
+		t.a = tbl[i];
+		for (size_t j = 0; j < N; j++) {
+			t.b = tbl[j];
+			if (mapto.isNegSign(t) != (expect[i][j] < 0)) {
+				printf("err %zd %zd\n", i, j);
+			}
+		}
+	}
+	puts("ok");
+}
+
 int main()
 	try
 {
@@ -36,10 +61,10 @@ int main()
 	initPairing(mcl::BLS12_381);
 	MapToG2_WB19 mapto;
 	mapto.init();
-	test_osswu2_help(mapto);
-	Fp2 t1("0xbd85cfa89e7d8787399c27fe122f7b7bd8e16c7baed07ad130fa50705bd05d022ac5d150e1db578eb5b032385e25da", "0x19aca2fa3ab7b207c28d99fe4c2384084e0cd7c61cf4389df4e351eaf10fb55430a24cfc732f4550dc9209a68c11661");
-	Fp2 t2("0xf6721953dbe192e1502bfe429b610f5b5662df0f6b747eee2f622086e1cd5838bf506edde08489d51d68ad3ebcfe0d", "0xce2ae5b302d9f167ddf643b5893d52385ab1db46fa708d10fdd7cb504b700bfaa38b17b461848500734cdf5dea12f0f");
-	t1.setStr("0x97ed293a1a6e47ec799abcd6c727f1c5ed4a23bb349bc5a24ed1ced25a3c793e098729a5957ee20fff4f9f9be6f313e 0x5883fdf9394f4502abdda48cac49ab386fbbd7b11df466b75563a961ddb398d525333b2b3fd3ed470926e2e2312e095");
+	testSign(mapto);
+//	test_osswu2_help(mapto);
+	Fp2 t1("0xe54bc0f2e26071a79ba5fe7ae5307d39cf5519e581e03b43f39a431eccc258fa1477c517b1268b22986601ee5caa5ea", "0x17e8397d5e687ff7f915c23f27fe1ca2c397a7df91de8c88dc82d34c9188a3ef719f9f20436ea8a5fe7d509fbc79214d");
+	Fp2 t2("0x1d6cd21291f16108d65f33eaa90150796884328c921c15244c612cbb7d38bbefac341f2c8bb3ca9374d683e6fafa6af", "0xd306b469c9158cb9f9cf9898745909384b2bb1e3ed03734bd0f1ffd309d9da44679251f8f9e54e6d5775e6c713fd46");
 	Fp2 x, y;
 	mapto.osswu2_help(x, y, t1);
 	PUT(x);
