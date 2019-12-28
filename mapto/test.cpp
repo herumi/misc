@@ -103,11 +103,11 @@ void test1(const T& mapto)
 		Fp2 x0(tbl[i].xa, tbl[i].xb);
 		Fp2 y0(tbl[i].ya, tbl[i].yb);
 		Fp2 z0(tbl[i].za, tbl[i].zb);
-		Fp2 x, y, z;
-		mapto.osswu2_help(x, y, z, t);
-		CYBOZU_TEST_EQUAL(x, x0);
-		CYBOZU_TEST_EQUAL(y, y0);
-		CYBOZU_TEST_EQUAL(z, z0);
+		typename T::Point P;
+		mapto.osswu2_help(P, t);
+		CYBOZU_TEST_EQUAL(P.x, x0);
+		CYBOZU_TEST_EQUAL(P.y, y0);
+		CYBOZU_TEST_EQUAL(P.z, z0);
 	}
 }
 

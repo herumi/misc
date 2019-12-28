@@ -17,6 +17,13 @@ struct MapToG2_WB19 {
 	mpz_class sqrtConst; // (p^2 - 9) / 16
 	Fp2 root4[4];
 	Fp2 etas[4];
+	Fp2 xnum[4];
+	Fp2 xden[3];
+	Fp2 ynum[4];
+	Fp2 yden[4];
+	struct Point {
+		Fp2 x, y, z;
+	};
 	void init()
 	{
 		bool b;
@@ -62,12 +69,74 @@ struct MapToG2_WB19 {
 		assert(b); (void)b;
 		Fp::neg(etas[3].a, ev4);
 		etas[3].b = ev3;
+		init_iso();
+	}
+	void init_iso()
+	{
+		const char *tbl[] = {
+			"0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6",
+			"0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71a",
+			"0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71e",
+			"0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38d",
+			"0x171d6541fa38ccfaed6dea691f5fb614cb14b4e7f4e810aa22d6108f142b85757098e38d0f671c7188e2aaaaaaaa5ed1",
+			"0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa63",
+			"0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa9f",
+			"0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706",
+			"0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97be",
+			"0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71c",
+			"0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38f",
+			"0x124c9ad43b6cf79bfbf7043de3811ad0761b0f37a1e26286b0e977c69aa274524e79097a56dc4bd9e1b371c71c718b10",
+			"0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fb",
+			"0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa9d3",
+			"0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa99",
+		};
+		bool b;
+		xnum[0].a.setStr(&b, tbl[0]); assert(b); (void)b;
+		xnum[0].b = xnum[0].a;
+		xnum[1].a.clear();
+		xnum[1].b.setStr(&b, tbl[1]); assert(b); (void)b;
+		xnum[2].a.setStr(&b, tbl[2]); assert(b); (void)b;
+		xnum[2].b.setStr(&b, tbl[3]); assert(b); (void)b;
+		xnum[3].a.setStr(&b, tbl[4]); assert(b); (void)b;
+		xnum[3].b.clear();
+		xden[0].a.clear();
+		xden[0].b.setStr(&b, tbl[5]); assert(b); (void)b;
+		xden[1].a = 0xc;
+		xden[1].b.setStr(&b, tbl[6]); assert(b); (void)b;
+		xden[2].a = 1;
+		xden[2].b = 0;
+		ynum[0].a.setStr(&b, tbl[7]); assert(b); (void)b;
+		ynum[0].b = ynum[0].a;
+		ynum[1].a.clear();
+		ynum[1].b.setStr(&b, tbl[8]); assert(b); (void)b;
+		ynum[2].a.setStr(&b, tbl[9]); assert(b); (void)b;
+		ynum[2].b.setStr(&b, tbl[10]); assert(b); (void)b;
+		ynum[3].a.setStr(&b, tbl[11]); assert(b); (void)b;
+		ynum[3].b.clear();
+		yden[0].a.setStr(&b, tbl[12]); assert(b); (void)b;
+		yden[0].b = yden[0].a;
+		yden[1].a.clear();
+		yden[1].b.setStr(&b, tbl[13]); assert(b); (void)b;
+		yden[2].a = 0x12;
+		yden[2].b.setStr(&b, tbl[14]); assert(b); (void)b;
+		yden[3].a = 1;
+		yden[3].b.clear();
+	}
+	void eval_iso(G2& Q, const Fp2& x, const Fp2& y, const Fp2& z) const
+	{
 	}
 	/*
 		(a+bi)*(-2-i) = (b-2a)-(a+2b)i
 	*/
 	void mul_xi(Fp2& y, const Fp2& x) const
 	{
+		Fp t;
+		Fp::sub(t, x.b, x.a);
+		t -= x.a;
+		Fp::add(y.b, x.b, x.b);
+		y.b += x.a;
+		Fp::neg(y.b, y.b);
+		y.a = t;
 	}
 	bool isNegSign(const Fp2& x) const
 	{
@@ -77,13 +146,13 @@ struct MapToG2_WB19 {
 		if (!x.b.isZero()) return false;
 		return false;
 	}
-	bool osswu2_help(Fp2& x0, Fp2& y0, Fp2& z0, const Fp2& t) const
+	bool osswu2_help(Point& P, const Fp2& t) const
 	{
-		printf("t=%s\n", t.getStr(16).c_str());
 		Fp2 t2, t2xi;
 		Fp2::sqr(t2, t);
 		Fp2 den, den2;
-		Fp2::mul(t2xi, t2, xi);
+//		Fp2::mul(t2xi, t2, xi);
+		mul_xi(t2xi, t2);
 		den = t2xi;
 		Fp2::sqr(den2, den);
 		// (t^2 * xi)^2 + (t^2 * xi)
@@ -122,16 +191,16 @@ struct MapToG2_WB19 {
 		candi *= tmp2;
 		bool isNegT = isNegSign(t);
 		for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(root4); i++) {
-			Fp2::mul(y0, candi, root4[i]);
-			Fp2::sqr(tmp, y0);
+			Fp2::mul(P.y, candi, root4[i]);
+			Fp2::sqr(tmp, P.y);
 			tmp *= gx0_den;
 			if (tmp == gx0_num) {
-				if (isNegSign(y0) != isNegT) {
-					Fp2::neg(y0, y0);
+				if (isNegSign(P.y) != isNegT) {
+					Fp2::neg(P.y, P.y);
 				}
-				Fp2::mul(x0, x0_num, x0_den);
-				y0 *= x0_den3;
-				z0 = x0_den;
+				Fp2::mul(P.x, x0_num, x0_den);
+				P.y *= x0_den3;
+				P.z = x0_den;
 				return true;
 			}
 		}
@@ -143,20 +212,19 @@ struct MapToG2_WB19 {
 		gx1_den = gx0_den;
 		candi *= t2;
 		candi *= t;
-// ok
 		for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(etas); i++) {
-			Fp2::mul(y0, candi, etas[i]);
-			Fp2::sqr(tmp, y0);
+			Fp2::mul(P.y, candi, etas[i]);
+			Fp2::sqr(tmp, P.y);
 			tmp *= gx1_den;
 			if (tmp == gx1_num) {
-				if (isNegSign(y0) != isNegT) {
-					Fp2::neg(y0, y0);
+				if (isNegSign(P.y) != isNegT) {
+					Fp2::neg(P.y, P.y);
 				}
-				Fp2::mul(x0, x1_num, x1_den);
+				Fp2::mul(P.x, x1_num, x1_den);
 				Fp2::sqr(tmp, x1_den);
-				y0 *= tmp;
-				y0 *= x1_den;
-				z0 = x1_den;
+				P.y *= tmp;
+				P.y *= x1_den;
+				P.z = x1_den;
 				return true;
 			}
 		}
