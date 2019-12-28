@@ -132,7 +132,6 @@ struct MapToG2_WB19 {
 				Fp2::mul(x0, x0_num, x0_den);
 				y0 *= x0_den3;
 				z0 = x0_den;
-// nocheck
 				return true;
 			}
 		}
