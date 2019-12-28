@@ -108,6 +108,7 @@ void test1(const T& mapto)
 		CYBOZU_TEST_EQUAL(P.x, x0);
 		CYBOZU_TEST_EQUAL(P.y, y0);
 		CYBOZU_TEST_EQUAL(P.z, z0);
+		CYBOZU_TEST_ASSERT(mapto.isValidPoint(P));
 	}
 }
 

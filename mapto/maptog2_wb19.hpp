@@ -24,6 +24,22 @@ struct MapToG2_WB19 {
 	struct Point {
 		Fp2 x, y, z;
 	};
+	// P is on y^2 = x^3 + Ell2p_a x + Ell2p_b
+	bool isValidPoint(const Point& P) const
+	{
+        Fp2 y2, x2, z2, z4, t;
+        Fp2::sqr(x2, P.x);
+        Fp2::sqr(y2, P.y);
+        Fp2::sqr(z2, P.z);
+        Fp2::sqr(z4, z2);
+        Fp2::mul(t, z4, Ell2p_a);
+        t += x2;
+        t *= P.x;
+        z4 *= z2;
+        z4 *= Ell2p_b;
+        t += z4;
+        return y2 == t;
+	}
 	void init()
 	{
 		bool b;
@@ -122,8 +138,18 @@ struct MapToG2_WB19 {
 		yden[3].a = 1;
 		yden[3].b.clear();
 	}
-	void eval_iso(G2& Q, const Fp2& x, const Fp2& y, const Fp2& z) const
+	// refer (xnum, xden, ynum, yden)
+	void iso3(G2& Q, const Point& P) const
 	{
+		Fp2 zpows[4];
+		zpows[0] = 1;
+		Fp2::sqr(zpows[1], P.z);
+		Fp2::sqr(zpows[2], zpows[1]);
+		Fp2::mul(zpows[3], zpows[2], zpows[1]);
+PUT(zpows[0]);
+PUT(zpows[1]);
+PUT(zpows[2]);
+PUT(zpows[3]);
 	}
 	/*
 		(a+bi)*(-2-i) = (b-2a)-(a+2b)i
@@ -146,7 +172,7 @@ struct MapToG2_WB19 {
 		if (!x.b.isZero()) return false;
 		return false;
 	}
-	bool osswu2_help(Point& P, const Fp2& t) const
+	void osswu2_help(Point& P, const Fp2& t) const
 	{
 		Fp2 t2, t2xi;
 		Fp2::sqr(t2, t);
@@ -201,7 +227,7 @@ struct MapToG2_WB19 {
 				Fp2::mul(P.x, x0_num, x0_den);
 				P.y *= x0_den3;
 				P.z = x0_den;
-				return true;
+				return;
 			}
 		}
 		Fp2 x1_num, x1_den, gx1_num, gx1_den;
@@ -225,10 +251,23 @@ struct MapToG2_WB19 {
 				P.y *= tmp;
 				P.y *= x1_den;
 				P.z = x1_den;
-				return true;
+				return;
 			}
 		}
-		return false;
+		assert(0);
 	}
+#if 0
+	void opt_swu2_map(G2& P, const Fp2& t, const Fp2 *t2 = 0) const
+	{
+		Point Pp;
+		osswu2_help(Pp, t);
+		if (t2) {
+			G2 P2;
+			osswu2_help(P2, *t2);
+			P += P2;
+		}
+		iso3(P, P);
+	}
+#endif
 };
 
