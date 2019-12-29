@@ -10,29 +10,6 @@ using namespace mcl::bn;
 #define PUT(x) std::cout << #x "=" << (x) << std::endl;
 #include "maptog2_wb19.hpp"
 
-#if 0
-void test_osswu2_help(const MapToG2_WB19& mapto)
-{
-	std::ifstream ifs("test.txt");
-	for (int i = 0; i < 201; i++) {
-		Fp2 t, x, y;
-		ifs >> t;
-		Fp2 x0, y0, z0;
-		mapto.osswu2_help(x0, y0, z0, t);
-		ifs >> x >> y;
-		if (x != x0) {
-			printf("%3d err\nx=%s\nx0=%s\n", i, x.getStr(16).c_str(), x0.getStr(16).c_str());
-			exit(1);
-		}
-		if (y != y0) {
-			printf("%3d err\ny=%s\ny0=%s\n", i, y.getStr(16).c_str(), y0.getStr(16).c_str());
-			exit(1);
-		}
-	}
-	puts("ok");
-}
-#endif
-
 template<class T>
 void testSign(const T& mapto)
 {
@@ -268,20 +245,6 @@ CYBOZU_TEST_AUTO(test)
 	addTest(mapto);
 	iso3Test(mapto);
 }
-
-#if 0
-int main(int argc, char *argv[])
-	try
-{
-	std::cout << std::hex;
-	testSign(mapto);
-//	test_osswu2_help(mapto);
-	Fp2 t2("0x1d6cd21291f16108d65f33eaa90150796884328c921c15244c612cbb7d38bbefac341f2c8bb3ca9374d683e6fafa6af", "0xd306b469c9158cb9f9cf9898745909384b2bb1e3ed03734bd0f1ffd309d9da44679251f8f9e54e6d5775e6c713fd46");
-} catch (std::exception& e) {
-	printf("ERR %s\n", e.what());
-	return 1;
-}
-#endif
 
 int main(int argc, char *argv[])
 {
