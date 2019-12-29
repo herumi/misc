@@ -204,12 +204,52 @@ void addTest(const T& mapto)
 	}
 }
 
+template<class T>
+void iso3Test(const T& mapto)
+{
+	PointStr Ps = {
+		{
+			"0xf0d9554fa5b04dbc6b106727e987bd68fb8c0cc97226a3845b59cc9d09972f24ea5a0d93cd0eedd18318c0024bf3df0",
+			"0x656650d143a2cf4a913821fa6a90ab6baa0bb063d1207b15108ea919258bfa4bdd1ba7247e8e65300d526801e43dca6",
+		},
+		{
+			"0x13a4b7c833b2702dc6ac4f5ee6ee74923a24c28e5a9b8e3b5626f700489ea47f9b1c3aa8cc0f4b525ae56e1e89aba868",
+			"0x16c0b9a89dcbe4e375f1e4d064013adff8e6e09866d38769c08ce355fbac9c823d52df971286b091b46d2cd49625c09",
+		},
+		{
+			"0x176ce067d52f676d4f6778eda26f2e2e75f9f39712583e60e2b3f345e2b2a84df1ae9ffa241ce89b1a377e4286c85ccf",
+			"0x822bc033cf0eec8bea9037ede74db0a73d932dc9b43f855e1862b747b0e53312dde5ed301e32551a11a5ef2dfe2dbf4",
+		}
+	};
+	PointStr Qs = {
+		{
+			"0x8d5483693b4cf3fd5c7a62dad4179503094a66a52f2498dcedb5c97a33697ba4110e2da42ddef98beeeab04619ec0fe",
+			"0xd45728bb18737fb6abf8cc94ad37957f95855da867ca718708503fd072d3707ca6059fefb5c52b2745210cdd7991d10",
+		},
+		{
+			"0x17027ae16e10908f87e79c70f96ba44b1b11fa40fb5ac5456162133860f14896ca363b58d81ef8cb068bdaca2e576ed7",
+			"0xfb2d1655b00027d5580bbff8afa6eec6e6caacf5df4020c5255eafb51d50710193a8e39eac760745c45cc6ec556a820",
+		},
+		{
+			"0x376b86a7d664dc080485c29a57618eee792396f154806f75c78599ee223103e77bee223037bb99354114201619ea06",
+			"0xf0c64e52dbb8e2dca3c790993c8f101012c516b2884db16de4d857ae6bfb85e9101ab15906870b3e5a18268a57bfc99",
+		}
+	};
+	typename T::Point P;
+	G2 Q1, Q2;
+	set(P, Ps);
+	set(Q1, Qs);
+	mapto.iso3(Q2, P);
+	CYBOZU_TEST_EQUAL(Q1, Q2);
+}
+
 CYBOZU_TEST_AUTO(test)
 {
 	MapToG2_WB19 mapto;
 	mapto.init();
 	helpTest(mapto);
 	addTest(mapto);
+	iso3Test(mapto);
 }
 
 #if 0

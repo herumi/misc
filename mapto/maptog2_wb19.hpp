@@ -221,6 +221,17 @@ struct MapToG2_WB19 {
 		yden[3].a = 1;
 		yden[3].b.clear();
 	}
+	template<size_t N>
+	void evalPoly(Fp2& y, const Fp2& x, const Fp2 *zpows, const Fp2 (&cof)[N]) const
+	{
+		Fp2::mul(y, zpows[0], cof[N - 1]);
+		for (size_t i = 1; i < N; i++) {
+			y *= x;
+			Fp2 t;
+			Fp2::mul(t, zpows[i], cof[N - 1 - i]);
+			y += t;
+		}
+	}
 	// refer (xnum, xden, ynum, yden)
 	void iso3(G2& Q, const Point& P) const
 	{
@@ -229,10 +240,22 @@ struct MapToG2_WB19 {
 		Fp2::sqr(zpows[1], P.z);
 		Fp2::sqr(zpows[2], zpows[1]);
 		Fp2::mul(zpows[3], zpows[2], zpows[1]);
-PUT(zpows[0]);
-PUT(zpows[1]);
-PUT(zpows[2]);
-PUT(zpows[3]);
+		Fp2 mapvals[4];
+		evalPoly(mapvals[0], P.x, zpows, xnum);
+		evalPoly(mapvals[1], P.x, zpows, xden);
+		evalPoly(mapvals[2], P.x, zpows, ynum);
+		evalPoly(mapvals[3], P.x, zpows, yden);
+		mapvals[1] *= zpows[1];
+		mapvals[2] *= P.y;
+		mapvals[3] *= zpows[1];
+		mapvals[3] *= P.z;
+		Fp2::mul(Q.z, mapvals[1], mapvals[3]);
+		Fp2::mul(Q.x, mapvals[0], mapvals[3]);
+		Q.x *= Q.z;
+		Fp2 t;
+		Fp2::sqr(t, Q.z);
+		Fp2::mul(Q.y, mapvals[2], mapvals[1]);
+		Q.y *= t;
 	}
 	/*
 		(a+bi)*(-2-i) = (b-2a)-(a+2b)i
