@@ -59,7 +59,7 @@ void testSign(const T& mapto)
 }
 
 template<class T>
-void test1(const T& mapto)
+void helpTest(const T& mapto)
 {
 	const struct {
 		const char *ta;
@@ -112,11 +112,104 @@ void test1(const T& mapto)
 	}
 }
 
+struct Fp2Str {
+	const char *a;
+	const char *b;
+};
+
+struct PointStr {
+	Fp2Str x;
+	Fp2Str y;
+	Fp2Str z;
+};
+
+void set(Fp2& x, const Fp2Str& s)
+{
+	x.a.setStr(s.a);
+	x.b.setStr(s.b);
+}
+
+template<class Point>
+void set(Point& P, const PointStr& s)
+{
+	set(P.x, s.x);
+	set(P.y, s.y);
+	set(P.z, s.z);
+}
+
+template<class T>
+void addTest(const T& mapto)
+{
+	const struct Tbl {
+		PointStr P;
+		PointStr Q;
+		PointStr R;
+	} tbl[] = {
+		{
+			{
+				{
+					"0x111fe4d895d4a8eb21b87f8717727a638cb3f79b91217ac2b47ea599513a5e9bff14cd85f91e5bef822160e0ad4f6726",
+					"0x29180cfc2d6a6c717ad4b93725475117c959496d3163974cc08068c0319cb47ba7c8d49c0ebb1ed1a4659b91acab3f",
+				},
+				{
+					"0x192e14063ab46786058c355387e4141921a2b0fd1bcecd6bbf6e3e25f972b2b88fe23b1fd6b14f8070c7ada0bbcfb8d7",
+					"0x153bc38ad032b044e55f649b9b1e6384cfe0936b3be350e16a8cf847790bf718e9099b102fbdab5ad8f0acca6b0ac65a",
+				},
+				{
+					"0x119f8d49f20b7a3ef00527779ef9326250a835a742770e9599b3be1939d5e00f8b329781bea38e725e1b0de76354b2ea",
+					"0xd95d36844c2ef0678e3614c0d9698daf7d54cb41322fb6acf90a4fd61122c36213e6f811c81c573385110d98e49136",
+				},
+			},
+			{
+				{
+					"0x738abc340e315a70a95d22c68e4beb8f8ce8cb17ec4d8104285b5770a63b2e9fdceaffb88df1fde2104d807bd0fb5df",
+					"0x19edac9569a018b7a17ddd9554430318500e83e38c798d6f8e0a22e9e54ef2b0ec0cf4866013e3a43237eaf949c4548b",
+				},
+				{
+					"0x12234a4947cf5c0a0fc04edadefa7c3766489d927ad3d7d7236af997b0e0fd7deaaf4ab78aad390c6a8f0088f21256af",
+					"0x4a1cddb800e9fc6fb9f12e036bd0dae9a75c276f8007407cb9be46177e4338ac43d00f3dc413cab629d6305327ffbc",
+				},
+				{
+					"0x187212ac7f7d68aa32dafe6c1c52dc0411ea11cffa4c6a10e0ba407c94b8663376f1642379451a09a4c7ce6e691a557f",
+					"0x1381999b5cc68ae42d64d71ac99a20fb5874f3883a222a9e15c8211610481642b32b85da288872269480383b62696e5a",
+				},
+			},
+			{
+				{
+					"0x1027d652690099dd3bea0c8ec2f8686c8db37444b08067a40780a264f2edd995d3a39941a302289ac8025007e7f08e35",
+					"0xe4c1e12005a577f2a7487bd0bca91253bfff829258e7120716d70133dfc1c8f4aa80d2b4c076f267f3483ec1ca66cdc",
+				},
+				{
+					"0x16bd53f43f8acfb29d3a451a274445ca87d43f0e1a6550c6107654516fda0b4cd1a346369ef0d44d4ee78904ce1b3e4b",
+					"0xf0f67bbce56d7791c676b7af20f0d91382973c6c7b971a920525dbd58b13364ec226651308c8bc56e636d0458d46f50",
+				},
+				{
+					"0x8027cefbfd3e7e7fdc88735eddd7e669520197227bd2a7014078f56489267256fdfb27d080515412d69f86770f3ce",
+					"0x2470e1d8896cfe74ab01b68071b97d121333ebcec7a41cddd4581d736a25ba154ac94321a119906e3f41beec971d082",
+				},
+			},
+		},
+	};
+	typedef typename T::Point Point;
+	for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(tbl); i++) {
+		Point P, Q, R;
+		set(P, tbl[i].P);
+		set(Q, tbl[i].Q);
+		set(R, tbl[i].R);
+		Point E;
+		mapto.addPoint(E, P, Q);
+		CYBOZU_TEST_EQUAL(R.x, E.x);
+		CYBOZU_TEST_EQUAL(R.y, E.y);
+		CYBOZU_TEST_EQUAL(R.z, E.z);
+	}
+}
+
 CYBOZU_TEST_AUTO(test)
 {
 	MapToG2_WB19 mapto;
 	mapto.init();
-	test1(mapto);
+	helpTest(mapto);
+	addTest(mapto);
 }
 
 #if 0

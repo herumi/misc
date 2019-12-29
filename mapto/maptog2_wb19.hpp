@@ -23,7 +23,90 @@ struct MapToG2_WB19 {
 	Fp2 yden[4];
 	struct Point {
 		Fp2 x, y, z;
+		bool isZero() const
+		{
+			return z.isZero();
+		}
 	};
+	void addPoint(Point& R, const Point& P, const Point& Q) const
+	{
+		if (P.isZero()) {
+			R = Q;
+			return;
+		}
+		if (Q.isZero()) {
+			R = Q;
+			return;
+		}
+		Fp2 Z1Z1, Z2Z2, U1, U2, S1, S2;
+		Fp2::sqr(Z1Z1, P.z);
+		Fp2::sqr(Z2Z2, Q.z);
+		Fp2::mul(U1, P.x, Z2Z2);
+		Fp2::mul(U2, Q.x, Z1Z1);
+		Fp2::mul(S1, P.y, Q.z);
+		S1 *= Z2Z2;
+		Fp2::mul(S2, Q.y, P.z);
+		S2 *= Z1Z1;
+		if (U1 == U2 && S1 == S2) {
+			dblPoint(R, P);
+			return;
+		}
+		Fp2 H, I, J, rr, V;
+		Fp2::sub(H, U2, U1);
+		Fp2::add(I, H, H);
+		Fp2::sqr(I, I);
+		Fp2::mul(J, H, I);
+		Fp2::sub(rr, S2, S1);
+		rr += rr;
+		Fp2::mul(V, U1, I);
+		Fp2::mul(R.z, P.z, Q.z);
+		R.z *= H;
+		if (R.z.isZero()) {
+			R.x.clear();
+			R.y.clear();
+			return;
+		}
+		R.z += R.z;
+		Fp2::sqr(R.x, rr);
+		R.x -= J;
+		R.x -= V;
+		R.x -= V;
+		Fp2::sub(R.y, V, R.x);
+		R.y *= rr;
+		S1 *= J;
+		R.y -= S1;
+		R.y -= S1;
+	}
+	void dblPoint(Point& Q, const Point& P) const
+	{
+		Fp2 A, B, C, D, E, F;
+		Fp2::sqr(A, P.x);
+		Fp2::sqr(B, P.y);
+		Fp2::sqr(C, B);
+		Fp2::add(D, P.x, B);
+		Fp2::sqr(D, D);
+		D -= A;
+		D -= C;
+		D += D;
+		Fp2::add(E, A, A);
+		E += A;
+		Fp2::sqr(F, E);
+		Fp2::sub(Q.x, F, D);
+		Q.x -= D;
+		Fp2::mul(Q.z, P.y, P.z);
+		if (Q.z.isZero()) {
+			Q.x.clear();
+			Q.y.clear();
+			return;
+		}
+		Q.z += Q.z;
+		Fp2::sub(Q.y, D, Q.x);
+		Q.y *= E;
+		C += C;
+		C += C;
+		C += C;
+		Q.y -= C;
+	}
 	// P is on y^2 = x^3 + Ell2p_a x + Ell2p_b
 	bool isValidPoint(const Point& P) const
 	{
@@ -256,18 +339,16 @@ PUT(zpows[3]);
 		}
 		assert(0);
 	}
-#if 0
 	void opt_swu2_map(G2& P, const Fp2& t, const Fp2 *t2 = 0) const
 	{
 		Point Pp;
 		osswu2_help(Pp, t);
 		if (t2) {
-			G2 P2;
+			Point P2;
 			osswu2_help(P2, *t2);
-			P += P2;
+			addPoint(Pp, Pp, P2);
 		}
-		iso3(P, P);
+		iso3(P, Pp);
 	}
-#endif
 };
 
