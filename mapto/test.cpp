@@ -207,7 +207,7 @@ void addTest(const T& mapto)
 template<class T>
 void iso3Test(const T& mapto)
 {
-	PointStr Ps = {
+	const PointStr Ps = {
 		{
 			"0xf0d9554fa5b04dbc6b106727e987bd68fb8c0cc97226a3845b59cc9d09972f24ea5a0d93cd0eedd18318c0024bf3df0",
 			"0x656650d143a2cf4a913821fa6a90ab6baa0bb063d1207b15108ea919258bfa4bdd1ba7247e8e65300d526801e43dca6",
@@ -221,7 +221,7 @@ void iso3Test(const T& mapto)
 			"0x822bc033cf0eec8bea9037ede74db0a73d932dc9b43f855e1862b747b0e53312dde5ed301e32551a11a5ef2dfe2dbf4",
 		}
 	};
-	PointStr Qs = {
+	const PointStr Qs = {
 		{
 			"0x8d5483693b4cf3fd5c7a62dad4179503094a66a52f2498dcedb5c97a33697ba4110e2da42ddef98beeeab04619ec0fe",
 			"0xd45728bb18737fb6abf8cc94ad37957f95855da867ca718708503fd072d3707ca6059fefb5c52b2745210cdd7991d10",
@@ -235,11 +235,28 @@ void iso3Test(const T& mapto)
 			"0xf0c64e52dbb8e2dca3c790993c8f101012c516b2884db16de4d857ae6bfb85e9101ab15906870b3e5a18268a57bfc99",
 		}
 	};
+	const PointStr clearPs = {
+		{
+			"0x6f3d4cbd80011d9cbf0f0772502d1e6571d00bc24efc892659339fc8ae049e757c57d22368c33cfc6c64bc2df59b3da",
+			"0x71e02679953af97ed57d9301d126c3243de7faa3bbebd40b46af880ba3ba608b8c09c0a876401545ce6f901950f192",
+		},
+		{
+			"0x174d1e92bd85b0cf1dd2808bd96a25ed48ba1e8d15c1af5557f62719e9f425bd8df58c900cf036e57bce1b1c78efb859",
+			"0x1cfc358b91d57bf6aa9fa6c688b0ef516fdac0c9bfd9ef310ea11e44aaf778cca99430594a8f5eb37d31c1b1f72c2f6",
+		},
+		{
+			"0x17614e52aacf8804ed2e7509db5b72395e586e2edc92dba02da24e6f73d059226a6deb6e396bd39567cec952f3849a6c",
+			"0xb7b36b9b1bbcf801d21ca5164aa9a0e71df2b4710c67dc0cd275b786800935fc29defbdf9c7e23dc84e26af13ba761d",
+		}
+	};
 	typename T::Point P;
 	G2 Q1, Q2;
 	set(P, Ps);
 	set(Q1, Qs);
 	mapto.iso3(Q2, P);
+	CYBOZU_TEST_EQUAL(Q1, Q2);
+	set(Q1, clearPs);
+	mapto.clearH2(Q2, Q2);
 	CYBOZU_TEST_EQUAL(Q1, Q2);
 }
 

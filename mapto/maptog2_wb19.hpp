@@ -362,6 +362,10 @@ struct MapToG2_WB19 {
 		}
 		assert(0);
 	}
+	void clearH2(G2& Q, const G2& P) const
+	{
+		mcl::bn::BN::param.mapTo.mulByCofactorBLS12fast(Q, P);
+	}
 	void opt_swu2_map(G2& P, const Fp2& t, const Fp2 *t2 = 0) const
 	{
 		Point Pp;
@@ -372,6 +376,7 @@ struct MapToG2_WB19 {
 			addPoint(Pp, Pp, P2);
 		}
 		iso3(P, Pp);
+		clearH2(P, P);
 	}
 };
 
