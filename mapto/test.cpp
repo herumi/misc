@@ -288,6 +288,28 @@ void opt_swu2_mapTest(const T& mapto)
 	CYBOZU_TEST_EQUAL(P1, P2);
 }
 
+template<class T>
+void testVec(const T& mapto, const char *file)
+{
+	std::ifstream ifs(file);
+	Fp2 t1, t2;
+	G2 out, P;
+	std::string s;
+	for (;;) {
+		ifs >> s;
+		if (s != "t1") break;
+		ifs >> t1;
+		ifs >> s;
+		CYBOZU_TEST_EQUAL(s, "t2");
+		ifs >> t2;
+		ifs >> s;
+		CYBOZU_TEST_EQUAL(s, "out");
+		ifs >> out.x >> out.y >> out.z;
+		mapto.opt_swu2_map(P, t1, &t2);
+		CYBOZU_TEST_EQUAL(P, out);
+	}
+}
+
 CYBOZU_TEST_AUTO(test)
 {
 	MapToG2_WB19 mapto;
@@ -296,6 +318,7 @@ CYBOZU_TEST_AUTO(test)
 	addTest(mapto);
 	iso3Test(mapto);
 	opt_swu2_mapTest(mapto);
+	testVec(mapto, "fips_186_3_B233.txt");
 }
 
 int main(int argc, char *argv[])
