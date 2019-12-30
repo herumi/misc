@@ -319,6 +319,7 @@ CYBOZU_TEST_AUTO(test)
 	iso3Test(mapto);
 	opt_swu2_mapTest(mapto);
 	testVec(mapto, "fips_186_3_B233.txt");
+	testVec(mapto, "misc.txt");
 }
 
 int main(int argc, char *argv[])
