@@ -1,14 +1,13 @@
 #pragma once
 /**
 	@file
-	@brief map to G2 on BLS12-381
+	@brief map to G2 on BLS12-381 (must be included from mcl/bn.hpp)
 	@author MITSUNARI Shigeo(@herumi)
 	@license modified new BSD license
 	http://opensource.org/licenses/BSD-3-Clause
-	ref. https://eprint.iacr.org/2019/403 , https://github.com/kwantam/bls12-381_hash
+	ref. https://eprint.iacr.org/2019/403 , https://github.com/algorand/bls_sigs_ref
 */
 
-// clear_h2 == mulByCofactorBLS12fast
 struct MapToG2_WB19 {
 	Fp2 xi;
 	Fp2 Ell2p_a;
@@ -28,7 +27,16 @@ struct MapToG2_WB19 {
 			return z.isZero();
 		}
 	};
-	void addPoint(Point& R, const Point& P, const Point& Q) const
+	// should be merged into ec.hpp
+	template<class G>
+	void neg(G& Q, const G& P) const
+	{
+		Q.x = P.x;
+		Fp2::neg(Q.y, P.y);
+		Q.z = P.z;
+	}
+	template<class G>
+	void add(G& R, const G& P, const G& Q) const
 	{
 		if (P.isZero()) {
 			R = Q;
@@ -48,7 +56,7 @@ struct MapToG2_WB19 {
 		Fp2::mul(S2, Q.y, P.z);
 		S2 *= Z1Z1;
 		if (U1 == U2 && S1 == S2) {
-			dblPoint(R, P);
+			dbl(R, P);
 			return;
 		}
 		Fp2 H, I, J, rr, V;
@@ -77,7 +85,8 @@ struct MapToG2_WB19 {
 		R.y -= S1;
 		R.y -= S1;
 	}
-	void dblPoint(Point& Q, const Point& P) const
+	template<class G>
+	void dbl(G& Q, const G& P) const
 	{
 		Fp2 A, B, C, D, E, F;
 		Fp2::sqr(A, P.x);
@@ -110,18 +119,18 @@ struct MapToG2_WB19 {
 	// P is on y^2 = x^3 + Ell2p_a x + Ell2p_b
 	bool isValidPoint(const Point& P) const
 	{
-        Fp2 y2, x2, z2, z4, t;
-        Fp2::sqr(x2, P.x);
-        Fp2::sqr(y2, P.y);
-        Fp2::sqr(z2, P.z);
-        Fp2::sqr(z4, z2);
-        Fp2::mul(t, z4, Ell2p_a);
-        t += x2;
-        t *= P.x;
-        z4 *= z2;
-        z4 *= Ell2p_b;
-        t += z4;
-        return y2 == t;
+    Fp2 y2, x2, z2, z4, t;
+    Fp2::sqr(x2, P.x);
+    Fp2::sqr(y2, P.y);
+    Fp2::sqr(z2, P.z);
+    Fp2::sqr(z4, z2);
+    Fp2::mul(t, z4, Ell2p_a);
+    t += x2;
+    t *= P.x;
+    z4 *= z2;
+    z4 *= Ell2p_b;
+    t += z4;
+    return y2 == t;
 	}
 	void init()
 	{
@@ -362,9 +371,226 @@ struct MapToG2_WB19 {
 		}
 		assert(0);
 	}
-	void clearH2(G2& Q, const G2& P) const
+	void h2_chain(G2& t1, const G2& P) const
 	{
+		G2 t0, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15;
+		t0 = P;
+		dbl(t1, t0);
+		add(t4, t1, t0);
+		add(t2, t4, t1);
+		add(t3, t2, t1);
+		add(t11, t3, t1);
+		add(t9, t11, t1);
+		add(t10, t9, t1);
+		add(t5, t10, t1);
+		add(t7, t5, t1);
+		add(t15, t7, t1);
+		add(t13, t15, t1);
+		add(t6, t13, t1);
+		add(t14, t6, t1);
+		add(t12, t14, t1);
+		add(t8, t12, t1);
+		dbl(t1, t6);
+		for (size_t i = 0; i < 5; i++) dbl(t1, t1);
+		add(t1, t1, t13);
+		for (size_t i = 0; i < 2; i++) dbl(t1, t1);
+		add(t1, t1, t0);
+		for (size_t i = 0; i < 9; i++) dbl(t1, t1);
+		add(t1, t1, t8);
+		for (size_t i = 0; i < 5; i++) dbl(t1, t1);
+		add(t1, t1, t11);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t13);
+		for (size_t i = 0; i < 8; i++) dbl(t1, t1);
+		add(t1, t1, t2);
+		for (size_t i = 0; i < 5; i++) dbl(t1, t1);
+		add(t1, t1, t3);
+		for (size_t i = 0; i < 5; i++) dbl(t1, t1);
+		add(t1, t1, t3);
+		for (size_t i = 0; i < 4; i++) dbl(t1, t1);
+		add(t1, t1, t5);
+		for (size_t i = 0; i < 4; i++) dbl(t1, t1);
+		add(t1, t1, t0);
+		for (size_t i = 0; i < 8; i++) dbl(t1, t1);
+		add(t1, t1, t11);
+		for (size_t i = 0; i < 8; i++) dbl(t1, t1);
+		add(t1, t1, t8);
+		for (size_t i = 0; i < 4; i++) dbl(t1, t1);
+		add(t1, t1, t2);
+		for (size_t i = 0; i < 9; i++) dbl(t1, t1);
+		add(t1, t1, t5);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t11);
+		for (size_t i = 0; i < 2; i++) dbl(t1, t1);
+		add(t1, t1, t0);
+		for (size_t i = 0; i < 9; i++) dbl(t1, t1);
+		add(t1, t1, t8);
+		for (size_t i = 0; i < 5; i++) dbl(t1, t1);
+		add(t1, t1, t13);
+		for (size_t i = 0; i < 4; i++) dbl(t1, t1);
+		add(t1, t1, t0);
+		for (size_t i = 0; i < 11; i++) dbl(t1, t1);
+		add(t1, t1, t9);
+		for (size_t i = 0; i < 7; i++) dbl(t1, t1);
+		add(t1, t1, t12);
+		for (size_t i = 0; i < 7; i++) dbl(t1, t1);
+		add(t1, t1, t7);
+		for (size_t i = 0; i < 5; i++) dbl(t1, t1);
+		add(t1, t1, t12);
+		for (size_t i = 0; i < 5; i++) dbl(t1, t1);
+		add(t1, t1, t14);
+		for (size_t i = 0; i < 8; i++) dbl(t1, t1);
+		add(t1, t1, t13);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t3);
+		for (size_t i = 0; i < 5; i++) dbl(t1, t1);
+		add(t1, t1, t0);
+		for (size_t i = 0; i < 8; i++) dbl(t1, t1);
+		add(t1, t1, t9);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t13);
+		for (size_t i = 0; i < 4; i++) dbl(t1, t1);
+		add(t1, t1, t10);
+		for (size_t i = 0; i < 4; i++) dbl(t1, t1);
+		add(t1, t1, t2);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t10);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t2);
+		for (size_t i = 0; i < 4; i++) dbl(t1, t1);
+		add(t1, t1, t0);
+		for (size_t i = 0; i < 10; i++) dbl(t1, t1);
+		add(t1, t1, t9);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t14);
+		for (size_t i = 0; i < 4; i++) dbl(t1, t1);
+		add(t1, t1, t3);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t9);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t15);
+		for (size_t i = 0; i < 5; i++) dbl(t1, t1);
+		add(t1, t1, t8);
+		for (size_t i = 0; i < 5; i++) dbl(t1, t1);
+		add(t1, t1, t12);
+		for (size_t i = 0; i < 4; i++) dbl(t1, t1);
+		add(t1, t1, t5);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t15);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t2);
+		for (size_t i = 0; i < 7; i++) dbl(t1, t1);
+		add(t1, t1, t5);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t3);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t9);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t15);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t14);
+		for (size_t i = 0; i < 5; i++) dbl(t1, t1);
+		add(t1, t1, t8);
+		for (size_t i = 0; i < 10; i++) dbl(t1, t1);
+		add(t1, t1, t6);
+		for (size_t i = 0; i < 5; i++) dbl(t1, t1);
+		add(t1, t1, t5);
+		for (size_t i = 0; i < 3; i++) dbl(t1, t1);
+		add(t1, t1, t0);
+		for (size_t i = 0; i < 9; i++) dbl(t1, t1);
+		add(t1, t1, t13);
+		for (size_t i = 0; i < 7; i++) dbl(t1, t1);
+		add(t1, t1, t12);
+		for (size_t i = 0; i < 4; i++) dbl(t1, t1);
+		add(t1, t1, t5);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t2);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t11);
+		for (size_t i = 0; i < 4; i++) dbl(t1, t1);
+		add(t1, t1, t10);
+		for (size_t i = 0; i < 4; i++) dbl(t1, t1);
+		add(t1, t1, t4);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t10);
+		for (size_t i = 0; i < 7; i++) dbl(t1, t1);
+		add(t1, t1, t7);
+		for (size_t i = 0; i < 3; i++) dbl(t1, t1);
+		add(t1, t1, t2);
+		for (size_t i = 0; i < 4; i++) dbl(t1, t1);
+		add(t1, t1, t3);
+		for (size_t i = 0; i < 8; i++) dbl(t1, t1);
+		add(t1, t1, t9);
+		for (size_t i = 0; i < 8; i++) dbl(t1, t1);
+		add(t1, t1, t9);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t8);
+		for (size_t i = 0; i < 5; i++) dbl(t1, t1);
+		add(t1, t1, t7);
+		for (size_t i = 0; i < 5; i++) dbl(t1, t1);
+		add(t1, t1, t6);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t5);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t4);
+		for (size_t i = 0; i < 5; i++) dbl(t1, t1);
+		add(t1, t1, t5);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t4);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t3);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t4);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t5);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t3);
+		for (size_t i = 0; i < 7; i++) dbl(t1, t1);
+		add(t1, t1, t3);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t3);
+		for (size_t i = 0; i < 5; i++) dbl(t1, t1);
+		add(t1, t1, t4);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t3);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t3);
+		for (size_t i = 0; i < 3; i++) dbl(t1, t1);
+		add(t1, t1, t0);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t3);
+		for (size_t i = 0; i < 6; i++) dbl(t1, t1);
+		add(t1, t1, t3);
+		for (size_t i = 0; i < 5; i++) dbl(t1, t1);
+		add(t1, t1, t2);
+	}
+	void mx_chain(G2& Q, const G2& P) const
+	{
+		G2 T;
+		dbl(T, P);
+		const size_t tbl[] = { 2, 3, 9, 32, 16 };
+		for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(tbl); i++) {
+			add(T, T, P);
+			for (size_t j = 0; j < tbl[i]; j++) {
+				dbl(T, T);
+			}
+		}
+		Q = T;
+	}
+	void clear_h2(G2& Q, const G2& P) const
+	{
+#if 0
 		mcl::bn::BN::param.mapTo.mulByCofactorBLS12fast(Q, P);
+#else
+		G2 work, work2;
+		h2_chain(work, P);
+		dbl(work2, work);
+		add(work2, work, work2);
+		mx_chain(work, work2);
+		mx_chain(work, work);
+		neg(work2, work2);
+		add(Q, work, work2);
+#endif
 	}
 	void opt_swu2_map(G2& P, const Fp2& t, const Fp2 *t2 = 0) const
 	{
@@ -373,10 +599,10 @@ struct MapToG2_WB19 {
 		if (t2) {
 			Point P2;
 			osswu2_help(P2, *t2);
-			addPoint(Pp, Pp, P2);
+			add(Pp, Pp, P2);
 		}
 		iso3(P, Pp);
-		clearH2(P, P);
+		clear_h2(P, P);
 	}
 };
 

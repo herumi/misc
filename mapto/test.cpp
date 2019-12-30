@@ -174,7 +174,7 @@ void addTest(const T& mapto)
 		set(Q, tbl[i].Q);
 		set(R, tbl[i].R);
 		Point E;
-		mapto.addPoint(E, P, Q);
+		mapto.add(E, P, Q);
 		CYBOZU_TEST_EQUAL(R.x, E.x);
 		CYBOZU_TEST_EQUAL(R.y, E.y);
 		CYBOZU_TEST_EQUAL(R.z, E.z);
@@ -233,8 +233,59 @@ void iso3Test(const T& mapto)
 	mapto.iso3(Q2, P);
 	CYBOZU_TEST_EQUAL(Q1, Q2);
 	set(Q1, clearPs);
-	mapto.clearH2(Q2, Q2);
+	mapto.clear_h2(Q2, Q2);
 	CYBOZU_TEST_EQUAL(Q1, Q2);
+}
+
+template<class T>
+void opt_swu2_mapTest(const T& mapto)
+{
+	const Fp2Str t1s = {
+		"0xafcfb20d836159f0cfb6f48c0ed808fd97a1cd1b9f1eb14451ff59e3884b1bf7665406cce673d434dde6933bdcf0ec9",
+		"0x36714c33fa9c79b0bb9ac963f57b2d2b2659e211893e64292ee2a8c1259b1a834a769782bae17202b537a1fe901c55e",
+	};
+	const Fp2Str t2s = {
+        "0xb9a2f39af0cc3264348ed00845545e2ccbed59ea541c726c8429871f9a0917fb4f7e049ac739065eea8354a2d1b2d21",
+		"0xc8810a06deb536d70531352bd2a3aac7496e187a8fc102d800c5f8ed839bd64d7102197aeb2b6164d20ff920ff63afe",
+	};
+	const PointStr P1s = {
+		{
+			"0x13ea937301cfb2a071a265b08e176854034c2e2ae49898e89c042bff176a1be7bf02dfda06f67d38819ca334218b9ff4",
+			"0x180ee537c06213034c842cad3b5a6d0053473e8bb92dd4c5826e59a45268cda3fe28814b1e9f3a58b9db657d9c24a0bd",
+		},
+		{
+			"0x13f4530154b75ce311849e775242b5e791058fd8e1d7df292b8e936e8be05e1cd9fa6eed6280357393d54adf3af0eb9c",
+			"0x10619dc087132cf699b02c905284c3449e80c295c8140345e45e21b7389c8f2cf7b5e223ef87f11f57eb1e689f6c141a",
+		},
+		{
+			"0x40f98938abaece4e47427371b3b6c500f9cdacae9d8b4da79ba9107720bd038057a4cc8ec8427d651760fd795d2415",
+			"0xac9cd43c4ba29f20ed5dd2aa4a634b39810e756313b4826f225efddfb1ae43185ac4f279e628731030e87405a965bf5",
+		},
+	};
+	const PointStr P2s = {
+		{
+			"0x126b4982298792ed049850bb92b55d26c33a8e3139f9ca1a20821496c7396ce5ad9042b0da529e60ec9c3ff8e983befe",
+			"0x11c1d2f6a6a81e1f82dee2278968326e23e6ae469252a51d86673bd8fb333b7bca615b63a068692ff419c5f3e388797b",
+		},
+		{
+			"0x92468e5829b26cc976aff103403b4b5304dd206228c6eb84ecf7b45709307390bf29dced39f9aa037b014ad6fb5a6e4",
+			"0x5bd54eef1fdade89c98ab5c27d3dd9e18868af4250ff3a49de71d060ab62b7be039a3b2a8ef0c870d9021f6eae22029",
+		},
+		{
+			"0x154920adb9d857620c2835f4a5445bda35da53411710d559b18430f1b48c7cf2048cc275e0a9e01436d355f76fa0a9ec",
+			"0xccc404e5d17aa51f7669402916cf86587ce7cd9c657e90b05d7c8860940f741e62628df420d92c659d159d4b7683cce",
+		},
+	};
+	Fp2 t1, t2;
+	set(t1, t1s);
+	set(t2, t2s);
+	G2 P1, P2, P3;
+	set(P1, P1s);
+	mapto.opt_swu2_map(P3, t1, &t2);
+	PUT(P3.x);
+	PUT(P3.y);
+	PUT(P3.z);
+//	CYBOZU_TEST_EQUAL(P2, P3);
 }
 
 CYBOZU_TEST_AUTO(test)
@@ -244,6 +295,7 @@ CYBOZU_TEST_AUTO(test)
 	helpTest(mapto);
 	addTest(mapto);
 	iso3Test(mapto);
+	opt_swu2_mapTest(mapto);
 }
 
 int main(int argc, char *argv[])
