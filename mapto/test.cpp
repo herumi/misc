@@ -248,7 +248,7 @@ void opt_swu2_mapTest(const T& mapto)
         "0xb9a2f39af0cc3264348ed00845545e2ccbed59ea541c726c8429871f9a0917fb4f7e049ac739065eea8354a2d1b2d21",
 		"0xc8810a06deb536d70531352bd2a3aac7496e187a8fc102d800c5f8ed839bd64d7102197aeb2b6164d20ff920ff63afe",
 	};
-	const PointStr P1s = {
+	const PointStr t1t1s = {
 		{
 			"0x13ea937301cfb2a071a265b08e176854034c2e2ae49898e89c042bff176a1be7bf02dfda06f67d38819ca334218b9ff4",
 			"0x180ee537c06213034c842cad3b5a6d0053473e8bb92dd4c5826e59a45268cda3fe28814b1e9f3a58b9db657d9c24a0bd",
@@ -262,7 +262,7 @@ void opt_swu2_mapTest(const T& mapto)
 			"0xac9cd43c4ba29f20ed5dd2aa4a634b39810e756313b4826f225efddfb1ae43185ac4f279e628731030e87405a965bf5",
 		},
 	};
-	const PointStr P2s = {
+	const PointStr t1t2s = {
 		{
 			"0x126b4982298792ed049850bb92b55d26c33a8e3139f9ca1a20821496c7396ce5ad9042b0da529e60ec9c3ff8e983befe",
 			"0x11c1d2f6a6a81e1f82dee2278968326e23e6ae469252a51d86673bd8fb333b7bca615b63a068692ff419c5f3e388797b",
@@ -279,13 +279,13 @@ void opt_swu2_mapTest(const T& mapto)
 	Fp2 t1, t2;
 	set(t1, t1s);
 	set(t2, t2s);
-	G2 P1, P2, P3;
-	set(P1, P1s);
-	mapto.opt_swu2_map(P3, t1, &t2);
-	PUT(P3.x);
-	PUT(P3.y);
-	PUT(P3.z);
-//	CYBOZU_TEST_EQUAL(P2, P3);
+	G2 P1, P2;
+	set(P1, t1t2s);
+	mapto.opt_swu2_map(P2, t1, &t2);
+	CYBOZU_TEST_EQUAL(P1, P2);
+	set(P1, t1t1s);
+	mapto.opt_swu2_map(P2, t1, &t1);
+	CYBOZU_TEST_EQUAL(P1, P2);
 }
 
 CYBOZU_TEST_AUTO(test)
