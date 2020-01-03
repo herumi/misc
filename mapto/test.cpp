@@ -1,4 +1,3 @@
-#define CYBOZU_TEST_DISABLE_AUTO_RUN
 #include <cybozu/test.hpp>
 #include <mcl/bls12_381.hpp>
 #include <iostream>
@@ -8,7 +7,6 @@ using namespace mcl;
 using namespace mcl::bn;
 
 #define PUT(x) std::cout << #x "=" << (x) << std::endl;
-#include "maptog2_wb19.hpp"
 
 template<class T>
 void testSign(const T& mapto)
@@ -312,20 +310,13 @@ void testVec(const T& mapto, const char *file)
 
 CYBOZU_TEST_AUTO(test)
 {
-	MapToG2_WB19 mapto;
-	mapto.init();
+	initPairing(mcl::BLS12_381);
+	bn::setMapToMode(MCL_MAP_TO_MODE_WB19);
+	const mcl::bn::local::MapToG2_WB19& mapto = BN::param.mapTo.maptog2_wb19_;
 	helpTest(mapto);
 	addTest(mapto);
 	iso3Test(mapto);
 	opt_swu2_mapTest(mapto);
 	testVec(mapto, "fips_186_3_B233.txt");
 	testVec(mapto, "misc.txt");
-}
-
-int main(int argc, char *argv[])
-{
-	initPairing(mcl::BLS12_381);
-	MapToG2_WB19 mapto;
-	mapto.init();
-	return cybozu::test::autoRun.run(argc, argv);
 }
