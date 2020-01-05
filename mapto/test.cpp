@@ -1,4 +1,5 @@
 #include <cybozu/test.hpp>
+#include <cybozu/sha2.hpp>
 #include <mcl/bls12_381.hpp>
 #include <iostream>
 #include <fstream>
@@ -7,6 +8,69 @@ using namespace mcl;
 using namespace mcl::bn;
 
 #define PUT(x) std::cout << #x "=" << (x) << std::endl;
+
+void dump(const void *msg, size_t msgSize)
+{
+	const uint8_t *p = (const uint8_t *)msg;
+	for (size_t i = 0; i < msgSize; i++) {
+		printf("%02x", p[i]);
+	}
+	printf("\n");
+}
+
+bool hmac256(uint8_t hmac[32], const uint8_t *key, size_t keySize, const uint8_t *msg, size_t msgSize)
+{
+	const size_t hmacSize = 32;
+	if (keySize > hmacSize) return false;
+	uint8_t buf[hmacSize];
+	for (size_t i = 0; i < keySize; i++) {
+		buf[i] = key[i] ^ 0x36;
+	}
+	for (size_t i = keySize; i < hmacSize; i++) buf[i] = 0;
+	cybozu::Sha256 hash;
+	hash.update(buf, hmacSize);
+	hash.digest(hmac, hmacSize, msg, msgSize);
+	hash.clear();
+	for (size_t i = 0; i < keySize; i++) {
+		buf[i] = key[i] ^ 0x5c;
+	}
+	hash.update(buf, hmacSize);
+	hash.digest(hmac, hmacSize, hmac, hmacSize);
+	return true;
+}
+// input msg ends with '\x00'
+bool hkdf_extract(uint8_t hmac[32], const uint8_t *salt, size_t saltSize, const uint8_t *msg, size_t msgSize)
+{
+	uint8_t saltZero[32];
+	if (salt == 0 || saltSize == 0) {
+		memset(saltZero, 0, sizeof(saltZero));
+		salt = saltZero;
+		saltSize = sizeof(saltZero);
+	}
+	return hmac256(hmac, salt, saltSize, msg, msgSize);
+}
+
+// ctr = 0 or 1 or 2
+bool hash(Fp2& out, const void *msg, size_t msgSize, uint8_t ctr, const void *dst, size_t dstSize)
+{
+	const size_t degree = 2;
+	const size_t blen = 64;
+	uint8_t msg_prime[32];
+	if (!hkdf_extract(msg_prime, reinterpret_cast<const uint8_t*>(dst), dstSize, reinterpret_cast<const uint8_t*>(msg), msgSize)) return false;
+	dump(msg_prime, sizeof(msg_prime));
+	return true;
+}
+
+void testHash()
+{
+	const char *msg = "the message to be signed";
+	const char *dst = "\x02";
+	const char *outS = "0xe54bc0f2e26071a79ba5fe7ae5307d39cf5519e581e03b43f39a431eccc258fa1477c517b1268b22986601ee5caa5ea 0x17e8397d5e687ff7f915c23f27fe1ca2c397a7df91de8c88dc82d34c9188a3ef719f9f20436ea8a5fe7d509fbc79214d";
+	Fp2 out, ok;
+	ok.setStr(outS);
+	hash(out, msg, strlen(msg) + 1, 0, dst, strlen(dst));
+	CYBOZU_TEST_EQUAL(out, ok);
+}
 
 template<class T>
 void testSign(const T& mapto)
@@ -319,4 +383,5 @@ CYBOZU_TEST_AUTO(test)
 	opt_swu2_mapTest(mapto);
 	testVec(mapto, "fips_186_3_B233.txt");
 	testVec(mapto, "misc.txt");
+	testHash();
 }
