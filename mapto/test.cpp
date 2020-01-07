@@ -18,28 +18,47 @@ void dump(const void *msg, size_t msgSize)
 	printf("\n");
 }
 
-bool hmac256(uint8_t hmac[32], const uint8_t *key, size_t keySize, const uint8_t *msg, size_t msgSize)
+std::string toHexStr(const void *_buf, size_t n)
 {
-	const size_t hmacSize = 32;
-	if (keySize > hmacSize) return false;
-	uint8_t buf[hmacSize];
-	for (size_t i = 0; i < keySize; i++) {
-		buf[i] = key[i] ^ 0x36;
+	const uint8_t *buf = (const uint8_t*)_buf;
+	std::string out;
+	out.resize(n * 2);
+	for (size_t i = 0; i < n; i++) {
+		cybozu::itohex(&out[i * 2], 2, buf[i], false);
 	}
-	for (size_t i = keySize; i < hmacSize; i++) buf[i] = 0;
+	return out;
+}
+
+void hmac256(uint8_t hmac[32], const void *key, size_t keySize, const void *_msg, size_t msgSize)
+{
+	const uint8_t *msg = reinterpret_cast<const uint8_t*>(_msg);
+	uint8_t k[64];
 	cybozu::Sha256 hash;
-	hash.update(buf, hmacSize);
-	hash.digest(hmac, hmacSize, msg, msgSize);
-	hash.clear();
-	for (size_t i = 0; i < keySize; i++) {
-		buf[i] = key[i] ^ 0x5c;
+	if (keySize > 64) {
+		hash.digest(k, 32, key, keySize);
+		hash.clear();
+		memset(k + 32, 0, 32);
+	} else {
+		memcpy(k, key, keySize);
+		memset(k + keySize, 0, 64 - keySize);
 	}
-	hash.update(buf, hmacSize);
-	hash.digest(hmac, hmacSize, hmac, hmacSize);
-	return true;
+	uint8_t x[64];
+	// ipad
+	for (size_t i = 0; i < 64; i++) {
+		x[i] = k[i] ^ 0x36;
+	}
+	hash.update(x, 64);
+	hash.digest(hmac, 32, msg, msgSize);
+	hash.clear();
+	// opad
+	for (size_t i = 0; i < 64; i++) {
+		x[i] = k[i] ^ 0x5c;
+	}
+	hash.update(x, 64);
+	hash.digest(hmac, 32, hmac, 32);
 }
 // input msg ends with '\x00'
-bool hkdf_extract(uint8_t hmac[32], const uint8_t *salt, size_t saltSize, const uint8_t *msg, size_t msgSize)
+void hkdf_extract(uint8_t hmac[32], const uint8_t *salt, size_t saltSize, const uint8_t *msg, size_t msgSize)
 {
 	uint8_t saltZero[32];
 	if (salt == 0 || saltSize == 0) {
@@ -47,18 +66,28 @@ bool hkdf_extract(uint8_t hmac[32], const uint8_t *salt, size_t saltSize, const 
 		salt = saltZero;
 		saltSize = sizeof(saltZero);
 	}
-	return hmac256(hmac, salt, saltSize, msg, msgSize);
+	hmac256(hmac, salt, saltSize, msg, msgSize);
 }
 
 // ctr = 0 or 1 or 2
-bool hash(Fp2& out, const void *msg, size_t msgSize, uint8_t ctr, const void *dst, size_t dstSize)
+void hash(Fp2& out, const void *msg, size_t msgSize, uint8_t ctr, const void *dst, size_t dstSize)
 {
 	const size_t degree = 2;
 	const size_t blen = 64;
 	uint8_t msg_prime[32];
-	if (!hkdf_extract(msg_prime, reinterpret_cast<const uint8_t*>(dst), dstSize, reinterpret_cast<const uint8_t*>(msg), msgSize)) return false;
+	hkdf_extract(msg_prime, reinterpret_cast<const uint8_t*>(dst), dstSize, reinterpret_cast<const uint8_t*>(msg), msgSize);
 	dump(msg_prime, sizeof(msg_prime));
-	return true;
+}
+
+void testHMAC()
+{
+	const char *key = "\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b";
+	const char *msg = "Hi There";
+	uint8_t hmac[32];
+	const char *expect = "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7";
+	hmac256(hmac, key, strlen(key), msg, strlen(msg));
+	std::string out = toHexStr(hmac, 32);
+	CYBOZU_TEST_EQUAL(out, expect);
 }
 
 void testHash()
@@ -383,5 +412,6 @@ CYBOZU_TEST_AUTO(test)
 	opt_swu2_mapTest(mapto);
 	testVec(mapto, "fips_186_3_B233.txt");
 	testVec(mapto, "misc.txt");
-	testHash();
+	testHMAC();
+//	testHash();
 }
