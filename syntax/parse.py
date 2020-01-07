@@ -9,7 +9,30 @@ def skipSpace(s):
     i = i + 1
   return s[i:]
 
-def parseNumber(s, stack):
+def parseNum(s):
+  i = 0
+  num = ''
+  while i < len(s):
+    c = s[i]
+    if c not in "0123456789":
+      break
+    num = num + c
+    i = i + 1
+  return (num, s[i:])
+
+def isValidNum(s):
+  i = 0
+  v = ''
+  while i < len(s):
+    if s[i] not in "0123456789":
+      return False
+    i = i + 1
+  return True
+
+def isValidVar(s):
+  return s and s[0] not in "0123456789"
+
+def parseTerm(s, stack):
   s = skipSpace(s)
   if s == '':
     raise Exception("Number empty")
@@ -18,15 +41,22 @@ def parseNumber(s, stack):
     if ns[0] != ')':
       raise Exception("Number", s, ns)
     return ns[1:]
-  num = ''
   i = 0
+  v = ''
   while i < len(s):
     c = s[i]
-    if c not in "0123456789":
+    if c not in "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_":
       break
-    num = num + c
+    v = v + c
     i = i + 1
-  stack.append(('num', num))
+  if v == '':
+    raise Exception("parseTerm empty")
+  if isValidNum(v):
+    stack.append(('num', v))
+  elif isValidVar(v):
+    stack.append(('var', v))
+  else:
+    raise Exception('parseTerm', s)
   return s[i:]
 
 def parseAddSub(s, stack):
@@ -46,16 +76,16 @@ def parseAddSub(s, stack):
   return s
 
 def parseMulDiv(s, stack):
-  s = parseNumber(s, stack)
+  s = parseTerm(s, stack)
   while s != '':
     s = skipSpace(s)
     if s == '':
       break
     if s[0] == '*':
-      s = parseNumber(s[1:], stack)
+      s = parseTerm(s[1:], stack)
       stack.append(('op', '*'))
     elif s[0] == '/':
-      s = parseNumber(s[1:], stack)
+      s = parseTerm(s[1:], stack)
       stack.append(('op', '/'))
     else:
       break
