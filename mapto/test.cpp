@@ -29,32 +29,30 @@ std::string toHexStr(const void *_buf, size_t n)
 	return out;
 }
 
-void hmac256(uint8_t hmac[32], const void *key, size_t keySize, const void *_msg, size_t msgSize)
+void hmac256(uint8_t hmac[32], const void *key, size_t keySize, const void *msg, size_t msgSize)
 {
-	const uint8_t *msg = reinterpret_cast<const uint8_t*>(_msg);
+	const uint8_t ipad = 0x36;
+	const uint8_t opad = 0x5c;
 	uint8_t k[64];
 	cybozu::Sha256 hash;
 	if (keySize > 64) {
 		hash.digest(k, 32, key, keySize);
 		hash.clear();
-		memset(k + 32, 0, 32);
+		keySize = 32;
 	} else {
 		memcpy(k, key, keySize);
-		memset(k + keySize, 0, 64 - keySize);
 	}
-	uint8_t x[64];
-	// ipad
-	for (size_t i = 0; i < 64; i++) {
-		x[i] = k[i] ^ 0x36;
+	for (size_t i = 0; i < keySize; i++) {
+		k[i] = k[i] ^ ipad;
 	}
-	hash.update(x, 64);
+	memset(k + keySize, ipad, 64 - keySize);
+	hash.update(k, 64);
 	hash.digest(hmac, 32, msg, msgSize);
 	hash.clear();
-	// opad
 	for (size_t i = 0; i < 64; i++) {
-		x[i] = k[i] ^ 0x5c;
+		k[i] = k[i] ^ (ipad ^ opad);
 	}
-	hash.update(x, 64);
+	hash.update(k, 64);
 	hash.digest(hmac, 32, hmac, 32);
 }
 // input msg ends with '\x00'
