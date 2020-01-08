@@ -29,32 +29,6 @@ std::string toHexStr(const void *_buf, size_t n)
 	return out;
 }
 
-void hmac256(uint8_t hmac[32], const void *key, size_t keySize, const void *msg, size_t msgSize)
-{
-	const uint8_t ipad = 0x36;
-	const uint8_t opad = 0x5c;
-	uint8_t k[64];
-	cybozu::Sha256 hash;
-	if (keySize > 64) {
-		hash.digest(k, 32, key, keySize);
-		hash.clear();
-		keySize = 32;
-	} else {
-		memcpy(k, key, keySize);
-	}
-	for (size_t i = 0; i < keySize; i++) {
-		k[i] = k[i] ^ ipad;
-	}
-	memset(k + keySize, ipad, 64 - keySize);
-	hash.update(k, 64);
-	hash.digest(hmac, 32, msg, msgSize);
-	hash.clear();
-	for (size_t i = 0; i < 64; i++) {
-		k[i] = k[i] ^ (ipad ^ opad);
-	}
-	hash.update(k, 64);
-	hash.digest(hmac, 32, hmac, 32);
-}
 // input msg ends with '\x00'
 void hkdf_extract(uint8_t hmac[32], const uint8_t *salt, size_t saltSize, const uint8_t *msg, size_t msgSize)
 {
@@ -64,7 +38,7 @@ void hkdf_extract(uint8_t hmac[32], const uint8_t *salt, size_t saltSize, const 
 		salt = saltZero;
 		saltSize = sizeof(saltZero);
 	}
-	hmac256(hmac, salt, saltSize, msg, msgSize);
+	cybozu::hmac256(hmac, salt, saltSize, msg, msgSize);
 }
 
 // ctr = 0 or 1 or 2
@@ -83,7 +57,7 @@ void testHMAC()
 	const char *msg = "Hi There";
 	uint8_t hmac[32];
 	const char *expect = "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7";
-	hmac256(hmac, key, strlen(key), msg, strlen(msg));
+	cybozu::hmac256(hmac, key, strlen(key), msg, strlen(msg));
 	std::string out = toHexStr(hmac, 32);
 	CYBOZU_TEST_EQUAL(out, expect);
 }
