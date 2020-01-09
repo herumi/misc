@@ -41,14 +41,44 @@ void hkdf_extract(uint8_t hmac[32], const uint8_t *salt, size_t saltSize, const 
 	cybozu::hmac256(hmac, salt, saltSize, msg, msgSize);
 }
 
+void hkdf_expand(uint8_t out[64], const uint8_t prk[32], char info[6])
+{
+	const size_t length = 64;
+	info[5] = 1;
+	cybozu::hmac256(out, prk, 32, info, 6);
+	info[5] = 2;
+	memcpy(out + 32, info, 6);
+	cybozu::hmac256(out + 32, prk, 32, out, 32 + 6);
+}
+
+void swap(uint8_t *x, size_t n)
+{
+	for (size_t i = 0; i < n/2; i++) {
+		uint8_t t = x[i];
+		x[i] = x[n - 1 - i];
+		x[n - 1 - i] = t;
+	}
+}
+
 // ctr = 0 or 1 or 2
 void hash(Fp2& out, const void *msg, size_t msgSize, uint8_t ctr, const void *dst, size_t dstSize)
 {
+	assert(0 <= ctr && ctr <= 2);
 	const size_t degree = 2;
 	const size_t blen = 64;
 	uint8_t msg_prime[32];
 	hkdf_extract(msg_prime, reinterpret_cast<const uint8_t*>(dst), dstSize, reinterpret_cast<const uint8_t*>(msg), msgSize);
-	dump(msg_prime, sizeof(msg_prime));
+	char info_pfx[] = "H2C000";
+	info_pfx[3] = ctr;
+	for (size_t i = 0; i < degree; i++) {
+		info_pfx[4] = char(i + 1);
+		uint8_t t[64];
+		hkdf_expand(t, msg_prime, info_pfx);
+		swap(t, 64);
+		bool b;
+		out.getFp0()[i].setArray(&b, t, 64, mcl::fp::Mod);
+		if (!b) throw cybozu::Exception("ERR");
+	}
 }
 
 void testHMAC()
@@ -385,5 +415,5 @@ CYBOZU_TEST_AUTO(test)
 	testVec(mapto, "fips_186_3_B233.txt");
 	testVec(mapto, "misc.txt");
 	testHMAC();
-//	testHash();
+	testHash();
 }
