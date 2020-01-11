@@ -43,7 +43,6 @@ void hkdf_extract(uint8_t hmac[32], const uint8_t *salt, size_t saltSize, const 
 
 void hkdf_expand(uint8_t out[64], const uint8_t prk[32], char info[6])
 {
-	const size_t length = 64;
 	info[5] = 1;
 	cybozu::hmac256(out, prk, 32, info, 6);
 	info[5] = 2;
