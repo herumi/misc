@@ -3,6 +3,7 @@
 #include <mcl/bls12_381.hpp>
 #include <iostream>
 #include <fstream>
+#include <cybozu/atoi.hpp>
 
 using namespace mcl;
 using namespace mcl::bn;
@@ -27,6 +28,22 @@ std::string toHexStr(const void *_buf, size_t n)
 		cybozu::itohex(&out[i * 2], 2, buf[i], false);
 	}
 	return out;
+}
+
+std::string toHexStr(const std::string& s)
+{
+	return toHexStr(s.c_str(), s.size());
+}
+
+typedef std::vector<uint8_t> Uint8Vec;
+
+Uint8Vec fromHexStr(const std::string& s)
+{
+	Uint8Vec ret(s.size() / 2);
+	for (size_t i = 0; i < s.size(); i += 2) {
+		ret[i / 2] = cybozu::hextoi(&s[i], 2);
+	}
+	return ret;
 }
 
 // input msg ends with '\x00'
@@ -77,6 +94,20 @@ void hash(Fp2& out, const void *msg, size_t msgSize, uint8_t ctr, const void *ds
 		bool b;
 		out.getFp0()[i].setArray(&b, t, 64, mcl::fp::Mod);
 		if (!b) throw cybozu::Exception("ERR");
+	}
+}
+
+void testHash_g2(const char *fileName)
+{
+	std::ifstream ifs(fileName);
+	std::string msg, zero, ret;
+	Uint8Vec buf;
+	Fp2 out;
+	for (;;) {
+		ifs >> msg >> zero >> ret;
+		if (zero != "00") break;
+		buf = fromHexStr(msg);
+		buf.push_back(0);
 	}
 }
 
