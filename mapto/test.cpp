@@ -1,3 +1,4 @@
+#define PUT(x) std::cout << #x "=" << (x) << std::endl;
 #include <cybozu/test.hpp>
 #include <cybozu/sha2.hpp>
 #include <mcl/bls12_381.hpp>
@@ -8,7 +9,6 @@
 using namespace mcl;
 using namespace mcl::bn;
 
-#define PUT(x) std::cout << #x "=" << (x) << std::endl;
 
 void dump(const void *msg, size_t msgSize)
 {
@@ -45,6 +45,32 @@ Uint8Vec fromHexStr(const std::string& s)
 	}
 	return ret;
 }
+
+struct Fp2Str {
+	const char *a;
+	const char *b;
+};
+
+struct PointStr {
+	Fp2Str x;
+	Fp2Str y;
+	Fp2Str z;
+};
+
+void set(Fp2& x, const Fp2Str& s)
+{
+	x.a.setStr(s.a);
+	x.b.setStr(s.b);
+}
+
+template<class Point>
+void set(Point& P, const PointStr& s)
+{
+	set(P.x, s.x);
+	set(P.y, s.y);
+	set(P.z, s.z);
+}
+
 
 // input msg ends with '\x00'
 void hkdf_extract(uint8_t hmac[32], const uint8_t *salt, size_t saltSize, const uint8_t *msg, size_t msgSize)
@@ -149,12 +175,24 @@ void testMap2curve_osswu2(const T& mapto)
 {
 	const char *msg = "the message to be signed";
 	const char *dst = "\x02";
-	G2 out;
+	const PointStr outS = {
+		{
+			"0x29670bca15e948605ae32ac737b719f926bc8cb99e980bf0542cada47f71a9f299f4d8c332776da38c8768ea719911",
+			"0x111b35c14e065f0af7bb2697cba31bd21f629c0d42f75411340ae608df3bc2572b746935a788caa6ef10014ee02a0bf0",
+		},
+		{
+			"0xe99fd88ee5bd8272483b498245a59b34a22d4820cdd564fc044510210e6d8da62752ac467dac6421b330b2f62385305",
+			"0x199c95bcff2d9ae3486d12892740a35904deddc63d33d1080d498fbe1ce468a8efeb9d62e183c71f0a3bf58422e2f1a2",
+		},
+		{
+			"0x147428ea49f35d9864bfc6685e0651f340f1201082c9dce4b99c72d45bf2d4deda4dcb151cefdfd1dd224c8bb85c8a71",
+			"0x7a14a1a0a8a27423e5d912879fec8054ae95f035642e3806fa514b9f1dbbb2bc1144dac067c52305e60e8bc421ad5b4",
+		},
+	};
+	G2 out, ok;
+	set(ok, outS);
 	map2curve_osswu2(out, mapto, msg, strlen(msg) + 1, dst, strlen(dst));
-	out.normalize();
-	std::cout << std::hex;
-	PUT(out.x);
-	PUT(out.y);
+	CYBOZU_TEST_EQUAL(out, ok);
 }
 
 template<class T>
@@ -234,31 +272,6 @@ void helpTest(const T& mapto)
 		CYBOZU_TEST_EQUAL(P.z, z0);
 		CYBOZU_TEST_ASSERT(mapto.isValidPoint(P));
 	}
-}
-
-struct Fp2Str {
-	const char *a;
-	const char *b;
-};
-
-struct PointStr {
-	Fp2Str x;
-	Fp2Str y;
-	Fp2Str z;
-};
-
-void set(Fp2& x, const Fp2Str& s)
-{
-	x.a.setStr(s.a);
-	x.b.setStr(s.b);
-}
-
-template<class Point>
-void set(Point& P, const PointStr& s)
-{
-	set(P.x, s.x);
-	set(P.y, s.y);
-	set(P.z, s.z);
 }
 
 template<class T>
@@ -462,7 +475,6 @@ CYBOZU_TEST_AUTO(test)
 	initPairing(mcl::BLS12_381);
 	bn::setMapToMode(MCL_MAP_TO_MODE_WB19);
 	const mcl::bn::local::MapToG2_WB19& mapto = BN::param.mapTo.maptog2_wb19_;
-#if 0
 	helpTest(mapto);
 	addTest(mapto);
 	iso3Test(mapto);
@@ -471,6 +483,5 @@ CYBOZU_TEST_AUTO(test)
 	testVec(mapto, "misc.txt");
 	testHMAC();
 	testHashToFp2();
-#endif
 	testMap2curve_osswu2(mapto);
 }
