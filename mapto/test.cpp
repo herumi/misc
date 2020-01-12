@@ -114,6 +114,7 @@ void hashToFp2(Fp2& out, const void *msg, size_t msgSize, uint8_t ctr, const voi
 	const size_t degree = 2;
 	const size_t blen = 64;
 	uint8_t msg_prime[32];
+	// QQQ add '\0' at the end of dst see. 5.3. Implementation of https://datatracker.ietf.org/doc/draft-irtf-cfrg-hash-to-curve
 	hkdf_extract(msg_prime, reinterpret_cast<const uint8_t*>(dst), dstSize, reinterpret_cast<const uint8_t*>(msg), msgSize);
 	char info_pfx[] = "H2C000";
 	info_pfx[3] = ctr;
