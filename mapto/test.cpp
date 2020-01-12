@@ -19,6 +19,11 @@ void dump(const void *msg, size_t msgSize)
 	printf("\n");
 }
 
+void dump(const std::string& s)
+{
+	dump(s.c_str(), s.size());
+}
+
 std::string toHexStr(const void *_buf, size_t n)
 {
 	const uint8_t *buf = (const uint8_t*)_buf;
@@ -126,25 +131,36 @@ void hashToFp2(Fp2& out, const void *msg, size_t msgSize, uint8_t ctr, const voi
 template<class T>
 void map2curve_osswu2(G2& out, T& mapto, const void *msg, size_t msgSize, const void *dst, size_t dstSize)
 {
-	Fp2 x1, x2;
-	hashToFp2(x1, msg, msgSize, 0, dst, dstSize);
-	hashToFp2(x2, msg, msgSize, 1, dst, dstSize);
-	printf("x1=%s\n", x1.getStr(16).c_str());
-	printf("x2=%s\n", x2.getStr(16).c_str());
-	mapto.opt_swu2_map(out, x1, &x2);
+	Fp2 t1, t2;
+	hashToFp2(t1, msg, msgSize, 0, dst, dstSize);
+	hashToFp2(t2, msg, msgSize, 1, dst, dstSize);
+	mapto.opt_swu2_map(out, t1, &t2);
 }
 
-void testHash_g2(const char *fileName)
+std::string G2tohexStr(G2& P)
 {
+	uint8_t xy[96];
+	size_t n = P.serialize(xy, 96);
+	CYBOZU_TEST_EQUAL(n, 96);
+	return toHexStr(xy, 96);
+}
+
+template<class T>
+void testHash_g2(const T& mapto, const char *fileName)
+{
+	const char *dst = "\x02";
 	std::ifstream ifs(fileName);
-	std::string msg, zero, ret;
 	Uint8Vec buf;
-	Fp2 out;
+	G2 out;
 	for (;;) {
+		std::string msg, zero, ret;
 		ifs >> msg >> zero >> ret;
 		if (zero != "00") break;
 		buf = fromHexStr(msg);
-		buf.push_back(0);
+		buf.push_back(0); // should be removed?
+		map2curve_osswu2(out, mapto, buf.data(), buf.size(), dst, strlen(dst));
+		std::string s = G2tohexStr(out);
+		CYBOZU_TEST_EQUAL(s, ret);
 	}
 }
 
@@ -473,6 +489,7 @@ void testVec(const T& mapto, const char *file)
 CYBOZU_TEST_AUTO(test)
 {
 	initPairing(mcl::BLS12_381);
+	Fp::setETHserialization(true);
 	bn::setMapToMode(MCL_MAP_TO_MODE_WB19);
 	const mcl::bn::local::MapToG2_WB19& mapto = BN::param.mapTo.maptog2_wb19_;
 	helpTest(mapto);
@@ -484,4 +501,5 @@ CYBOZU_TEST_AUTO(test)
 	testHMAC();
 	testHashToFp2();
 	testMap2curve_osswu2(mapto);
+	testHash_g2(mapto, "../../bls_sigs_ref/test-vectors/hash_g2/fips_186_3_B233");
 }
