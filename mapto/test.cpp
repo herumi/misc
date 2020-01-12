@@ -77,7 +77,7 @@ void swap(uint8_t *x, size_t n)
 }
 
 // ctr = 0 or 1 or 2
-void hash(Fp2& out, const void *msg, size_t msgSize, uint8_t ctr, const void *dst, size_t dstSize)
+void hashToFp2(Fp2& out, const void *msg, size_t msgSize, uint8_t ctr, const void *dst, size_t dstSize)
 {
 	assert(0 <= ctr && ctr <= 2);
 	const size_t degree = 2;
@@ -95,6 +95,17 @@ void hash(Fp2& out, const void *msg, size_t msgSize, uint8_t ctr, const void *ds
 		out.getFp0()[i].setArray(&b, t, 64, mcl::fp::Mod);
 		if (!b) throw cybozu::Exception("ERR");
 	}
+}
+
+template<class T>
+void map2curve_osswu2(G2& out, T& mapto, const void *msg, size_t msgSize, const void *dst, size_t dstSize)
+{
+	Fp2 x1, x2;
+	hashToFp2(x1, msg, msgSize, 0, dst, dstSize);
+	hashToFp2(x2, msg, msgSize, 1, dst, dstSize);
+	printf("x1=%s\n", x1.getStr(16).c_str());
+	printf("x2=%s\n", x2.getStr(16).c_str());
+	mapto.opt_swu2_map(out, x1, &x2);
 }
 
 void testHash_g2(const char *fileName)
@@ -122,15 +133,28 @@ void testHMAC()
 	CYBOZU_TEST_EQUAL(out, expect);
 }
 
-void testHash()
+void testHashToFp2()
 {
 	const char *msg = "the message to be signed";
 	const char *dst = "\x02";
 	const char *outS = "0xe54bc0f2e26071a79ba5fe7ae5307d39cf5519e581e03b43f39a431eccc258fa1477c517b1268b22986601ee5caa5ea 0x17e8397d5e687ff7f915c23f27fe1ca2c397a7df91de8c88dc82d34c9188a3ef719f9f20436ea8a5fe7d509fbc79214d";
 	Fp2 out, ok;
 	ok.setStr(outS);
-	hash(out, msg, strlen(msg) + 1, 0, dst, strlen(dst));
+	hashToFp2(out, msg, strlen(msg) + 1, 0, dst, strlen(dst));
 	CYBOZU_TEST_EQUAL(out, ok);
+}
+
+template<class T>
+void testMap2curve_osswu2(const T& mapto)
+{
+	const char *msg = "the message to be signed";
+	const char *dst = "\x02";
+	G2 out;
+	map2curve_osswu2(out, mapto, msg, strlen(msg) + 1, dst, strlen(dst));
+	out.normalize();
+	std::cout << std::hex;
+	PUT(out.x);
+	PUT(out.y);
 }
 
 template<class T>
@@ -438,6 +462,7 @@ CYBOZU_TEST_AUTO(test)
 	initPairing(mcl::BLS12_381);
 	bn::setMapToMode(MCL_MAP_TO_MODE_WB19);
 	const mcl::bn::local::MapToG2_WB19& mapto = BN::param.mapTo.maptog2_wb19_;
+#if 0
 	helpTest(mapto);
 	addTest(mapto);
 	iso3Test(mapto);
@@ -445,5 +470,7 @@ CYBOZU_TEST_AUTO(test)
 	testVec(mapto, "fips_186_3_B233.txt");
 	testVec(mapto, "misc.txt");
 	testHMAC();
-	testHash();
+	testHashToFp2();
+#endif
+	testMap2curve_osswu2(mapto);
 }
