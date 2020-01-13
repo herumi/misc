@@ -77,8 +77,7 @@ void set(Point& P, const PointStr& s)
 }
 
 
-// input msg ends with '\x00'
-void hkdf_extract(uint8_t hmac[32], const uint8_t *salt, size_t saltSize, const uint8_t *msg, size_t msgSize)
+void hkdf_extract_addZeroByte(uint8_t hmac[32], const uint8_t *salt, size_t saltSize, const uint8_t *msg, size_t msgSize)
 {
 	uint8_t saltZero[32];
 	if (salt == 0 || saltSize == 0) {
@@ -86,7 +85,7 @@ void hkdf_extract(uint8_t hmac[32], const uint8_t *salt, size_t saltSize, const 
 		salt = saltZero;
 		saltSize = sizeof(saltZero);
 	}
-	cybozu::hmac256(hmac, salt, saltSize, msg, msgSize);
+	cybozu::hmac256addZeroByte(hmac, salt, saltSize, msg, msgSize);
 }
 
 void hkdf_expand(uint8_t out[64], const uint8_t prk[32], char info[6])
@@ -115,7 +114,7 @@ void hashToFp2(Fp2& out, const void *msg, size_t msgSize, uint8_t ctr, const voi
 	const size_t blen = 64;
 	uint8_t msg_prime[32];
 	// QQQ add '\0' at the end of dst see. 5.3. Implementation of https://datatracker.ietf.org/doc/draft-irtf-cfrg-hash-to-curve
-	hkdf_extract(msg_prime, reinterpret_cast<const uint8_t*>(dst), dstSize, reinterpret_cast<const uint8_t*>(msg), msgSize);
+	hkdf_extract_addZeroByte(msg_prime, reinterpret_cast<const uint8_t*>(dst), dstSize, reinterpret_cast<const uint8_t*>(msg), msgSize);
 	char info_pfx[] = "H2C000";
 	info_pfx[3] = ctr;
 	for (size_t i = 0; i < degree; i++) {
@@ -158,7 +157,6 @@ void testHash_g2(const T& mapto, const char *fileName)
 		ifs >> msg >> zero >> ret;
 		if (zero != "00") break;
 		buf = fromHexStr(msg);
-		buf.push_back(0); // should be removed?
 		map2curve_osswu2(out, mapto, buf.data(), buf.size(), dst, strlen(dst));
 		std::string s = G2tohexStr(out);
 		CYBOZU_TEST_EQUAL(s, ret);
@@ -183,7 +181,7 @@ void testHashToFp2()
 	const char *outS = "0xe54bc0f2e26071a79ba5fe7ae5307d39cf5519e581e03b43f39a431eccc258fa1477c517b1268b22986601ee5caa5ea 0x17e8397d5e687ff7f915c23f27fe1ca2c397a7df91de8c88dc82d34c9188a3ef719f9f20436ea8a5fe7d509fbc79214d";
 	Fp2 out, ok;
 	ok.setStr(outS);
-	hashToFp2(out, msg, strlen(msg) + 1, 0, dst, strlen(dst));
+	hashToFp2(out, msg, strlen(msg), 0, dst, strlen(dst));
 	CYBOZU_TEST_EQUAL(out, ok);
 }
 
@@ -208,7 +206,7 @@ void testMap2curve_osswu2(const T& mapto)
 	};
 	G2 out, ok;
 	set(ok, outS);
-	map2curve_osswu2(out, mapto, msg, strlen(msg) + 1, dst, strlen(dst));
+	map2curve_osswu2(out, mapto, msg, strlen(msg), dst, strlen(dst));
 	CYBOZU_TEST_EQUAL(out, ok);
 }
 
