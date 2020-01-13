@@ -1,5 +1,6 @@
 #define PUT(x) std::cout << #x "=" << (x) << std::endl;
 #include <cybozu/test.hpp>
+//#define CYBOZU_DONT_USE_OPENSSL
 #include <cybozu/sha2.hpp>
 #include <mcl/bls12_381.hpp>
 #include <iostream>
@@ -109,11 +110,10 @@ void swap(uint8_t *x, size_t n)
 // ctr = 0 or 1 or 2
 void hashToFp2(Fp2& out, const void *msg, size_t msgSize, uint8_t ctr, const void *dst, size_t dstSize)
 {
-	assert(0 <= ctr && ctr <= 2);
+	assert(ctr <= 2);
 	const size_t degree = 2;
-	const size_t blen = 64;
 	uint8_t msg_prime[32];
-	// QQQ add '\0' at the end of dst see. 5.3. Implementation of https://datatracker.ietf.org/doc/draft-irtf-cfrg-hash-to-curve
+	// add '\0' at the end of dst see. 5.3. Implementation of https://datatracker.ietf.org/doc/draft-irtf-cfrg-hash-to-curve
 	hkdf_extract_addZeroByte(msg_prime, reinterpret_cast<const uint8_t*>(dst), dstSize, reinterpret_cast<const uint8_t*>(msg), msgSize);
 	char info_pfx[] = "H2C000";
 	info_pfx[3] = ctr;
@@ -124,7 +124,7 @@ void hashToFp2(Fp2& out, const void *msg, size_t msgSize, uint8_t ctr, const voi
 		swap(t, 64);
 		bool b;
 		out.getFp0()[i].setArray(&b, t, 64, mcl::fp::Mod);
-		if (!b) throw cybozu::Exception("ERR");
+		assert(b); (void)b;
 	}
 }
 
