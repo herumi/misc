@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <cybozu/atoi.hpp>
+#include <cybozu/file.hpp>
 
 using namespace mcl;
 using namespace mcl::bn;
@@ -77,66 +78,6 @@ void set(Point& P, const PointStr& s)
 	set(P.z, s.z);
 }
 
-
-void hkdf_extract_addZeroByte(uint8_t hmac[32], const uint8_t *salt, size_t saltSize, const uint8_t *msg, size_t msgSize)
-{
-	uint8_t saltZero[32];
-	if (salt == 0 || saltSize == 0) {
-		memset(saltZero, 0, sizeof(saltZero));
-		salt = saltZero;
-		saltSize = sizeof(saltZero);
-	}
-	cybozu::hmac256addZeroByte(hmac, salt, saltSize, msg, msgSize);
-}
-
-void hkdf_expand(uint8_t out[64], const uint8_t prk[32], char info[6])
-{
-	info[5] = 1;
-	cybozu::hmac256(out, prk, 32, info, 6);
-	info[5] = 2;
-	memcpy(out + 32, info, 6);
-	cybozu::hmac256(out + 32, prk, 32, out, 32 + 6);
-}
-
-void swap(uint8_t *x, size_t n)
-{
-	for (size_t i = 0; i < n/2; i++) {
-		uint8_t t = x[i];
-		x[i] = x[n - 1 - i];
-		x[n - 1 - i] = t;
-	}
-}
-
-// ctr = 0 or 1 or 2
-void hashToFp2(Fp2& out, const void *msg, size_t msgSize, uint8_t ctr, const void *dst, size_t dstSize)
-{
-	assert(ctr <= 2);
-	const size_t degree = 2;
-	uint8_t msg_prime[32];
-	// add '\0' at the end of dst see. 5.3. Implementation of https://datatracker.ietf.org/doc/draft-irtf-cfrg-hash-to-curve
-	hkdf_extract_addZeroByte(msg_prime, reinterpret_cast<const uint8_t*>(dst), dstSize, reinterpret_cast<const uint8_t*>(msg), msgSize);
-	char info_pfx[] = "H2C000";
-	info_pfx[3] = ctr;
-	for (size_t i = 0; i < degree; i++) {
-		info_pfx[4] = char(i + 1);
-		uint8_t t[64];
-		hkdf_expand(t, msg_prime, info_pfx);
-		swap(t, 64);
-		bool b;
-		out.getFp0()[i].setArray(&b, t, 64, mcl::fp::Mod);
-		assert(b); (void)b;
-	}
-}
-
-template<class T>
-void map2curve_osswu2(G2& out, T& mapto, const void *msg, size_t msgSize, const void *dst, size_t dstSize)
-{
-	Fp2 t1, t2;
-	hashToFp2(t1, msg, msgSize, 0, dst, dstSize);
-	hashToFp2(t2, msg, msgSize, 1, dst, dstSize);
-	mapto.opt_swu2_map(out, t1, &t2);
-}
-
 std::string G2tohexStr(G2& P)
 {
 	uint8_t xy[96];
@@ -146,10 +87,11 @@ std::string G2tohexStr(G2& P)
 }
 
 template<class T>
-void testHash_g2(const T& mapto, const char *fileName)
+void testHash_g2(const T& mapto, const std::string& fileName)
 {
 	const char *dst = "\x02";
-	std::ifstream ifs(fileName);
+	printf("name=%s\n", fileName.c_str());
+	std::ifstream ifs(fileName.c_str());
 	Uint8Vec buf;
 	G2 out;
 	for (;;) {
@@ -157,9 +99,19 @@ void testHash_g2(const T& mapto, const char *fileName)
 		ifs >> msg >> zero >> ret;
 		if (zero != "00") break;
 		buf = fromHexStr(msg);
-		map2curve_osswu2(out, mapto, buf.data(), buf.size(), dst, strlen(dst));
+		mapto.map2curve_osswu2(out, buf.data(), buf.size(), dst, strlen(dst));
 		std::string s = G2tohexStr(out);
 		CYBOZU_TEST_EQUAL(s, ret);
+	}
+}
+
+template<class T>
+void testHash_g2All(const T& mapto, const std::string& dir)
+{
+	cybozu::FileList list = cybozu::GetFileList(dir);
+	for (size_t i = 0; i < list.size(); i++) {
+		const cybozu::FileInfo& info = list[i];
+		testHash_g2(mapto, dir + "/" + info.name);
 	}
 }
 
@@ -181,7 +133,7 @@ void testHashToFp2()
 	const char *outS = "0xe54bc0f2e26071a79ba5fe7ae5307d39cf5519e581e03b43f39a431eccc258fa1477c517b1268b22986601ee5caa5ea 0x17e8397d5e687ff7f915c23f27fe1ca2c397a7df91de8c88dc82d34c9188a3ef719f9f20436ea8a5fe7d509fbc79214d";
 	Fp2 out, ok;
 	ok.setStr(outS);
-	hashToFp2(out, msg, strlen(msg), 0, dst, strlen(dst));
+	mcl::bn::local::hashToFp2(out, msg, strlen(msg), 0, dst, strlen(dst));
 	CYBOZU_TEST_EQUAL(out, ok);
 }
 
@@ -206,7 +158,7 @@ void testMap2curve_osswu2(const T& mapto)
 	};
 	G2 out, ok;
 	set(ok, outS);
-	map2curve_osswu2(out, mapto, msg, strlen(msg), dst, strlen(dst));
+	mapto.map2curve_osswu2(out, msg, strlen(msg), dst, strlen(dst));
 	CYBOZU_TEST_EQUAL(out, ok);
 }
 
@@ -500,5 +452,6 @@ CYBOZU_TEST_AUTO(test)
 	testHMAC();
 	testHashToFp2();
 	testMap2curve_osswu2(mapto);
-	testHash_g2(mapto, "../../bls_sigs_ref/test-vectors/hash_g2/fips_186_3_B233");
+//	testHash_g2(mapto, "../../bls_sigs_ref/test-vectors/hash_g2/fips_186_3_B233");
+	testHash_g2All(mapto, "../../bls_sigs_ref/test-vectors/hash_g2/");
 }
