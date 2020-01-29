@@ -174,7 +174,7 @@
   - 2E1-4 外国人被疑者取調べにおける通訳システムのプロトタイプの開発と評価
     - ◎脇田　和宏(東京電機大学)、佐々木　良一(東京電機大学)
   - 2E1-5 Implementation of Covert Communication Based on Bitcoin Regtest Self-built Network
-    - ◎王惟正(会津大学)、??君(揚州大学)、?昭?(会津大学)、邱?(会津大学)、黄??(会津大学)、?春?(会津大学)
+    - ◎王惟正(会津大学)、张乐君(揚州大学)、韩昭阳(会津大学)、邱琛(会津大学)、黄华锟(会津大学)、苏春华(会津大学)
 - 2F1 Webセキュリティ(1) 1月29日(水) 9:00--10:40
   - 2F1-1 攻撃者の経済学的合理性を仮定した上でのフィッシング対策
     - ○伊藤忠彦(セコム株式会社)、大久保智史(DigiCert, Inc.)
@@ -573,7 +573,7 @@
     - ○吉村　東悟(信州大学 大学院総合理工学研究科)、荒井　研一(長崎大学 大学院工学研究科)、岡崎　裕之(信州大学)、布田　裕一(東京工科大学 コンピュータサイエンス学部)、三重野　武彦(エプソンアヴァシス株式会社)
   - 3A4-2 ProVerifによるGroup Domain of Interpretationプロトコルの検証
     - ◎野口 凌雅(茨城大学)、花谷 嘉一(株式会社東芝)、米山 一樹(茨城大学)
-  - 3A4-3 EasyCrypt1.0によるMerkle-Damgardハッシュの計算機支援証明
+  - 3A4-3 EasyCrypt1.0によるMerkle-Damgårdハッシュの計算機支援証明
     - ◎福留 直宙(茨城大学)、米山 一樹(茨城大学)
   - 3A4-4 Zero Knowledge Contingent Paymentプロトコルの検証
     - ◎Cheng Shi(Ibaraki University)、Kazuki Yoneyama(Ibaraki University)
