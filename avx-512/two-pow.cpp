@@ -46,7 +46,7 @@ struct Code : public Xbyak::CodeGenerator {
 			fprintf(stderr, "AVX-512 is not supported\n");
 			exit(1);
 		}
-		const int keepRegN = 3;
+		const int keepRegN = 2;
 		util::StackFrame sf(this, 3, util::UseRCX, 64 * keepRegN);
 		const Reg64& dst = sf.p[0];
 		const Reg64& src = sf.p[1];
@@ -57,11 +57,10 @@ struct Code : public Xbyak::CodeGenerator {
 		vmovups(ptr[rsp + 64 * 0], zm6);
 		vmovups(ptr[rsp + 64 * 1], zm7);
 #endif
-		vmovups(ptr[rsp + 64 * 2], Zmm(8));
 
 		// setup constant
-		const Zmm& log2div4 = zmm3;
-		const Zmm expCoeff[] = { zmm4, zmm5, zmm6, zmm7, zmm8 };
+		const Zmm& log2div4 = zmm2;
+		const Zmm expCoeff[] = { zmm3, zmm4, zmm5, zmm6, zmm7 };
 
 		mov(rax, size_t(&g_data));
 		vpbroadcastd(log2div4, ptr[rax + offsetof(Data, log2div4)]);
@@ -93,7 +92,6 @@ struct Code : public Xbyak::CodeGenerator {
 		vmovups(zm6, ptr[rsp + 64 * 0]);
 		vmovups(zm7, ptr[rsp + 64 * 1]);
 #endif
-		vmovups(Zmm(8), ptr[rsp + 64 * 2]);
 	}
 } g_code;
 
@@ -133,5 +131,5 @@ int main()
 		pow2_v(dst, src, n);
 		clk.end();
 	}
-	printf("clk/element=%4.2f clk\n", clk.getClock() / double(C) / n);
+	printf("clk/element=%4.3f clk\n", clk.getClock() / double(C) / n);
 }
