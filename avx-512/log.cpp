@@ -11,7 +11,7 @@ float logfC(float x)
 {
 	fi fi;
 	fi.f = x;
-	float e = (fi.i - (127 << 23)) >> 23;
+	float e = (int(fi.i - (127 << 23))) >> 23;
 	fi.i = (fi.i & 0x7fffff) | (127 << 23);
 	float y = fi.f;
 	/*
@@ -70,7 +70,7 @@ int main()
 	double maxe = 0;
 	double sum = 0;
 	int count = 0;
-	for (float x = 1; x <= 2; x += 1e-6) {
+	for (float x = 0.1; x <= 2; x += 1e-6) {
 		float y1 = log(x);
 		float y2 = logfC(x);
 		double d = abs(y1 - y2);
