@@ -98,7 +98,6 @@ void testHash_g2(const T& mapto, const std::string& fileName)
 		ifs >> msg >> zero >> ret;
 		if (zero != "00") break;
 		buf = fromHexStr(msg);
-		buf.push_back(0); // add zero byte
 		mapto.map2curve_osswu2(out, buf.data(), buf.size(), dst, strlen(dst));
 		std::string s = G2tohexStr(out);
 		CYBOZU_TEST_EQUAL(s, ret);
@@ -133,7 +132,7 @@ void testHashToFp2()
 	const char *outS = "0xe54bc0f2e26071a79ba5fe7ae5307d39cf5519e581e03b43f39a431eccc258fa1477c517b1268b22986601ee5caa5ea 0x17e8397d5e687ff7f915c23f27fe1ca2c397a7df91de8c88dc82d34c9188a3ef719f9f20436ea8a5fe7d509fbc79214d";
 	Fp2 out, ok;
 	ok.setStr(outS);
-	mcl::bn::local::hashToFp2(out, msg, strlen(msg) + 1, 0, dst, strlen(dst));
+	mcl::hashToFp2(out, msg, strlen(msg), 0, dst, strlen(dst));
 	CYBOZU_TEST_EQUAL(out, ok);
 }
 
@@ -158,7 +157,7 @@ void testMap2curve_osswu2(const T& mapto)
 	};
 	G2 out, ok;
 	set(ok, outS);
-	mapto.map2curve_osswu2(out, msg, strlen(msg) + 1 /* contains zero byte */, dst, strlen(dst));
+	mapto.map2curve_osswu2(out, msg, strlen(msg), dst, strlen(dst));
 	CYBOZU_TEST_EQUAL(out, ok);
 }
 
@@ -442,7 +441,7 @@ CYBOZU_TEST_AUTO(test)
 	initPairing(mcl::BLS12_381);
 	Fp::setETHserialization(true);
 	bn::setMapToMode(MCL_MAP_TO_MODE_WB19);
-	const mcl::bn::local::MapToG2_WB19& mapto = BN::param.mapTo.mapToG2_WB19_;
+	const mcl::MapToG2_WB19<Fp, Fp2, G2>& mapto = BN::param.mapTo.mapToG2_WB19_;
 	helpTest(mapto);
 	addTest(mapto);
 	iso3Test(mapto);
