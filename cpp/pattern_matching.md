@@ -81,8 +81,18 @@ inspect (p) {
   [x, y]: std::cout << x << ',' << y;
 }
 ```
+### 入れ子
+従来
+```
+auto const& [topLeft, unused] = getBoundaryRectangle();
+auto const& [topBoundary, leftBoundary] = topLeft;
+```
 
-提案
+```
+auto const& [[topBoundary, leftBoundary], __] = getBoundaryRectangle();
+```
+
+### メンバ変数指定
 ```
 struct Player { std::string name; int hitpoints; int coins; };
 
@@ -125,37 +135,6 @@ std::visit(visitor{strm}, v);
 inspect (v) {
   <int> i: strm << "got int: " << i;
   <float> f: strm << "got float: " << f;
-}
-```
-
-### 多態
-
-クラス
-```
-struct Shape { virtual ~Shape() = default; };
-struct Circle : Shape { int radius; };
-struct Rectangle : Shape { int width, height; };
-```
-
-従来
-```
-virtual int Shape::get_area() const = 0;
-
-int Circle::get_area() const override {
-  return 3.14 * radius * radius;
-}
-int Rectangle::get_area() const override {
-  return width * height;
-}
-```
-
-提案
-```
-int get_area(const Shape& shape) {
-  return inspect (shape) {
-    <Circle>    [r]    => 3.14 * r * r,
-    <Rectangle> [w, h] => w * h
-  }
 }
 ```
 
@@ -231,17 +210,6 @@ int eval(const Expr& expr) {
 }
 ```
 
-### 入れ子
-従来
-```
-auto const& [topLeft, unused] = getBoundaryRectangle();
-auto const& [topBoundary, leftBoundary] = topLeft;
-```
-
-```
-auto const& [[topBoundary, leftBoundary], __] = getBoundaryRectangle();
-```
-
 ### マッチしないとき
 
 従来
@@ -282,15 +250,29 @@ Op parseOp(Parser& parser) {
 
 ```
 inspect (cond) {
-  pattern => expression,
-  pattern: statement
+  pattern guard_opt => expression,
+  pattern guard_opt: statement
 }
 ```
 - `=>` ; 返すための値を生成する式
 - `:` ; 値は返さない. 中身を実行する. returnするとinspectを実行してる関数から抜ける
 - __ ; wildcard
+- `guard:`は `if (expression)`をかける
 
-## マッチ
+## 識別子(identifier)パターン
+
+- identifierは任意の値にマッチする
+- identifierはvを参照するlvalueとして振る舞う
+- スコープは次のパターンラベルの直前のstatementの終わりまで
+
+```
+int v = ...;
+inspect (v) {
+  x: std::cout << x; // identifier pattern
+}
+```
+
+## 式(expression)マッチ
 
 下記のeはconstant-expression
 ```
@@ -302,17 +284,54 @@ inspect (v) {
 match(e, v)のデフォルト挙動はe == v
 
 ```
+inspect (v) {
+  0: std::cout << "zero";
+  1: std::cout << "one";
+}
+```
+
+```
+enum class Color { Red, Green, Blue };
+Color color = ...;
+inspect (color) {
+  Color::Red: ...
+  Color::Green: ...
+  Color::Blue: ...
+}
+```
+
+以下はidentifier patternになる
+```
 static constexpr int zero = 0, one = 1;
 int v = 42;
 inspect (v) {
-   zero: std::cout << zero;
-// ^^^^ identifier pattern
+   zero: std::cout << zero; // zeroという名前の一時変数が作られる
 }
 // prints: 42
 ```
-Q. なぜ42が表示されるの?
+Q. 42が表示されてうれしいか / 間違えないか?
+
+```
+static constexpr int zero = 0, one = 1;
+std::pair<int, int> p = /* ... */
+inspect (p) {
+  case [zero, one]: {
+  //    ˆˆˆˆ  ˆˆˆ id-expression
+    std::cout << zero << ' ' << one;
+  }
+}
+```
+これもidentifier expression
+
 
 ## 代替パターン
+
+以下の順でマッチを試す
+- `<auto> pattern`
+- `<concept> pattern`
+- `<type>` pattern
+- `<constant-expression> pattern`
+
 ### std::variant
 vに対して`V = std::remove_cvref_t<decltype(v)>`とし
 `get<v.index()>(v)`が正しく設定されているならそれにマッチする
@@ -408,3 +427,57 @@ inspect (a) {
   <float> f: std::cout << "got float: " << f;
 }
 ```
+
+### 多態
+
+クラス
+```
+struct Shape { virtual ~Shape() = default; };
+struct Circle : Shape { int radius; };
+struct Rectangle : Shape { int width, height; };
+```
+
+従来
+```
+virtual int Shape::get_area() const = 0;
+
+int Circle::get_area() const override {
+  return 3.14 * radius * radius;
+}
+int Rectangle::get_area() const override {
+  return width * height;
+}
+```
+
+提案
+```
+int get_area(const Shape& shape) {
+  return inspect (shape) {
+    <Circle>    [r]    => 3.14 * r * r,
+    <Rectangle> [w, h] => w * h
+  }
+}
+```
+
+## Dereferenceパターン
+- `(*!)` ; `*v`がマッチするなら
+- `(*?)` ; `v`がboolに変換できてtrueになるなら
+
+```
+struct Node {
+  int value;
+  std::unique_ptr<Node> lhs, rhs;
+};
+
+void print_leftmost(const Node& node) {
+  inspect (node) {
+    [.value: v, .lhs: nullptr]: std::cout << v << '\n';
+    [.lhs: (*!)l]: print_leftmost(l);
+  }
+}
+```
+
+## extractorパターン
+constant-expression cに対して
+- `(c!)` ; c.extract(v)なら
+- `(c?)` ; c.try_extract(v)なら
