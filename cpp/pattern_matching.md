@@ -481,3 +481,120 @@ void print_leftmost(const Node& node) {
 constant-expression cに対して
 - `(c!)` ; c.extract(v)なら
 - `(c?)` ; c.try_extract(v)なら
+
+```
+struct Email {
+  std::optional<std::array<std::string_view, 2>>
+    try_extract(std::string_view sv) const;
+  };
+
+inline constexpr Email email;
+
+struct PhoneNumber {
+  std::optional<std::array<std::string_view, 3>>
+  try_extract(std::string_view sv) const;
+};
+
+inline constexpr PhoneNumber phone_number;
+inspect (s) {
+  (email?) [address, domain]: std::cout << "got an email";
+  (phone_number?) ["415", __, __]: std::cout << "got a San Francisco phone number";
+  // ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ extractor pattern
+}
+```
+
+## パターンガード
+
+```
+inspect (v) {
+  pattern1 if (cond1): stmt1
+  pattern2: stmt2
+  // ...
+}
+```
+
+は
+
+```
+if (MATCHES(pattern1, v) && cond1) stmt1
+else if (MATCHES(pattern2, v)) stmt2
+// ...
+```
+
+の意味
+
+## 網羅性と有用性
+`[[strict]]`をつけると網羅性と有用性のチェックをしてくれる
+- 網羅性 ; ありえる値の全てが少なくともどれか一つのケースで処理される
+  - ; `__`があるそれが残り全部にマッチ
+- 有用性 ; 全てのケースが少なくともどれか一つを処理する
+  - ; `__`の後ろに書いたケースは絶対にマッチしない
+
+# デザイン
+
+## 反駁
+
+- 反駁性(refutable) ; 失敗する可能性のあるパターン
+  - expression pattern
+- 反駁不可性(irrefutable) ; 失敗しないパターン
+  - identifier pattern
+
+構造化束縛はirrefutableであるべきか / refutableを許容するか
+
+- 構造化束縛の拡張
+  - 変数は新しく割り当てるのではなく、参照として扱う
+- switchの問題点
+  - caseをどこにも書くことができたので扱いづらい
+  - breakを書き忘れるとエラーになりやすい
+- 効率
+  - switchは整数に制限することで効率的だった
+  - 従来の書き方と同等の効率のよいコード生成を目指す
+- autoではなくlet
+  - bindingパターンでletを使う
+  - autoだと新しい変数を宣言してstorageに影響がある
+- best matchではなくfirst match
+  - 単純化のためにfirst match
+    - 多重ロードされた関数の解決は複雑
+- 副作用を制限しない
+- ライブラリではなく言語サポート
+  - 識別子の導入、構文オーバーヘッド、最適化の機会のため
+
+
+## 副作用を制限しない
+
+```
+bool f(int &); // defined in a different translation unit.
+int x = 1;
+inspect (x) {
+  0: std::cout << 0;
+  1 if (f(x)): std::cout << 1;
+  2: std::cout << 2;
+}
+```
+
+これを次のどちらの方法で処理するか。
+
+副作用を許可しないなら多少最適化可能
+```
+switch (x) {
+  case 0: std::cout << 0; break;
+  case 1: if (f(x)) { std::cout << 1; } break;
+  case 2: std::cout << 2; break;
+}
+```
+
+副作用を許可する
+```
+if (x == 0) std::cout << 0;
+else if (x == 1 && f(x)) std::cout << 1;
+else if (x == 2) std::cout << 2;
+```
+
+後者にする。
+
+## その他
+- any_of{1, 2, 3} ; 1|2|3
+- within{1, 10} ; 1..10
+- (both!) [[x, 0], [0, y]] ; [x, 0] & [0, y]
+- (at!) [p, [x, y]] ; p @ [x, y]
+- etc.
