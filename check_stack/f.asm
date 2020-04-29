@@ -2,7 +2,7 @@ global f
 global fff
 extern __chkstk
 
-%define STACK_SIZE 4096*4
+%define STACK_SIZE (4096*6)
 
 segment .text
 f:

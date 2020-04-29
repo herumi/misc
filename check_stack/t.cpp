@@ -2,19 +2,18 @@
 
 extern "C" const void* f();
 
-extern "C" void fff(void*);
+extern "C" void fff(const void*);
 
-char ggg(int x)
+char ggg()
 {
-	char buf[8192];
-	buf[0] = x;
+	char buf[64];
 	fff(buf);
 	return buf[0];
 }
 
 int main()
 {
-	const void *p = f();
-	printf("p=%p\n", p);
-	ggg(3);
+	f();
+	ggg();
+	puts("ok");
 }
