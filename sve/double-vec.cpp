@@ -45,7 +45,7 @@ struct Code : CodeGenerator {
 		st1d(z2.d, p0, ptr(out, x4, LSL, 3));
 		incd(x4);
 		whilelt(p0.d, x4, n);
-		bmi(lp);
+		b_first(lp);
 		ret();
 	}
 };
