@@ -36,14 +36,16 @@ struct Code : CodeGenerator {
 		const auto& src1 = x1;
 		const auto& src2 = x2;
 		const auto& n = x3;
+		Label cond;
 		mov(x4, 0);
-		whilelt(p0.d, x4, n);
+		b(cond);
 	Label lp = L();
 		ld1d(z1.d, p0/T_z, ptr(src1, x4, LSL, 3));
 		ld1d(z2.d, p0/T_z, ptr(src2, x4, LSL, 3));
 		fmla(z2.d, p0/T_m, z1.d, z1.d);
 		st1d(z2.d, p0, ptr(out, x4, LSL, 3));
 		incd(x4);
+	L(cond);
 		whilelt(p0.d, x4, n);
 		b_first(lp);
 		ret();
