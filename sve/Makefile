@@ -8,6 +8,8 @@ test2.exe: int-vec.cpp
 	$(CXX) $(CPPFLAGS) -o $@ $<
 test3.exe: float-vec.cpp
 	$(CXX) $(CPPFLAGS) -o $@ $<
+test4.exe: float-test.cpp
+	$(CXX) $(CPPFLAGS) -o $@ $<
 
 test%: test%.exe
 	./$<
