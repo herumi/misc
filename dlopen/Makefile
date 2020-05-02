@@ -1,3 +1,9 @@
+# clang
+LIB_ASAN=/usr/lib/x86_64-linux-gnu/libasan.so.5
+ifeq ($(findstring $(CC),cc),cc)
+  # gcc
+  LIB_ASAN=/usr/lib/gcc/x86_64-linux-gnu/7/libasan.so
+endif
 test1:
 	@echo --- test1 ---
 	$(CC) main.c sub.c && ./a.out
@@ -20,7 +26,7 @@ test4:
 test5:
 	@echo --- test5 ---
 	$(CC) -fPIC -shared sub.c -o sub.so -fsanitize=address
-	$(CC) main.c ./sub.so -lasan && env LD_PRELOAD=/usr/lib/gcc/x86_64-linux-gnu/7/libasan.so ./a.out
+	$(CC) main.c ./sub.so -lasan && env LD_PRELOAD=$(LIB_ASAN) ./a.out
 
 test6:
 	@echo --- test6 ---
@@ -41,4 +47,4 @@ test8:
 	./a.out
 
 test:
-	$(MAKE) test1 test2 test3 test4 test5 test6 test7
+	$(MAKE) test1 test2 test3 test4 test5 test6 test7 test8

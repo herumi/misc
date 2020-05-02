@@ -1,0 +1,70 @@
+make test1 test2 test3 test4 test5 test6 test7 test8
+make[1]: Entering directory '/home/shigeo/Program/misc/dlopen'
+--- test1 ---
+cc main.c sub.c && ./a.out
+main
+malloc=0x7fe774317070, free=0x7fe774317950
+sub_free
+malloc=0x7fe774317070, free=0x7fe774317950 in sub
+--- test2 ---
+cc main.c sub.c -fsanitize=address && ./a.out
+main
+malloc=0x7f383afb9a80, free=0x7f383afb96e0
+sub_free
+malloc=0x7f383afb9a80, free=0x7f383afb96e0 in sub
+--- test3 ---
+cc -fPIC -shared sub.c -o sub.so
+cc main.c ./sub.so && ./a.out
+main
+malloc=0x7f415d36a070, free=0x7f415d36a950
+sub_free
+malloc=0x7f415d36a070, free=0x7f415d36a950 in sub
+--- test4 ---
+cc -fPIC -shared sub.c -o sub.so -fsanitize=address
+cc main.c ./sub.so -lasan
+./a.out
+==86294==ASan runtime does not come first in initial library list; you should either link runtime to your application or manually preload it with LD_PRELOAD.
+Makefile:21: recipe for target 'test4' failed
+make[1]: [test4] Error 1 (ignored)
+--- test5 ---
+cc -fPIC -shared sub.c -o sub.so -fsanitize=address
+cc main.c ./sub.so -lasan && env LD_PRELOAD=/usr/lib/gcc/x86_64-linux-gnu/7/libasan.so ./a.out
+main
+malloc=0x7f2b02ef0a80, free=0x7f2b02ef06e0
+sub_free
+malloc=0x7f2b02ef0a80, free=0x7f2b02ef06e0 in sub
+--- test6 ---
+cc -fPIC -shared sub.c -o sub.so
+cc main-dl.c -ldl
+./a.out
+main-dl
+malloc=0x7fd081fb5070, free=0x7fd081fb5950
+dlsym
+call
+sub_free
+malloc=0x7fd081fb5070, free=0x7fd081fb5950 in sub
+dlclose
+--- test7 ---
+cc -fPIC -shared sub.c -o sub.so -fsanitize=address
+cc main-dl.c -ldl -fsanitize=address
+./a.out
+main-dl
+malloc=0x7f2ce2171a80, free=0x7f2ce21716e0
+dlsym
+call
+sub_free
+malloc=0x7f2ce2171a80, free=0x7f2ce21716e0 in sub
+dlclose
+--- test8 ---
+cc -fPIC -shared sub.c -o sub.so -fsanitize=address
+cc main-dl.c -ldl -fsanitize=address -DDEEP
+./a.out
+main-dl
+malloc=0x7f699da32a80, free=0x7f699da326e0
+deep
+dlsym
+call
+sub_free
+malloc=0x7f699da32a80, free=0x7f699da326e0 in sub
+dlclose
+make[1]: Leaving directory '/home/shigeo/Program/misc/dlopen'
