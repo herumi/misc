@@ -10,6 +10,7 @@ void *mie_calloc(size_t n, size_t size);
 void *mie_realloc(void *ptr, size_t size);
 char *mie_strdup(const char *ptr);
 size_t mie_malloc_usable_size(void *p);
+void mie_init();
 #define posix_memalign mie_posix_memalign
 #define aligned_alloc mie_aligned_alloc
 #define memalign mie_memalign
