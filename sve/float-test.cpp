@@ -3,6 +3,28 @@
 
 using namespace Xbyak;
 
+union fi {
+	uint32_t u;
+	float f;
+};
+
+float u2f(uint32_t x)
+{
+	fi fi;
+	fi.u = x;
+	return fi.f;
+}
+
+uint32_t f2u(float x)
+{
+	fi fi;
+	fi.f = x;
+	return fi.u;
+}
+
+const float g_c0 = 1.5;
+const float g_c1 = 1.23456;
+
 struct Code : CodeGenerator {
 	void generate(void (Code::*f)(const ZReg&, const ZReg&, const ZReg&))
 	{
@@ -19,22 +41,22 @@ struct Code : CodeGenerator {
 		st1w(dst.s, p0/T_z, ptr(pdst));
 		ret();
 	}
-	void Wfadd(const ZReg& dst, const ZReg& src1, const ZReg& src2)
+	void faddW(const ZReg& dst, const ZReg& src1, const ZReg& src2)
 	{
 		fadd(dst.s, src1.s, src2.s);
 	}
-	void Wfsub(const ZReg& dst, const ZReg& src1, const ZReg& src2)
+	void fsubW(const ZReg& dst, const ZReg& src1, const ZReg& src2)
 	{
 		fsub(dst.s, src1.s, src2.s);
 	}
-	void Wfmax(const ZReg& dst, const ZReg& src1, const ZReg& src2)
+	void fmaxW(const ZReg& dst, const ZReg& src1, const ZReg& src2)
 	{
 		movprfx(dst.s, p0, src1.s);
 		fmax(dst.s, p0, src2.s);
 	}
-	void Wfcpy(const ZReg& dst, const ZReg& src1, const ZReg&)
+	void fcpyW(const ZReg& dst, const ZReg& src1, const ZReg&)
 	{
-		fcpy(dst.s, p0, 1.5);
+		fcpy(dst.s, p0, g_c0);
 	}
 };
 
@@ -48,10 +70,11 @@ void vec(const F& f, float *z, const float *x, const float *y)
 	}
 }
 
-float addOne(float x, float y) { return x + y; }
-float subOne(float x, float y) { return x - y; }
-float maxOne(float x, float y) { return std::max(x, y); }
-float cpyOne(float, float) { return 1.5; }
+float faddC(float x, float y) { return x + y; }
+float fsubC(float x, float y) { return x - y; }
+float fmaxC(float x, float y) { return std::max(x, y); }
+float fcpyC(float, float) { return g_c0; }
+float cpyC(float, float) { return g_c1; }
 
 void check(const float *x, const float *y, const float *z1, const float *z2)
 {
@@ -76,30 +99,30 @@ int main()
 		z2[i] = z1[i];
 	}
 	Code c;
-	auto Padd = c.getCurr<void (*)(float *, const float *, const float *)>();
-	c.generate(&Code::Wfadd);
-	auto Psub = c.getCurr<void (*)(float *, const float *, const float *)>();
-	c.generate(&Code::Wfsub);
-	auto Pmax = c.getCurr<void (*)(float *, const float *, const float *)>();
-	c.generate(&Code::Wfmax);
-	auto Pcpy = c.getCurr<void (*)(float *, const float *, const float *)>();
-	c.generate(&Code::Wfcpy);
+	auto faddA = c.getCurr<void (*)(float *, const float *, const float *)>();
+	c.generate(&Code::faddW);
+	auto fsubA = c.getCurr<void (*)(float *, const float *, const float *)>();
+	c.generate(&Code::fsubW);
+	auto fmaxA = c.getCurr<void (*)(float *, const float *, const float *)>();
+	c.generate(&Code::fmaxW);
+	auto fcpyA = c.getCurr<void (*)(float *, const float *, const float *)>();
+	c.generate(&Code::fcpyW);
 	c.ready();
-	puts("add");
-	vec(addOne, z1, x, y);
-	Padd(z2, x, y);
+	puts("fadd");
+	vec(faddC, z1, x, y);
+	faddA(z2, x, y);
 	check(x, y, z1, z2);
-	puts("sub");
-	vec(subOne, z1, x, y);
-	Psub(z2, x, y);
+	puts("fsub");
+	vec(fsubC, z1, x, y);
+	fsubA(z2, x, y);
 	check(x, y, z1, z2);
-	puts("max");
-	vec(maxOne, z1, x, y);
-	Pmax(z2, x, y);
+	puts("fmax");
+	vec(fmaxC, z1, x, y);
+	fmaxA(z2, x, y);
 	check(x, y, z1, z2);
-	puts("cpy"); // copy 1.5
-	vec(cpyOne, z1, x, y);
-	Pcpy(z2, x, y);
+	puts("fcpy"); // copy 1.5
+	vec(fcpyC, z1, x, y);
+	fcpyA(z2, x, y);
 	check(x, y, z1, z2);
 } catch (std::exception& e) {
 	printf("err %s\n", e.what());
