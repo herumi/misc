@@ -32,6 +32,10 @@ struct Code : CodeGenerator {
 		movprfx(dst.s, p0, src1.s);
 		fmax(dst.s, p0, src2.s);
 	}
+	void Wfcpy(const ZReg& dst, const ZReg& src1, const ZReg&)
+	{
+		fcpy(dst.s, p0, 1.5);
+	}
 };
 
 const size_t N = 16;
@@ -47,6 +51,7 @@ void vec(const F& f, float *z, const float *x, const float *y)
 float addOne(float x, float y) { return x + y; }
 float subOne(float x, float y) { return x - y; }
 float maxOne(float x, float y) { return std::max(x, y); }
+float cpyOne(float, float) { return 1.5; }
 
 void check(const float *x, const float *y, const float *z1, const float *z2)
 {
@@ -77,6 +82,8 @@ int main()
 	c.generate(&Code::Wfsub);
 	auto Pmax = c.getCurr<void (*)(float *, const float *, const float *)>();
 	c.generate(&Code::Wfmax);
+	auto Pcpy = c.getCurr<void (*)(float *, const float *, const float *)>();
+	c.generate(&Code::Wfcpy);
 	c.ready();
 	puts("add");
 	vec(addOne, z1, x, y);
@@ -89,6 +96,10 @@ int main()
 	puts("max");
 	vec(maxOne, z1, x, y);
 	Pmax(z2, x, y);
+	check(x, y, z1, z2);
+	puts("cpy"); // copy 1.5
+	vec(cpyOne, z1, x, y);
+	Pcpy(z2, x, y);
 	check(x, y, z1, z2);
 } catch (std::exception& e) {
 	printf("err %s\n", e.what());
