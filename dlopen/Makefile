@@ -46,5 +46,22 @@ test8:
 	$(CC) main-dl.c -ldl -fsanitize=address -DDEEP
 	./a.out
 
+testA1:
+	@echo --- testA1 ---
+	$(CC) -fPIC -shared sub2.c -o sub2.so
+	$(CC) -fPIC -shared sub3.c -o sub3.so
+	$(CC) main2.c -ldl
+	env LD_PRELOAD=./sub2.so ./a.out
+
+testA2:
+	@echo --- testA2 ---
+	$(CC) -fPIC -shared sub2.c -o sub2.so
+	$(CC) -fPIC -shared sub3.c -o sub3.so
+	$(CC) main2.c -ldl -DDEEP
+	env LD_PRELOAD=./sub2.so ./a.out
+
 test:
 	$(MAKE) test1 test2 test3 test4 test5 test6 test7 test8
+
+clean:
+	rm -rf *.so a.out

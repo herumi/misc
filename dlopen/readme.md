@@ -15,3 +15,15 @@ test8|dlopen+RTLD_DEEPBIND+ASan|sahred+ASan|ok|err|
 
 - [gcc-result](gcc-result.txt)
 - [clang-result](clang-result.txt)
+
+## dlopen + `RTLD_DEEPBIND`
+
+```
+make testA1
+make testA2
+```
+
+- dlopen without `RTLD_DEEPBIND`
+  - `clock()` in sub2.c is called from `sub3()` in sub3.c
+- dlopen with `RTLD_DEEPBIND`
+  - The original `clock()` is called from `sub3()` in sub3.c
