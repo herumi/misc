@@ -2,7 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <execinfo.h>
-#define __USE_GNU
+#ifndef __USE_GNU
+	#define __USE_GNU
+#endif
 #include <dlfcn.h>
 
 FILE *mie_fp;
@@ -13,6 +15,9 @@ FILE *mie_fp;
 #define HASH_NUM 100003
 #define LIST_NUM (MAX_MALLOC_NUM / HASH_NUM)
 //#define MAX_STACK_NUM 4
+#ifdef MYMALLOC_PRELOAD
+	#define MYMALLOC_AUTO_INIT
+#endif
 
 typedef struct {
 	char *p;
@@ -55,7 +60,7 @@ static void putInfo(const Info *pi)
 }
 void mie_verify()
 {
-	dprintf("my_dstr mie_buffer=%p mie_pos=%zd mie_allocNum=%d \n", mie_buffer, mie_pos, mie_allocNum);
+	dprintf("mie_verify mie_buffer=%p mie_pos=%zd mie_allocNum=%d \n", mie_buffer, mie_pos, mie_allocNum);
 	int i, j;
 	for (i = 0; i < HASH_NUM; i++) {
 		const Info *tbl = &mie_tbl[i][0];
@@ -91,7 +96,7 @@ static void setStopPtr()
 	}
 }
 
-#ifdef MYMALLOC_PRELOAD
+#ifdef MYMALLOC_AUTO_INIT
 __attribute__((constructor))
 #endif
 void mie_init()
@@ -109,7 +114,7 @@ void mie_init()
 		mie_fp = stderr;
 	}
 #endif
-	dprintf("mie_buffer=%p mie_pos=%zd mie_allocNum=%d \n", mie_buffer, mie_pos, mie_allocNum);
+	dprintf("mie_init mie_buffer=%p mie_pos=%zd mie_allocNum=%d \n", mie_buffer, mie_pos, mie_allocNum);
 	setStopPtr();
 	atexit(mie_verify);
 //	getStackTrace = 1;
@@ -242,7 +247,7 @@ static int getInfoIdx(int *pIdx, void *p)
 void mie_free(void *p)
 {
 	if (p == NULL) return;
-	dprintf("free %p ", p);
+	dprintf("mie_free %p ", p);
 	int idx;
 	int pos = getInfoIdx(&idx, p);
 	if (pos >= 0) {
@@ -272,7 +277,7 @@ void *mie_calloc(size_t n, size_t size)
 }
 void *mie_realloc(void *ptr, size_t size)
 {
-	dprintf("realloc %p %zd : ", ptr, size);
+	dprintf("mie_realloc %p %zd : ", ptr, size);
 	void *newPtr;
 	if (size == 0) {
 		mie_free(ptr);
@@ -284,7 +289,7 @@ void *mie_realloc(void *ptr, size_t size)
 	memmove(newPtr, ptr, size);
 	mie_free(ptr);
 exit:
-	dprintf("realloc end %p\n", newPtr);
+	dprintf("mie_realloc end %p\n", newPtr);
 	return newPtr;
 }
 char *mie_strdup(const char *str)
@@ -298,7 +303,7 @@ char *mie_strdup(const char *str)
 size_t mie_malloc_usable_size(void *p)
 {
 	if (p == NULL) return 0;
-	dprintf("malloc_usable_size %p ", p);
+	dprintf("mie_malloc_usable_size %p ", p);
 	int idx;
 	int pos = getInfoIdx(&idx, p);
 	if (pos >= 0) {

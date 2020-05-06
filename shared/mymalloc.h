@@ -1,3 +1,9 @@
+/*
+	ASLR off
+	sudo sh -c "echo 0 > /proc/sys/kernel/randomize_va_space"
+	ASLR on
+	sudo sh -c "echo 2 > /proc/sys/kernel/randomize_va_space"
+*/
 #pragma once
 #define _GNU_SOURCE
 #include <stdlib.h>

@@ -46,6 +46,27 @@ test8:
 	$(CC) main-dl.c -ldl -fsanitize=address -DDEEP
 	./a.out
 
+test9:
+	@echo --- test9 ---
+	$(CC) -fPIC -shared sub.c -o sub.so -include ../shared/mymalloc.h
+	$(CC) -fPIC -shared ../shared/mymalloc.c -o mymalloc.so -DMYMALLOC_PRELOAD
+	$(CC) main-dl.c -ldl
+	env LD_PRELOAD=./mymalloc.so ./a.out
+
+test10:
+	@echo --- test10 ---
+	$(CC) -fPIC -shared sub.c -o sub.so -include ../shared/mymalloc.h
+	$(CC) -fPIC -shared ../shared/mymalloc.c -o mymalloc.so -DMYMALLOC_PRELOAD
+	$(CC) main-dl.c -ldl -DDEEP
+	env LD_PRELOAD=./mymalloc.so ./a.out
+
+test11:
+	@echo --- test11 ---
+	$(CC) -fPIC -shared sub.c -o sub.so -include ../shared/mymalloc.h -g
+	$(CC) -c -o ./mymalloc.o ../shared/mymalloc.c -DMYMALLOC_PRELOAD -g
+	$(CC) main-dl.c -ldl -DDEEPs ./mymalloc.o -include ../shared/mymalloc.h -g
+	./a.out
+
 testA1:
 	@echo --- testA1 ---
 	$(CC) -fPIC -shared sub2.c -o sub2.so
