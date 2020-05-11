@@ -198,5 +198,5 @@ CPUの利用フラグ表
 
 ## まとめ
 第2世代Xeon SP(Cascade Lake)や次世代Xeon SP(Cooper Lake)で利用可能になった機械学習用の命令を紹介しました。
-Intelの機械学習ライブラリ[oneDNN](https://github.com/oneapi-src/oneDNN)ではこれらの命令が利用されています。
+Intelの機械学習ライブラリ[oneDNN](https://github.com/oneapi-src/oneDNN)ではXbyakを用いてこれらの命令を利用しています。
 自分でこれらの命令を直接記述することは少ないかもしれませんが、何かの参考になれば幸いです。
