@@ -2,6 +2,7 @@
 	sample of bf16
 */
 #include <xbyak/xbyak_util.h>
+#include <math.h>
 
 union fi {
 	float f;
@@ -88,6 +89,7 @@ char diff(float x, float y)
 }
 
 int main()
+	try
 {
 	Xbyak::util::Cpu cpu;
 	if (!cpu.has(Xbyak::util::Cpu::tAVX512_BF16)) {
@@ -121,4 +123,6 @@ int main()
 	for (int i = 0; i < 32; i++) {
 		printf("i=% 2d %04x %04x %d\n", i, src1[i], src2[i], abs(src1[i] - src2[i]));
 	}
+} catch (std::exception& e) {
+	printf("err %s\n", e.what());
 }
