@@ -1,4 +1,4 @@
-# Intelの機械学習用命令を使う
+# XbyakでIntelの機械学習用命令を使う方法
 
 Intelは第2世代Xeon SP(Cascade Lake)で機械学習の推論処理に有効な命令群DL Boostをサポート、
 そして今年度前半登場予定の次世代Xeon SP(Cooper Lake)でbfloat16命令をサポートします。
