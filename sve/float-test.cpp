@@ -58,6 +58,18 @@ struct Code : CodeGenerator {
 	{
 		fcpy(dst.s, p0, g_c0);
 	}
+	void cpyW(const ZReg& dst, const ZReg&, const ZReg&)
+	{
+		Xbyak::Label dataL, skipL;
+		adr(x3, dataL);
+		ldr(w3, ptr(x3));
+		cpy(dst.s, p0, w3);
+		b(skipL);
+	L(dataL);
+		printf("dataL=%p\n", dataL.getAddress());
+		dw(f2u(g_c1));
+	L(skipL);
+	}
 };
 
 const size_t N = 16;
@@ -107,6 +119,8 @@ int main()
 	c.generate(&Code::fmaxW);
 	auto fcpyA = c.getCurr<void (*)(float *, const float *, const float *)>();
 	c.generate(&Code::fcpyW);
+	auto cpyA = c.getCurr<void (*)(float *, const float *, const float *)>();
+	c.generate(&Code::cpyW);
 	c.ready();
 	puts("fadd");
 	vec(faddC, z1, x, y);
@@ -120,9 +134,14 @@ int main()
 	vec(fmaxC, z1, x, y);
 	fmaxA(z2, x, y);
 	check(x, y, z1, z2);
-	puts("fcpy"); // copy 1.5
+	puts("fcpy"); // copy g_c0
 	vec(fcpyC, z1, x, y);
 	fcpyA(z2, x, y);
+	check(x, y, z1, z2);
+	puts("cpy"); // copy g_c1
+	printf("g_c1=%f(%08x)\n", g_c1, f2u(g_c1));
+	vec(cpyC, z1, x, y);
+	cpyA(z2, x, y);
 	check(x, y, z1, z2);
 } catch (std::exception& e) {
 	printf("err %s\n", e.what());
