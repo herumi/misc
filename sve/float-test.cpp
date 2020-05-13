@@ -59,6 +59,10 @@ struct Code : CodeGenerator {
 	{
 		fsub(dst.s, src1.s, src2.s);
 	}
+	void fmulW(const ZReg& dst, const ZReg& src1, const ZReg& src2)
+	{
+		fmul(dst.s, src1.s, src2.s);
+	}
 	void fmaxW(const ZReg& dst, const ZReg& src1, const ZReg& src2)
 	{
 		movprfx(dst.s, p0, src1.s);
@@ -104,6 +108,7 @@ void vec(const F& f, float *z, const float *x, const float *y)
 
 float faddC(float x, float y) { return x + y; }
 float fsubC(float x, float y) { return x - y; }
+float fmulC(float x, float y) { return x * y; }
 float fmaxC(float x, float y) { return std::max(x, y); }
 float fcpyC(float, float) { return g_c0; }
 float cpyC(float, float) { return g_c1; }
@@ -134,15 +139,23 @@ int main()
 	Code c;
 	auto faddA = c.getCurr<void (*)(float *, const float *, const float *)>();
 	c.generate(&Code::faddW);
+
 	auto fsubA = c.getCurr<void (*)(float *, const float *, const float *)>();
 	c.generate(&Code::fsubW);
+
+	auto fmulA = c.getCurr<void (*)(float *, const float *, const float *)>();
+	c.generate(&Code::fmulW);
+
 	auto fmaxA = c.getCurr<void (*)(float *, const float *, const float *)>();
 	c.generate(&Code::fmaxW);
+
 	auto fcpyA = c.getCurr<void (*)(float *, const float *, const float *)>();
 	c.generate(&Code::fcpyW);
+
 	auto cpyA = c.getCurr<void (*)(float *, const float *, const float *)>();
 	c.generate(&Code::cpyW);
-	auto cpyWithAdrpA = c.getCurr<void (*)(float *, const float *, const float *)>();
+
+	auto cpy2A = c.getCurr<void (*)(float *, const float *, const float *)>();
 	c.generate(&Code::cpyWithAdrpW);
 	c.ready();
 
@@ -154,6 +167,11 @@ int main()
 	puts("fsub");
 	vec(fsubC, z1, x, y);
 	fsubA(z2, x, y);
+	check(x, y, z1, z2);
+
+	puts("fmul");
+	vec(fmulC, z1, x, y);
+	fmulA(z2, x, y);
 	check(x, y, z1, z2);
 
 	puts("fmax");
@@ -175,7 +193,7 @@ int main()
 	puts("cpy with adrp"); // copy g_c2
 	printf("g_c1=%f(%08x)\n", g_c2, f2u(g_c2));
 	vec(cpy2C, z1, x, y);
-	cpyWithAdrpA(z2, x, y);
+	cpy2A(z2, x, y);
 	check(x, y, z1, z2);
 } catch (std::exception& e) {
 	printf("err %s\n", e.what());
