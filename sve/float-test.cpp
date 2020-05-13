@@ -24,8 +24,18 @@ uint32_t f2u(float x)
 
 const float g_c0 = 1.5;
 const float g_c1 = 1.23456;
+const float g_c2 = 3.45678;
 
 struct Code : CodeGenerator {
+	Xbyak::Label g_dataL;
+	Code()
+	{
+		align(4096);
+	L(g_dataL);
+		printf("dataL=%p\n", g_dataL.getAddress());
+		dw(f2u(g_c2));
+		align(4096);
+	}
 	void generate(void (Code::*f)(const ZReg&, const ZReg&, const ZReg&))
 	{
 		const auto& pdst = x0;
@@ -70,6 +80,16 @@ struct Code : CodeGenerator {
 		dw(f2u(g_c1));
 	L(skipL);
 	}
+	void cpyWithAdrpW(const ZReg& dst, const ZReg&, const ZReg&)
+	{
+		Xbyak::Label skipL;
+		b(skipL);
+		align(4096);
+	L(skipL);
+		adrp(x3, g_dataL);
+		ldr(w3, ptr(x3));
+		cpy(dst.s, p0, w3);
+	}
 };
 
 const size_t N = 16;
@@ -87,6 +107,7 @@ float fsubC(float x, float y) { return x - y; }
 float fmaxC(float x, float y) { return std::max(x, y); }
 float fcpyC(float, float) { return g_c0; }
 float cpyC(float, float) { return g_c1; }
+float cpy2C(float, float) { return g_c2; }
 
 void check(const float *x, const float *y, const float *z1, const float *z2)
 {
@@ -121,27 +142,40 @@ int main()
 	c.generate(&Code::fcpyW);
 	auto cpyA = c.getCurr<void (*)(float *, const float *, const float *)>();
 	c.generate(&Code::cpyW);
+	auto cpyWithAdrpA = c.getCurr<void (*)(float *, const float *, const float *)>();
+	c.generate(&Code::cpyWithAdrpW);
 	c.ready();
+
 	puts("fadd");
 	vec(faddC, z1, x, y);
 	faddA(z2, x, y);
 	check(x, y, z1, z2);
+
 	puts("fsub");
 	vec(fsubC, z1, x, y);
 	fsubA(z2, x, y);
 	check(x, y, z1, z2);
+
 	puts("fmax");
 	vec(fmaxC, z1, x, y);
 	fmaxA(z2, x, y);
 	check(x, y, z1, z2);
+
 	puts("fcpy"); // copy g_c0
 	vec(fcpyC, z1, x, y);
 	fcpyA(z2, x, y);
 	check(x, y, z1, z2);
+
 	puts("cpy"); // copy g_c1
 	printf("g_c1=%f(%08x)\n", g_c1, f2u(g_c1));
 	vec(cpyC, z1, x, y);
 	cpyA(z2, x, y);
+	check(x, y, z1, z2);
+
+	puts("cpy with adrp"); // copy g_c2
+	printf("g_c1=%f(%08x)\n", g_c2, f2u(g_c2));
+	vec(cpy2C, z1, x, y);
+	cpyWithAdrpA(z2, x, y);
 	check(x, y, z1, z2);
 } catch (std::exception& e) {
 	printf("err %s\n", e.what());
