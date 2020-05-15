@@ -17,6 +17,13 @@ float fmath_expf(float x)
 	return y[0];
 }
 
+float u2f(uint32_t x)
+{
+	fmath::local::fi fi;
+	fi.i = x;
+	return fi.f;
+}
+
 uint32_t f2u(float x)
 {
 	fmath::local::fi fi;
@@ -45,7 +52,6 @@ inline float expfC(float x)
 	x *= C.log2_e;
 	int n;
 	float a = split(&n, x);
-return n;
 	/* |a| <= 0.5 */
 	a *= C.log2;
 	/* |a| <= 0.3466 */

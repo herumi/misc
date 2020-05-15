@@ -123,25 +123,23 @@ struct Code : public Xbyak::CodeGenerator {
 		fmin(z0.s, p0, expMax.s);
 		fmax(z0.s, p0, expMin.s);
 		fmul(z0.s, z0.s, log2_e.s);
-		frintn(z0.s, p0, z0.s); // (float)round()
-//		scvtf(z0.s, p0, z1.s);
-
-#if 0
-		// a little faster if we can assume nearest round mode
-		vcvtps2dq(zm1, zm0);
-		vcvtdq2ps(zm2, zm1);
-		vsubps(zm0, zm2);
-		vmulps(zm0, log2);
-		vpaddd(zm1, zm1, i127);
-		vpslld(zm1, zm1, 23); // fi.f
-		vmovaps(zm2, expCoeff[4]);
-		vfmadd213ps(zm2, zm0, expCoeff[3]);
-		vfmadd213ps(zm2, zm0, expCoeff[2]);
-		vfmadd213ps(zm2, zm0, expCoeff[1]);
-		vfmadd213ps(zm2, zm0, expCoeff[0]);
-		vfmadd213ps(zm2, zm0, expCoeff[0]);
-		vmulps(zm0, zm2, zm1);
-#endif
+		frintn(z2.s, p0, z0.s); // rounding : float -> float
+		fcvtzs(z1.s, p0, z2.s); // float -> int
+		fsub(z0.s, z0.s, z2.s);
+		fmul(z0.s, z0.s, log2.s);
+		add(z1.s, z1.s, i127.s);
+		lsl(z1.s, z1.s, 23); // shl
+		movprfx(z2.s, p0, expCoeff[4].s);
+		fmad(z2.s, p0, z0.s, expCoeff[3].s);
+		movprfx(z2.s, p0, z2.s);
+		fmad(z2.s, p0, z0.s, expCoeff[2].s);
+		movprfx(z2.s, p0, z2.s);
+		fmad(z2.s, p0, z0.s, expCoeff[1].s);
+		movprfx(z2.s, p0, z2.s);
+		fmad(z2.s, p0, z0.s, expCoeff[0].s);
+		movprfx(z2.s, p0, z2.s);
+		fmad(z2.s, p0, z0.s, expCoeff[0].s);
+		fmul(z0.s, z2.s, z1.s);
 	}
 #endif
 	// exp_v(float *dst, const float *src, size_t n);
@@ -162,7 +160,7 @@ struct Code : public Xbyak::CodeGenerator {
 
 		adr(x3, constVarL);
 		ptrue(p0.s);
-		cpy(z0.s, p0, 127);
+		cpy(i127.s, p0, 127);
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, expMin)));
 		cpy(expMin.s, p0/T_z, w4);
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, expMax)));
