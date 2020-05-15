@@ -90,7 +90,7 @@ s:=eval(sols,L=log(2)/2);
 evalf(s,20);
 */
 struct Code : public Xbyak::CodeGenerator {
-//	Xbyak::util::Cpu cpu;
+	typedef Xbyak::ZReg ZReg;
 	ConstVar *constVar;
 	typedef void (*VecFunc)(float *dst, const float *src, size_t n);
 	VecFunc expf_v;
@@ -115,14 +115,18 @@ struct Code : public Xbyak::CodeGenerator {
 #endif
 		ready();
 	}
-#if 0
+#if 1
 	// zm0 = exp(zm0)
 	// use zm0, zm1, zm2
-	void genExpOneAVX512(const Zmm& i127, const Zmm& expMin, const Zmm& expMax, const Zmm& log2, const Zmm& log2_e, const Zmm expCoeff[5])
+	void genExpOneSVE(const ZReg& i127, const ZReg& expMin, const ZReg& expMax, const ZReg& log2, const ZReg& log2_e, const ZReg expCoeff[5])
 	{
-		vminps(zm0, expMax);
-		vmaxps(zm0, expMin);
-		vmulps(zm0, log2_e);
+		fmin(z0.s, p0, expMax.s);
+		fmax(z0.s, p0, expMin.s);
+		fmul(z0.s, z0.s, log2_e.s);
+		frintn(z0.s, p0, z0.s); // (float)round()
+//		scvtf(z0.s, p0, z1.s);
+
+#if 0
 		// a little faster if we can assume nearest round mode
 		vcvtps2dq(zm1, zm0);
 		vcvtdq2ps(zm2, zm1);
@@ -137,6 +141,7 @@ struct Code : public Xbyak::CodeGenerator {
 		vfmadd213ps(zm2, zm0, expCoeff[0]);
 		vfmadd213ps(zm2, zm0, expCoeff[0]);
 		vmulps(zm0, zm2, zm1);
+#endif
 	}
 #endif
 	// exp_v(float *dst, const float *src, size_t n);
@@ -158,18 +163,23 @@ struct Code : public Xbyak::CodeGenerator {
 		adr(x3, constVarL);
 		ptrue(p0.s);
 		cpy(z0.s, p0, 127);
+		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, expMin)));
+		cpy(expMin.s, p0/T_z, w4);
+		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, expMax)));
+		cpy(expMax.s, p0/T_z, w4);
+		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, log2)));
+		cpy(log2.s, p0/T_z, w4);
+		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, log2_e)));
+		cpy(log2_e.s, p0/T_z, w4);
+		for (size_t i = 0; i < ConstVar::expN; i++) {
+			ldr(w4, ptr(x3, uint32_t(offsetof(ConstVar, expCoeff[0]) + sizeof(float) * i)));
+			cpy(expCoeff[i].s, p0/T_z, w4);
+		}
+		ld1w(z0.s, p0/T_z, ptr(src));
+		genExpOneSVE(i127, expMin, expMax, log2, log2_e, expCoeff);
+
 		st1w(z0.s, p0/T_z, ptr(dst));
 #if 0
-		mov(eax, 127);
-		vpbroadcastd(i127, eax);
-		lea(rax, ptr[rip+constVarL]);
-		vbroadcastss(expMin, ptr[rax + offsetof(ConstVar, expMin)]);
-		vbroadcastss(expMax, ptr[rax + offsetof(ConstVar, expMax)]);
-		vbroadcastss(log2, ptr[rax + offsetof(ConstVar, log2)]);
-		vbroadcastss(log2_e, ptr[rax + offsetof(ConstVar, log2_e)]);
-		for (size_t i = 0; i < ConstVar::expN; i++) {
-			vbroadcastss(expCoeff[i], ptr[rax + offsetof(ConstVar, expCoeff[0]) + sizeof(float) * i]);
-		}
 
 		// main loop
 		Label mod16, exit;

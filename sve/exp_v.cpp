@@ -45,6 +45,7 @@ inline float expfC(float x)
 	x *= C.log2_e;
 	int n;
 	float a = split(&n, x);
+return n;
 	/* |a| <= 0.5 */
 	a *= C.log2;
 	/* |a| <= 0.3466 */
@@ -78,7 +79,8 @@ float putDiff(float begin, float end, float step, const F& f, bool doPut = false
 	double ave = 0;
 	int aveN = 0;
 	for (float x = begin; x < end; x += step) {
-		float y0 = std::exp(x);
+//		float y0 = std::exp(x);
+		float y0 = expfC(x);
 		float y1 = f(x);
 		float e;
 		e = diff(y0, y1);
