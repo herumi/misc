@@ -115,9 +115,8 @@ struct Code : public Xbyak::CodeGenerator {
 #endif
 		ready();
 	}
-#if 1
-	// zm0 = exp(zm0)
-	// use zm0, zm1, zm2
+	// z0 = exp(zm0)
+	// use z0, z1, z2
 	void genExpOneSVE(const ZReg& i127, const ZReg& expMin, const ZReg& expMax, const ZReg& log2, const ZReg& log2_e, const ZReg expCoeff[5])
 	{
 		fmin(z0.s, p0, expMax.s);
@@ -141,7 +140,6 @@ struct Code : public Xbyak::CodeGenerator {
 		fmad(z2.s, p0, z0.s, expCoeff[0].s);
 		fmul(z0.s, z2.s, z1.s);
 	}
-#endif
 	// exp_v(float *dst, const float *src, size_t n);
 	void genExpAVX512(const Xbyak::Label& constVarL)
 	{
@@ -173,37 +171,17 @@ struct Code : public Xbyak::CodeGenerator {
 			ldr(w4, ptr(x3, uint32_t(offsetof(ConstVar, expCoeff[0]) + sizeof(float) * i)));
 			cpy(expCoeff[i].s, p0/T_z, w4);
 		}
-		ld1w(z0.s, p0/T_z, ptr(src));
-		genExpOneSVE(i127, expMin, expMax, log2, log2_e, expCoeff);
-
-		st1w(z0.s, p0/T_z, ptr(dst));
-#if 0
-
-		// main loop
-		Label mod16, exit;
-		mov(ecx, n);
-		and_(n, ~15);
-		jz(mod16);
+		Label cond;
+		mov(x3, 0);
+		b(cond);
 	Label lp = L();
-		vmovups(zm0, ptr[src]);
-		add(src, 64);
-		genExpOneAVX512(i127, expMin, expMax, log2, log2_e, expCoeff);
-		vmovups(ptr[dst], zm0);
-		add(dst, 64);
-		sub(n, 16);
-		jnz(lp);
-	L(mod16);
-		and_(ecx, 15);
-		jz(exit);
-		mov(eax, 1);
-		shl(eax, cl);
-		sub(eax, 1);
-		kmovd(k1, eax);
-		vmovups(zm0|k1|T_z, ptr[src]);
-		genExpOneAVX512(i127, expMin, expMax, log2, log2_e, expCoeff);
-		vmovups(ptr[dst]|k1, zm0|k1);
-	L(exit);
-#endif
+		ld1w(z0.s, p0/T_z, ptr(src, x3, LSL, 2));
+		genExpOneSVE(i127, expMin, expMax, log2, log2_e, expCoeff);
+		st1w(z0.s, p0, ptr(dst, x3, LSL, 2));
+		incd(x3);
+	L(cond);
+		whilelt(p0.s, x3, n);
+		b_first(lp);
 		ret();
 	}
 #if 0

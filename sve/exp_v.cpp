@@ -85,8 +85,8 @@ float putDiff(float begin, float end, float step, const F& f, bool doPut = false
 	double ave = 0;
 	int aveN = 0;
 	for (float x = begin; x < end; x += step) {
-//		float y0 = std::exp(x);
-		float y0 = expfC(x);
+		float y0 = std::exp(x);
+//		float y0 = expfC(x);
 		float y1 = f(x);
 		float e;
 		e = diff(y0, y1);
@@ -108,18 +108,14 @@ float putDiff(float begin, float end, float step, const F& f, bool doPut = false
 
 CYBOZU_TEST_AUTO(setMaxE)
 {
-#if 0
 	puts("expfC");
 	putDiff(-10, 10, 0.5, expfC);
 	putDiff(-30, 30, 1e-5, expfC);
 	puts("fmath::expf_v");
-#endif
-	putDiff(1, 2, 0.1, fmath_expf, true);
-//	putDiff(-10, 10, 0.5, fmath_expf);
-//	g_maxe = putDiff(-30, 30, 1e-5, fmath_expf);
+	putDiff(-10, 10, 0.5, fmath_expf);
+	g_maxe = putDiff(-30, 30, 1e-5, fmath_expf);
 }
 
-#if 0
 void checkDiff(const float *x, const float *y, size_t n, bool put = false)
 {
 	for (size_t i = 0; i < n; i++) {
@@ -152,36 +148,7 @@ typedef std::vector<float> Fvec;
 
 void putClk(const char *msg, size_t n)
 {
-	printf("%s %.2fclk\n", msg, cybozu::bench::g_clk.getClock() / double(n));
-}
-
-// return address which can be wrriten 64 byte
-float *getBoundary()
-{
-	const int size = 4096;
-	static MIE_ALIGN(4096) uint8_t top[size * 3];
-	float *base = (float*)(top + size - 64);
-	bool isOK = Xbyak::CodeArray::protect(top + size, size, Xbyak::CodeArray::PROTECT_RE);
-	CYBOZU_TEST_ASSERT(isOK);
-	return base;
-}
-
-CYBOZU_TEST_AUTO(boundary)
-{
-	float x[16];
-	float y0[16];
-	for (int i = 0; i < 16; i++) {
-		x[i] = i / 8.0f;
-	}
-	float *base = getBoundary();
-	// can't write base[16]
-	for (int i = 0; i < 16; i++) {
-		float *y1 = base + i;
-		int n = 16 - i;
-		std_exp_v(y0, x, n);
-		fmath::expf_v(y1, x, n);
-		checkDiff(y0, y1, n);
-	}
+	printf("%s %.2fnsec\n", msg, cybozu::bench::g_clk.getClock() / double(n));
 }
 
 CYBOZU_TEST_AUTO(bench)
@@ -215,4 +182,3 @@ CYBOZU_TEST_AUTO(limit)
 		printf("x=%e std=%e fmath2=%e\n", x[i], y0[i], y1[i]);
 	}
 }
-#endif
