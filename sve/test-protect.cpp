@@ -31,7 +31,7 @@ static inline bool protect(const void *addr, size_t size, int protectMode) {
     size_t iaddr = reinterpret_cast<size_t>(addr);
     size_t roundAddr = iaddr & ~(pageSize - static_cast<size_t>(1));
     int ret =  mprotect(reinterpret_cast<void *>(roundAddr), size + (iaddr - roundAddr), mode);
-	printf("ret=%d\n", ret);
+	printf("mprotect ret=%d\n", ret);
 	return ret == 0;
 }
 
@@ -43,7 +43,7 @@ int main()
 	protect(buf, N, PROTECT_RWE);
 	void *p;
 	int ret = posix_memalign(&p, N, N);
-	printf("ret=%d\n", ret);
+	printf("posix_memalign ret=%d\n", ret);
 	printf("p=%p\n", p);
 	protect(p, N, PROTECT_RWE);
 }
