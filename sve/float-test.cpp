@@ -96,6 +96,41 @@ struct Code : CodeGenerator {
 	}
 };
 
+struct Code2 : Xbyak::CodeGenerator {
+	static const int srcAdj = 2;
+	static const int dstAdj = 3;
+	Code2()
+	{
+		// copy(float *dst, const float *src);
+		ptrue(p0.s);
+		ld1w(z0.s, p0, ptr(x1, srcAdj));
+		st1w(z0.s, p0, ptr(x0, dstAdj));
+		ret();
+	}
+};
+
+void test2()
+{
+	puts("test2");
+	float src[16];
+	float dst[16];
+	for (int i = 0; i < 16; i++) {
+		src[i] = float(i);
+	}
+	Code2 c;
+	c.ready();
+	auto f = c.getCode<void (*)(float *, const float *)>();
+	f(dst - Code2::dstAdj * 16, src - Code2::srcAdj * 16);
+	for (int i = 0; i < 16; i++) {
+		float s = float(i);
+		float d = dst[i];
+		if (s != d) {
+			printf("err %d s=%f d=%f\n", i, s, d);
+		}
+	}
+	puts("ok");
+}
+
 const size_t N = 16;
 
 template<class F>
@@ -195,6 +230,7 @@ int main()
 	vec(cpy2C, z1, x, y);
 	cpy2A(z2, x, y);
 	check(x, y, z1, z2);
+	test2();
 } catch (std::exception& e) {
 	printf("err %s\n", e.what());
 	return 1;
