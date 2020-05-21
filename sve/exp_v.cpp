@@ -12,7 +12,7 @@ float diff(float x, float y)
 
 float fmath_expf(float x)
 {
-	alignas(16) float y[16] = { x };
+	float y[16] = { x };
 	fmath::expf_v(y, y, 1);
 	return y[0];
 }

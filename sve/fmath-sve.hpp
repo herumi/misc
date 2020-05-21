@@ -155,21 +155,26 @@ struct Code : public Xbyak::CodeGenerator {
 		const ZReg& log2 = z6;
 		const ZReg& log2_e = z7;
 		const ZReg expCoeff[] = { z8, z9, z10, z11, z12 };
+		const size_t saveN = sizeof(expCoeff) / sizeof(expCoeff[0]);
+		sub(sp, sp, saveN * 64);
+		ptrue(p1.s);
+		for (size_t i = 0; i < saveN; i++) {
+			st1w(expCoeff[i].s, p1, ptr(sp, int(i)));
+		}
 
 		adr(x3, constVarL);
-		ptrue(p0.s);
-		cpy(i127.s, p0, 127);
+		cpy(i127.s, p1, 127);
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, expMin)));
-		cpy(expMin.s, p0/T_z, w4);
+		cpy(expMin.s, p1/T_z, w4);
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, expMax)));
-		cpy(expMax.s, p0/T_z, w4);
+		cpy(expMax.s, p1/T_z, w4);
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, log2)));
-		cpy(log2.s, p0/T_z, w4);
+		cpy(log2.s, p1/T_z, w4);
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, log2_e)));
-		cpy(log2_e.s, p0/T_z, w4);
+		cpy(log2_e.s, p1/T_z, w4);
 		for (size_t i = 0; i < ConstVar::expN; i++) {
 			ldr(w4, ptr(x3, uint32_t(offsetof(ConstVar, expCoeff[0]) + sizeof(float) * i)));
-			cpy(expCoeff[i].s, p0/T_z, w4);
+			cpy(expCoeff[i].s, p1/T_z, w4);
 		}
 		Label cond;
 		mov(x3, 0);
@@ -182,6 +187,10 @@ struct Code : public Xbyak::CodeGenerator {
 	L(cond);
 		whilelt(p0.s, x3, n);
 		b_first(lp);
+		for (size_t i = 0; i < saveN; i++) {
+			ld1w(expCoeff[i].s, p1, ptr(sp, int(i)));
+		}
+		add(sp, sp, saveN * 64);
 		ret();
 	}
 #if 0
