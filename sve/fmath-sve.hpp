@@ -130,13 +130,9 @@ struct Code : public Xbyak::CodeGenerator {
 		lsl(z1.s, z1.s, 23); // shl
 		movprfx(z2.s, p0, expCoeff[4].s);
 		fmad(z2.s, p0, z0.s, expCoeff[3].s);
-		movprfx(z2.s, p0, z2.s);
 		fmad(z2.s, p0, z0.s, expCoeff[2].s);
-		movprfx(z2.s, p0, z2.s);
 		fmad(z2.s, p0, z0.s, expCoeff[1].s);
-		movprfx(z2.s, p0, z2.s);
 		fmad(z2.s, p0, z0.s, expCoeff[0].s);
-		movprfx(z2.s, p0, z2.s);
 		fmad(z2.s, p0, z0.s, expCoeff[0].s);
 		fmul(z0.s, z2.s, z1.s);
 	}
