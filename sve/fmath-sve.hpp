@@ -117,7 +117,7 @@ struct Code : public Xbyak::CodeGenerator {
 	}
 	// z0 = exp(zm0)
 	// use z0, z1, z2
-	void genExpOneSVE(const ZReg& i127, const ZReg& expMin, const ZReg& expMax, const ZReg& log2, const ZReg& log2_e, const ZReg expCoeff[5])
+	void genExpOneSVE(const ZReg& expMin, const ZReg& expMax, const ZReg& log2, const ZReg& log2_e, const ZReg expCoeff[5])
 	{
 		fmin(z0.s, p0, expMax.s);
 		fmax(z0.s, p0, expMin.s);
@@ -126,15 +126,14 @@ struct Code : public Xbyak::CodeGenerator {
 		fcvtzs(z1.s, p0, z2.s); // float -> int
 		fsub(z0.s, z0.s, z2.s);
 		fmul(z0.s, z0.s, log2.s);
-		add(z1.s, z1.s, i127.s);
-		lsl(z1.s, z1.s, 23); // shl
 		movprfx(z2.s, p0, expCoeff[4].s);
 		fmad(z2.s, p0, z0.s, expCoeff[3].s);
 		fmad(z2.s, p0, z0.s, expCoeff[2].s);
 		fmad(z2.s, p0, z0.s, expCoeff[1].s);
 		fmad(z2.s, p0, z0.s, expCoeff[0].s);
 		fmad(z2.s, p0, z0.s, expCoeff[0].s);
-		fmul(z0.s, z2.s, z1.s);
+		movprfx(z0.s, p0, z2.s);
+		fscale(z0.s, p0, z1.s); // z0 = z2 * 2^z1
 	}
 	// exp_v(float *dst, const float *src, size_t n);
 	void genExpAVX512(const Xbyak::Label& constVarL)
@@ -145,13 +144,12 @@ struct Code : public Xbyak::CodeGenerator {
 		const XReg& n = x2;
 
 		// setup constant
-		const ZReg& i127 = z3;
-		const ZReg& expMin = z4;
-		const ZReg& expMax = z5;
-		const ZReg& log2 = z6;
-		const ZReg& log2_e = z7;
-		const ZReg expCoeff[] = { z8, z9, z10, z11, z12 };
-		const size_t saveN = sizeof(expCoeff) / sizeof(expCoeff[0]);
+		const ZReg& expMin = z3;
+		const ZReg& expMax = z4;
+		const ZReg& log2 = z5;
+		const ZReg& log2_e = z6;
+		const ZReg expCoeff[] = { z8, z9, z10, z11, z7 };
+		const size_t saveN = sizeof(expCoeff) / sizeof(expCoeff[0]) - 1; // does not keep z7
 		sub(sp, sp, saveN * 64);
 		ptrue(p1.s);
 		for (size_t i = 0; i < saveN; i++) {
@@ -159,7 +157,6 @@ struct Code : public Xbyak::CodeGenerator {
 		}
 
 		adr(x3, constVarL);
-		cpy(i127.s, p1, 127);
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, expMin)));
 		cpy(expMin.s, p1/T_z, w4);
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, expMax)));
@@ -177,7 +174,7 @@ struct Code : public Xbyak::CodeGenerator {
 		b(cond);
 	Label lp = L();
 		ld1w(z0.s, p0/T_z, ptr(src, x3, LSL, 2));
-		genExpOneSVE(i127, expMin, expMax, log2, log2_e, expCoeff);
+		genExpOneSVE(expMin, expMax, log2, log2_e, expCoeff);
 		st1w(z0.s, p0, ptr(dst, x3, LSL, 2));
 		incd(x3);
 	L(cond);
