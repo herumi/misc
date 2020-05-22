@@ -96,31 +96,31 @@ struct Code : CodeGenerator {
 	}
 };
 
-struct Code2 : Xbyak::CodeGenerator {
-	static const int srcAdj = 2;
-	static const int dstAdj = 3;
-	Code2()
-	{
-		// copy(float *dst, const float *src);
-		ptrue(p0.s);
-		ld1w(z0.s, p0, ptr(x1, srcAdj));
-		st1w(z0.s, p0, ptr(x0, dstAdj));
-		ret();
-	}
-};
-
-void test2()
+void test_ld1w_imm()
 {
-	puts("test2");
+	puts("test_ld1w_imm");
+	const int srcAdj = 2;
+	const int dstAdj = 3;
+	struct Code : Xbyak::CodeGenerator {
+		Code()
+		{
+			// copy(float *dst, const float *src);
+			ptrue(p0.s);
+			ld1w(z0.s, p0, ptr(x1, srcAdj));
+			st1w(z0.s, p0, ptr(x0, dstAdj));
+			ret();
+		}
+	};
+
 	float src[16];
 	float dst[16];
 	for (int i = 0; i < 16; i++) {
 		src[i] = float(i);
 	}
-	Code2 c;
+	Code c;
 	c.ready();
 	auto f = c.getCode<void (*)(float *, const float *)>();
-	f(dst - Code2::dstAdj * 16, src - Code2::srcAdj * 16);
+	f(dst - dstAdj * 16, src - srcAdj * 16);
 	for (int i = 0; i < 16; i++) {
 		float s = float(i);
 		float d = dst[i];
@@ -129,6 +129,40 @@ void test2()
 		}
 	}
 	puts("ok");
+}
+
+void test_fscale()
+{
+	puts("test_fscale");
+	struct Code : Xbyak::CodeGenerator {
+		Code()
+		{
+			// copy(float *dst, const float *src, const int *e); // dst = src * 2^e
+			ptrue(p0.s);
+			ld1w(z0.s, p0, ptr(x1));
+			ld1w(z1.s, p0, ptr(x2));
+			fscale(z0.s, p0, z1.s);
+			st1w(z0.s, p0, ptr(x0));
+			ret();
+		}
+	};
+	int ex[16];
+	float src[16];
+	float dst[16];
+	for (int i = 0; i < 16; i++) {
+		ex[i] = i;
+		src[i] = (i + 10) / 8.0f;
+	}
+	Code c;
+	c.ready();
+	auto f = c.getCode<void (*)(float *, const float *, const int *)>();
+	f(dst, src, ex);
+	for (int i = 0; i < 16; i++) {
+		float s = src[i];
+		float d = dst[i];
+		int e = ex[i];
+		printf("fscale %d d=%f %f*2^%d=%f\n", i, d, s, e, s * pow(2, e));
+	}
 }
 
 const size_t N = 16;
@@ -230,7 +264,8 @@ int main()
 	vec(cpy2C, z1, x, y);
 	cpy2A(z2, x, y);
 	check(x, y, z1, z2);
-	test2();
+	test_ld1w_imm();
+	test_fscale();
 } catch (std::exception& e) {
 	printf("err %s\n", e.what());
 	return 1;
