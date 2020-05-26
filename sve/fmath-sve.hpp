@@ -118,7 +118,7 @@ struct Code : public Xbyak::CodeGenerator {
 	}
 	// tz0 = exp(tz0)
 	// use tz0, tz1, tz2
-	void genExpOneSVE(const PReg& p, const ZReg& tz0, const ZReg& tz1, const ZReg& tz2, const ZReg& expMin, const ZReg& expMax, const ZReg& log2, const ZReg& log2_e, const ZReg expCoeff[5])
+	void genExp1SVE(const PReg& p, const ZReg& tz0, const ZReg& tz1, const ZReg& tz2, const ZReg& expMin, const ZReg& expMax, const ZReg& log2, const ZReg& log2_e, const ZReg expCoeff[5])
 	{
 		fmin(tz0.s, p, expMax.s);
 		fmax(tz0.s, p, expMin.s);
@@ -135,38 +135,28 @@ struct Code : public Xbyak::CodeGenerator {
 		fmad(tz0.s, p, tz2.s, expCoeff[0].s);
 		fscale(tz0.s, p, tz1.s); // tz0 *= 2^tz1
 	}
-	// tz0 = exp(tz0), tz3 = exp(tz3)
-	// use tz0, tz1, tz2, tz3, tz4, tz5
-	void genExpTwoSVE(const PReg& p, const ZReg& tz0, const ZReg& tz1, const ZReg& tz2, const ZReg& tz3, const ZReg& tz4, const ZReg& tz5, const ZReg& expMin, const ZReg& expMax, const ZReg& log2, const ZReg& log2_e, const ZReg expCoeff[5])
+	// t0 = exp(t0), tz3 = exp(t3), ...
+	// use t
+	template<size_t N>
+	void genExpsSVE(const PReg& p, std::array<ZReg, N> t, const ZReg& expMin, const ZReg& expMax, const ZReg& log2, const ZReg& log2_e, const ZReg expCoeff[5])
 	{
-		fmin(tz0.s, p, expMax.s);
-		fmin(tz3.s, p, expMax.s);
-		fmax(tz0.s, p, expMin.s);
-		fmax(tz3.s, p, expMin.s);
-		fmul(tz0.s, tz0.s, log2_e.s);
-		fmul(tz3.s, tz3.s, log2_e.s);
-		frintn(tz2.s, p, tz0.s); // rounding : float -> float
-		frintn(tz5.s, p, tz3.s); // rounding : float -> float
-		fcvtzs(tz1.s, p, tz2.s); // float -> int
-		fcvtzs(tz4.s, p, tz5.s); // float -> int
-		fsub(tz2.s, tz0.s, tz2.s);
-		fsub(tz5.s, tz3.s, tz5.s);
-		fmul(tz2.s, tz2.s, log2.s);
-		fmul(tz5.s, tz5.s, log2.s);
-		movprfx(tz0.s, p, expCoeff[4].s);
-		fmad(tz0.s, p, tz2.s, expCoeff[3].s);
-		movprfx(tz3.s, p, expCoeff[4].s);
-		fmad(tz3.s, p, tz5.s, expCoeff[3].s);
-		fmad(tz0.s, p, tz2.s, expCoeff[2].s);
-		fmad(tz3.s, p, tz5.s, expCoeff[2].s);
-		fmad(tz0.s, p, tz2.s, expCoeff[1].s);
-		fmad(tz3.s, p, tz5.s, expCoeff[1].s);
-		fmad(tz0.s, p, tz2.s, expCoeff[0].s);
-		fmad(tz3.s, p, tz5.s, expCoeff[0].s);
-		fmad(tz0.s, p, tz2.s, expCoeff[0].s);
-		fmad(tz3.s, p, tz5.s, expCoeff[0].s);
-		fscale(tz0.s, p, tz1.s); // tz0 *= 2^tz1
-		fscale(tz3.s, p, tz4.s); // tz3 *= 2^tz4
+		const size_t n = N / 3;
+		for (size_t i = 0; i < n; i++) fmin(t[0 + i * 3].s, p, expMax.s);
+		for (size_t i = 0; i < n; i++) fmax(t[0 + i * 3].s, p, expMin.s);
+		for (size_t i = 0; i < n; i++) fmul(t[0 + i * 3].s, t[0 + i * 3].s, log2_e.s);
+		for (size_t i = 0; i < n; i++) frintn(t[2 + i * 3].s, p, t[0 + i * 3].s); // rounding : float -> float
+		for (size_t i = 0; i < n; i++) fcvtzs(t[1 + i * 3].s, p, t[2 + i * 3].s); // float -> int
+		for (size_t i = 0; i < n; i++) fsub(t[2 + i * 3].s, t[0 + i * 3].s, t[2 + i * 3].s);
+		for (size_t i = 0; i < n; i++) fmul(t[2 + i * 3].s, t[2 + i * 3].s, log2.s);
+		for (size_t i = 0; i < n; i++) {
+			movprfx(t[0 + i * 3].s, p, expCoeff[4].s);
+			fmad(t[0 + i * 3].s, p, t[2 + i * 3].s, expCoeff[3].s);
+		}
+		for (size_t i = 0; i < n; i++) fmad(t[0 + i * 3].s, p, t[2 + i * 3].s, expCoeff[2].s);
+		for (size_t i = 0; i < n; i++) fmad(t[0 + i * 3].s, p, t[2 + i * 3].s, expCoeff[1].s);
+		for (size_t i = 0; i < n; i++) fmad(t[0 + i * 3].s, p, t[2 + i * 3].s, expCoeff[0].s);
+		for (size_t i = 0; i < n; i++) fmad(t[0 + i * 3].s, p, t[2 + i * 3].s, expCoeff[0].s);
+		for (size_t i = 0; i < n; i++) fscale(t[0 + i * 3].s, p, t[1 + i * 3].s); // tz0 *= 2^tz1
 	}
 	// exp_v(float *dst, const float *src, size_t n);
 	void genExpAVX512(const Xbyak::Label& constVarL)
@@ -181,18 +171,23 @@ struct Code : public Xbyak::CodeGenerator {
 		const ZReg& expMax = z4;
 		const ZReg& log2 = z5;
 		const ZReg& log2_e = z6;
-#define FMATH_SVE_LOOP_UNROLL
+#define FMATH_SVE_LOOP_UNROLL 3
 		const ZReg expCoeff[] = {
 			z7, z8, z9, z10, z11,
-#ifdef FMATH_SVE_LOOP_UNROLL
+#if FMATH_SVE_LOOP_UNROLL >= 2
 			z12, z13, z14,
+#endif
+#if FMATH_SVE_LOOP_UNROLL >= 3
+			z15, z16, z17,
 #endif
 		};
 		const size_t saveN = sizeof(expCoeff) / sizeof(expCoeff[0]) - 1; // does not keep z7
+		const size_t adj = saveN / 2;
 		sub(sp, sp, saveN * 64);
+		add(x3, sp, adj * 64);
 		ptrue(p0.s);
 		for (size_t i = 0; i < saveN; i++) {
-			st1w(expCoeff[i + 1].s, p0, ptr(sp, int(i)));
+			st1w(expCoeff[i + 1].s, p0, ptr(x3, int(i - adj)));
 		}
 
 		adr(x3, constVarL);
@@ -209,52 +204,74 @@ struct Code : public Xbyak::CodeGenerator {
 			cpy(expCoeff[i].s, p0/T_z, w4);
 		}
 #if 1
-#ifdef FMATH_SVE_LOOP_UNROLL
-		Label remain;
+#ifndef FMATH_SVE_LOOP_UNROLL
+		Label skip;
+		b(skip);
+	Label lp = L();
+		ld1w(z0.s, p0/T_z, ptr(src));
+		add(src, src, 64);
+		genExp1SVE(p0, z0, z1, z2, expMin, expMax, log2, log2_e, expCoeff);
+		st1w(z0.s, p0, ptr(dst));
+		add(dst, dst, 64);
+		sub(n, n, 16);
+	L(skip);
+		cmp(n, 16);
+		bge(lp);
+
+		mov(x3, 0);
+		whilelt(p1.s, x3, n);
+		ld1w(z0.s, p1/T_z, ptr(src));
+		genExp1SVE(p1, z0, z1, z2, expMin, expMax, log2, log2_e, expCoeff);
+		st1w(z0.s, p1, ptr(dst));
+#else
+		Label skip;
+#if FMATH_SVE_LOOP_UNROLL == 2
 		mov(x3, 16);
-		b(remain);
+		b(skip);
 	Label lp = L();
 		ld1w(z0.s, p0/T_z, ptr(src));
 		ld1w(z12.s, p0/T_z, ptr(src, x3, LSL, 2));
 		add(src, src, 128);
-		genExpTwoSVE(p0, z0, z1, z2, z12, z13, z14, expMin, expMax, log2, log2_e, expCoeff);
+		genExpsSVE(p0, std::array<ZReg, 6>{z0, z1, z2, z12, z13, z14}, expMin, expMax, log2, log2_e, expCoeff);
 		st1w(z0.s, p0, ptr(dst));
 		st1w(z12.s, p0, ptr(dst, x3, LSL, 2));
 		add(dst, dst, 128);
 		sub(n, n, 32);
-	L(remain);
+	L(skip);
 		cmp(n, 32);
 		bge(lp);
+#else
+		mov(x3, 16);
+		mov(x4, 32);
+		mov(x5, 64 * 3);
+		b(skip);
+	Label lp = L();
+		ld1w(z0.s, p0/T_z, ptr(src));
+		ld1w(z12.s, p0/T_z, ptr(src, x3, LSL, 2));
+		ld1w(z15.s, p0/T_z, ptr(src, x4, LSL, 2));
+		add(src, src, x5);
+		genExpsSVE(p0, std::array<ZReg, 9>{z0, z1, z2, z12, z13, z14, z15, z16, z17}, expMin, expMax, log2, log2_e, expCoeff);
+		st1w(z0.s, p0, ptr(dst));
+		st1w(z12.s, p0, ptr(dst, x3, LSL, 2));
+		st1w(z15.s, p0, ptr(dst, x4, LSL, 2));
+		add(dst, dst, x5);
+		sub(n, n, 16 * 3);
+	L(skip);
+		cmp(n, 16 * 3);
+		bge(lp);
+#endif
 
 		Label cond;
 		mov(x3, 0);
 		b(cond);
 	Label lp2 = L();
 		ld1w(z0.s, p1/T_z, ptr(src, x3, LSL, 2));
-		genExpOneSVE(p1, z0, z1, z2, expMin, expMax, log2, log2_e, expCoeff);
+		genExp1SVE(p1, z0, z1, z2, expMin, expMax, log2, log2_e, expCoeff);
 		st1w(z0.s, p1, ptr(dst, x3, LSL, 2));
 		incd(x3);
 	L(cond);
 		whilelt(p1.s, x3, n);
 		b_first(lp2);
-#else
-		Label remain;
-		b(remain);
-	Label lp = L();
-		ld1w(z0.s, p0/T_z, ptr(src));
-		add(src, src, 64);
-		genExpOneSVE(p0, z0, z1, z2, expMin, expMax, log2, log2_e, expCoeff);
-		st1w(z0.s, p0, ptr(dst));
-		add(dst, dst, 64);
-		sub(n, n, 16);
-	L(remain);
-		cmp(n, 16);
-		bge(lp);
-		mov(x3, 0);
-		whilelt(p1.s, x3, n);
-		ld1w(z0.s, p1/T_z, ptr(src));
-		genExpOneSVE(p1, z0, z1, z2, expMin, expMax, log2, log2_e, expCoeff);
-		st1w(z0.s, p1, ptr(dst));
 #endif
 #else
 		Label cond;
@@ -262,15 +279,16 @@ struct Code : public Xbyak::CodeGenerator {
 		b(cond);
 	Label lp = L();
 		ld1w(z0.s, p1/T_z, ptr(src, x3, LSL, 2));
-		genExpOneSVE(p1, z0, z1, z2, expMin, expMax, log2, log2_e, expCoeff);
+		genExp1SVE(p1, z0, z1, z2, expMin, expMax, log2, log2_e, expCoeff);
 		st1w(z0.s, p1, ptr(dst, x3, LSL, 2));
 		incd(x3);
 	L(cond);
 		whilelt(p1.s, x3, n);
 		b_first(lp);
 #endif
+		add(x3, sp, adj * 64);
 		for (size_t i = 0; i < saveN; i++) {
-			ld1w(expCoeff[i + 1].s, p0, ptr(sp, int(i)));
+			ld1w(expCoeff[i + 1].s, p0, ptr(x3, int(i - adj)));
 		}
 		add(sp, sp, saveN * 64);
 		ret();
