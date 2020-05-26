@@ -125,16 +125,15 @@ struct Code : public Xbyak::CodeGenerator {
 		fmul(z0.s, z0.s, log2_e.s);
 		frintn(z2.s, p, z0.s); // rounding : float -> float
 		fcvtzs(z1.s, p, z2.s); // float -> int
-		fsub(z0.s, z0.s, z2.s);
-		fmul(z0.s, z0.s, log2.s);
-		movprfx(z2.s, p, expCoeff[4].s);
-		fmad(z2.s, p, z0.s, expCoeff[3].s);
-		fmad(z2.s, p, z0.s, expCoeff[2].s);
-		fmad(z2.s, p, z0.s, expCoeff[1].s);
-		fmad(z2.s, p, z0.s, expCoeff[0].s);
-		fmad(z2.s, p, z0.s, expCoeff[0].s);
-		movprfx(z0.s, p, z2.s);
-		fscale(z0.s, p, z1.s); // z0 = z2 * 2^z1
+		fsub(z2.s, z0.s, z2.s);
+		fmul(z2.s, z2.s, log2.s);
+		movprfx(z0.s, p, expCoeff[4].s);
+		fmad(z0.s, p, z2.s, expCoeff[3].s);
+		fmad(z0.s, p, z2.s, expCoeff[2].s);
+		fmad(z0.s, p, z2.s, expCoeff[1].s);
+		fmad(z0.s, p, z2.s, expCoeff[0].s);
+		fmad(z0.s, p, z2.s, expCoeff[0].s);
+		fscale(z0.s, p, z1.s); // z0 *= 2^z1
 	}
 	// exp_v(float *dst, const float *src, size_t n);
 	void genExpAVX512(const Xbyak::Label& constVarL)
