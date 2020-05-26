@@ -169,6 +169,25 @@ struct Code : public Xbyak::CodeGenerator {
 			ldr(w4, ptr(x3, uint32_t(offsetof(ConstVar, expCoeff[0]) + sizeof(float) * i)));
 			cpy(expCoeff[i].s, p0/T_z, w4);
 		}
+#if 1
+		Label check;
+		b(check);
+	Label lp = L();
+		ld1w(z0.s, p0/T_z, ptr(src));
+		add(src, src, 64);
+		genExpOneSVE(p0, expMin, expMax, log2, log2_e, expCoeff);
+		st1w(z0.s, p0, ptr(dst));
+		add(dst, dst, 64);
+		sub(n, n, 16);
+	L(check);
+		cmp(n, 16);
+		bge(lp);
+		mov(x3, 0);
+		whilelt(p1.s, x3, n);
+		ld1w(z0.s, p1/T_z, ptr(src));
+		genExpOneSVE(p1, expMin, expMax, log2, log2_e, expCoeff);
+		st1w(z0.s, p1, ptr(dst));
+#else
 		Label cond;
 		mov(x3, 0);
 		b(cond);
@@ -180,6 +199,7 @@ struct Code : public Xbyak::CodeGenerator {
 	L(cond);
 		whilelt(p1.s, x3, n);
 		b_first(lp);
+#endif
 		for (size_t i = 0; i < saveN; i++) {
 			ld1w(expCoeff[i].s, p0, ptr(sp, int(i)));
 		}
