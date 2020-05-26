@@ -123,6 +123,7 @@ void checkDiff(const float *x, const float *y, size_t n, bool put = false)
 		if (put) {
 			if (d > g_maxe) {
 				printf("err n=%zd, i=%zd x=%e y=%e\n", n, i, x[i], y[i]);
+				exit(1);
 			}
 		} else {
 			CYBOZU_TEST_ASSERT(d <= g_maxe);
@@ -154,7 +155,7 @@ void putClk(const char *msg, size_t n)
 CYBOZU_TEST_AUTO(bench)
 {
 	Fvec x, y0, y1;
-	const size_t n = 1024 * 16;
+	size_t n = 1024 * 16;
 	x.resize(n);
 	y0.resize(n);
 	y1.resize(n);
@@ -165,9 +166,19 @@ CYBOZU_TEST_AUTO(bench)
 	printf("for float x[%zd];\n", n);
 	CYBOZU_BENCH_C("", C, std_exp_v, &y0[0], &x[0], n);
 	putClk("std::exp", C * (n / 16));
+	for (int i = 0; i < 100; i++) {
+		memset(&y1[0], 0, i * sizeof(float));
+		fmath::expf_v(&y1[0], &x[0], i);
+		checkDiff(&y0[0], &y1[0], i);
+	}
 	CYBOZU_BENCH_C("", C, fmath::expf_v, &y1[0], &x[0], n);
 	putClk("fmath::expf_v", C * (n / 16));
-	checkDiff(y0.data(), y1.data(), n);
+	checkDiff(&y0[0], &y1[0], n);
+	n = 1024 * 4;
+	memset(y1.data(), 0, n * sizeof(float));
+	CYBOZU_BENCH_C("", C, fmath::expf_v, &y1[0], &x[0], n);
+	putClk("fmath::expf_v", C * (n / 16));
+	checkDiff(&y0[0], &y1[0], n);
 }
 
 CYBOZU_TEST_AUTO(limit)
