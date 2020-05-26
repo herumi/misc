@@ -154,8 +154,8 @@ struct Code : public Xbyak::CodeGenerator {
 		fmul(tz2.s, tz2.s, log2.s);
 		fmul(tz5.s, tz5.s, log2.s);
 		movprfx(tz0.s, p, expCoeff[4].s);
-		movprfx(tz3.s, p, expCoeff[4].s);
 		fmad(tz0.s, p, tz2.s, expCoeff[3].s);
+		movprfx(tz3.s, p, expCoeff[4].s);
 		fmad(tz3.s, p, tz5.s, expCoeff[3].s);
 		fmad(tz0.s, p, tz2.s, expCoeff[2].s);
 		fmad(tz3.s, p, tz5.s, expCoeff[2].s);
@@ -181,7 +181,7 @@ struct Code : public Xbyak::CodeGenerator {
 		const ZReg& expMax = z4;
 		const ZReg& log2 = z5;
 		const ZReg& log2_e = z6;
-//#define FMATH_SVE_LOOP_UNROLL
+#define FMATH_SVE_LOOP_UNROLL
 		const ZReg expCoeff[] = {
 			z7, z8, z9, z10, z11,
 #ifdef FMATH_SVE_LOOP_UNROLL
