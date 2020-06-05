@@ -132,7 +132,7 @@ struct Code : public Xbyak::CodeGenerator {
 		constVar->init();
 		setSize(dataSize / 4);
 		expf_v = getCurr<VecFunc>();
-		genExpAVX512(constVarL);
+		genExpSVE(constVarL);
 #if 0
 		align(16);
 		logf_v = getCurr<VecFunc>();
@@ -170,7 +170,7 @@ struct Code : public Xbyak::CodeGenerator {
 		for (size_t i = 0; i < n; i++) fscale(t[0 + i * 3].s, p, t[1 + i * 3].s); // tz0 *= 2^tz1
 	}
 	// exp_v(float *dst, const float *src, size_t n);
-	void genExpAVX512(const Xbyak::Label& constVarL)
+	void genExpSVE(const Xbyak::Label& constVarL)
 	{
 		using namespace Xbyak;
 		const XReg& dst = x0;
