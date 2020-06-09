@@ -17,6 +17,13 @@ float fmath_expf(float x)
 	return y[0];
 }
 
+float fmath_tanhf(float x)
+{
+	float y[16] = { x };
+	fmath::tanhf_v(y, y, 1);
+	return y[0];
+}
+
 float u2f(uint32_t x)
 {
 	fmath::local::fi fi;
@@ -77,15 +84,22 @@ void std_exp_v(float *dst, const float *src, size_t n)
 	}
 }
 
+void std_tanh_v(float *dst, const float *src, size_t n)
+{
+	for (size_t i = 0; i < n; i++) {
+		dst[i] = std::tanh(src[i]);
+	}
+}
+
 template<class F>
-float putDiff(float begin, float end, float step, const F& f, bool doPut = false)
+float putDiff(float begin, float end, float step, const F& f, bool doPut = false, float stdf(float) = std::exp)
 {
 	float maxe = 0;
 	float maxx = 0;
 	double ave = 0;
 	int aveN = 0;
 	for (float x = begin; x < end; x += step) {
-		float y0 = std::exp(x);
+		float y0 = stdf(x);
 //		float y0 = expfC(x);
 		float y1 = f(x);
 		float e;
@@ -104,6 +118,13 @@ float putDiff(float begin, float end, float step, const F& f, bool doPut = false
 	printf("maxe=%e (x=%e)\n", maxe, maxx);
 	printf("ave=%e\n", ave / aveN);
 	return maxe;
+}
+
+CYBOZU_TEST_AUTO(tanh)
+{
+	puts("tanh");
+	puts("fmath::tanhf_v");
+	putDiff(-4, 4, 0.1, fmath_tanhf, true, std::tanh);
 }
 
 CYBOZU_TEST_AUTO(setMaxE)
@@ -193,3 +214,4 @@ CYBOZU_TEST_AUTO(limit)
 		printf("x=%e std=%e fmath2=%e\n", x[i], y0[i], y1[i]);
 	}
 }
+

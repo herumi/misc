@@ -95,10 +95,12 @@ struct Code : public Xbyak::CodeGenerator {
 	ConstVar *constVar;
 	typedef void (*VecFunc)(float *dst, const float *src, size_t n);
 	VecFunc expf_v;
+	VecFunc tanhf_v;
 //	VecFunc logf_v;
 	Code()
 		: Xbyak::CodeGenerator(4096 * 2)
 		, expf_v(0)
+		, tanhf_v(0)
 //		, logf_v(0)
 	{
 		size_t dataSize = sizeof(ConstVar);
@@ -109,6 +111,9 @@ struct Code : public Xbyak::CodeGenerator {
 		setSize(dataSize / 4);
 		expf_v = getCurr<VecFunc>();
 		genExpSVE(constVarL);
+		align(16);
+		tanhf_v = getCurr<VecFunc>();
+		genTanhSVE(constVarL);
 #if 0
 		align(16);
 		logf_v = getCurr<VecFunc>();
@@ -293,6 +298,89 @@ struct Code : public Xbyak::CodeGenerator {
 		add(sp, sp, saveN * 64);
 		ret();
 	}
+	// tz0 = tanh(tz0)
+	// use tz0, tz1, tz2
+	void genTanh1SVE(const PReg& p, const ZReg& tz0, const ZReg& tz1, const ZReg& tz2, const ZReg& expMin, const ZReg& expMax, const ZReg& log2, const ZReg& log2_e, const ZReg expCoeff[5])
+	{
+		fmin(tz0.s, p, expMax.s);
+		fmax(tz0.s, p, expMin.s);
+		fmul(tz0.s, tz0.s, log2_e.s);
+		frintn(tz2.s, p, tz0.s); // rounding : float -> float
+		fcvtzs(tz1.s, p, tz2.s); // float -> int
+		fsub(tz2.s, tz0.s, tz2.s);
+		fmul(tz2.s, tz2.s, log2.s);
+		movprfx(tz0.s, p, expCoeff[4].s);
+		fmad(tz0.s, p, tz2.s, expCoeff[3].s);
+		fmad(tz0.s, p, tz2.s, expCoeff[2].s);
+		fmad(tz0.s, p, tz2.s, expCoeff[1].s);
+		fmad(tz0.s, p, tz2.s, expCoeff[0].s);
+		fmad(tz0.s, p, tz2.s, expCoeff[0].s);
+		fscale(tz0.s, p, tz1.s); // tz0 *= 2^tz1
+	}
+	// tanhf_v(float *dst, const float *src, size_t n);
+	void genTanhSVE(const Xbyak::Label& constVarL)
+	{
+		using namespace Xbyak;
+		const XReg& dst = x0;
+		const XReg& src = x1;
+		const XReg& n = x2;
+
+		// setup constant
+		const ZReg& expMin = z3;
+		const ZReg& expMax = z4;
+		const ZReg& log2 = z5;
+		const ZReg& log2_e = z6;
+		const ZReg expCoeff[] = {
+			z7, z8, z9, z10, z11,
+		};
+		const size_t saveN = sizeof(expCoeff) / sizeof(expCoeff[0]) - 1; // does not keep z7
+		const size_t adj = saveN / 2;
+		sub(sp, sp, saveN * 64);
+		add(x3, sp, adj * 64);
+		ptrue(p0.s);
+		for (size_t i = 0; i < saveN; i++) {
+			st1w(expCoeff[i + 1].s, p0, ptr(x3, int(i - adj)));
+		}
+
+		adr(x3, constVarL);
+		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, expMin)));
+		cpy(expMin.s, p0/T_z, w4);
+		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, expMax)));
+		cpy(expMax.s, p0/T_z, w4);
+		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, log2)));
+		cpy(log2.s, p0/T_z, w4);
+		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, log2_e)));
+		cpy(log2_e.s, p0/T_z, w4);
+		for (size_t i = 0; i < ConstVar::expN; i++) {
+			ldr(w4, ptr(x3, uint32_t(offsetof(ConstVar, expCoeff[0]) + sizeof(float) * i)));
+			cpy(expCoeff[i].s, p0/T_z, w4);
+		}
+		Label skip;
+		b(skip);
+	Label lp = L();
+		ld1w(z0.s, p0/T_z, ptr(src));
+		add(src, src, 64);
+		genTanh1SVE(p0, z0, z1, z2, expMin, expMax, log2, log2_e, expCoeff);
+		st1w(z0.s, p0, ptr(dst));
+		add(dst, dst, 64);
+		sub(n, n, 16);
+	L(skip);
+		cmp(n, 16);
+		bge(lp);
+
+		mov(x3, 0);
+		whilelt(p1.s, x3, n);
+		ld1w(z0.s, p1/T_z, ptr(src));
+		genTanh1SVE(p1, z0, z1, z2, expMin, expMax, log2, log2_e, expCoeff);
+		st1w(z0.s, p1, ptr(dst));
+
+		add(x3, sp, adj * 64);
+		for (size_t i = 0; i < saveN; i++) {
+			ld1w(expCoeff[i + 1].s, p0, ptr(x3, int(i - adj)));
+		}
+		add(sp, sp, saveN * 64);
+		ret();
+	}
 #if 0
 	// zm0 = log(zm0)
 	// use zm0, zm1, zm2
@@ -406,6 +494,11 @@ alignas(32) const Code Inst<dummy>::code;
 inline void expf_v(float *dst, const float *src, size_t n)
 {
 	local::Inst<>::code.expf_v(dst, src, n);
+}
+
+inline void tanhf_v(float *dst, const float *src, size_t n)
+{
+	local::Inst<>::code.tanhf_v(dst, src, n);
 }
 
 #if 0

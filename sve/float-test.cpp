@@ -63,6 +63,11 @@ struct Code : CodeGenerator {
 	{
 		fmul(dst.s, src1.s, src2.s);
 	}
+	void fdivW(const ZReg& dst, const ZReg& src1, const ZReg& src2)
+	{
+		movprfx(dst.s, p0, src1.s);
+		fdiv(dst.s, p0, src2.s);
+	}
 	void fmaxW(const ZReg& dst, const ZReg& src1, const ZReg& src2)
 	{
 		movprfx(dst.s, p0, src1.s);
@@ -178,6 +183,7 @@ void vec(const F& f, float *z, const float *x, const float *y)
 float faddC(float x, float y) { return x + y; }
 float fsubC(float x, float y) { return x - y; }
 float fmulC(float x, float y) { return x * y; }
+float fdivC(float x, float y) { return x / y; }
 float fmaxC(float x, float y) { return std::max(x, y); }
 float fcpyC(float, float) { return g_c0; }
 float cpyC(float, float) { return g_c1; }
@@ -215,6 +221,9 @@ int main()
 	auto fmulA = c.getCurr<void (*)(float *, const float *, const float *)>();
 	c.generate(&Code::fmulW);
 
+	auto fdivA = c.getCurr<void (*)(float *, const float *, const float *)>();
+	c.generate(&Code::fdivW);
+
 	auto fmaxA = c.getCurr<void (*)(float *, const float *, const float *)>();
 	c.generate(&Code::fmaxW);
 
@@ -241,6 +250,11 @@ int main()
 	puts("fmul");
 	vec(fmulC, z1, x, y);
 	fmulA(z2, x, y);
+	check(x, y, z1, z2);
+
+	puts("fdiv");
+	vec(fdivC, z1, x, y);
+	fdivA(z2, x, y);
 	check(x, y, z1, z2);
 
 	puts("fmax");
