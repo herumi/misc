@@ -68,6 +68,10 @@ struct Code : CodeGenerator {
 		movprfx(dst.s, p0, src1.s);
 		fdiv(dst.s, p0, src2.s);
 	}
+	void frecpsW(const ZReg& dst, const ZReg& src1, const ZReg& src2)
+	{
+		frecps(dst.s, src1.s, src2.s);
+	}
 	void fmaxW(const ZReg& dst, const ZReg& src1, const ZReg& src2)
 	{
 		movprfx(dst.s, p0, src1.s);
@@ -184,6 +188,7 @@ float faddC(float x, float y) { return x + y; }
 float fsubC(float x, float y) { return x - y; }
 float fmulC(float x, float y) { return x * y; }
 float fdivC(float x, float y) { return x / y; }
+float frecpsC(float x, float y) { return 2 - x * y; }
 float fmaxC(float x, float y) { return std::max(x, y); }
 float fcpyC(float, float) { return g_c0; }
 float cpyC(float, float) { return g_c1; }
@@ -224,6 +229,9 @@ int main()
 	auto fdivA = c.getCurr<void (*)(float *, const float *, const float *)>();
 	c.generate(&Code::fdivW);
 
+	auto frecpsA = c.getCurr<void (*)(float *, const float *, const float *)>();
+	c.generate(&Code::frecpsW);
+
 	auto fmaxA = c.getCurr<void (*)(float *, const float *, const float *)>();
 	c.generate(&Code::fmaxW);
 
@@ -255,6 +263,11 @@ int main()
 	puts("fdiv");
 	vec(fdivC, z1, x, y);
 	fdivA(z2, x, y);
+	check(x, y, z1, z2);
+
+	puts("frecps");
+	vec(frecpsC, z1, x, y);
+	frecpsA(z2, x, y);
 	check(x, y, z1, z2);
 
 	puts("fmax");
