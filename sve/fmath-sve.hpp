@@ -298,10 +298,13 @@ struct Code : public Xbyak::CodeGenerator {
 		add(sp, sp, saveN * 64);
 		ret();
 	}
-	// tz0 = tanh(tz0)
+	// tz0 = tanh(tz0) = 1 - 2 / (1 + exp(2 tz0))
 	// use tz0, tz1, tz2
 	void genTanh1SVE(const PReg& p, const ZReg& tz0, const ZReg& tz1, const ZReg& tz2, const ZReg& expMin, const ZReg& expMax, const ZReg& log2, const ZReg& log2_e, const ZReg expCoeff[5])
 	{
+		// 2x
+		fadd(tz0.s, tz0.s, tz0.s);
+		// exp(2x)
 		fmin(tz0.s, p, expMax.s);
 		fmax(tz0.s, p, expMin.s);
 		fmul(tz0.s, tz0.s, log2_e.s);
@@ -316,6 +319,33 @@ struct Code : public Xbyak::CodeGenerator {
 		fmad(tz0.s, p, tz2.s, expCoeff[0].s);
 		fmad(tz0.s, p, tz2.s, expCoeff[0].s);
 		fscale(tz0.s, p, tz1.s); // tz0 *= 2^tz1
+		// 1+exp(2x)
+		fadd(tz0.s, tz0.s, expCoeff[0].s); // 1
+		// 1/(1+exp(2x))
+#if 0
+		/*
+			52.58nsec
+			range [-4.00e+00, 4.00e+00] step=1.00e-05
+			maxe=1.187556e-03 (x=7.739413e-05)
+			ave=-3.176198e-08
+		*/
+		movprfx(tz0.s, p, expCoeff[0].s);
+		fdiv(tz0.s, p, tz0.s);
+#else
+		/*
+			26.57nsec
+			range [-4.00e+00, 4.00e+00] step=1.00e-05
+			maxe=5.154838e-01 (x=7.394123e-06)
+			ave=7.123578e-07
+		*/
+		frecpe(tz1.s, tz0.s);
+		frecps(tz0.s, tz0.s, tz1.s);
+		fmul(tz0.s, tz0.s, tz1.s);
+#endif
+		// 2/(1+exp(2x))
+		fadd(tz0.s, tz0.s, tz0.s);
+		// 1-2/(1+exp(2x))
+		fsub(tz0.s, expCoeff[0].s, tz0.s);
 	}
 	// tanhf_v(float *dst, const float *src, size_t n);
 	void genTanhSVE(const Xbyak::Label& constVarL)

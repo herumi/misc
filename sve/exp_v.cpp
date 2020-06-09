@@ -96,6 +96,8 @@ float putDiff(float begin, float end, float step, const F& f, bool doPut = false
 {
 	float maxe = 0;
 	float maxx = 0;
+	float maxe2 = 0;
+	float maxx2 = 0;
 	double ave = 0;
 	int aveN = 0;
 	for (float x = begin; x < end; x += step) {
@@ -111,11 +113,17 @@ float putDiff(float begin, float end, float step, const F& f, bool doPut = false
 			maxe = e;
 			maxx = x;
 		}
+		float e2 = fabs(y0 - y1);
+		if (e2 > maxe2) {
+			maxe2 = e2;
+			maxx2 = x;
+		}
 		ave += e;
 		aveN++;
 	}
 	printf("range [%.2e, %.2e] step=%.2e\n", begin, end, step);
-	printf("maxe=%e (x=%e)\n", maxe, maxx);
+	printf("maxe =%e (x=%e)\n", maxe, maxx);
+	printf("maxe2=%e (x=%e)\n", maxe2, maxx2);
 	printf("ave=%e\n", ave / aveN);
 	return maxe;
 }
@@ -124,7 +132,20 @@ CYBOZU_TEST_AUTO(tanh)
 {
 	puts("tanh");
 	puts("fmath::tanhf_v");
-	putDiff(-4, 4, 0.1, fmath_tanhf, true, std::tanh);
+	putDiff(-4, 4, 1e-5, fmath_tanhf, false, std::tanh);
+}
+
+CYBOZU_TEST_AUTO(tanhLimit)
+{
+	const size_t n = 4;
+	float x[n] = { -100, 0, 7.394123e-06, 100 };
+	float y0[n];
+	float y1[n];
+	std_tanh_v(y0, x, n);
+	fmath::tanhf_v(y1, x, n);
+	for (size_t i = 0; i < n; i++) {
+		printf("x=%e std=%e fmath2=%e\n", x[i], y0[i], y1[i]);
+	}
 }
 
 CYBOZU_TEST_AUTO(setMaxE)
@@ -200,9 +221,12 @@ CYBOZU_TEST_AUTO(bench)
 	CYBOZU_BENCH_C("", C, fmath::expf_v, &y1[0], &x[0], n);
 	putClk("fmath::expf_v", C * (n / 16));
 	checkDiff(&y0[0], &y1[0], n);
+
+	CYBOZU_BENCH_C("", C, fmath::tanhf_v, &y1[0], &x[0], n);
+	putClk("fmath::tanhf_v", C * (n / 16));
 }
 
-CYBOZU_TEST_AUTO(limit)
+CYBOZU_TEST_AUTO(expLimit)
 {
 	const size_t n = 4;
 	float x[n] = { -100, -80, 80, 100 };
