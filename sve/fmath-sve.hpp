@@ -326,7 +326,7 @@ struct Code : public Xbyak::CodeGenerator {
 		/*
 			52.58nsec
 			range [-4.00e+00, 4.00e+00] step=1.00e-05
-			maxe=1.187556e-03 (x=7.739413e-05)
+			maxe2=2.682209e-07 (x=-5.196900e-01)
 			ave=-3.176198e-08
 		*/
 		movprfx(tz0.s, p, expCoeff[0].s);
@@ -335,7 +335,7 @@ struct Code : public Xbyak::CodeGenerator {
 		/*
 			26.57nsec
 			range [-4.00e+00, 4.00e+00] step=1.00e-05
-			maxe=5.154838e-01 (x=7.394123e-06)
+			maxe2=1.537800e-05 (x=-1.674076e+00)
 			ave=7.123578e-07
 		*/
 		frecpe(tz1.s, tz0.s);
