@@ -68,6 +68,18 @@ struct Code : CodeGenerator {
 		movprfx(dst.s, p0, src1.s);
 		fdiv(dst.s, p0, src2.s);
 	}
+	/*
+		t = rcp(x)
+		1/x = (2 - xt)t
+	*/
+	// destroy src2
+	// err < 1e-5
+	void invW(const ZReg& dst, const ZReg& src1, const ZReg& src2)
+	{
+		frecpe(src2.s, src1.s);
+		frecps(dst.s, src1.s, src2.s);
+		fmul(dst.s, dst.s, src2.s);
+	}
 	void frecpsW(const ZReg& dst, const ZReg& src1, const ZReg& src2)
 	{
 		frecps(dst.s, src1.s, src2.s);
@@ -188,6 +200,7 @@ float faddC(float x, float y) { return x + y; }
 float fsubC(float x, float y) { return x - y; }
 float fmulC(float x, float y) { return x * y; }
 float fdivC(float x, float y) { return x / y; }
+float invC(float x, float) { return 1 / x; }
 float frecpsC(float x, float y) { return 2 - x * y; }
 float fmaxC(float x, float y) { return std::max(x, y); }
 float fcpyC(float, float) { return g_c0; }
@@ -200,6 +213,19 @@ void check(const float *x, const float *y, const float *z1, const float *z2)
 	for (size_t i = 0; i < N; i++) {
 		if (z1[i] != z2[i]) {
 			printf("ERR i=% 2zd x=%f y=%f z1=%f z2=%f\n", i, x[i], y[i], z1[i], z2[i]);
+			ok = false;
+		}
+	}
+	if (ok) puts("ok");
+}
+
+void check2(const float *x, const float *z1, const float *z2)
+{
+	bool ok = true;
+	for (size_t i = 0; i < N; i++) {
+		float d = fabs((z1[i] - z2[i]) / z1[i]);
+		if (d > 1e-6) {
+			printf("ERR i=% 2zd x=%e z1=%e z2=%e\n", i, x[i], z1[i], z2[i]);
 			ok = false;
 		}
 	}
@@ -228,6 +254,9 @@ int main()
 
 	auto fdivA = c.getCurr<void (*)(float *, const float *, const float *)>();
 	c.generate(&Code::fdivW);
+
+	auto invA = c.getCurr<void (*)(float *, const float *, const float *)>();
+	c.generate(&Code::invW);
 
 	auto frecpsA = c.getCurr<void (*)(float *, const float *, const float *)>();
 	c.generate(&Code::frecpsW);
@@ -264,6 +293,11 @@ int main()
 	vec(fdivC, z1, x, y);
 	fdivA(z2, x, y);
 	check(x, y, z1, z2);
+
+	puts("inv");
+	vec(invC, z1, x, y); // z1 = 1/x
+	invA(z2, x, y);
+	check2(x, z1, z2);
 
 	puts("frecps");
 	vec(frecpsC, z1, x, y);
