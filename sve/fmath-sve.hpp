@@ -324,7 +324,6 @@ struct Code : public Xbyak::CodeGenerator {
 		// 1/(1+exp(2x))
 #if 0
 		/*
-			52.58nsec
 			range [-4.00e+00, 4.00e+00] step=1.00e-05
 			maxe2=2.682209e-07 (x=-5.196900e-01)
 			ave=-3.176198e-08
@@ -332,8 +331,8 @@ struct Code : public Xbyak::CodeGenerator {
 		movprfx(tz0.s, p, expCoeff[0].s);
 		fdiv(tz0.s, p, tz0.s);
 #else
+#if 1
 		/*
-			26.57nsec
 			range [-4.00e+00, 4.00e+00] step=1.00e-05
 			maxe2=1.537800e-05 (x=-1.674076e+00)
 			ave=7.123578e-07
@@ -341,6 +340,21 @@ struct Code : public Xbyak::CodeGenerator {
 		frecpe(tz1.s, tz0.s);
 		frecps(tz0.s, tz0.s, tz1.s);
 		fmul(tz0.s, tz0.s, tz1.s);
+#else
+		/*
+			range [-4.00e+00, 4.00e+00] step=1.00e-05
+			maxe2=2.980232e-07 (x=-2.439293e+00)
+			ave=-3.302310e-08
+		*/
+		// 1st aprox ; a = 1/x + e
+		frecpe(tz1.s, tz0.s);
+		// 2nd aprox ; a' = (2 - ax)a = 1/x - e^2 x
+		frecps(tz2.s, tz0.s, tz1.s);
+		fmul(tz2.s, tz2.s, tz1.s);
+		// 3rd aprox ; a'' = (2 - a'x)a'
+		frecps(tz0.s, tz0.s, tz2.s);
+		fmul(tz0.s, tz0.s, tz2.s);
+#endif
 #endif
 		// 2/(1+exp(2x))
 		fadd(tz0.s, tz0.s, tz0.s);
