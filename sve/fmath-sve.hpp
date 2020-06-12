@@ -322,40 +322,48 @@ struct Code : public Xbyak::CodeGenerator {
 		// 1+exp(2x)
 		fadd(tz0.s, tz0.s, expCoeff[0].s); // 1
 		// 1/(1+exp(2x))
-#if 0
-		/*
-			range [-4.00e+00, 4.00e+00] step=1.00e-05
-			maxe2=2.682209e-07 (x=-5.196900e-01)
-			ave=-3.176198e-08
-		*/
-		movprfx(tz0.s, p, expCoeff[0].s);
-		fdiv(tz0.s, p, tz0.s);
-#else
-#if 1
-		/*
-			range [-4.00e+00, 4.00e+00] step=1.00e-05
-			maxe2=1.537800e-05 (x=-1.674076e+00)
-			ave=7.123578e-07
-		*/
-		frecpe(tz1.s, tz0.s);
-		frecps(tz0.s, tz0.s, tz1.s);
-		fmul(tz0.s, tz0.s, tz1.s);
-#else
-		/*
-			range [-4.00e+00, 4.00e+00] step=1.00e-05
-			maxe2=2.980232e-07 (x=-2.439293e+00)
-			ave=-3.302310e-08
-		*/
-		// 1st aprox ; a = 1/x + e
-		frecpe(tz1.s, tz0.s);
-		// 2nd aprox ; a' = (2 - ax)a = 1/x - e^2 x
-		frecps(tz2.s, tz0.s, tz1.s);
-		fmul(tz2.s, tz2.s, tz1.s);
-		// 3rd aprox ; a'' = (2 - a'x)a'
-		frecps(tz0.s, tz0.s, tz2.s);
-		fmul(tz0.s, tz0.s, tz2.s);
-#endif
-#endif
+		const char *envp = getenv("RECP");
+		int mode = envp ? atoi(envp) : 1;
+		printf("mode=%d\n", mode);
+		switch (mode) {
+		case 0:
+			printf("mode:fdiv\n");
+			/*
+				range [-4.00e+00, 4.00e+00] step=1.00e-05
+				maxe2=2.682209e-07 (x=-5.196900e-01)
+				ave=-3.176198e-08
+			*/
+			movprfx(tz0.s, p, expCoeff[0].s);
+			fdiv(tz0.s, p, tz0.s);
+			break;
+		case 1:
+		default:
+			printf("mode:recpe\n");
+			/*
+				range [-4.00e+00, 4.00e+00] step=1.00e-05
+				maxe2=1.537800e-05 (x=-1.674076e+00)
+				ave=7.123578e-07
+			*/
+			frecpe(tz1.s, tz0.s);
+			frecps(tz0.s, tz0.s, tz1.s);
+			fmul(tz0.s, tz0.s, tz1.s);
+			break;
+		case 2:
+			printf("mode:recpe x 2\n");
+			/*
+				range [-4.00e+00, 4.00e+00] step=1.00e-05
+				maxe2=2.980232e-07 (x=-2.439293e+00)
+				ave=-3.302310e-08
+			*/
+			// 1st aprox ; a = 1/x + e
+			frecpe(tz1.s, tz0.s);
+			// 2nd aprox ; a' = (2 - ax)a = 1/x - e^2 x
+			frecps(tz2.s, tz0.s, tz1.s);
+			fmul(tz2.s, tz2.s, tz1.s);
+			// 3rd aprox ; a'' = (2 - a'x)a'
+			frecps(tz0.s, tz0.s, tz2.s);
+			fmul(tz0.s, tz0.s, tz2.s);
+		}
 		// 2/(1+exp(2x))
 		fadd(tz0.s, tz0.s, tz0.s);
 		// 1-2/(1+exp(2x))
