@@ -19,7 +19,6 @@ int main()
 		fmath::tanhf_v(&y[0], &x[0], n);
 	}
 	clock_t end = clock();
-	printf("time=%.2fusec\n", (end - begin) / double(CLOCKS_PER_SEC) / C / (n / 32) * 1e6);
 	printf("time=%.2fsec\n", (end - begin) / double(CLOCKS_PER_SEC));
 	float maxe = 0;
 	float maxx = 0;
