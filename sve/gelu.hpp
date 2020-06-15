@@ -103,14 +103,22 @@ struct Code : public Xbyak::CodeGenerator {
 
 		// 1 + exp(Cx)
 		fadd(tz3.s, tz3.s, expCoeff[0].s);
+#if 1
+		// x / (1 + exp(Cx))
+		movprfx(tz1.s, p, tz0.s);
+		fdiv(tz1.s, p, tz3.s);
+		// G(x) = x(1 - 1/(1 + exp(Cx)))
+		fsub(tz0.s, tz0.s, tz1.s);
+#else
 		// 1 / (1 + exp(Cx))
 		frecpe(tz1.s, tz3.s);
 		frecps(tz3.s, tz3.s, tz1.s);
 		fmul(tz3.s, tz3.s, tz1.s);
 		// 1 - 1/(1 + exp(Cx))
 		fsub(tz3.s, expCoeff[0].s, tz3.s);
-		// G(x)
+		// G(x) = x(1 - 1/(1 + exp(Cx)))
 		fmul(tz0.s, tz0.s, tz3.s);
+#endif
 	}
 	// gelu_v(float *dst, const float *src, size_t n);
 	void genGelu(const Xbyak::Label& constVarL)
