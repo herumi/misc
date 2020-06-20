@@ -40,6 +40,6 @@ import (
 
 func main() {
 	buf := make([]byte, 64)
-	C.readRand((*C.uchar)(unsafe.Pointer(&buf[0])), C.size_t(len(buf)))
-	fmt.Printf("buf=%v\n", buf)
+	ret := C.readRand((*C.uchar)(unsafe.Pointer(&buf[0])), C.size_t(len(buf)))
+	fmt.Printf("ret=%v buf=%v\n", ret, buf)
 }
