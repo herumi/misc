@@ -11,14 +11,16 @@ package main
 int readRand(unsigned char *p, size_t n)
 {
 	HCRYPTPROV prov_ = 0;
-	DWORD flagTbl[] = { 0, CRYPT_NEWKEYSET, CRYPT_MACHINE_KEYSET };
+	DWORD flagTbl[] = { 0, CRYPT_NEWKEYSET, CRYPT_MACHINE_KEYSET, CRYPT_VERIFYCONTEXT | CRYPT_SILENT };
 	int found = 0;
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < 4; i++) {
 		printf("i=%d flag=%d\n", i, flagTbl[i]);
 		if (CryptAcquireContext(&prov_, NULL, NULL, PROV_RSA_FULL, flagTbl[i]) != 0) {
 			printf("found %d prov_=%p\n", i, prov_);
 			found = 1;
 			break;
+		} else {
+			printf("CryptAcquireContext err %d\n", GetLastError());
 		}
 	}
 	if (!found) return 0;
