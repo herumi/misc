@@ -1,10 +1,11 @@
 all: test
+CFLAGS=-DNDEBUG -Ofast -I ./inc
 
-t.h.gch: inc/t.h
-	$(CXX) -H -o $@ $< -I ./inc
+pre: inc/t.h
+	$(CXX) $< $(CFLAGS) -H
 
-test: t.cpp t.h.gch
-	$(CXX) -o $@ $<
+test: t.cpp
+	time $(CXX) -o $@ $< $(CFLAGS)
 
 clean:
 	-$(RM) t.h.gch test
