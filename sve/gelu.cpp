@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <math.h>
+//#define USE_LOGISTIC
 #include "gelu.hpp"
 #include <cybozu/test.hpp>
 #include <vector>
@@ -32,6 +33,10 @@ uint32_t f2u(float x)
 
 float std_gelu(float x)
 {
+#ifdef USE_LOGISTIC
+	float y = exp(x);
+	return y/(y + 1);
+#else
 	/*
 		0.5x(1 + tanh(sqrt(2/pi)(x + 0.044715x^3)))
 		=0.5x(1 + tanh(sqrt(2/pi)(1 + 0.044715x^2)x))
@@ -61,6 +66,7 @@ float std_gelu(float x)
 	}
 #endif
 	return y;
+#endif
 }
 
 void std_gelu_v(float *dst, const float *src, size_t n)
@@ -126,11 +132,12 @@ typedef std::vector<float> Fvec;
 CYBOZU_TEST_AUTO(bench)
 {
 	Fvec x, y;
-	size_t n = 1024 * 4;
+	size_t n = 300;//128;//1024 * 4;
 	x.resize(n);
 	y.resize(n);
 	for (size_t i = 0; i < n; i++) {
 		x[i] = (i / float(n) - 0.5) * 4;
+x[i] = i - 64;
 	}
 	fmath::gelu_v(&y[0], &x[0], n);
 	for (size_t i = 0; i < n; i++) {

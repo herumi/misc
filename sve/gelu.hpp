@@ -75,6 +75,25 @@ struct Code : public Xbyak::CodeGenerator {
 		ready();
 	}
 	// tz0 = exp(tz0)
+	// use tz0, tz1, tz2
+	void genExp1SVE(const PReg& p, const ZReg& tz0, const ZReg& tz1, const ZReg& tz2, const ZReg& expMin, const ZReg& expMax, const ZReg& log2, const ZReg& log2_e, const ZReg expCoeff[5])
+	{
+		fmin(tz0.s, p, expMax.s);
+		fmax(tz0.s, p, expMin.s);
+		fmul(tz0.s, tz0.s, log2_e.s);
+		frintn(tz2.s, p, tz0.s); // rounding : float -> float
+		fcvtzs(tz1.s, p, tz2.s); // float -> int
+		fsub(tz2.s, tz0.s, tz2.s);
+		fmul(tz2.s, tz2.s, log2.s);
+		movprfx(tz0.s, p, expCoeff[4].s);
+		fmad(tz0.s, p, tz2.s, expCoeff[3].s);
+		fmad(tz0.s, p, tz2.s, expCoeff[2].s);
+		fmad(tz0.s, p, tz2.s, expCoeff[1].s);
+		fmad(tz0.s, p, tz2.s, expCoeff[0].s);
+		fmad(tz0.s, p, tz2.s, expCoeff[0].s);
+		fscale(tz0.s, p, tz1.s); // tz0 *= 2^tz1
+	}
+	// tz0 = exp(tz0)
 	// use tz0, tz1, tz2, tz3
 	void gen1Gelu(const PReg& p, const ZReg& tz0, const ZReg& tz1, const ZReg& tz2, const ZReg& tz3, const ZReg& expMin, const ZReg& expMax, const ZReg& log2, const ZReg& log2_e, const ZReg expCoeff[5], const ZReg& C1, const ZReg& C2)
 	{
@@ -86,20 +105,7 @@ struct Code : public Xbyak::CodeGenerator {
 		fmul(tz3.s, tz3.s, tz0.s);
 
 		// exp(Cx)
-		fmin(tz3.s, p, expMax.s);
-		fmax(tz3.s, p, expMin.s);
-		fmul(tz3.s, tz3.s, log2_e.s);
-		frintn(tz2.s, p, tz3.s); // rounding : float -> float
-		fcvtzs(tz1.s, p, tz2.s); // float -> int
-		fsub(tz2.s, tz3.s, tz2.s);
-		fmul(tz2.s, tz2.s, log2.s);
-		movprfx(tz3.s, p, expCoeff[4].s);
-		fmad(tz3.s, p, tz2.s, expCoeff[3].s);
-		fmad(tz3.s, p, tz2.s, expCoeff[2].s);
-		fmad(tz3.s, p, tz2.s, expCoeff[1].s);
-		fmad(tz3.s, p, tz2.s, expCoeff[0].s);
-		fmad(tz3.s, p, tz2.s, expCoeff[0].s);
-		fscale(tz3.s, p, tz1.s); // tz3 *= 2^tz1
+		genExp1SVE(p, tz3, tz1, tz2, expMin, expMax, log2, log2_e, expCoeff);
 
 		// 1 + exp(Cx)
 		fadd(tz3.s, tz3.s, expCoeff[0].s);
@@ -119,6 +125,20 @@ struct Code : public Xbyak::CodeGenerator {
 		// G(x) = x(1 - 1/(1 + exp(Cx)))
 		fmul(tz0.s, tz0.s, tz3.s);
 #endif
+	}
+	void gen1Logistic(const PReg& p, const ZReg& tz0, const ZReg& tz1, const ZReg& tz2, const ZReg& expMin, const ZReg& expMax, const ZReg& log2, const ZReg& log2_e, const ZReg expCoeff[5])
+	{
+		// exp(x)
+		genExp1SVE(p, tz0, tz1, tz2, expMin, expMax, log2, log2_e, expCoeff);
+		// exp(x)+1
+		fadd(tz1.s, tz0.s, expCoeff[0].s);
+		// 1/(exp(x)+1)
+		frecpe(tz2.s, tz1.s);
+		frecps(tz1.s, tz1.s, tz2.s);
+		fmul(tz1.s, tz1.s, tz2.s);
+		// exp(x)/(exp(x)+1)
+//		fmul(tz0.s, tz0.s, tz1.s);
+		fsub(tz0.s, expCoeff[0].s, tz1.s);
 	}
 	// gelu_v(float *dst, const float *src, size_t n);
 	void genGelu(const Xbyak::Label& constVarL)
@@ -169,7 +189,11 @@ struct Code : public Xbyak::CodeGenerator {
 	Label lp = L();
 		ld1w(z0.s, p0/T_z, ptr(src));
 		add(src, src, 64);
+#ifdef USE_LOGISTIC
+		gen1Logistic(p0, z0, z1, z2, expMin, expMax, log2, log2_e, expCoeff);
+#else
 		gen1Gelu(p0, z0, z1, z2, z3, expMin, expMax, log2, log2_e, expCoeff, geluC1, geluC2);
+#endif
 		st1w(z0.s, p0, ptr(dst));
 		add(dst, dst, 64);
 		sub(n, n, 16);
@@ -180,7 +204,11 @@ struct Code : public Xbyak::CodeGenerator {
 		mov(x3, 0);
 		whilelt(p1.s, x3, n);
 		ld1w(z0.s, p1/T_z, ptr(src));
+#ifdef USE_LOGISTIC
+		gen1Logistic(p1, z0, z1, z2, expMin, expMax, log2, log2_e, expCoeff);
+#else
 		gen1Gelu(p1, z0, z1, z2, z3, expMin, expMax, log2, log2_e, expCoeff, geluC1, geluC2);
+#endif
 		st1w(z0.s, p1, ptr(dst));
 
 		add(x3, sp, adj * 64);
