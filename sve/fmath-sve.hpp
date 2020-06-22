@@ -300,7 +300,7 @@ struct Code : public Xbyak::CodeGenerator {
 	}
 	// tz0 = tanh(tz0) = 1 - 2 / (1 + exp(2 tz0))
 	// use tz0, tz1, tz2
-	void genTanh1SVE(const PReg& p, const ZReg& tz0, const ZReg& tz1, const ZReg& tz2, const ZReg& expMin, const ZReg& expMax, const ZReg& log2, const ZReg& log2_e, const ZReg expCoeff[5])
+	void genTanh1SVE(const PReg& p, const ZReg& tz0, const ZReg& tz1, const ZReg& tz2, const ZReg& tz3, const ZReg& expMin, const ZReg& expMax, const ZReg& log2, const ZReg& log2_e, const ZReg expCoeff[5])
 	{
 		// 2x
 		fadd(tz0.s, tz0.s, tz0.s);
@@ -322,12 +322,9 @@ struct Code : public Xbyak::CodeGenerator {
 		// 1+exp(2x)
 		fadd(tz0.s, tz0.s, expCoeff[0].s); // 1
 		// 1/(1+exp(2x))
-		const char *envp = getenv("RECP");
-		int mode = envp ? atoi(envp) : 1;
-		printf("mode=%d\n", mode);
+		const int mode = 2;
 		switch (mode) {
 		case 0:
-			printf("mode:fdiv\n");
 			/*
 				range [-4.00e+00, 4.00e+00] step=1.00e-05
 				maxe2=2.682209e-07 (x=-5.196900e-01)
@@ -338,7 +335,6 @@ struct Code : public Xbyak::CodeGenerator {
 			break;
 		case 1:
 		default:
-			printf("mode:recpe\n");
 			/*
 				range [-4.00e+00, 4.00e+00] step=1.00e-05
 				maxe2=1.537800e-05 (x=-1.674076e+00)
@@ -349,7 +345,6 @@ struct Code : public Xbyak::CodeGenerator {
 			fmul(tz0.s, tz0.s, tz1.s);
 			break;
 		case 2:
-			printf("mode:recpe x 2\n");
 			/*
 				range [-4.00e+00, 4.00e+00] step=1.00e-05
 				maxe2=2.980232e-07 (x=-2.439293e+00)
@@ -358,11 +353,11 @@ struct Code : public Xbyak::CodeGenerator {
 			// 1st aprox ; a = 1/x + e
 			frecpe(tz1.s, tz0.s);
 			// 2nd aprox ; a' = (2 - ax)a = 1/x - e^2 x
-			frecps(tz2.s, tz0.s, tz1.s);
-			fmul(tz2.s, tz2.s, tz1.s);
+			frecps(tz3.s, tz0.s, tz1.s); // use tz3 instead of tz2
+			fmul(tz3.s, tz3.s, tz1.s);
 			// 3rd aprox ; a'' = (2 - a'x)a'
-			frecps(tz0.s, tz0.s, tz2.s);
-			fmul(tz0.s, tz0.s, tz2.s);
+			frecps(tz0.s, tz0.s, tz3.s);
+			fmul(tz0.s, tz0.s, tz3.s);
 		}
 		// 2/(1+exp(2x))
 		fadd(tz0.s, tz0.s, tz0.s);
@@ -378,21 +373,14 @@ struct Code : public Xbyak::CodeGenerator {
 		const XReg& n = x2;
 
 		// setup constant
-		const ZReg& expMin = z3;
-		const ZReg& expMax = z4;
-		const ZReg& log2 = z5;
-		const ZReg& log2_e = z6;
+		const ZReg& expMin = z4;
+		const ZReg& expMax = z5;
+		const ZReg& log2 = z6;
+		const ZReg& log2_e = z7;
 		const ZReg expCoeff[] = {
-			z7, z8, z9, z10, z11,
+			z24, z25, z26, z27, z28,
 		};
-		const size_t saveN = sizeof(expCoeff) / sizeof(expCoeff[0]) - 1; // does not keep z7
-		const size_t adj = saveN / 2;
-		sub(sp, sp, saveN * 64);
-		add(x3, sp, adj * 64);
 		ptrue(p0.s);
-		for (size_t i = 0; i < saveN; i++) {
-			st1w(expCoeff[i + 1].s, p0, ptr(x3, int(i - adj)));
-		}
 
 		adr(x3, constVarL);
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, expMin)));
@@ -412,7 +400,7 @@ struct Code : public Xbyak::CodeGenerator {
 	Label lp = L();
 		ld1w(z0.s, p0/T_z, ptr(src));
 		add(src, src, 64);
-		genTanh1SVE(p0, z0, z1, z2, expMin, expMax, log2, log2_e, expCoeff);
+		genTanh1SVE(p0, z0, z1, z2, z3, expMin, expMax, log2, log2_e, expCoeff);
 		st1w(z0.s, p0, ptr(dst));
 		add(dst, dst, 64);
 		sub(n, n, 16);
@@ -423,14 +411,9 @@ struct Code : public Xbyak::CodeGenerator {
 		mov(x3, 0);
 		whilelt(p1.s, x3, n);
 		ld1w(z0.s, p1/T_z, ptr(src));
-		genTanh1SVE(p1, z0, z1, z2, expMin, expMax, log2, log2_e, expCoeff);
+		genTanh1SVE(p1, z0, z1, z2, z3, expMin, expMax, log2, log2_e, expCoeff);
 		st1w(z0.s, p1, ptr(dst));
 
-		add(x3, sp, adj * 64);
-		for (size_t i = 0; i < saveN; i++) {
-			ld1w(expCoeff[i + 1].s, p0, ptr(x3, int(i - adj)));
-		}
-		add(sp, sp, saveN * 64);
 		ret();
 	}
 #if 0
