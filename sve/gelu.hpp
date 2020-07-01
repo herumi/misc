@@ -153,19 +153,12 @@ struct Code : public Xbyak::CodeGenerator {
 		const ZReg& expMax = z5;
 		const ZReg& log2 = z6;
 		const ZReg& log2_e = z7;
-		const ZReg& geluC1 = z8;
-		const ZReg& geluC2 = z9;
+		const ZReg& geluC1 = z24;
+		const ZReg& geluC2 = z25;
 		const ZReg expCoeff[] = {
-			z10, z11, z12, z13, z14,
+			z26, z27, z28, z29, z30,
 		};
-		const size_t saveN = 14 - 8 + 1; /* z8..z14 */
-		const size_t adj = saveN / 2;
-		sub(sp, sp, saveN * 64);
-		add(x3, sp, adj * 64);
 		ptrue(p0.s);
-		for (size_t i = 0; i < saveN; i++) {
-			st1w(ZReg(i + 8).s, p0, ptr(x3, int(i - adj)));
-		}
 
 		adr(x3, constVarL);
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, expMin)));
@@ -210,12 +203,6 @@ struct Code : public Xbyak::CodeGenerator {
 		gen1Gelu(p1, z0, z1, z2, z3, expMin, expMax, log2, log2_e, expCoeff, geluC1, geluC2);
 #endif
 		st1w(z0.s, p1, ptr(dst));
-
-		add(x3, sp, adj * 64);
-		for (size_t i = 0; i < saveN; i++) {
-			ld1w(ZReg(i + 8).s, p0, ptr(x3, int(i - adj)));
-		}
-		add(sp, sp, saveN * 64);
 		ret();
 	}
 };
