@@ -178,22 +178,21 @@ struct Code : public Xbyak::CodeGenerator {
 		const ZReg& log2_e = z6;
 #define FMATH_SVE_LOOP_UNROLL 3
 		const ZReg expCoeff[] = {
-			z7, z8, z9, z10, z11,
+			z7, z24, z25, z26, z27,
 #if FMATH_SVE_LOOP_UNROLL >= 2
-			z12, z13, z14,
+			z28, z29, z30,
 #endif
 #if FMATH_SVE_LOOP_UNROLL >= 3
-			z15, z16, z17,
+			z31, z8, z9,
 #endif
 		};
-		const size_t saveN = sizeof(expCoeff) / sizeof(expCoeff[0]) - 1; // does not keep z7
-		const size_t adj = saveN / 2;
-		sub(sp, sp, saveN * 64);
-		add(x3, sp, adj * 64);
 		ptrue(p0.s);
-		for (size_t i = 0; i < saveN; i++) {
-			st1w(expCoeff[i + 1].s, p0, ptr(x3, int(i - adj)));
-		}
+#if FMATH_SVE_LOOP_UNROLL >= 3
+		const size_t saveN = 2;
+		sub(sp, sp, saveN * 64);
+		st1w(z8.s, p0, ptr(sp));
+		st1w(z9.s, p0, ptr(sp, 1));
+#endif
 
 		adr(x3, constVarL);
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, expMin)));
@@ -291,11 +290,11 @@ struct Code : public Xbyak::CodeGenerator {
 		whilelt(p1.s, x3, n);
 		b_first(lp);
 #endif
-		add(x3, sp, adj * 64);
-		for (size_t i = 0; i < saveN; i++) {
-			ld1w(expCoeff[i + 1].s, p0, ptr(x3, int(i - adj)));
-		}
+#if FMATH_SVE_LOOP_UNROLL >= 3
+		ld1w(z8.s, p0, ptr(sp));
+		ld1w(z9.s, p0, ptr(sp, 1));
 		add(sp, sp, saveN * 64);
+#endif
 		ret();
 	}
 	// tz0 = tanh(tz0) = 1 - 2 / (1 + exp(2 tz0))
