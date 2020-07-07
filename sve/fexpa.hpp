@@ -34,3 +34,9 @@ struct FexpaTbl {
 		return fi.f;
 	}
 };
+
+float fexpaEmu(float x)
+{
+	static FexpaTbl tbl;
+	return tbl.calc(x);
+}
