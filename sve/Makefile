@@ -16,6 +16,9 @@ exp_v: exp_v.cpp fmath-sve.hpp
 
 test%: test%.exe
 	./$<
+emu:
+	aarch64-linux-gnu-g++ float-test.cpp -I ../../fujitsu/xbyak_aarch64/
+	env QEMU_LD_PREFIX=/usr/aarch64-linux-gnu qemu-aarch64 -cpu max,sve512=on ./a.out
 
 clean:
 	rm -rf test*.exe exp_v

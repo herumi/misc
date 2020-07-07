@@ -1,5 +1,6 @@
 #include <xbyak_aarch64/xbyak_aarch64.h>
 #include <functional>
+#include "fexpa.hpp"
 
 using namespace Xbyak;
 
@@ -115,6 +116,10 @@ struct Code : CodeGenerator {
 		ldr(w3, ptr(x3));
 		cpy(dst.s, p0, w3);
 	}
+	void fexpaW(const ZReg& dst, const ZReg& src1, const ZReg& /*src2*/)
+	{
+		fexpa(dst.s, src1.s);
+	}
 };
 
 void test_ld1w_imm()
@@ -207,12 +212,15 @@ float fcpyC(float, float) { return g_c0; }
 float cpyC(float, float) { return g_c1; }
 float cpy2C(float, float) { return g_c2; }
 
+static FexpaTbl g_fexpa;
+float fexpaC(float x, float) { return g_fexpa.calc(x); }
+
 void check(const float *x, const float *y, const float *z1, const float *z2)
 {
 	bool ok = true;
 	for (size_t i = 0; i < N; i++) {
 		if (z1[i] != z2[i]) {
-			printf("ERR i=% 2zd x=%f y=%f z1=%f z2=%f\n", i, x[i], y[i], z1[i], z2[i]);
+			printf("ERR i=% 2zd x=%f(%08x) y=%f z1=%f(%08x) z2=%f(%08x)\n", i, x[i], f2u(x[i]), y[i], z1[i], f2u(z1[i]), z2[i], f2u(z2[i]));
 			ok = false;
 		}
 	}
@@ -237,8 +245,8 @@ int main()
 {
 	float x[N], y[N], z1[N], z2[N];
 	for (size_t i = 0; i < N; i++) {
-		x[i] = i + 3;
-		y[i] = i * 2;
+		x[i] = -(i * 0.123) + 0.4;
+		y[i] = i * 0.234 - 0.1;
 		z1[i] = -99;
 		z2[i] = z1[i];
 	}
@@ -272,6 +280,10 @@ int main()
 
 	auto cpy2A = c.getCurr<void (*)(float *, const float *, const float *)>();
 	c.generate(&Code::cpyWithAdrpW);
+
+	auto fexpaA = c.getCurr<void (*)(float *, const float *, const float *)>();
+	c.generate(&Code::fexpaW);
+
 	c.ready();
 
 	puts("fadd");
@@ -327,6 +339,12 @@ int main()
 	check(x, y, z1, z2);
 	test_ld1w_imm();
 	test_fscale();
+
+	puts("fexpa");
+	vec(fexpaC, z1, x, y);
+	fexpaA(z2, x, y);
+	check(x, y, z1, z2);
+
 } catch (std::exception& e) {
 	printf("err %s\n", e.what());
 	return 1;
