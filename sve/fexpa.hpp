@@ -10,8 +10,8 @@ struct FexpaTbl {
 		float f;
 		uint32_t i;
 	};
-	
-	uint32_t mask(int n) const
+
+	static inline uint32_t mask(int n)
 	{
 		if (n == 32) return uint32_t(-1);
 		return (1u << n) - 1;

@@ -10,15 +10,18 @@ float expC(float x)
 {
 	static const float log2_e = float(1 / log(2.0));
 	float y = x * log2_e;
-	float z = y;
-	int n = (int)floor(z);
-	float a = z - n; // 0 <= a < 1
+	int n = (int)floor(y);
+	float a = y - n; // 0 <= a < 1
+	n--;
 	float b = 1 + a; // 1 <= b < 2, y = n + b
+	fi remain;
 	fi fi;
 	fi.f = b;
+	remain.i = (fi.i & FexpaTbl::mask(17)) | (127 << 23);
 	fi.i >>= 17;
+//printf("b=%f, L=%f R=%f, L+R=%f\n", b, fi.f, remain.f, fi.f + remain.f);
 	float c = fexpaEmu(fi.f);
-	return powf(2, (float)n) * c;
+	return powf(2, (float)n) * c * pow(2, remain.f);
 }
 
 int main()
