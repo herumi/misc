@@ -1,0 +1,44 @@
+ctest:module=tanh
+tanh
+fmath::tanhf_v
+range [-4.00e+00, 4.00e+00] step=1.00e-05
+maxe =2.826870e-03 (x=1.739412e-05)
+maxe2=2.980232e-07 (x=-2.439293e+00)
+ave=-3.302310e-08
+ctest:module=tanhLimit
+x=-1.000000e+02 std=-1.000000e+00 fmath2=-1.000000e+00
+x=0.000000e+00 std=0.000000e+00 fmath2=0.000000e+00
+x=7.394123e-06 std=7.394123e-06 fmath2=7.390976e-06
+x=1.000000e+02 std=1.000000e+00 fmath2=1.000000e+00
+ctest:module=setMaxE
+expfC
+range [-1.00e+01, 1.00e+01] step=5.00e-01
+maxe =3.615522e-07 (x=9.000000e+00)
+maxe2=2.929688e-03 (x=9.000000e+00)
+ave=1.150369e-07
+range [-3.00e+01, 3.00e+01] step=1.00e-05
+maxe =1.938665e-06 (x=2.460677e+01)
+maxe2=1.887437e+07 (x=2.994873e+01)
+ave=3.750509e-07
+fmath::expf_v
+range [-1.00e+01, 1.00e+01] step=5.00e-01
+maxe =3.615522e-07 (x=9.000000e+00)
+maxe2=2.929688e-03 (x=9.000000e+00)
+ave=1.150369e-07
+range [-3.00e+01, 3.00e+01] step=1.00e-05
+maxe =1.938665e-06 (x=2.460677e+01)
+maxe2=1.887437e+07 (x=2.994873e+01)
+ave=3.750507e-07
+ctest:module=expf_v
+ctest:module=bench
+for float x[16384];
+std::exp 479.81nsec
+fmath::expf_v 9.41nsec
+fmath::expf_v 8.88nsec
+fmath::tanhf_v 28.84nsec
+ctest:module=expLimit
+x=-1.000000e+02 std=3.783506e-44 fmath2=1.175494e-38
+x=-8.000000e+01 std=1.804851e-35 fmath2=1.804851e-35
+x=8.000000e+01 std=5.540622e+34 fmath2=5.540624e+34
+x=1.000000e+02 std=inf fmath2=inf
+ctest:name=exp_v, module=6, total=25730, ok=25730, ng=0, exception=0
