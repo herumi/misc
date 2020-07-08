@@ -1,18 +1,26 @@
 package rand
+
 import (
-	"fmt"
-	"testing"
 	"crypto/rand"
+	"fmt"
+	"io"
+	"testing"
 )
 
-func TestRand(t *testing.T) {
-	buf := ReadRand()
-	if buf == nil {
-		t.Fatalf("ReadRand err")
-	}
-	fmt.Printf("buf=%v\n", buf)
+var sRandReader io.Reader
 
-	n, err := rand.Read(buf)
+func TestRand(t *testing.T) {
+	/*
+		buf := ReadRand()
+		if buf == nil {
+			t.Fatalf("ReadRand err")
+		}
+		fmt.Printf("buf=%v\n", buf)
+	*/
+	buf := make([]byte, 16)
+	sRandReader = rand.Reader
+
+	n, err := sRandReader.Read(buf)
 	if err != nil {
 		t.Fatalf("rand.Read err")
 	}
