@@ -6,6 +6,13 @@ union fi {
 	uint32_t i;
 };
 
+uint32_t f2u(float x)
+{
+	fi fi;
+	fi.f = x;
+	return fi.i;
+}
+
 float diff(float x, float y)
 {
 	return std::abs(x - y) / x;
@@ -44,23 +51,20 @@ float expC2(float x)
 	int n = (int)floor(y);
 	float a = y - n; // 0 <= a < 1
 	float b = 1 + a; // 1 <= b < 2, y = (n-1) + b
-	fi fi;
+	fi m, fi;
 	fi.f = b;
 	/*
 		b.i = (127 << 23) + mantissa where len(mantissa) = 23
 		mantissa = (L << 17) | R where len(L) = 6, len(R) = 17
 		mantissa/2^24 = (L/2^7) + R/2^24
 	*/
-	uint32_t low17 = fi.i & FexpaTbl::mask(17);
+	m.i = fi.i & ~FexpaTbl::mask(17);
 	fi.i >>= 17;
 	float c = fexpaEmu(fi.f);
-	fi.i = (low17 << 6) | ((127-6) << 23);
-	float remain = fi.f; // 0 <= remain <= 1/2^5
-	float z = remain;
-	static const float adj = (float)pow(2, -1/float(1<<6));
-	const float c0 = 0.999999996593897105681711 * adj;
-	const float c1 = 1.0000976596560412975428149 * adj * log2;
-	const float c2 = 0.500034878178262328855 * adj * log2 * log2;
+	float z = b - m.f;
+	const float c0 = 1;
+	const float c1 = log2;
+	const float c2 = 0.5 * log2 * log2;
 	float d = c0 + (c1 + z * c2) * z;
 	return powf(2, (float)n) * c * d;
 }
