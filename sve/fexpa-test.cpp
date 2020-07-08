@@ -13,6 +13,13 @@ uint32_t f2u(float x)
 	return fi.i;
 }
 
+float u2f(uint32_t u)
+{
+	fi fi;
+	fi.i = u;
+	return fi.f;
+}
+
 float diff(float x, float y)
 {
 	return std::abs(x - y) / x;
@@ -47,25 +54,20 @@ float expC2(float x)
 {
 	static const float log2 = (float)log(2.0);
 	static const float log2_e = float(1 / log2);
+	static const float c2 = 0.5 * log2 * log2;
 	float y = x * log2_e;
 	int n = (int)floor(y);
 	float a = y - n; // 0 <= a < 1
 	float b = 1 + a; // 1 <= b < 2, y = (n-1) + b
-	fi m, fi;
-	fi.f = b;
+	uint32_t bu = f2u(b);
+
+	float bL = u2f(bu >> 17);
+	float z = b - u2f(bu & ~FexpaTbl::mask(17));
 	/*
-		b.i = (127 << 23) + mantissa where len(mantissa) = 23
-		mantissa = (L << 17) | R where len(L) = 6, len(R) = 17
-		mantissa/2^24 = (L/2^7) + R/2^24
+		split b into bL and z where bL is for fexpa and z is remain
 	*/
-	m.i = fi.i & ~FexpaTbl::mask(17);
-	fi.i >>= 17;
-	float c = fexpaEmu(fi.f);
-	float z = b - m.f;
-	const float c0 = 1;
-	const float c1 = log2;
-	const float c2 = 0.5 * log2 * log2;
-	float d = c0 + (c1 + z * c2) * z;
+	float c = fexpaEmu(bL);
+	float d = 1 + (log2 + z * c2) * z;
 	return powf(2, (float)n) * c * d;
 }
 
