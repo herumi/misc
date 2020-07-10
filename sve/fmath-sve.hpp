@@ -177,35 +177,31 @@ struct Code : public Xbyak::CodeGenerator {
 #else
 		Label skip;
 #if FMATH_SVE_LOOP_UNROLL == 2
-		mov(x3, 16);
 		b(skip);
 	Label lp = L();
 		ld1w(z0.s, p0/T_z, ptr(src));
-		ld1w(z12.s, p0/T_z, ptr(src, x3, LSL, 2));
-		add(src, src, 128);
+		ld1w(z12.s, p0/T_z, ptr(src, 1));
+		add(src, src, 64 * 2);
 		genExpsSVE(p0, std::array<ZReg, 6>{z0, z1, z2, z12, z13, z14}, log2, log2_e, expCoeff);
 		st1w(z0.s, p0, ptr(dst));
-		st1w(z12.s, p0, ptr(dst, x3, LSL, 2));
-		add(dst, dst, 128);
-		sub(n, n, 32);
+		st1w(z12.s, p0, ptr(dst, 1));
+		add(dst, dst, 64 * 2);
+		sub(n, n, 16 * 2);
 	L(skip);
-		cmp(n, 32);
+		cmp(n, 16 * 2);
 		bge(lp);
 #else
-		mov(x3, 16);
-		mov(x4, 32);
-		mov(x5, 64 * 3);
 		b(skip);
 	Label lp = L();
 		ld1w(z0.s, p0/T_z, ptr(src));
-		ld1w(z12.s, p0/T_z, ptr(src, x3, LSL, 2));
-		ld1w(z15.s, p0/T_z, ptr(src, x4, LSL, 2));
-		add(src, src, x5);
+		ld1w(z12.s, p0/T_z, ptr(src, 1));
+		ld1w(z15.s, p0/T_z, ptr(src, 2));
+		add(src, src, 64 * 3);
 		genExpsSVE(p0, std::array<ZReg, 9>{z0, z1, z2, z12, z13, z14, z15, z16, z17}, log2, log2_e, expCoeff);
 		st1w(z0.s, p0, ptr(dst));
-		st1w(z12.s, p0, ptr(dst, x3, LSL, 2));
-		st1w(z15.s, p0, ptr(dst, x4, LSL, 2));
-		add(dst, dst, x5);
+		st1w(z12.s, p0, ptr(dst, 1));
+		st1w(z15.s, p0, ptr(dst, 2));
+		add(dst, dst, 64 * 3);
 		sub(n, n, 16 * 3);
 	L(skip);
 		cmp(n, 16 * 3);
