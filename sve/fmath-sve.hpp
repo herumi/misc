@@ -133,7 +133,7 @@ struct Code : public Xbyak::CodeGenerator {
 		// setup constant
 		const ZReg& log2 = z3;
 		const ZReg& log2_e = z4;
-#define FMATH_SVE_LOOP_UNROLL 3
+#define FMATH_SVE_LOOP_UNROLL 1
 		const ZReg expCoeff[] = {
 			z5, z6, z7, z24, z25,
 #if FMATH_SVE_LOOP_UNROLL >= 2
@@ -154,8 +154,7 @@ struct Code : public Xbyak::CodeGenerator {
 			ldr(w4, ptr(x3, uint32_t(offsetof(ConstVar, expCoeff[0]) + sizeof(float) * i)));
 			cpy(expCoeff[i].s, p0/T_z, w4);
 		}
-#if 1
-#ifndef FMATH_SVE_LOOP_UNROLL
+#if FMATH_SVE_LOOP_UNROLL == 1
 		Label skip;
 		b(skip);
 	Label lp = L();
@@ -169,14 +168,9 @@ struct Code : public Xbyak::CodeGenerator {
 		cmp(n, 16);
 		bge(lp);
 
-		mov(x3, 0);
-		whilelt(p1.s, x3, n);
-		ld1w(z0.s, p1/T_z, ptr(src));
-		genExp1SVE(p1, z0, z1, z2, log2, log2_e, expCoeff);
-		st1w(z0.s, p1, ptr(dst));
-#else
-		Label skip;
+#endif
 #if FMATH_SVE_LOOP_UNROLL == 2
+		Label skip;
 		b(skip);
 	Label lp = L();
 		ld1w(z0.s, p0/T_z, ptr(src));
@@ -190,7 +184,9 @@ struct Code : public Xbyak::CodeGenerator {
 	L(skip);
 		cmp(n, 16 * 2);
 		bge(lp);
-#else
+#endif
+#if FMATH_SVE_LOOP_UNROLL == 3
+		Label skip;
 		b(skip);
 	Label lp = L();
 		ld1w(z0.s, p0/T_z, ptr(src));
@@ -219,20 +215,6 @@ struct Code : public Xbyak::CodeGenerator {
 	L(cond);
 		whilelt(p1.s, x3, n);
 		b_first(lp2);
-#endif
-#else
-		Label cond;
-		mov(x3, 0);
-		b(cond);
-	Label lp = L();
-		ld1w(z0.s, p1/T_z, ptr(src, x3, LSL, 2));
-		genExp1SVE(p1, z0, z1, z2, log2, log2_e, expCoeff);
-		st1w(z0.s, p1, ptr(dst, x3, LSL, 2));
-		incd(x3);
-	L(cond);
-		whilelt(p1.s, x3, n);
-		b_first(lp);
-#endif
 		ret();
 	}
 	// tz0 = tanh(tz0) = 1 - 2 / (1 + exp(2 tz0))
