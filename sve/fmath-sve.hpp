@@ -85,15 +85,15 @@ struct Code : public Xbyak::CodeGenerator {
 		constVar->init();
 		setSize(dataSize / 4);
 		expf_v = getCurr<VecFunc>();
-		genExpSVE(constVarL);
+		genExp(constVarL);
 		align(16);
 		tanhf_v = getCurr<VecFunc>();
-//		genTanhSVE(constVarL);
+		genTanh(constVarL);
 		ready();
 	}
 	// C = regN
 	// t[0+i*C] = exp(t[0+i*C]), using t[0+i*C], t[1+i*C], t[2+i*C], t[3+i*C]
-	void genExp1SVE(int unrollN, const PReg& p, const std::array<ZReg, allN>& t, const ExpParam& para)
+	void genExp1(int unrollN, const PReg& p, const std::array<ZReg, allN>& t, const ExpParam& para)
 	{
 		const int C = regN;
 		const int N = regN * unrollN;
@@ -114,6 +114,26 @@ struct Code : public Xbyak::CodeGenerator {
 		}
 		for (size_t i = 0; i < N; i+=C) fmad(t[i+0].s, p, t[i+2].s, para.one.s);
 		for (size_t i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+3].s, t[i+0].s);
+	}
+	// tanh(x) = 1 - 2/(1 + exp(2 x))
+	void genTanh1(int unrollN, const PReg& p, const std::array<ZReg, allN>& t, const ExpParam& para)
+	{
+		const int C = regN;
+		const int N = regN * unrollN;
+		// 2x
+		for (size_t i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, t[i+0].s);
+		// exp(2x)
+		genExp1(unrollN, p, t, para);
+		// 1+exp(2x)
+		for (size_t i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, para.one.s);
+		// 1st aprox ; a = 1/x + e
+		for (size_t i = 0; i < N; i+=C) frecpe(t[i+1].s, t[i+0].s);
+		// 2nd aprox ; a' = (2 - ax)a = 1/x - e^2 x
+		for (size_t i = 0; i < N; i+=C) frecps(t[i+2].s, t[i+0].s, t[i+1].s);
+		for (size_t i = 0; i < N; i+=C) fmul(t[i+2].s, t[i+2].s, t[i+1].s);
+		// 3rd aprox ; a'' = (2 - a'x)a'
+		for (size_t i = 0; i < N; i+=C) frecps(t[i+0].s, t[i+0].s, t[i+2].s);
+		for (size_t i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, t[i+2].s);
 	}
 	// f(float *dst, const float *src, size_t n);
 	template<size_t N>
@@ -139,7 +159,7 @@ struct Code : public Xbyak::CodeGenerator {
 		cpy(param.coeff2.s, p0/T_z, w4);
 
 		const auto args = std::array<ZReg, allN>{z0, z1, z2, z24, z25, z26, z27, z28, z29, z30, z31, z23};
-		const int unrollN = 3;
+		const int unrollN = 1;
 		if (unrollN == 3) {
 			sub(sp, sp, 64);
 			st1w(z23.s, p0, ptr(sp));
@@ -178,9 +198,13 @@ struct Code : public Xbyak::CodeGenerator {
 		}
 		ret();
 	}
-	void genExpSVE(const Xbyak::Label& constVarL)
+	void genExp(const Xbyak::Label& constVarL)
 	{
-		genFunc(&Code::genExp1SVE, constVarL);
+		genFunc(&Code::genExp1, constVarL);
+	}
+	void genTanh(const Xbyak::Label& constVarL)
+	{
+		genFunc(&Code::genTanh1, constVarL);
 	}
 };
 
