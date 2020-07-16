@@ -126,6 +126,8 @@ struct Code : public Xbyak::CodeGenerator {
 		genExp1(unrollN, p, t, para);
 		// 1+exp(2x)
 		for (size_t i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, para.one.s);
+
+		// 1/(1+exp(2x))
 		// 1st aprox ; a = 1/x + e
 		for (size_t i = 0; i < N; i+=C) frecpe(t[i+1].s, t[i+0].s);
 		// 2nd aprox ; a' = (2 - ax)a = 1/x - e^2 x
@@ -134,6 +136,11 @@ struct Code : public Xbyak::CodeGenerator {
 		// 3rd aprox ; a'' = (2 - a'x)a'
 		for (size_t i = 0; i < N; i+=C) frecps(t[i+0].s, t[i+0].s, t[i+2].s);
 		for (size_t i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, t[i+2].s);
+
+		// 2/(1+exp(2x))
+		for (size_t i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, t[i+0].s);
+		// 1-2/(1+exp(2x))
+		for (size_t i = 0; i < N; i+=C) fsub(t[i+0].s, para.one.s, t[i+0].s);
 	}
 	// f(float *dst, const float *src, size_t n);
 	template<size_t N>
@@ -221,6 +228,11 @@ alignas(32) const Code Inst<dummy>::code;
 inline void expf_v(float *dst, const float *src, size_t n)
 {
 	local::Inst<>::code.expf_v(dst, src, n);
+}
+
+inline void tanhf_v(float *dst, const float *src, size_t n)
+{
+	local::Inst<>::code.tanhf_v(dst, src, n);
 }
 
 } // fmath2

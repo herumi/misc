@@ -1,4 +1,3 @@
-#define FMATH_FEXPA
 #include "fmath-sve.hpp"
 #include <cybozu/test.hpp>
 #include <cybozu/benchmark.hpp>
@@ -19,14 +18,12 @@ float fmath_expf(float x)
 	return y[0];
 }
 
-#ifndef FMATH_FEXPA
 float fmath_tanhf(float x)
 {
 	float y[16] = { x };
 	fmath::tanhf_v(y, y, 1);
 	return y[0];
 }
-#endif
 
 float u2f(uint32_t x)
 {
@@ -126,7 +123,6 @@ float putDiff(float begin, float end, float step, const F& f, bool doPut = false
 	return maxe;
 }
 
-#ifndef FMATH_FEXPA
 CYBOZU_TEST_AUTO(tanh)
 {
 	puts("tanh");
@@ -146,7 +142,6 @@ CYBOZU_TEST_AUTO(tanhLimit)
 		printf("x=%e std=%e fmath2=%e\n", x[i], y0[i], y1[i]);
 	}
 }
-#endif
 
 CYBOZU_TEST_AUTO(setMaxE)
 {
@@ -221,10 +216,8 @@ CYBOZU_TEST_AUTO(bench)
 	CYBOZU_BENCH_C("", C, fmath::expf_v, &y1[0], &x[0], n);
 	putClk("fmath::expf_v", C * (n / 16));
 	checkDiff(&y0[0], &y1[0], n);
-#ifndef FMATH_FEXPA
 	CYBOZU_BENCH_C("", C, fmath::tanhf_v, &y1[0], &x[0], n);
 	putClk("fmath::tanhf_v", C * (n / 16));
-#endif
 }
 
 CYBOZU_TEST_AUTO(expLimit)
