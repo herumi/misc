@@ -1,7 +1,9 @@
+#define FMATH_FEXPA
 #include "fmath-sve.hpp"
 #include <cybozu/test.hpp>
 #include <cybozu/benchmark.hpp>
 #include <vector>
+#include "fexpa.hpp"
 
 float g_maxe;
 
@@ -17,12 +19,14 @@ float fmath_expf(float x)
 	return y[0];
 }
 
+#ifndef FMATH_FEXPA
 float fmath_tanhf(float x)
 {
 	float y[16] = { x };
 	fmath::tanhf_v(y, y, 1);
 	return y[0];
 }
+#endif
 
 float u2f(uint32_t x)
 {
@@ -54,25 +58,21 @@ inline float expfC(float x)
 {
 	using namespace fmath;
 	const local::ConstVar& C = *local::Inst<>::code.constVar;
-	x *= C.log2_e;
-	int n;
-	float a = split(&n, x);
-	/* |a| <= 0.5 */
-	a *= C.log2;
-	/* |a| <= 0.3466 */
-	local::fi fi;
-	fi.i = (n + 127) << 23; // 2^n
+
+	float y = x * C.log2_e;
+	int n = (int)floor(y);
+	float a = y - n; // 0 <= a < 1
+	float b = 1 + a; // 1 <= b < 2, y = (n-1) + b
+	uint32_t bu = f2u(b);
+
+	float bL = u2f(bu >> 17);
+	float z = b - u2f(bu & C.not_mask17);
 	/*
-		e^a = 1 + a + a^2/2! + a^3/3! + a^4/4! + a^5/5!
-		= 1 + a(1 + a(1/2! + a(1/3! + a(1/4! + a/5!))))
+		split b into bL and z where bL is for fexpa and z is remain
 	*/
-	x = C.expCoeff[4];
-	x = a * x + C.expCoeff[3];
-	x = a * x + C.expCoeff[2];
-	x = a * x + C.expCoeff[1];
-	x = a * x + C.expCoeff[0];
-	x = a * x + C.expCoeff[0];
-	return x * fi.f;
+	float c = fexpaEmu(bL);
+	float d = 1 + (C.coeff1 + z * C.coeff2) * z;
+	return powf(2.0f, n) * c * d;
 }
 
 void std_exp_v(float *dst, const float *src, size_t n)
@@ -126,6 +126,7 @@ float putDiff(float begin, float end, float step, const F& f, bool doPut = false
 	return maxe;
 }
 
+#ifndef FMATH_FEXPA
 CYBOZU_TEST_AUTO(tanh)
 {
 	puts("tanh");
@@ -145,6 +146,7 @@ CYBOZU_TEST_AUTO(tanhLimit)
 		printf("x=%e std=%e fmath2=%e\n", x[i], y0[i], y1[i]);
 	}
 }
+#endif
 
 CYBOZU_TEST_AUTO(setMaxE)
 {
@@ -219,9 +221,10 @@ CYBOZU_TEST_AUTO(bench)
 	CYBOZU_BENCH_C("", C, fmath::expf_v, &y1[0], &x[0], n);
 	putClk("fmath::expf_v", C * (n / 16));
 	checkDiff(&y0[0], &y1[0], n);
-
+#ifndef FMATH_FEXPA
 	CYBOZU_BENCH_C("", C, fmath::tanhf_v, &y1[0], &x[0], n);
 	putClk("fmath::tanhf_v", C * (n / 16));
+#endif
 }
 
 CYBOZU_TEST_AUTO(expLimit)
@@ -236,4 +239,3 @@ CYBOZU_TEST_AUTO(expLimit)
 		printf("x=%e std=%e fmath2=%e\n", x[i], y0[i], y1[i]);
 	}
 }
-

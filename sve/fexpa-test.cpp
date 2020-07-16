@@ -83,4 +83,3 @@ int main()
 	putDiff(-10, 10, 0.5, expC2);
 	putDiff(-30, 30, 1e-5, expC2);
 }
-
