@@ -129,10 +129,10 @@ struct Code : public Xbyak::CodeGenerator {
 
 		// 1/(1+exp(2x))
 		// 1st aprox ; a = 1/x + e
-		for (size_t i = 0; i < N; i+=C) frecpe(t[i+1].s, t[i+0].s);
+		for (size_t i = 0; i < N; i+=C) frecpe(t[i+3].s, t[i+0].s);
 		// 2nd aprox ; a' = (2 - ax)a = 1/x - e^2 x
-		for (size_t i = 0; i < N; i+=C) frecps(t[i+2].s, t[i+0].s, t[i+1].s);
-		for (size_t i = 0; i < N; i+=C) fmul(t[i+2].s, t[i+2].s, t[i+1].s);
+		for (size_t i = 0; i < N; i+=C) frecps(t[i+2].s, t[i+0].s, t[i+3].s);
+		for (size_t i = 0; i < N; i+=C) fmul(t[i+2].s, t[i+2].s, t[i+3].s);
 		// 3rd aprox ; a'' = (2 - a'x)a'
 		for (size_t i = 0; i < N; i+=C) frecps(t[i+0].s, t[i+0].s, t[i+2].s);
 		for (size_t i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, t[i+2].s);
