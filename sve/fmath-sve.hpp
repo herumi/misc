@@ -166,7 +166,7 @@ struct Code : public Xbyak::CodeGenerator {
 		cpy(param.coeff2.s, p0/T_z, w4);
 
 		const auto args = std::array<ZReg, allN>{z0, z1, z2, z24, z25, z26, z27, z28, z29, z30, z31, z23};
-		const int unrollN = 1;
+		const int unrollN = 3;
 		if (unrollN == 3) {
 			sub(sp, sp, 64);
 			st1w(z23.s, p0, ptr(sp));
