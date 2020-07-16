@@ -55,6 +55,9 @@ struct Code : public Xbyak::CodeGenerator {
 	typedef void (*VecFunc)(float *dst, const float *src, size_t n);
 	VecFunc expf_v;
 	VecFunc tanhf_v;
+	static const int regN = 4;
+	static const int maxUnrollN = 3;
+	static const size_t allN = maxUnrollN * regN;
 	struct ExpParam {
 		ZReg log2_e;
 		ZReg not_mask17;
@@ -73,6 +76,7 @@ struct Code : public Xbyak::CodeGenerator {
 	Code()
 		: Xbyak::CodeGenerator(4096 * 2)
 		, expf_v(0)
+		, tanhf_v(0)
 	{
 		size_t dataSize = sizeof(ConstVar);
 		dataSize = (dataSize + 4095) & ~size_t(4095);
@@ -82,13 +86,18 @@ struct Code : public Xbyak::CodeGenerator {
 		setSize(dataSize / 4);
 		expf_v = getCurr<VecFunc>();
 		genExpSVE(constVarL);
+		align(16);
+		tanhf_v = getCurr<VecFunc>();
+//		genTanhSVE(constVarL);
 		ready();
 	}
+	// C = regN
 	// t[0+i*C] = exp(t[0+i*C]), using t[0+i*C], t[1+i*C], t[2+i*C], t[3+i*C]
-	template<size_t N>
-	void genExp1SVE(const PReg& p, const std::array<ZReg, N>& t, const ExpParam& para)
+	void genExp1SVE(int unrollN, const PReg& p, const std::array<ZReg, allN>& t, const ExpParam& para)
 	{
-		const size_t C = 4;
+		const int C = regN;
+		const int N = regN * unrollN;
+		assert(N <= allN);
 		for (size_t i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, para.log2_e.s);
 		for (size_t i = 0; i < N; i+=C) frintm(t[i+1].s, p, t[i+0].s); // floor : float -> float
 		for (size_t i = 0; i < N; i+=C) fcvtzs(t[i+2].s, p, t[i+1].s); // n = float -> int
@@ -106,8 +115,9 @@ struct Code : public Xbyak::CodeGenerator {
 		for (size_t i = 0; i < N; i+=C) fmad(t[i+0].s, p, t[i+2].s, para.one.s);
 		for (size_t i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+3].s, t[i+0].s);
 	}
-	// exp_v(float *dst, const float *src, size_t n);
-	void genExpSVE(const Xbyak::Label& constVarL)
+	// f(float *dst, const float *src, size_t n);
+	template<size_t N>
+	void genFunc(void (Code::*gen1)(int unrollN, const PReg&, const std::array<ZReg, N>&, const ExpParam&), const Xbyak::Label& constVarL)
 	{
 		using namespace Xbyak;
 		const XReg& dst = x0;
@@ -128,30 +138,23 @@ struct Code : public Xbyak::CodeGenerator {
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, coeff2)));
 		cpy(param.coeff2.s, p0/T_z, w4);
 
-#define FMATH_UNROLL_N 3
-		const int unrollN = FMATH_UNROLL_N;
-		const int useN = 4;
-		const size_t regN = unrollN * useN;
-#if FMATH_UNROLL_N == 1
-		const auto args = std::array<ZReg, regN>{z0, z1, z2, z24};
-#elif FMATH_UNROLL_N == 2
-		const auto args = std::array<ZReg, regN>{z0, z1, z2, z24, z25, z26, z27, z28};
-#elif FMATH_UNROLL_N == 3
-		sub(sp, sp, 64);
-		st1w(z23.s, p0, ptr(sp));
-		const auto args = std::array<ZReg, regN>{z0, z1, z2, z24, z25, z26, z27, z28, z29, z30, z31, z23};
-#endif
+		const auto args = std::array<ZReg, allN>{z0, z1, z2, z24, z25, z26, z27, z28, z29, z30, z31, z23};
+		const int unrollN = 3;
+		if (unrollN == 3) {
+			sub(sp, sp, 64);
+			st1w(z23.s, p0, ptr(sp));
+		}
 		Label skip;
 		b(skip);
 	Label lp = L();
 		ld1w(z0.s, p0/T_z, ptr(src));
-		if (unrollN > 1) ld1w(args[useN].s, p0/T_z, ptr(src, 1));
-		if (unrollN > 2) ld1w(args[useN * 2].s, p0/T_z, ptr(src, 2));
+		if (unrollN > 1) ld1w(args[regN].s, p0/T_z, ptr(src, 1));
+		if (unrollN > 2) ld1w(args[regN * 2].s, p0/T_z, ptr(src, 2));
 		add(src, src, 64 * unrollN);
-		genExp1SVE(p0, args, param);
+		(this->*gen1)(unrollN, p0, args, param);
 		st1w(z0.s, p0, ptr(dst));
-		if (unrollN > 1) st1w(args[useN].s, p0, ptr(dst, 1));
-		if (unrollN > 2) st1w(args[useN * 2].s, p0, ptr(dst, 2));
+		if (unrollN > 1) st1w(args[regN].s, p0, ptr(dst, 1));
+		if (unrollN > 2) st1w(args[regN * 2].s, p0, ptr(dst, 2));
 		add(dst, dst, 64 * unrollN);
 		sub(n, n, 16 * unrollN);
 	L(skip);
@@ -163,17 +166,21 @@ struct Code : public Xbyak::CodeGenerator {
 		b(cond);
 	Label lp2 = L();
 		ld1w(z0.s, p1/T_z, ptr(src, x3, LSL, 2));
-		genExp1SVE(p1, args, param);
+		(this->*gen1)(1, p1, args, param);
 		st1w(z0.s, p1, ptr(dst, x3, LSL, 2));
 		incd(x3);
 	L(cond);
 		whilelt(p1.s, x3, n);
 		b_first(lp2);
-#if FMATH_UNROLL_N == 3
-		ld1w(z23.s, p0, ptr(sp));
-		add(sp, sp, 64);
-#endif
+		if (unrollN == 3) {
+			ld1w(z23.s, p0, ptr(sp));
+			add(sp, sp, 64);
+		}
 		ret();
+	}
+	void genExpSVE(const Xbyak::Label& constVarL)
+	{
+		genFunc(&Code::genExp1SVE, constVarL);
 	}
 };
 
