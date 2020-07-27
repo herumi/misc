@@ -3,6 +3,9 @@ const mcl = require('../../mcl-wasm/mcl.js')
 	sample of OpenVote
 */
 
+/*
+  Y = sum_{j<i} pubs[i] - sum_{j>i} pubs[i]
+*/
 function computeY(pubs, i) {
   let Y = new mcl.G1()
   for (let j = 0; j < i; j++) {
@@ -57,6 +60,7 @@ mcl.init().then(() => {
     console.log(`i=${i} Y=${Ys[i].serializeToHexStr()}`)
   }
   // compute Z
+  // use ZLP for v in {0,1} (https://github.com/herumi/mcl/blob/master/misc/she/she-api.md#zero-knowledge-proof-class-1)
   for (let i = 0; i < n; i++) {
     let Z = mcl.mul(Ys[i], secs[i])
     if (votes[i]) {
@@ -72,7 +76,6 @@ mcl.init().then(() => {
   }
   // solve DLP
   let ret = solveDLP(P, sum)
-  console.log(ret)
-//  console.log('ret=${ret}`)
+  console.log(`ret=${ret}`)
 })
 
