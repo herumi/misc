@@ -69,6 +69,9 @@ int main()
 		}
 		size_t nn = 1024;
 		sqrAdd(z1, x, y, nn);
+		if (N == 0) {
+			CYBOZU_BENCH_C("C", 1000, sqrAdd, z1, x, y, nn);
+		}
 		f(z2, x, y, nn);
 		for (size_t i = 0; i < n; i++) {
 			if (z1[i] != z2[i]) {
@@ -77,7 +80,7 @@ int main()
 			}
 		}
 		puts("ok");
-		CYBOZU_BENCH_C("f", 1000, f, z2, x, y, nn);
+		CYBOZU_BENCH_C("SVE", 1000, f, z2, x, y, nn);
 	}
 } catch (std::exception& e) {
 	printf("err %s\n", e.what());
