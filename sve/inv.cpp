@@ -1,5 +1,6 @@
 #include <xbyak_aarch64/xbyak_aarch64.h>
 #include <cybozu/benchmark.hpp>
+#include <math.h>
 
 using namespace Xbyak;
 
@@ -20,8 +21,8 @@ struct Code : CodeGenerator {
 	Label lp = L();
 		ld1w(z0.s, p0/T_z, ptr(src1, idx, LSL, 2));
 		ld1w(z1.s, p0/T_z, ptr(src2, idx, LSL, 2));
-		fadd(z2.s, z0.s, z1.s);
-		fadd(z0.s, z2.s, z2.s);
+		frintm(z2.s, p0, z0.s); // floor
+		fadd(z0.s, z1.s, z2.s);
 		switch (mode) {
 		case 0:
 			movprfx(z0.s, p0, one.s);
@@ -40,6 +41,14 @@ struct Code : CodeGenerator {
 			frecps(z2.s, z0.s, z1.s);
 			fmul(z0.s, z1.s, z2.s);
 			break;
+		case 3: // replace z2 with z3
+			frecpe(z1.s, z0.s);
+			frecps(z3.s, z0.s, z1.s);
+			fmul(z1.s, z1.s, z3.s);
+
+			frecps(z3.s, z0.s, z1.s);
+			fmul(z0.s, z1.s, z3.s);
+			break;
 		}
 		st1w(z0.s, p0, ptr(out, idx, LSL, 2));
 		add(idx, idx, 16);
@@ -52,14 +61,14 @@ struct Code : CodeGenerator {
 void fC(float *z, const float *x, const float *y, size_t n)
 {
 	for (size_t i = 0; i < n; i++) {
-		z[i] = 1 / ((x[i] + y[i]) * 2);
+		z[i] = 1 / (floor(x[i]) + y[i]);
 	}
 }
 
 int main()
 	try
 {
-	for (int mode = 0; mode < 3; mode++) {
+	for (int mode = 0; mode < 4; mode++) {
 		printf("mode=%d\n", mode);
 		Code c(mode);
 		auto fA = c.getCode<void (*)(float *, const float *, const float *, size_t)>();
