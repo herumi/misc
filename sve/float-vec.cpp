@@ -1,4 +1,5 @@
 #include <xbyak_aarch64/xbyak_aarch64.h>
+#include <xbyak_aarch64/xbyak_aarch64_util.h>
 #include <cybozu/benchmark.hpp>
 
 using namespace Xbyak;
@@ -24,12 +25,42 @@ struct Code : CodeGenerator {
 			Label skip;
 			b(skip);
 		Label lp = L();
-			for (int i = 0; i < N; i++) ld1w(ZReg(i * 2).s, p0/T_z, ptr(src1, i));
+#ifdef USE_LDNW
+			switch (N) {
+			case 1:
+				ld1w(z0.s, p0/T_z, ptr(src1));
+				ld1w(ZReg(N).s, p0/T_z, ptr(src2));
+				break;
+			case 2:
+				ld2w(z0.s, p0/T_z, ptr(src1));
+				ld2w(ZReg(N).s, p0/T_z, ptr(src2));
+				break;
+			case 3:
+				ld3w(z0.s, p0/T_z, ptr(src1));
+				ld3w(ZReg(N).s, p0/T_z, ptr(src2));
+				break;
+			case 4:
+				ld4w(z0.s, p0/T_z, ptr(src1));
+				ld4w(ZReg(N).s, p0/T_z, ptr(src2));
+				break;
+			}
+#else
+			for (int i = 0; i < N; i++) ld1w(ZReg(i).s, p0/T_z, ptr(src1, i));
+			for (int i = 0; i < N; i++) ld1w(ZReg(N + i).s, p0/T_z, ptr(src2, i));
+#endif
 			add(src1, src1, 64 * N);
-			for (int i = 0; i < N; i++) ld1w(ZReg(i * 2 + 1).s, p0/T_z, ptr(src2, i));
 			add(src2, src2, 64 * N);
-			for (int i = 0; i < N; i++) fmla(ZReg(i * 2 + 1).s, p0/T_m, ZReg(i * 2).s, ZReg(i * 2).s);
-			for (int i = 0; i < N; i++) st1w(ZReg(i * 2 + 1).s, p0, ptr(out, i));
+			for (int i = 0; i < N; i++) fmla(ZReg(N + i).s, p0/T_m, ZReg(i).s, ZReg(i).s);
+#ifdef USE_LDNW
+			switch (N) {
+			case 1: st1w(ZReg(N).s, p0, ptr(out)); break;
+			case 2: st2w(ZReg(N).s, p0, ptr(out)); break;
+			case 3: st3w(ZReg(N).s, p0, ptr(out)); break;
+			case 4: st4w(ZReg(N).s, p0, ptr(out)); break;
+			}
+#else
+			for (int i = 0; i < N; i++) st1w(ZReg(N + i).s, p0, ptr(out, i));
+#endif
 			add(out, out, 64 * N);
 			sub(n, n, 16 * N);
 		L(skip);
@@ -51,10 +82,13 @@ struct Code : CodeGenerator {
 	}
 };
 
-int main()
+int main(int argc, char *argv[])
 	try
 {
+	int uniq = argc == 1 ? -1 : atoi(argv[1]);
+	printf("uniq=%d\n", uniq);
 	for (int N = 0; N <= 4; N++) {
+		if (uniq != -1 && uniq != N) continue;
 		printf("N=%d\n", N);
 		Code c(N);
 		auto f = c.getCode<void (*)(float *, const float *, const float *, size_t)>();
