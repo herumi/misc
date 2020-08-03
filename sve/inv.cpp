@@ -33,6 +33,12 @@ struct Code : CodeGenerator {
 			fmul(z0.s, z1.s, z2.s);
 			break;
 		case 2:
+			frecpe(z1.s, z0.s);
+			frecps(z2.s, z0.s, z1.s);
+			fmul(z1.s, z1.s, z2.s);
+
+			frecps(z2.s, z0.s, z1.s);
+			fmul(z0.s, z1.s, z2.s);
 			break;
 		}
 		st1w(z0.s, p0, ptr(out, idx, LSL, 2));
@@ -53,7 +59,7 @@ void fC(float *z, const float *x, const float *y, size_t n)
 int main()
 	try
 {
-	for (int mode = 0; mode < 2; mode++) {
+	for (int mode = 0; mode < 3; mode++) {
 		printf("mode=%d\n", mode);
 		Code c(mode);
 		auto fA = c.getCode<void (*)(float *, const float *, const float *, size_t)>();
@@ -69,13 +75,16 @@ int main()
 		fC(z1, x, y, n);
 		fA(z2, x, y, n);
 		bool ok = true;
+		float maxe = 0;
 		for (size_t i = 0; i < 16; i++) {
-			if (fabs(z1[i] - z2[i]) > 1e-5) {
+			float d = fabs(z1[i] - z2[i]);
+			if (d > maxe) maxe = d;
+			if (d > 1e-5) {
 				ok = false;
 			}
 			printf("i=%zd z1=%f z2=%f\n", i, z1[i], z2[i]);
 		}
-		puts(ok ? "ok" : "ng");
+		printf("%s maxe=%e\n", ok ? "ok" : "ng", maxe);
 		CYBOZU_BENCH_C("inv", 1000, fA, z2, x, y, n);
 	}
 } catch (std::exception& e) {
