@@ -1,6 +1,15 @@
 #include <xbyak_aarch64/xbyak_aarch64.h>
 #include <cybozu/benchmark.hpp>
 #include <math.h>
+/*
+	clang -O3
+float x[1024]
+3.208usec ; 100  clk ; fdiv
+1.058usec ;  33  clk ; frintm and frecps use same z2
+0.350usec ;  10.9clk ; frintm and frecps use diff regs
+1.651usec ;  51  clk ; frintm and frecps x 2 use same z2
+0.370usec ;  11.2clk ; frintm and frecps x 2 use diff reg
+*/
 
 using namespace Xbyak;
 
@@ -35,13 +44,18 @@ struct Code : CodeGenerator {
 			break;
 		case 2:
 			frecpe(z1.s, z0.s);
+			frecps(z3.s, z0.s, z1.s);
+			fmul(z0.s, z1.s, z3.s);
+			break;
+		case 3:
+			frecpe(z1.s, z0.s);
 			frecps(z2.s, z0.s, z1.s);
 			fmul(z1.s, z1.s, z2.s);
 
 			frecps(z2.s, z0.s, z1.s);
 			fmul(z0.s, z1.s, z2.s);
 			break;
-		case 3: // replace z2 with z3
+		case 4: // replace z2 with z3
 			frecpe(z1.s, z0.s);
 			frecps(z3.s, z0.s, z1.s);
 			fmul(z1.s, z1.s, z3.s);
@@ -68,7 +82,7 @@ void fC(float *z, const float *x, const float *y, size_t n)
 int main()
 	try
 {
-	for (int mode = 0; mode < 4; mode++) {
+	for (int mode = 0; mode < 5; mode++) {
 		printf("mode=%d\n", mode);
 		Code c(mode);
 		auto fA = c.getCode<void (*)(float *, const float *, const float *, size_t)>();
@@ -90,8 +104,8 @@ int main()
 			if (d > maxe) maxe = d;
 			if (d > 1e-5) {
 				ok = false;
+				printf("i=%zd z1=%f z2=%f\n", i, z1[i], z2[i]);
 			}
-			printf("i=%zd z1=%f z2=%f\n", i, z1[i], z2[i]);
 		}
 		printf("%s maxe=%e\n", ok ? "ok" : "ng", maxe);
 		CYBOZU_BENCH_C("inv", 1000, fA, z2, x, y, n);
