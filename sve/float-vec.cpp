@@ -44,14 +44,7 @@ struct Code : CodeGenerator {
 				ld4w(ZReg(N).s, p0/T_z, ptr(src2));
 				break;
 			}
-#else
-			for (int i = 0; i < N; i++) ld1w(ZReg(i).s, p0/T_z, ptr(src1, i));
-			for (int i = 0; i < N; i++) ld1w(ZReg(N + i).s, p0/T_z, ptr(src2, i));
-#endif
-			add(src1, src1, 64 * N);
-			add(src2, src2, 64 * N);
 			for (int i = 0; i < N; i++) fmla(ZReg(N + i).s, p0/T_m, ZReg(i).s, ZReg(i).s);
-#ifdef USE_LDNW
 			switch (N) {
 			case 1: st1w(ZReg(N).s, p0, ptr(out)); break;
 			case 2: st2w(ZReg(N).s, p0, ptr(out)); break;
@@ -59,8 +52,22 @@ struct Code : CodeGenerator {
 			case 4: st4w(ZReg(N).s, p0, ptr(out)); break;
 			}
 #else
+#if 1
+			for (int i = 0; i < N; i++) {
+				ld1w(ZReg(i).s, p0/T_z, ptr(src1, i));
+				ld1w(ZReg(N + i).s, p0/T_z, ptr(src2, i));
+				fmla(ZReg(N + i).s, p0/T_m, ZReg(i).s, ZReg(i).s);
+				st1w(ZReg(N + i).s, p0, ptr(out, i));
+			}
+#else
+			for (int i = 0; i < N; i++) ld1w(ZReg(i).s, p0/T_z, ptr(src1, i));
+			for (int i = 0; i < N; i++) ld1w(ZReg(N + i).s, p0/T_z, ptr(src2, i));
+			for (int i = 0; i < N; i++) fmla(ZReg(N + i).s, p0/T_m, ZReg(i).s, ZReg(i).s);
 			for (int i = 0; i < N; i++) st1w(ZReg(N + i).s, p0, ptr(out, i));
 #endif
+#endif
+			add(src1, src1, 64 * N);
+			add(src2, src2, 64 * N);
 			add(out, out, 64 * N);
 			sub(n, n, 16 * N);
 		L(skip);
