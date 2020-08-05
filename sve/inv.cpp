@@ -34,8 +34,9 @@ struct Code : CodeGenerator {
 		fadd(z0.s, z1.s, z2.s);
 		switch (mode) {
 		case 0:
-			movprfx(z0.s, p0, one.s);
-			fdiv(z0.s, p0, z0.s);
+//			movprfx(z0.s, p0, one.s);
+//			fdiv(z0.s, p0, z0.s);
+			fdivr(z0.s, p0, one.s);
 			break;
 		case 1:
 			frecpe(z1.s, z0.s);
