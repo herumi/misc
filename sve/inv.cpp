@@ -14,7 +14,7 @@ float x[1024]
 using namespace Xbyak;
 
 struct Code : CodeGenerator {
-	explicit Code(int mode = 0)
+	Code(int op, int mode)
 	{
 		typedef Xbyak::ZReg ZReg;
 		const auto& out = x0;
@@ -30,7 +30,14 @@ struct Code : CodeGenerator {
 	Label lp = L();
 		ld1w(z0.s, p0/T_z, ptr(src1, idx, LSL, 2));
 		ld1w(z1.s, p0/T_z, ptr(src2, idx, LSL, 2));
-		frintm(z2.s, p0, z0.s); // floor
+		switch (op) {
+		case 0:
+			frintm(z2.s, p0, z0.s); // floor
+			break;
+		case 1:
+			fadd(z2.s, z0.s, z0.s);
+			break;
+		}
 		fadd(z0.s, z1.s, z2.s);
 		switch (mode) {
 		case 0:
@@ -73,19 +80,41 @@ struct Code : CodeGenerator {
 	}
 };
 
-void fC(float *z, const float *x, const float *y, size_t n)
+void fC(int op, float *z, const float *x, const float *y, size_t n)
 {
 	for (size_t i = 0; i < n; i++) {
-		z[i] = 1 / (floor(x[i]) + y[i]);
+		float v;
+		switch (op) {
+		case 0:
+			v = floor(x[i]) + y[i];
+			break;
+		case 1:
+			v = (x[i] + x[i]) + y[i];
+			break;
+		}
+		z[i] = 1 / v;
 	}
 }
 
-int main()
+int main(int argc, char *argv[])
 	try
 {
+	int op = argc == 1 ? 0 : atoi(argv[1]);
+	const char *opTbl[] = {
+		"floor",
+		"add",
+	};
+	const char *modeTbl[] = {
+		"fdivr",
+		"frecps z2",
+		"frecps z3",
+		"frecpsx2 z2",
+		"frecpsx2 z3",
+	};
+	printf("op=%d %s\n", op, opTbl[op]);
 	for (int mode = 0; mode < 5; mode++) {
 		printf("mode=%d\n", mode);
-		Code c(mode);
+		Code c(op, mode);
 		auto fA = c.getCode<void (*)(float *, const float *, const float *, size_t)>();
 		c.ready();
 		const size_t n = 1024;
@@ -96,7 +125,7 @@ int main()
 			z1[i] = -99;
 			z2[i] = z1[i];
 		}
-		fC(z1, x, y, n);
+		fC(op, z1, x, y, n);
 		fA(z2, x, y, n);
 		bool ok = true;
 		float maxe = 0;
@@ -109,7 +138,8 @@ int main()
 			}
 		}
 		printf("%s maxe=%e\n", ok ? "ok" : "ng", maxe);
-		CYBOZU_BENCH_C("inv", 1000, fA, z2, x, y, n);
+		CYBOZU_BENCH_C("", 1000, fA, z2, x, y, n);
+		printf("%.2fclk\n", cybozu::bench::g_clk.getClock() / double(n / 16) * 2 * 1e-3);
 	}
 } catch (std::exception& e) {
 	printf("err %s\n", e.what());
