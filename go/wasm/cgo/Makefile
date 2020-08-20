@@ -11,7 +11,7 @@ test: liblib.a
 	go run main.go
 
 main.wasm: main.go
-	GOOS=js GOARCH=wasm go build -o main.wasm main.go
+	GOOS=js GOARCH=wasm CGO_ENABLED=1 go build -o main.wasm main.go
 
 test_go:
 	env GOOS=js GOARCH=wasm go run -exec=$(R)/misc/wasm/go_js_wasm_exec main.go
