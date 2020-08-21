@@ -24,3 +24,8 @@ time clang++-10 -Ofast -I./ -DXBYAK_SPLIT=0 -c t3.cpp ; 105.514u 1.197s 1:46.75 
 time g++-8 -Ofast -I./ -DXBYAK_SPLIT=1 -c t3.cpp      ;   8.013u 0.568s 0:08.54 100.3%    0+0k 0+4864io 0pf+0w
 time g++-8 -Ofast -I./ -DXBYAK_SPLIT=0 -c t3.cpp      ;   9.691u 0.183s 0:09.90 99.6%     0+0k 0+5576io 0pf+0w
 
+time g++-8 -Ofast -I./ -DXBYAK_SPLIT=1 -c t3.cpp ; 8.258u 0.244s 0:08.52 99.6%     0+0k 0+4864io 0pf+0w
+time g++-8 -Ofast -I./ -DXBYAK_SPLIT=1 -c t4.cpp ; 8.124u 0.152s 0:08.23 100.4%    0+0k 0+5056io 0pf+0w
+time clang++-10 -Ofast -I./ -DXBYAK_SPLIT=1 -c t3.cpp ; 88.663u 0.803s 1:29.53 99.9%    0+0k 0+1984io 0pf+0w
+time clang++-10 -Ofast -I./ -DXBYAK_SPLIT=1 -c t4.cpp ; 83.506u 0.857s 1:24.39 99.9%    0+0k 0+1808io 0pf+0w
+
