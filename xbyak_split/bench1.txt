@@ -1,0 +1,26 @@
+t1-0-O0-g++-8.txt           0.80user
+t1-1-O0-g++-8.txt           0.97user
+t2-0-O0-g++-8.txt           6.57user
+t2-1-O0-g++-8.txt           6.25user
+
+t1-1-Ofast-g++-8.txt        1.62user
+t1-0-Ofast-g++-8.txt        1.77user
+t2-0-Ofast-g++-8.txt       59.04user
+t2-1-Ofast-g++-8.txt       57.82user
+
+t1-0-O0-clang++-10.txt      0.70user
+t1-1-O0-clang++-10.txt      0.58user
+t2-0-O0-clang++-10.txt      2.38user
+t2-1-O0-clang++-10.txt      2.04user
+
+t1-0-Ofast-clang++-10.txt   1.20user
+t1-1-Ofast-clang++-10.txt   1.02user
+t2-0-Ofast-clang++-10.txt >600user
+t2-1-Ofast-clang++-10.txt >600user
+
+time clang++-10 -Ofast -I./ -DXBYAK_SPLIT=1 -c t3.cpp ;  99.475u 1.184s 1:40.66 99.9%    0+0k 0+1984io 0pf+0w
+time clang++-10 -Ofast -I./ -DXBYAK_SPLIT=0 -c t3.cpp ; 105.514u 1.197s 1:46.75 99.9%   0+0k 0+2280io 0pf+0w
+
+time g++-8 -Ofast -I./ -DXBYAK_SPLIT=1 -c t3.cpp      ;   8.013u 0.568s 0:08.54 100.3%    0+0k 0+4864io 0pf+0w
+time g++-8 -Ofast -I./ -DXBYAK_SPLIT=0 -c t3.cpp      ;   9.691u 0.183s 0:09.90 99.6%     0+0k 0+5576io 0pf+0w
+
