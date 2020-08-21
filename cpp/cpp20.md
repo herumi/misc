@@ -92,3 +92,26 @@ enum class endian {
 - inv_sqrt3_v ; 1/√3
 - egamma_v ; オイラー定数γ
 - phi_v ; (1+√5)/2
+
+## atomic
+
+`condition_variable`のatomic版の追加
+
+- atomic_wait
+- atomic_wait_explicit
+- atomic_notify_one
+- atomic_notify_all
+
+`atomic_flag`に対するwait/notify
+
+- atomic_flag_wait
+- atomic_flag_wait_explicit
+- atomic_flag_notify_one
+- atomic_flag_notify_all
+
+現在の値を取得
+
+- atomic_flag_test
+- atomic_flag_test_explicit
+
+atomic_ref ; 参照にたいするatomic操作
