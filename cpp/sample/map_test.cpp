@@ -102,7 +102,7 @@ struct B {
 	void operator=(B&&) { copy = false; }
 };
 
-using Map2 = std::map<X, B>;//, std::less<>>;
+using Map2 = std::map<X, B, std::less<>>;
 
 void insert_if_absent4(Map2& m, int v)
 {
