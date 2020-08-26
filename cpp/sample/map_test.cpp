@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <cybozu/xorshift.hpp>
 #include <map>
 
 struct G {
@@ -55,12 +56,12 @@ using Map = std::map<X, A, std::less<>>;
 template<class M, class F>
 void test(const F& f)
 {
-	srand(3);
+	cybozu::XorShift rg;
     M m;
 	const int C = 65537;
 	g.clear();
 	for (int i = 0; i < 1000; i++) {
-		int v = rand() % C;
+		int v = rg.get32() % C;
 		f(m, v);
 	}
 	g.put();
