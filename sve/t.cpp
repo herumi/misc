@@ -1,8 +1,8 @@
 #include <xbyak_aarch64/xbyak_aarch64.h>
 
-struct Code : public Xbyak::CodeGenerator {
-	typedef Xbyak::ZReg ZReg;
-	typedef Xbyak::PReg PReg;
+struct Code : public Xbyak_aarch64::CodeGenerator {
+	typedef Xbyak_aarch64::ZReg ZReg;
+	typedef Xbyak_aarch64::PReg PReg;
 	Code()
 	{
 		mov(w0, ~0x1ffff);

@@ -54,19 +54,19 @@ struct ConstVar {
 	}
 };
 
-struct Code : public Xbyak::CodeGenerator {
-	typedef Xbyak::ZReg ZReg;
-	typedef Xbyak::PReg PReg;
+struct Code : public Xbyak_aarch64::CodeGenerator {
+	typedef Xbyak_aarch64::ZReg ZReg;
+	typedef Xbyak_aarch64::PReg PReg;
 	ConstVar *constVar;
 	typedef void (*VecFunc)(float *dst, const float *src, size_t n);
 	VecFunc gelu_v;
 	Code()
-		: Xbyak::CodeGenerator(4096 * 2)
+		: Xbyak_aarch64::CodeGenerator(4096 * 2)
 		, gelu_v(0)
 	{
 		size_t dataSize = sizeof(ConstVar);
 		dataSize = (dataSize + 4095) & ~size_t(4095);
-		Xbyak::Label constVarL = L();
+		Xbyak_aarch64::Label constVarL = L();
 		constVar = (ConstVar*)getCode();
 		constVar->init();
 		setSize(dataSize / 4);
@@ -141,9 +141,9 @@ struct Code : public Xbyak::CodeGenerator {
 		fsub(tz0.s, expCoeff[0].s, tz1.s);
 	}
 	// gelu_v(float *dst, const float *src, size_t n);
-	void genGelu(const Xbyak::Label& constVarL)
+	void genGelu(const Xbyak_aarch64::Label& constVarL)
 	{
-		using namespace Xbyak;
+		using namespace Xbyak_aarch64;
 		const XReg& dst = x0;
 		const XReg& src = x1;
 		const XReg& n = x2;

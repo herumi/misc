@@ -1,6 +1,6 @@
 #include <xbyak_aarch64/xbyak_aarch64.h>
 
-using namespace Xbyak;
+using namespace Xbyak_aarch64;
 
 void intAdd(int *z, const int *x, const int *y, size_t n)
 {

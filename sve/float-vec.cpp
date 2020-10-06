@@ -1,8 +1,7 @@
 #include <xbyak_aarch64/xbyak_aarch64.h>
-#include <xbyak_aarch64/xbyak_aarch64_util.h>
 #include <cybozu/benchmark.hpp>
 
-using namespace Xbyak;
+using namespace Xbyak_aarch64;
 
 void sqrAdd(float *z, const float *x, const float *y, size_t n)
 {
@@ -14,7 +13,6 @@ void sqrAdd(float *z, const float *x, const float *y, size_t n)
 struct Code : CodeGenerator {
 	explicit Code(int N = 0)
 	{
-		typedef Xbyak::ZReg ZReg;
 		const auto& out = x0;
 		const auto& src1 = x1;
 		const auto& src2 = x2;

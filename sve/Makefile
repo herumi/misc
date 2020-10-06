@@ -1,6 +1,7 @@
 CXX?=clang++
 INC_DIR?=../../fujitsu/xbyak_aarch64/
 CPPFLAGS=$(OPT) -Wall -I$(INC_DIR) -I ./include #-g
+all: test1.exe test2.exe test3.exe test4.exe exp_v
 
 test1.exe: double-vec.cpp
 	$(CXX) $(CPPFLAGS) -o $@ $<

@@ -11,12 +11,12 @@ float x[1024]
 0.370usec ;  11.2clk ; frintm and frecps x 2 use diff reg
 */
 
-using namespace Xbyak;
+using namespace Xbyak_aarch64;
 
 struct Code : CodeGenerator {
 	Code(int op, int mode)
 	{
-		typedef Xbyak::ZReg ZReg;
+		typedef Xbyak_aarch64::ZReg ZReg;
 		const auto& out = x0;
 		const auto& src1 = x1;
 		const auto& src2 = x2;

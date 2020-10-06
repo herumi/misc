@@ -48,9 +48,9 @@ struct ConstVar {
 	}
 };
 
-struct Code : public Xbyak::CodeGenerator {
-	typedef Xbyak::ZReg ZReg;
-	typedef Xbyak::PReg PReg;
+struct Code : public Xbyak_aarch64::CodeGenerator {
+	typedef Xbyak_aarch64::ZReg ZReg;
+	typedef Xbyak_aarch64::PReg PReg;
 	ConstVar *constVar;
 	typedef void (*VecFunc)(float *dst, const float *src, size_t n);
 	VecFunc expf_v;
@@ -74,13 +74,13 @@ struct Code : public Xbyak::CodeGenerator {
 		}
 	};
 	Code()
-		: Xbyak::CodeGenerator(4096 * 2)
+		: Xbyak_aarch64::CodeGenerator(4096 * 2)
 		, expf_v(0)
 		, tanhf_v(0)
 	{
 		size_t dataSize = sizeof(ConstVar);
 		dataSize = (dataSize + 4095) & ~size_t(4095);
-		Xbyak::Label constVarL = L();
+		Xbyak_aarch64::Label constVarL = L();
 		constVar = (ConstVar*)getCode();
 		constVar->init();
 		setSize(dataSize / 4);
@@ -144,9 +144,9 @@ struct Code : public Xbyak::CodeGenerator {
 	}
 	// f(float *dst, const float *src, size_t n);
 	template<size_t N>
-	void genFunc(void (Code::*gen1)(int unrollN, const PReg&, const std::array<ZReg, N>&, const ExpParam&), const Xbyak::Label& constVarL)
+	void genFunc(void (Code::*gen1)(int unrollN, const PReg&, const std::array<ZReg, N>&, const ExpParam&), const Xbyak_aarch64::Label& constVarL)
 	{
-		using namespace Xbyak;
+		using namespace Xbyak_aarch64;
 		const XReg& dst = x0;
 		const XReg& src = x1;
 		const XReg& n = x2;
@@ -205,11 +205,11 @@ struct Code : public Xbyak::CodeGenerator {
 		}
 		ret();
 	}
-	void genExp(const Xbyak::Label& constVarL)
+	void genExp(const Xbyak_aarch64::Label& constVarL)
 	{
 		genFunc(&Code::genExp1, constVarL);
 	}
-	void genTanh(const Xbyak::Label& constVarL)
+	void genTanh(const Xbyak_aarch64::Label& constVarL)
 	{
 		genFunc(&Code::genTanh1, constVarL);
 	}

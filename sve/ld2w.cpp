@@ -2,10 +2,10 @@
 #include <functional>
 #include "fexpa.hpp"
 
-using namespace Xbyak;
+using namespace Xbyak_aarch64;
 
 struct Code : CodeGenerator {
-	Xbyak::Label g_dataL;
+	Label g_dataL;
 	Code(int mode)
 	{
 		const auto& dst = x0;

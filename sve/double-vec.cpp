@@ -1,6 +1,6 @@
 #include <xbyak_aarch64/xbyak_aarch64.h>
 
-using namespace Xbyak;
+using namespace Xbyak_aarch64;
 
 void sqrAdd(double *z, const double *x, const double *y, size_t n)
 {

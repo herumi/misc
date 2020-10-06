@@ -2,7 +2,7 @@
 #include <functional>
 #include "fexpa.hpp"
 
-using namespace Xbyak;
+using namespace Xbyak_aarch64;
 
 union fi {
 	uint32_t u;
@@ -28,13 +28,14 @@ const float g_c1 = 1.23456;
 const float g_c2 = 3.45678;
 
 struct Code : CodeGenerator {
-	Xbyak::Label g_dataL;
+	Label g_dataL;
 	Code()
+		 : CodeGenerator(4096 * 4)
 	{
 		align(4096);
 	L(g_dataL);
 		printf("dataL=%p\n", g_dataL.getAddress());
-		dw(f2u(g_c2));
+		dd(f2u(g_c2));
 		align(4096);
 	}
 	void generate(void (Code::*f)(const ZReg&, const ZReg&, const ZReg&))
@@ -96,19 +97,19 @@ struct Code : CodeGenerator {
 	}
 	void cpyW(const ZReg& dst, const ZReg&, const ZReg&)
 	{
-		Xbyak::Label dataL, skipL;
+		Label dataL, skipL;
 		adr(x3, dataL);
 		ldr(w3, ptr(x3));
 		cpy(dst.s, p0, w3);
 		b(skipL);
 	L(dataL);
 		printf("dataL=%p\n", dataL.getAddress());
-		dw(f2u(g_c1));
+		dd(f2u(g_c1));
 	L(skipL);
 	}
 	void cpyWithAdrpW(const ZReg& dst, const ZReg&, const ZReg&)
 	{
-		Xbyak::Label skipL;
+		Label skipL;
 		b(skipL);
 		align(4096);
 	L(skipL);
@@ -127,7 +128,7 @@ void test_ld1w_imm()
 	puts("test_ld1w_imm");
 	const int srcAdj = 2;
 	const int dstAdj = 3;
-	struct Code : Xbyak::CodeGenerator {
+	struct Code : CodeGenerator {
 		Code()
 		{
 			// copy(float *dst, const float *src);
@@ -160,7 +161,7 @@ void test_ld1w_imm()
 void test_fscale()
 {
 	puts("test_fscale");
-	struct Code : Xbyak::CodeGenerator {
+	struct Code : CodeGenerator {
 		Code()
 		{
 			// copy(float *dst, const float *src, const int *e); // dst = src * 2^e

@@ -12,7 +12,7 @@ static void dumpF(const float *x)
 	puts("---");
 }
 
-void genDebug(Xbyak::CodeGenerator *g, const Xbyak::ZReg& z)
+void genDebug(Xbyak_aarch64::CodeGenerator *g, const Xbyak_aarch64::ZReg& z)
 {
 	const auto& x0 = g->x0;
 	const auto& x1 = g->x1;
@@ -20,7 +20,7 @@ void genDebug(Xbyak::CodeGenerator *g, const Xbyak::ZReg& z)
 	const auto& x30 = g->x30;
 	const auto& sp = g->sp;
 	const auto& p0 = g->p0;
-	using namespace Xbyak;
+	using namespace Xbyak_aarch64;
 	Label funcL, mainL, exitL;
 	const int xN = 16;
 	const int zN = 24;
@@ -67,7 +67,7 @@ g->L(mainL);
 	g->ldp(x29, x30, post_ptr(sp, 16));
 }
 
-struct Code : Xbyak::CodeGenerator {
+struct Code : Xbyak_aarch64::CodeGenerator {
 	Code()
 	{
 		ptrue(p0.s);
