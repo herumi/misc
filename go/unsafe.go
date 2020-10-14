@@ -25,7 +25,7 @@ void putC(const void *p)
 }
 */
 import "C"
-import  "unsafe"
+import "unsafe"
 
 type A struct {
 	x [2]uint64
@@ -43,10 +43,9 @@ func (b *B) Put() {
 	C.putB((*C.B)(unsafe.Pointer(&b.y[0])))
 }
 func (b *B) PutC() {
-//	C.putC((*C.uint8_t)(unsafe.Pointer(&b.y[0])))
+	//	C.putC((*C.uint8_t)(unsafe.Pointer(&b.y[0])))
 	C.putC((unsafe.Pointer(&b.y[0])))
 }
-
 
 func main() {
 	v := make([]A, 2)

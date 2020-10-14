@@ -19,6 +19,7 @@ void put(const A* a)
 */
 import "C"
 import "unsafe"
+
 /*
 	env PKG_CONFIG_PATH=`pwd` go run pkg-test.go
 */
@@ -39,4 +40,3 @@ func main() {
 	a.Add()
 	a.Put()
 }
-

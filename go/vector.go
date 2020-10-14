@@ -53,7 +53,7 @@ func newA(x int) *A {
 }
 
 func (a *A) put() {
-	C.putA(a.self);
+	C.putA(a.self)
 }
 
 func main() {

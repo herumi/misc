@@ -1,4 +1,5 @@
 package main
+
 /*
 #include <stdio.h>
 static char buf[] = "0123456789ab";
@@ -25,17 +26,17 @@ func createSliceNoCap(buf *C.char, n C.size_t) []byte {
 	/*
 		non-constant array bound size is not allowed
 	*/
-//	return (*[size]byte)(unsafe.Pointer(buf))
+	//	return (*[size]byte)(unsafe.Pointer(buf))
 	/*
 		cast to a large constant-size array
 		and get the slice
 	*/
-	return (*[1<<30]byte)(unsafe.Pointer(buf))[:size]
+	return (*[1 << 30]byte)(unsafe.Pointer(buf))[:size]
 }
 
 func createSlice(buf *C.char, n C.size_t) []byte {
 	size := int(n)
-	return (*[1<<30]byte)(unsafe.Pointer(buf))[:size:size]
+	return (*[1 << 30]byte)(unsafe.Pointer(buf))[:size:size]
 }
 
 func main() {

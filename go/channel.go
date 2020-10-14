@@ -11,10 +11,10 @@ func main() {
 		v[i] = v[i] + i
 		cs <- 1
 	}
-	for i := 0; i < n; i++ {
+	for i := 0; i < n-1; i++ {
 		go add(i)
 	}
-	for i := 0; i < n; i++ {
+	for i := 0; i < n-1; i++ {
 		<-cs
 	}
 	for i := 0; i < n; i++ {
