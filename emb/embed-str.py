@@ -53,8 +53,7 @@ def getAsm(inName):
 
 #  80483c2:   01 d0                   add    eax,edx
 def getList(inName):
-	baseAddr32 = 0x8048000
-	baseAddr64 = 0x400000
+	baseAddr32 = 0
 	baseAddr = 0
 	text = getAsm(inName).split('\n')
 	embL = []
@@ -63,7 +62,7 @@ def getList(inName):
 		if baseAddr == 0:
 			if line.find('elf64-x86-64') > 0:
 				baseAddr = baseAddr64
-				print 'not supported elf64 binary'
+				print('not supported elf64 binary')
 				os._exit(1)
 			elif line.find('elf32-i386') > 0:
 				baseAddr = baseAddr32
@@ -103,7 +102,7 @@ def modifyFile(outName, inName, embL, bitL):
 	ds = []
 	for c in d:
 		ds.append(ord(c))
-	print 'inName size', len(ds)
+	print('inName size', len(ds))
 	n = min(len(embL), len(bitL))
 	n = (n / 8) * 8
 	for i in xrange(n):
@@ -149,10 +148,10 @@ def main():
 #	for (addr, c, r1, r2) in embL[0:10]:
 #		print hex(addr), hex(c), r1, r2
 #	print byteL[0:10]
-	print 'embeded string', list2str(byteL)
+	print('embeded string', list2str(byteL))
 
 	if arg.outFile:
-		print 'max char len=', len(byteL) / 8
+		print('max char len=', len(byteL) / 8)
 		L = str2list(arg.msg)
 		modifyFile(arg.outFile, arg.inFile, embL, L)
 
