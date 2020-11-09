@@ -1,5 +1,5 @@
-const createModule = require(`./add.js`)
-exports.init = async() => {
-  console.log('exports.init')
-  exports.mod = await createModule()
-}
+const createModule = require(`./add_c.js`)
+const setupFactory = require(`./add.js`)
+
+console.log('index.js')
+module.exports = setupFactory(createModule)
