@@ -1,2 +1,2 @@
 all:
-	npx webpack --config config.js
+	npx webpack #--config config.js
