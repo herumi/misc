@@ -7,5 +7,12 @@ module.exports = {
     libraryTarget: 'umd',
     filename: 'index.js'
   },
-  target: "node"
+  resolve: {
+    fallback: {
+      "path": false,
+      "fs": false
+    }
+  },
+//  target: "node"
+  target: "web"
 }
