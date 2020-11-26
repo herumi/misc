@@ -1,25 +1,30 @@
 CXX?=clang++
 INC_DIR?=../../fujitsu/xbyak_aarch64/
-CPPFLAGS=$(OPT) -Wall -I$(INC_DIR) -I ./include #-g
-all: test1.exe test2.exe test3.exe test4.exe exp_v
+LIB_DIR?=$(INC_DIR)/lib
+CPPFLAGS=$(OPT) -Wall -I $(INC_DIR) -I ./include
+ifneq ($(DEBUG),1)
+CPPFLAGS+=-O2 -DNDEBUG
+endif
+LDFLAGS=-s -L $(LIB_DIR) -lxbyak_aarch64
+SRC=double-vec.cpp int-vec.cpp float-vec.cpp float-test.cpp exp_v.cpp
+OBJ=$(SRC:.cpp=.o)
+EXE=$(SRC:.cpp=)
+DEP=$(SRC:.cpp=.d)
+all: $(EXE)
 
-test1.exe: double-vec.cpp
-	$(CXX) $(CPPFLAGS) -o $@ $<
-test2.exe: int-vec.cpp
-	$(CXX) $(CPPFLAGS) -o $@ $<
-test3.exe: float-vec.cpp
-	$(CXX) $(CPPFLAGS) -o $@ $<
-test4.exe: float-test.cpp
-	$(CXX) $(CPPFLAGS) -o $@ $<
+-include $(DEP)
 
-exp_v: exp_v.cpp fmath-sve.hpp
-	$(CXX) $(CPPFLAGS) -o $@ $<
+%.o: %.cpp
+	$(CXX) -c $< $(CPPFLAGS) -MMD -MP -MF $(@:.o=.d)
 
-test%: test%.exe
-	./$<
+%: %.o
+	$(CXX) -o $@ $< $(LDFLAGS)
+
 emu:
 	aarch64-linux-gnu-g++ float-test.cpp -I ../../fujitsu/xbyak_aarch64/
 	env QEMU_LD_PREFIX=/usr/aarch64-linux-gnu qemu-aarch64 -cpu max,sve512=on ./a.out
 
 clean:
-	rm -rf test*.exe exp_v
+	rm -rf $(EXE) $(DEP) $(OBJ)
+
+.SECONDARY: $(OBJ) $(DEP)

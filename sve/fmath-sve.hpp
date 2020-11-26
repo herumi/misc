@@ -98,22 +98,22 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		const int C = regN;
 		const int N = regN * unrollN;
 		assert(N <= allN);
-		for (size_t i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, para.log2_e.s);
-		for (size_t i = 0; i < N; i+=C) frintm(t[i+1].s, p, t[i+0].s); // floor : float -> float
-		for (size_t i = 0; i < N; i+=C) fcvtzs(t[i+2].s, p, t[i+1].s); // n = float -> int
-		for (size_t i = 0; i < N; i+=C) fsub(t[i+1].s, t[i+0].s, t[i+1].s); // a
-		for (size_t i = 0; i < N; i+=C) fadd(t[i+1].s, t[i+1].s, para.one.s); // b = 1 + a
-		for (size_t i = 0; i < N; i+=C) lsr(t[i+3].s, t[i+1].s, 17); // bL
-		for (size_t i = 0; i < N; i+=C) fexpa(t[i+3].s, t[i+3].s); // c = fexpa(bL)
-		for (size_t i = 0; i < N; i+=C) fscale(t[i+3].s, p, t[i+2].s); // t[i+3] *= 2^n
-		for (size_t i = 0; i < N; i+=C) and_(t[i+2].d, t[i+1].d, para.not_mask17.d);
-		for (size_t i = 0; i < N; i+=C) fsub(t[i+2].s, t[i+1].s, t[i+2].s); // z
-		for (size_t i = 0; i < N; i+=C) {
+		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, para.log2_e.s);
+		for (int i = 0; i < N; i+=C) frintm(t[i+1].s, p, t[i+0].s); // floor : float -> float
+		for (int i = 0; i < N; i+=C) fcvtzs(t[i+2].s, p, t[i+1].s); // n = float -> int
+		for (int i = 0; i < N; i+=C) fsub(t[i+1].s, t[i+0].s, t[i+1].s); // a
+		for (int i = 0; i < N; i+=C) fadd(t[i+1].s, t[i+1].s, para.one.s); // b = 1 + a
+		for (int i = 0; i < N; i+=C) lsr(t[i+3].s, t[i+1].s, 17); // bL
+		for (int i = 0; i < N; i+=C) fexpa(t[i+3].s, t[i+3].s); // c = fexpa(bL)
+		for (int i = 0; i < N; i+=C) fscale(t[i+3].s, p, t[i+2].s); // t[i+3] *= 2^n
+		for (int i = 0; i < N; i+=C) and_(t[i+2].d, t[i+1].d, para.not_mask17.d);
+		for (int i = 0; i < N; i+=C) fsub(t[i+2].s, t[i+1].s, t[i+2].s); // z
+		for (int i = 0; i < N; i+=C) {
 			movprfx(t[i+0].s, p, para.coeff2.s);
 			fmad(t[i+0].s, p, t[i+2].s, para.coeff1.s);
 		}
-		for (size_t i = 0; i < N; i+=C) fmad(t[i+0].s, p, t[i+2].s, para.one.s);
-		for (size_t i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+3].s, t[i+0].s);
+		for (int i = 0; i < N; i+=C) fmad(t[i+0].s, p, t[i+2].s, para.one.s);
+		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+3].s, t[i+0].s);
 	}
 	// tanh(x) = 1 - 2/(1 + exp(2 x))
 	void genTanh1(int unrollN, const PReg& p, const std::array<ZReg, allN>& t, const ExpParam& para)
@@ -121,26 +121,26 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		const int C = regN;
 		const int N = regN * unrollN;
 		// 2x
-		for (size_t i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, t[i+0].s);
+		for (int i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, t[i+0].s);
 		// exp(2x)
 		genExp1(unrollN, p, t, para);
 		// 1+exp(2x)
-		for (size_t i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, para.one.s);
+		for (int i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, para.one.s);
 
 		// 1/(1+exp(2x))
 		// 1st aprox ; a = 1/x + e
-		for (size_t i = 0; i < N; i+=C) frecpe(t[i+3].s, t[i+0].s);
+		for (int i = 0; i < N; i+=C) frecpe(t[i+3].s, t[i+0].s);
 		// 2nd aprox ; a' = (2 - ax)a = 1/x - e^2 x
-		for (size_t i = 0; i < N; i+=C) frecps(t[i+2].s, t[i+0].s, t[i+3].s);
-		for (size_t i = 0; i < N; i+=C) fmul(t[i+2].s, t[i+2].s, t[i+3].s);
+		for (int i = 0; i < N; i+=C) frecps(t[i+2].s, t[i+0].s, t[i+3].s);
+		for (int i = 0; i < N; i+=C) fmul(t[i+2].s, t[i+2].s, t[i+3].s);
 		// 3rd aprox ; a'' = (2 - a'x)a'
-		for (size_t i = 0; i < N; i+=C) frecps(t[i+0].s, t[i+0].s, t[i+2].s);
-		for (size_t i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, t[i+2].s);
+		for (int i = 0; i < N; i+=C) frecps(t[i+0].s, t[i+0].s, t[i+2].s);
+		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, t[i+2].s);
 
 		// 2/(1+exp(2x))
-		for (size_t i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, t[i+0].s);
+		for (int i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, t[i+0].s);
 		// 1-2/(1+exp(2x))
-		for (size_t i = 0; i < N; i+=C) fsub(t[i+0].s, para.one.s, t[i+0].s);
+		for (int i = 0; i < N; i+=C) fsub(t[i+0].s, para.one.s, t[i+0].s);
 	}
 	// f(float *dst, const float *src, size_t n);
 	template<size_t N>
