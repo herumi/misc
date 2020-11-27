@@ -8,7 +8,7 @@ endif
 LDFLAGS=-s -L $(LIB_DIR) -lxbyak_aarch64
 SRC=double-vec.cpp int-vec.cpp float-vec.cpp float-test.cpp exp_v.cpp
 OBJ=$(SRC:.cpp=.o)
-EXE=$(SRC:.cpp=)
+EXE=$(SRC:.cpp=.exe)
 DEP=$(SRC:.cpp=.d)
 all: $(EXE)
 
@@ -17,7 +17,7 @@ all: $(EXE)
 %.o: %.cpp
 	$(CXX) -c $< $(CPPFLAGS) -MMD -MP -MF $(@:.o=.d)
 
-%: %.o
+%.exe: %.o
 	$(CXX) -o $@ $< $(LDFLAGS)
 
 emu:
