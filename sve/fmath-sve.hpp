@@ -9,6 +9,8 @@
 
 namespace fmath {
 
+using namespace Xbyak_aarch64;
+
 namespace local {
 
 union fi {
@@ -57,23 +59,21 @@ Digits:=1000;
 s:=eval(sols,L=log(2)/2);
 evalf(s,20);
 */
-struct Code : public Xbyak::CodeGenerator {
-	typedef Xbyak::ZReg ZReg;
-	typedef Xbyak::PReg PReg;
+struct Code : public CodeGenerator {
 	ConstVar *constVar;
 	typedef void (*VecFunc)(float *dst, const float *src, size_t n);
 	VecFunc expf_v;
 	VecFunc tanhf_v;
 //	VecFunc logf_v;
 	Code()
-		: Xbyak::CodeGenerator(4096 * 2)
+		: CodeGenerator(4096 * 2)
 		, expf_v(0)
 		, tanhf_v(0)
 //		, logf_v(0)
 	{
 		size_t dataSize = sizeof(ConstVar);
 		dataSize = (dataSize + 4095) & ~size_t(4095);
-		Xbyak::Label constVarL = L();
+		Label constVarL = L();
 		constVar = (ConstVar*)getCode();
 		constVar->init();
 		setSize(dataSize / 4);
@@ -123,9 +123,8 @@ struct Code : public Xbyak::CodeGenerator {
 		for (size_t i = 0; i < n; i++) fscale(t[0 + i * 3].s, p, t[1 + i * 3].s); // tz0 *= 2^tz1
 	}
 	// exp_v(float *dst, const float *src, size_t n);
-	void genExpSVE(const Xbyak::Label& constVarL)
+	void genExpSVE(const Label& constVarL)
 	{
-		using namespace Xbyak;
 		const XReg& dst = x0;
 		const XReg& src = x1;
 		const XReg& n = x2;
@@ -282,9 +281,8 @@ struct Code : public Xbyak::CodeGenerator {
 		fsub(tz0.s, expCoeff[0].s, tz0.s);
 	}
 	// tanhf_v(float *dst, const float *src, size_t n);
-	void genTanhSVE(const Xbyak::Label& constVarL)
+	void genTanhSVE(const Label& constVarL)
 	{
-		using namespace Xbyak;
 		const XReg& dst = x0;
 		const XReg& src = x1;
 		const XReg& n = x2;
