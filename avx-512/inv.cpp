@@ -2,15 +2,6 @@
 #include <xbyak/xbyak_util.h>
 #include <cybozu/benchmark.hpp>
 #include <math.h>
-/*
-	clang -O3
-float x[1024]
-3.208usec ; 100  clk ; fdiv
-1.058usec ;  33  clk ; frintm and frecps use same z2
-0.350usec ;  10.9clk ; frintm and frecps use diff regs
-1.651usec ;  51  clk ; frintm and frecps x 2 use same z2
-0.370usec ;  11.2clk ; frintm and frecps x 2 use diff reg
-*/
 
 using namespace Xbyak;
 
