@@ -27,7 +27,7 @@ struct Code : CodeGenerator {
 		add(src2, 64);
 		switch (op) {
 		case 0:
-			vrndscaleps(zm2, zm0, 2); // floor
+			vrndscaleps(zm2, zm0, 1); // floor
 			break;
 		case 1:
 			vaddps(zm2, zm0, zm0);
@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 		const size_t n = 1024 * 4;
 		float x[n], y[n], z1[n], z2[n];
 		for (size_t i = 0; i < n; i++) {
-			x[i] = i + 1;
+			x[i] = 0.5 * i + 1;
 			y[i] = i;
 			z1[i] = -99;
 			z2[i] = z1[i];
@@ -126,8 +126,9 @@ int main(int argc, char *argv[])
 			}
 		}
 		printf("%s maxe=%e\n", ok ? "ok" : "ng", maxe);
-		CYBOZU_BENCH_C("", 10000, fA, z2, x, y, n);
-		printf("%.2fclk\n", cybozu::bench::g_clk.getClock() / double(n / 16) * 2 * 1e-3);
+		const int N = 1000000;
+		CYBOZU_BENCH_C("", N, fA, z2, x, y, n);
+		printf("%.2fclk\n", cybozu::bench::g_clk.getClock() / double(n / 16) / N);
 	}
 } catch (std::exception& e) {
 	printf("err %s\n", e.what());
