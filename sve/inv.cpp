@@ -4,11 +4,13 @@
 /*
 	clang -O3
 float x[1024]
-3.208usec ; 100  clk ; fdiv
-1.058usec ;  33  clk ; frintm and frecps use same z2
-0.350usec ;  10.9clk ; frintm and frecps use diff regs
-1.651usec ;  51  clk ; frintm and frecps x 2 use same z2
-0.370usec ;  11.2clk ; frintm and frecps x 2 use diff reg
+            inv.exe 0: inv.exe 1
+            (frintm) : (fadd)
+3.208usec ; 100  clk ; 100  clk ; fdiv
+1.058usec ;  33  clk ;   7.9clk ; frintm and frecps use same z2
+0.350usec ;  10.9clk ;   7.9clk ; frintm and frecps use diff regs
+1.651usec ;  51  clk ;  11.0clk ; frintm and frecps x 2 use same z2
+0.370usec ;  11.2clk ;  11.0clk ; frintm and frecps x 2 use diff reg
 */
 
 using namespace Xbyak_aarch64;
