@@ -18,7 +18,6 @@ using namespace Xbyak_aarch64;
 struct Code : CodeGenerator {
 	Code(int op, int mode)
 	{
-		typedef Xbyak_aarch64::ZReg ZReg;
 		const auto& out = x0;
 		const auto& src1 = x1;
 		const auto& src2 = x2;
@@ -93,6 +92,9 @@ void fC(int op, float *z, const float *x, const float *y, size_t n)
 		case 1:
 			v = (x[i] + x[i]) + y[i];
 			break;
+		default:
+			printf("ERR op=%d\n", op);
+			exit(1);
 		}
 		z[i] = 1 / v;
 	}
@@ -115,7 +117,7 @@ int main(int argc, char *argv[])
 	};
 	printf("op=%d %s\n", op, opTbl[op]);
 	for (int mode = 0; mode < 5; mode++) {
-		printf("mode=%d\n", mode);
+		printf("mode=%s\n", modeTbl[mode]);
 		Code c(op, mode);
 		auto fA = c.getCode<void (*)(float *, const float *, const float *, size_t)>();
 		c.ready();
