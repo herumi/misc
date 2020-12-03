@@ -143,7 +143,8 @@ int main(int argc, char *argv[])
 		}
 		printf("%s maxe=%e\n", ok ? "ok" : "ng", maxe);
 		CYBOZU_BENCH_C("", 1000, fA, z2, x, y, n);
-		printf("%.2fclk\n", cybozu::bench::g_clk.getClock() / double(n / 16) * 2 * 1e-3);
+		const double GHz = 2.0;
+		printf("%.2fclk\n", cybozu::bench::g_clk.getClock() / double(n / 16) * GHz * 1e-3);
 	}
 } catch (std::exception& e) {
 	printf("err %s\n", e.what());
