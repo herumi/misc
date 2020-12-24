@@ -7,7 +7,7 @@ const int N = 16;
 void init(double *r)
 {
 	for (int i = 0; i < N; i++) {
-		r[i] = i + 1;
+		r[i] = 1 + i;
 	}
 }
 
@@ -27,8 +27,9 @@ void spqlios()
 	init(r);
 	put(r, "init");
 	const double c = 2 / double(N);
+	printf("c=%f\n", c);
 	for (int i = 0; i < N; i++) {
-		spq.real_inout_direct[i] = r[i];// * c;
+		spq.real_inout_direct[i] = r[i] * c;
 	}
 	fft(spq.tables_direct, spq.real_inout_direct);
 	put(spq.real_inout_direct, "fft");
@@ -85,16 +86,19 @@ void spqlios()
 
 void fftw3()
 {
-	double r[N + 2];
+	double r[N + 2]; // + 2 is necessary
 	init(r);
 	put(r, "init");
-	DFTI_DESCRIPTOR_HANDLE hdl, hdl2;
+	for (int i = 0; i < N; i++) r[i] *= 2.0 / N;
+	DFTI_DESCRIPTOR_HANDLE hdl;
 	MKL_LONG status;
-	status = DftiCreateDescriptor(&hdl, DFTI_DOUBLE, DFTI_REAL, 1, N);
+//	status = DftiCreateDescriptor(&hdl, DFTI_DOUBLE, DFTI_REAL, 1, N);
+	status = DftiCreateDescriptor(&hdl, DFTI_DOUBLE, DFTI_COMPLEX, 1, N / 2);
 	if (status) printf("status=%s\n", DftiErrorMessage(status));
+//	status = DftiSetValue(hdl, DFTI_PACKED_FORMAT, DFTI_CCS_FORMAT);
+//	if (status) printf("status=%s\n", DftiErrorMessage(status));
 	status = DftiCommitDescriptor(hdl);
 	if (status) printf("status=%s\n", DftiErrorMessage(status));
-
 
 	status = DftiComputeForward(hdl, r);
 	if (status) printf("status=%s\n", DftiErrorMessage(status));
