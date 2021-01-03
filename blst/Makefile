@@ -6,3 +6,7 @@ bench: bench.cpp
 
 test: bench
 	./bench
+
+
+mcl: mcl.cpp
+	$(CXX) -Ofast -DNDEBUG -o mcl mcl.cpp -I ../../mcl/include ../../mcl/lib/libmcl.a
