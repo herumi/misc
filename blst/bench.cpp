@@ -11,12 +11,27 @@ void put(const char *msg, const void *buf, size_t n)
 	}
 }
 
+void putRev(const void *buf, size_t n)
+{
+	const uint8_t *src = (const uint8_t *)buf;
+	for (size_t i = 0; i < n; i++) {
+		printf("%02x", src[n - 1 - i]);
+	}
+	printf("\n");
+}
+
+void put(const blst::blst_fp* x)
+{
+	uint32_t a[12];
+	blst_uint32_from_fp(a, x);
+	putRev(a, sizeof(a));
+}
+
 void put(const char *msg, const blst::PT& e)
 {
+	printf("%s\n", msg);
 	for (int i = 0; i < 12; i++) {
-		uint32_t a[12];
-		blst_uint32_from_fp(a, &((const blst::blst_fp12*)(&e))->fp6[0].fp2[0].fp[i]);
-		put(i == 0 ? msg : 0, a, sizeof(a));
+		put(&((const blst::blst_fp12*)(&e))->fp6[0].fp2[0].fp[i]);
 	}
 }
 
