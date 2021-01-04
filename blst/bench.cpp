@@ -27,11 +27,21 @@ void put(const blst::blst_fp* x)
 	putRev(a, sizeof(a));
 }
 
+const blst::blst_fp2* get_fp2(const blst::PT& e)
+{
+	return &((const blst::blst_fp12*)(&e))->fp6[0].fp2[0];
+}
+
+const blst::blst_fp* get_fp(const blst::PT& e)
+{
+	return &get_fp2(e)->fp[0];
+}
+
 void put(const char *msg, const blst::PT& e)
 {
 	printf("%s\n", msg);
 	for (int i = 0; i < 12; i++) {
-		put(&((const blst::blst_fp12*)(&e))->fp6[0].fp2[0].fp[i]);
+		put(&get_fp(e)[i]);
 	}
 }
 
@@ -59,4 +69,15 @@ int main()
 	CYBOZU_BENCH_C("pairing", 1000, pairing, P, Q);
 	CYBOZU_BENCH_C("ML", 1000, PT, Q, P);
 	CYBOZU_BENCH_C("FE", 1000, e.final_exp);
+	{
+		blst_fp a = get_fp(e)[0];
+		blst_fp b = get_fp(e)[1];
+		CYBOZU_BENCH_C("fp::mul", 10000, blst_fp_mul, &a, &a, &b);
+	}
+	{
+		blst_fp2 a = get_fp2(e)[0];
+		blst_fp2 b = get_fp2(e)[1];
+		CYBOZU_BENCH_C("fp2::mul", 10000, blst_fp2_mul, &a, &a, &b);
+		CYBOZU_BENCH_C("fp2::sqr", 10000, blst_fp2_sqr, &a, &a);
+	}
 }

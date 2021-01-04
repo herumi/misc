@@ -14,8 +14,6 @@ int main()
 	try
 {
 	initPairing(mcl::BLS12_381);
-//	Fp::setETHserialization(true);
-//	Fr::setETHserialization(true);
 	G1 P;
 	G2 Q;
 puts("P");
@@ -40,6 +38,17 @@ puts("Q");
 	CYBOZU_BENCH_C("pairing", 1000, pairing, e, P, Q);
 	CYBOZU_BENCH_C("ML", 1000, millerLoop, e, P, Q);
 	CYBOZU_BENCH_C("FE", 1000, finalExp, e, e);
+	{
+		Fp a = e.a.a.a;
+		Fp b = e.a.a.b;
+		CYBOZU_BENCH_C("fp::mul", 10000, Fp::mul, a, a, b);
+	}
+	{
+		Fp2 a = e.a.a;
+		Fp2 b = e.a.b;
+		CYBOZU_BENCH_C("fp2::mul", 10000, Fp2::mul, a, a, b);
+		CYBOZU_BENCH_C("fp2::sqr", 10000, Fp2::sqr, a, a);
+	}
 } catch (std::exception& e) {
 	printf("ERR %s\n", e.what());
 	return 1;
