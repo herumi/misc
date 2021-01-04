@@ -23,3 +23,9 @@ CYBOZU_TEST_AUTO(fpcr)
 #endif
 }
 
+CYBOZU_TEST_AUTO(el1)
+{
+	Type_id_aa64isa0_el1 type = xbyak_aarch64_get_id_aa64isar0_el1();
+	printf("type:atomic=%d\n", type.atomic);
+}
+
