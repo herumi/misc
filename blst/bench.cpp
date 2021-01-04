@@ -35,6 +35,12 @@ void put(const char *msg, const blst::PT& e)
 	}
 }
 
+void pairing(const blst::P1_Affine& P, const blst::P2_Affine& Q)
+{
+	blst::PT e(Q, P);
+	e.final_exp();
+}
+
 int main()
 {
 	using namespace blst;
@@ -50,4 +56,7 @@ int main()
 	PT e(Q, P);
 	e.final_exp();
 	put("e", e);
+	CYBOZU_BENCH_C("pairing", 1000, pairing, P, Q);
+	CYBOZU_BENCH_C("ML", 1000, PT, Q, P);
+	CYBOZU_BENCH_C("FE", 1000, e.final_exp);
 }

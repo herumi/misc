@@ -37,7 +37,9 @@ puts("Q");
 	millerLoop(e, P, Q);
 	finalExp(e, e);
 	printf("e\n%s\n", e.getStr(16).c_str());
-
+	CYBOZU_BENCH_C("pairing", 1000, pairing, e, P, Q);
+	CYBOZU_BENCH_C("ML", 1000, millerLoop, e, P, Q);
+	CYBOZU_BENCH_C("FE", 1000, finalExp, e, e);
 } catch (std::exception& e) {
 	printf("ERR %s\n", e.what());
 	return 1;
