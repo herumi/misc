@@ -4,6 +4,13 @@
 
 CYBOZU_TEST_AUTO(fpcr)
 {
+#ifdef __APPLE__
+	for (int i = 0; i < 4; i++) {
+		unsigned int rounding = i << 22;
+		xbyak_aarch64_set_fpcr(rounding);
+		CYBOZU_TEST_EQUAL(xbyak_aarch64_get_fpcr(), rounding);
+	}
+#else
 	const unsigned int a = __builtin_aarch64_get_fpcr();
 	const unsigned int b = xbyak_aarch64_get_fpcr();
 	CYBOZU_TEST_EQUAL(a, b);
@@ -13,4 +20,6 @@ CYBOZU_TEST_AUTO(fpcr)
 		CYBOZU_TEST_EQUAL(__builtin_aarch64_get_fpcr(), rounding);
 	}
 	__builtin_aarch64_set_fpcr(a);
+#endif
 }
+
