@@ -21,10 +21,22 @@ typedef struct {
   int resv2:12;
   int dp:4;
   int resv3:16;
-} Type_id_aa64isa0_el1;
+} Type_id_aa64isar0_el1;
 
-Type_id_aa64isa0_el1 xbyak_aarch64_get_id_aa64isar0_el1(void);
+Type_id_aa64isar0_el1 xbyak_aarch64_get_id_aa64isar0_el1(void);
 
+typedef struct {
+  int el0:4;
+  int el1:4;
+  int el2:4;
+  int el3:4;
+  int fp:4;
+  int advsimd:4;
+  int gic:4;
+  int ras:4;
+} Type_id_aa64pfr0_el1;
+
+Type_id_aa64pfr0_el1 xbyak_aarch64_get_id_aa64pfr0_el1(void);
 
 #ifdef __cplusplus
 }

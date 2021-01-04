@@ -30,3 +30,4 @@ xbyak_aarch64_get_id_aa64pfr0_el1:
 _xbyak_aarch64_get_id_aa64pfr0_el1:
   mrs x0, id_aa64pfr0_el1
   ret
+
