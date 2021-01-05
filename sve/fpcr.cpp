@@ -19,7 +19,7 @@ void set_fpcr(uint64_t x)
 
 CYBOZU_TEST_AUTO(fpcr)
 {
-#ifdef __APPLE__
+#ifdef __clang__
 	for (int i = 0; i < 4; i++) {
 		unsigned int rounding = i << 22;
 		xbyak_aarch64_set_fpcr(rounding);
@@ -68,5 +68,6 @@ CYBOZU_TEST_AUTO(aa64pfr0_el1)
 	printf("advsimd=%d\n", type.advsimd);
 	printf("gic=%d\n", type.gic);
 	printf("ras=%d\n", type.ras);
+	printf("sve=%d\n", type.sve);
 #endif
 }

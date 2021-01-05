@@ -14,10 +14,11 @@ inline uint32_t xbyak_aarch64_get_fpcr(void)
 }
 inline void xbyak_aarch64_set_fpcr(uint32_t x)
 {
-	asm __volatile__("msr fpcr, %[x]"::[x]"r"(x));
+	uint64_t xx = x;
+	asm __volatile__("msr fpcr, %[x]"::[x]"r"(xx));
 }
 
-typedef struct {
+struct Type_id_aa64isar0_el1 {
   int resv0:4;
   int aes:4;
   int sha1:4;
@@ -29,11 +30,16 @@ typedef struct {
   int resv2:12;
   int dp:4;
   int resv3:16;
-} Type_id_aa64isar0_el1;
+};
 
-Type_id_aa64isar0_el1 xbyak_aarch64_get_id_aa64isar0_el1(void);
+Type_id_aa64isar0_el1 xbyak_aarch64_get_id_aa64isar0_el1(void)
+{
+  Type_id_aa64isar0_el1 x;
+  asm __volatile__("mrs %[x], id_aa64isar0_el1":[x]"=r"(x));
+  return x;
+}
 
-typedef struct {
+struct Type_id_aa64pfr0_el1 {
   int el0:4;
   int el1:4;
   int el2:4;
@@ -42,9 +48,16 @@ typedef struct {
   int advsimd:4;
   int gic:4;
   int ras:4;
-} Type_id_aa64pfr0_el1;
+  int sve:4;
+  int resv0:28;
+};
 
-Type_id_aa64pfr0_el1 xbyak_aarch64_get_id_aa64pfr0_el1(void);
+Type_id_aa64pfr0_el1 xbyak_aarch64_get_id_aa64pfr0_el1(void)
+{
+  Type_id_aa64pfr0_el1 x;
+  asm __volatile__("mrs %[x], id_aa64pfr0_el1":[x]"=r"(x));
+  return x;
+}
 
 #ifdef __cplusplus
 }
