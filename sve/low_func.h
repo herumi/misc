@@ -6,8 +6,16 @@
 extern "C" {
 #endif
 
-uint32_t xbyak_aarch64_get_fpcr(void);
-void xbyak_aarch64_set_fpcr(uint32_t x);
+inline uint32_t xbyak_aarch64_get_fpcr(void)
+{
+	uint64_t x;
+	asm __volatile__("mrs %[x], fpcr":[x]"=r"(x));
+	return x;
+}
+inline void xbyak_aarch64_set_fpcr(uint32_t x)
+{
+	asm __volatile__("msr fpcr, %[x]"::[x]"r"(x));
+}
 
 typedef struct {
   int resv0:4;

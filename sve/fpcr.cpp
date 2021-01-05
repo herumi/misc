@@ -1,6 +1,21 @@
 #include <cybozu/test.hpp>
 
 #include "low_func.h"
+#include <stdint.h>
+
+#if 0
+uint64_t get_fpcr()
+{
+	uint64_t x;
+	asm __volatile__("mrs %[x], fpcr":[x]"=r"(x));
+	return x;
+}
+
+void set_fpcr(uint64_t x)
+{
+	asm __volatile__("msr fpcr, %[x]"::[x]"r"(x));
+}
+#endif
 
 CYBOZU_TEST_AUTO(fpcr)
 {
