@@ -1,12 +1,16 @@
 BLST_DIR=../../blst
+MCL_DIR=../../mcl
 all: bench
 
+CFLAGS=-Ofast -DNDEBUG
+CFLAGS+=-I $(BLST_DIR)/bindings
+CFLAGS+=-I $(MCL_DIR)/include
+LDFLAGS+=-lblst -L $(BLST_DIR)
+LDFLAGS+=$(MCL_DIR)/lib/libmcl.a
+
 bench: bench.cpp
-	$(CXX) -Ofast -DNDEBUG -o bench bench.cpp -I $(BLST_DIR)/bindings/ -I ../../cybozulib/include -lblst -L $(BLST_DIR)
+	$(CXX) -o bench bench.cpp $(CFLAGS) $(LDFLAGS)
 
 test: bench
 	./bench
 
-
-mcl: mcl.cpp
-	$(CXX) -Ofast -DNDEBUG -o mcl mcl.cpp -I ../../mcl/include ../../mcl/lib/libmcl.a
