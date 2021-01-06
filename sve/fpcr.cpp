@@ -72,13 +72,21 @@ CYBOZU_TEST_AUTO(aa64pfr0_el1)
 #endif
 }
 
-extern "C" uint64_t get_zcr_el1();
+//#define USE_LOW_FUNC
+#ifdef USE_LOW_FUNC
+extern "C"
+#endif
+uint64_t get_zcr_el1()
+#ifdef USE_LOW_FUNC
+;
+#else
 {
 	uint64_t x;
 //	asm __volatile__("mrs %[x], zcr_el1":[x]"=r"(x));
 	asm __volatile__(".inst 0xd5381200":"=r"(x));
 	return x;
 }
+#endif
 
 #define Op0_shift	19
 #define Op0_mask	0x3
