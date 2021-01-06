@@ -71,3 +71,39 @@ CYBOZU_TEST_AUTO(aa64pfr0_el1)
 	printf("sve=%d\n", type.sve);
 #endif
 }
+
+extern "C" uint64_t get_zcr_el1();
+{
+	uint64_t x;
+//	asm __volatile__("mrs %[x], zcr_el1":[x]"=r"(x));
+	asm __volatile__(".inst 0xd5381200":"=r"(x));
+	return x;
+}
+
+#define Op0_shift	19
+#define Op0_mask	0x3
+#define Op1_shift	16
+#define Op1_mask	0x7
+#define CRn_shift	12
+#define CRn_mask	0xf
+#define CRm_shift	8
+#define CRm_mask	0xf
+#define Op2_shift	5
+#define Op2_mask	0x7
+
+#define sys_reg(op0, op1, crn, crm, op2) \
+	(((op0) << Op0_shift) | ((op1) << Op1_shift) | \
+	 ((crn) << CRn_shift) | ((crm) << CRm_shift) | \
+	 ((op2) << Op2_shift))
+#define SYS_ZCR_EL1			sys_reg(3, 0, 1, 2, 0)
+/// ZCR_EL1=00181200
+
+CYBOZU_TEST_AUTO(zcr_el1)
+{
+	printf("ZCR_EL1=%08x\n", SYS_ZCR_EL1);
+	uint32_t mrs = 0xd5200000;
+	// mrs =0xd5381200
+	printf("mrs =%08x\n", SYS_ZCR_EL1|mrs);
+	printf("zcr_el1=%ld\n", get_zcr_el1());
+	puts("ok");
+}
