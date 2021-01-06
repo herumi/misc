@@ -22,16 +22,16 @@ CYBOZU_TEST_AUTO(fpcr)
 #ifdef __clang__
 	for (int i = 0; i < 4; i++) {
 		unsigned int rounding = i << 22;
-		xbyak_aarch64_set_fpcr(rounding);
-		CYBOZU_TEST_EQUAL(xbyak_aarch64_get_fpcr(), rounding);
+		set_fpcr(rounding);
+		CYBOZU_TEST_EQUAL(get_fpcr(), rounding);
 	}
 #else
 	const unsigned int a = __builtin_aarch64_get_fpcr();
-	const unsigned int b = xbyak_aarch64_get_fpcr();
+	const unsigned int b = get_fpcr();
 	CYBOZU_TEST_EQUAL(a, b);
 	for (int i = 0; i < 4; i++) {
 		unsigned int rounding = i << 22;
-		xbyak_aarch64_set_fpcr(rounding);
+		set_fpcr(rounding);
 		CYBOZU_TEST_EQUAL(__builtin_aarch64_get_fpcr(), rounding);
 	}
 	__builtin_aarch64_set_fpcr(a);
@@ -43,7 +43,7 @@ CYBOZU_TEST_AUTO(id_aa64isar0_el1)
 #ifdef __APPLE__
 	printf("no id_aa64isar0_el1\n");
 #else
-	Type_id_aa64isar0_el1 type = xbyak_aarch64_get_id_aa64isar0_el1();
+	Type_id_aa64isar0_el1 type = get_id_aa64isar0_el1();
 	printf("aes=%d\n", type.aes);
 	printf("sha1=%d\n", type.sha1);
 	printf("sha2=%d\n", type.sha2);
@@ -59,7 +59,7 @@ CYBOZU_TEST_AUTO(aa64pfr0_el1)
 #ifdef __APPLE__
 	printf("no aa64pfr0_el1\n");
 #else
-	Type_id_aa64pfr0_el1 type = xbyak_aarch64_get_id_aa64pfr0_el1();
+	Type_id_aa64pfr0_el1 type = get_id_aa64pfr0_el1();
 	printf("el0=%d\n", type.el0);
 	printf("el1=%d\n", type.el1);
 	printf("el2=%d\n", type.el2);

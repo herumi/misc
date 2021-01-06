@@ -6,13 +6,13 @@
 extern "C" {
 #endif
 
-inline uint32_t xbyak_aarch64_get_fpcr(void)
+inline uint32_t get_fpcr(void)
 {
 	uint64_t x;
 	asm __volatile__("mrs %[x], fpcr":[x]"=r"(x));
 	return x;
 }
-inline void xbyak_aarch64_set_fpcr(uint32_t x)
+inline void set_fpcr(uint32_t x)
 {
 	uint64_t xx = x;
 	asm __volatile__("msr fpcr, %[x]"::[x]"r"(xx));
@@ -32,7 +32,7 @@ struct Type_id_aa64isar0_el1 {
   int resv3:16;
 };
 
-Type_id_aa64isar0_el1 xbyak_aarch64_get_id_aa64isar0_el1(void)
+Type_id_aa64isar0_el1 get_id_aa64isar0_el1(void)
 {
   Type_id_aa64isar0_el1 x;
   asm __volatile__("mrs %[x], id_aa64isar0_el1":[x]"=r"(x));
@@ -52,7 +52,7 @@ struct Type_id_aa64pfr0_el1 {
   int resv0:28;
 };
 
-Type_id_aa64pfr0_el1 xbyak_aarch64_get_id_aa64pfr0_el1(void)
+Type_id_aa64pfr0_el1 get_id_aa64pfr0_el1(void)
 {
   Type_id_aa64pfr0_el1 x;
   asm __volatile__("mrs %[x], id_aa64pfr0_el1":[x]"=r"(x));
