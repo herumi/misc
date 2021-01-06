@@ -112,6 +112,6 @@ CYBOZU_TEST_AUTO(zcr_el1)
 	uint32_t mrs = 0xd5200000;
 	// mrs =0xd5381200
 	printf("mrs =%08x\n", SYS_ZCR_EL1|mrs);
-	printf("zcr_el1=%ld\n", get_zcr_el1());
+	printf("zcr_el1=%08x\n", (int)get_zcr_el1());
 	puts("ok");
 }
