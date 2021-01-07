@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdint.h>
+#ifdef __linux__
 #include <sys/prctl.h>
+#endif
 /*
 % env QEMU_LD_PREFIX=/usr/aarch64-linux-gnu qemu-aarch64 -cpu max,sve512=on ./a.out
 sve len=00000040
@@ -17,6 +19,10 @@ use option -march=armv8.2-a+sve
 
 #ifndef USE_INLINE_SVE
   #warning "use option -march=armv8.2-a+sve"
+#endif
+
+#ifdef __ARM_FEATURE_SVE
+#include <arm_sve.h>
 #endif
 
 int
@@ -50,10 +56,15 @@ int main()
 #else
   puts("not use inline sve");
 #endif
+#ifdef __linux__
   int x = prctl(PR_SVE_GET_VL);
   x = prctl(PR_SVE_GET_VL);
-  printf("sve len=%08x\n", x);
-  printf("sve len=%08x\n", getLen());
+  printf("sve len(prctl)     =%08x\n", x);
+#endif
+  printf("sve len(inline asm)=%08x\n", getLen());
+#ifdef __ARM_FEATURE_SVE
+  printf("sve len(intrinsic) =%08x\n", (int)svcntb());
+#endif
   return 0;
 }
 
