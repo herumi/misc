@@ -15,6 +15,10 @@ use option -march=armv8.2-a+sve
 	#define USE_INLINE_SVE
 #endif
 
+#ifndef USE_INLINE_SVE
+  #warning "use option -march=armv8.2-a+sve"
+#endif
+
 int
 #ifndef USE_INLINE_SVE
 #ifdef __clang__
