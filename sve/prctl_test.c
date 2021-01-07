@@ -11,11 +11,19 @@ sve len=00000100
 use option -march=armv8.2-a+sve
 */
 
-int getLen()
+int
+#if 0
+#ifdef __clang__
+__attribute__((optnone))
+#else
+__attribute__((optimize("O0")))
+#endif
+#endif
+getLen()
 {
-  uint64_t x;
-//  asm __volatile__("cntb %[x]" : [ x ] "=r"(x));
-  asm __volatile__(".inst 0x0420e3e0":"=r"(x));
+  uint64_t x = 0;
+  asm __volatile__("cntb %[x]" : [ x ] "=r"(x));
+//  asm __volatile__(".inst 0x0420e3e0":"=r"(x));
   return (int)x;
 }
 
