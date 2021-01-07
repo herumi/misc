@@ -12,7 +12,7 @@ use option -march=armv8.2-a+sve
 */
 
 #if defined(__ARM_FEATURE_SVE) && !defined(__CLANG_FUJITSU)
-	#define USE_INLINE_SVE 1
+	#define USE_INLINE_SVE
 #endif
 
 int
