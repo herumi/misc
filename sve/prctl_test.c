@@ -13,15 +13,22 @@ sve len=00000100
 use option -march=armv8.2-a+sve
 */
 
-#if defined(__ARM_FEATURE_SVE) && !defined(__CLANG_FUJITSU)
+/*
+	FCC-1.0 does not support arm_sve.h
+	FCC-1.1 supports it.
+*/
+#if defined(__ARM_FEATURE_SVE)
 	#define USE_INLINE_SVE
+#if ((defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang_major__) && __clang_major__ >= 11) || (defined(__FUJITSU) || defined(__CLANG_FUJITSU)))
+	#define USE_INTRINSIC_SVE
+#endif
 #endif
 
 #ifndef USE_INLINE_SVE
-  #warning "use option -march=armv8.2-a+sve"
+  #warning "use option -march=armv8.2-a+sve and more newer compiler"
 #endif
 
-#ifdef __ARM_FEATURE_SVE
+#ifdef USE_INTRINSIC_SVE
 #include <arm_sve.h>
 #endif
 
@@ -36,7 +43,9 @@ __attribute__((optimize("O0")))
 getLen()
 {
   uint64_t x = 0;
-#ifdef USE_INLINE_SVE
+#if defined(USE_INTRINSIC_SVE)
+  x = svcntb();
+#elif defined(USE_INLINE_SVE)
   asm __volatile__("cntb %[x]" : [ x ] "=r"(x));
 #else
   asm __volatile__(".inst 0x0420e3e0":"=r"(x));
@@ -62,7 +71,7 @@ int main()
   printf("sve len(prctl)     =%08x\n", x);
 #endif
   printf("sve len(inline asm)=%08x\n", getLen());
-#ifdef __ARM_FEATURE_SVE
+#ifdef USE_INTRINSIC_SVE
   printf("sve len(intrinsic) =%08x\n", (int)svcntb());
 #endif
   return 0;
