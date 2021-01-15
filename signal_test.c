@@ -31,13 +31,9 @@ void setHandler()
 	}
 }
 
-void sample()
-{
-	run();
-}
-
 int main()
 {
+	setHandler();
 	pid_t pid = fork();
 	if (pid < 0) {
 		perror("fork");
@@ -46,10 +42,8 @@ int main()
 	if (pid == 0) {
 		printf("child %d\n", pid);
 		_exit(0);
-		setHandler();
 	}
 	printf("parent %d\n", pid);
-	sample();
 	run();
 	waitpid(pid, NULL, 0);
 	puts("parent end");
