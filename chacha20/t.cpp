@@ -107,7 +107,7 @@ CYBOZU_TEST_AUTO(test10)
 			0xda6e8b39, 0x892c831a, 0xcdea67c1, 0x2b7e1d90,
 			0x037463f3, 0xa11a2073, 0xe8bcfb88, 0xedc49139,
 		};
-//		CYBOZU_TEST_EQUAL_ARRAY(cipher.getState(), ok, 16);
+		CYBOZU_TEST_EQUAL_ARRAY(cipher.getState(), ok, 16);
 	}
-//	CYBOZU_TEST_EQUAL_ARRAY(c, expect, len);
+	CYBOZU_TEST_EQUAL_ARRAY(c, expect, len);
 }

@@ -1,6 +1,5 @@
 #pragma once
 #include <cybozu/endian.hpp>
-#include <stdio.h>
 
 namespace util {
 
@@ -90,13 +89,4 @@ public:
 		b_++;
 	}
 	const uint32_t *getState() const { return &state_[0]; }
-	void dump() const
-	{
-		const uint32_t *s = getState();
-		for (int i = 0; i < 16; i++) {
-			printf("%08x ", s[i]);
-			if ((i % 4) == 3) printf("\n");
-		}
-		printf("\n");
-	}
 };
