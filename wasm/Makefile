@@ -20,7 +20,7 @@ low_func32.js: low_func32.hpp low_func32.cpp
 	emcc -o $@ low_func32.cpp $(EMCC_OPT) -fno-exceptions
 
 mul.hpp: mk_mul.py
-	python mk_mul.py > mul.hpp
+	python3 mk_mul.py > mul.hpp
 
 %.o: %.cpp
 	$(PRE)$(CXX) $(CFLAGS) -c $< -o $@ -MMD -MP -MF $(@:.o=.d)
@@ -30,6 +30,9 @@ mul.hpp: mk_mul.py
 
 test: mul_test.exe
 	./mul_test.exe
+
+clean:
+	$(RM) -rf *.exe *.o *.d
 
 DEPEND_FILE=$(addsuffix .d,$(basename $(ALL_SRC)))
 -include $(DEPEND_FILE)
