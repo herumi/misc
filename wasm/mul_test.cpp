@@ -39,3 +39,30 @@ CYBOZU_TEST_AUTO(mulTest)
 	testMul<3>();
 }
 
+template<size_t N>
+void testSqr()
+{
+	printf("testSqr%zd\n", N);
+	mpz_class mx, my;
+	uint32_t x[N], y[N * 2];
+	cybozu::XorShift rg;
+	std::cout << std::hex;
+	for (int i = 0; i < 10; i++) {
+		setRand(x, N, rg);
+		mcl::gmp::setArray(mx, x, N);
+		my = mx * mx;
+		sqrT<N>(y, x);
+		uint32_t ok[N * 2];
+		mcl::gmp::getArray(ok, N * 2, my);
+		CYBOZU_TEST_EQUAL_ARRAY(y, ok, N * 2);
+	}
+}
+
+CYBOZU_TEST_AUTO(sqrTest)
+{
+	testSqr<1>();
+	testSqr<2>();
+	testSqr<3>();
+	testSqr<8>();
+}
+
