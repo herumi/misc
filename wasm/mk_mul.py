@@ -58,9 +58,9 @@ def main():
 	print("""
 	template<size_t N>
 	void sqrT(uint32_t *y, const uint32_t *x);""")
-	for i in [1, 2, 3, 8, 12]:
+	for i in [1, 2, 3, 4, 6, 8, 12]:
 		mk_mul(i)
-	for i in [1, 2, 3, 8, 12]:
+	for i in [1, 2, 3, 4, 6, 8, 12]:
 		mk_sqr(i)
 
 main()
