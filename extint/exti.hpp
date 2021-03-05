@@ -18,22 +18,27 @@ void dump(const T& x)
 	printf("\n");
 }
 
-inline void emul256(exti512_t& z, const exti256_t& x, const exti256_t& y)
+inline void _emul256(exti512_t& z, const exti256_t& x, const exti256_t& y)
 {
 	z = exti512_t(x) * exti512_t(y);
 }
 
-inline void esqr256(exti512_t& y, const exti256_t& x)
+inline void _esqr256(exti512_t& y, const exti256_t& x)
 {
 	y = exti512_t(x) * exti512_t(x);
 }
 
-inline void emul384(exti768_t& z, const exti384_t& x, const exti384_t& y)
+inline void _emul384(exti768_t& z, const exti384_t& x, const exti384_t& y)
 {
 	z = exti768_t(x) * exti768_t(y);
 }
 
-inline void esqr384(exti768_t& y, const exti384_t& x)
+inline void _esqr384(exti768_t& y, const exti384_t& x)
 {
 	y = exti768_t(x) * exti768_t(x);
 }
+
+void (*emul256)(exti512_t& z, const exti256_t& x, const exti256_t& y) = _emul256;
+void (*esqr256)(exti512_t& y, const exti256_t& x) = _esqr256;
+void (*emul384)(exti768_t& z, const exti384_t& x, const exti384_t& y) = _emul384;
+void (*esqr384)(exti768_t& y, const exti384_t& x) = _esqr384;
