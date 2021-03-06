@@ -1,12 +1,15 @@
 #pragma once
 #include <stdint.h>
+#ifndef __wasm__
 #include <stdio.h>
+#endif
 
 typedef unsigned _ExtInt(256) exti256_t;
 typedef unsigned _ExtInt(384) exti384_t;
 typedef unsigned _ExtInt(512) exti512_t;
 typedef unsigned _ExtInt(768) exti768_t;
 
+#ifndef __wasm__
 template<class T>
 void dump(const T& x)
 {
@@ -17,28 +20,31 @@ void dump(const T& x)
 	}
 	printf("\n");
 }
+#endif
 
-inline void _emul256(exti512_t& z, const exti256_t& x, const exti256_t& y)
+inline void exti_mul256(exti512_t& z, const exti256_t& x, const exti256_t& y)
 {
 	z = exti512_t(x) * exti512_t(y);
 }
 
-inline void _esqr256(exti512_t& y, const exti256_t& x)
+inline void exti_sqr256(exti512_t& y, const exti256_t& x)
 {
 	y = exti512_t(x) * exti512_t(x);
 }
 
-inline void _emul384(exti768_t& z, const exti384_t& x, const exti384_t& y)
+inline void exti_mul384(exti768_t& z, const exti384_t& x, const exti384_t& y)
 {
 	z = exti768_t(x) * exti768_t(y);
 }
 
-inline void _esqr384(exti768_t& y, const exti384_t& x)
+inline void exti_sqr384(exti768_t& y, const exti384_t& x)
 {
 	y = exti768_t(x) * exti768_t(x);
 }
 
-void (*emul256)(exti512_t& z, const exti256_t& x, const exti256_t& y) = _emul256;
-void (*esqr256)(exti512_t& y, const exti256_t& x) = _esqr256;
-void (*emul384)(exti768_t& z, const exti384_t& x, const exti384_t& y) = _emul384;
-void (*esqr384)(exti768_t& y, const exti384_t& x) = _esqr384;
+#ifndef __wasm__
+void (*emul256)(exti512_t& z, const exti256_t& x, const exti256_t& y) = exti_mul256;
+void (*esqr256)(exti512_t& y, const exti256_t& x) = exti_sqr256;
+void (*emul384)(exti768_t& z, const exti384_t& x, const exti384_t& y) = exti_mul384;
+void (*esqr384)(exti768_t& y, const exti384_t& x) = exti_sqr384;
+#endif
