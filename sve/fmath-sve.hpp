@@ -95,25 +95,29 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	// t[0+i*C] = exp(t[0+i*C]), using t[0+i*C], t[1+i*C], t[2+i*C], t[3+i*C]
 	void genExp1(int unrollN, const PReg& p, const std::array<ZReg, allN>& t, const ExpParam& para)
 	{
+		using namespace Xbyak_aarch64;
 		const int C = regN;
 		const int N = regN * unrollN;
 		assert(N <= allN);
 		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, para.log2_e.s);
-		for (int i = 0; i < N; i+=C) frintm(t[i+1].s, p, t[i+0].s); // floor : float -> float
+		for (int i = 0; i < N; i+=C) {
+			movprfx(t[i+1].s, p, t[i+0].s); // clear implicit dependency
+			frintm(t[i+1].s, p, t[i+0].s); // floor : float -> float
+		}
 		for (int i = 0; i < N; i+=C) fcvtzs(t[i+2].s, p, t[i+1].s); // n = float -> int
 		for (int i = 0; i < N; i+=C) fsub(t[i+1].s, t[i+0].s, t[i+1].s); // a
-		for (int i = 0; i < N; i+=C) fadd(t[i+1].s, t[i+1].s, para.one.s); // b = 1 + a
-		for (int i = 0; i < N; i+=C) lsr(t[i+3].s, t[i+1].s, 17); // bL
-		for (int i = 0; i < N; i+=C) fexpa(t[i+3].s, t[i+3].s); // c = fexpa(bL)
-		for (int i = 0; i < N; i+=C) fscale(t[i+3].s, p, t[i+2].s); // t[i+3] *= 2^n
-		for (int i = 0; i < N; i+=C) and_(t[i+2].d, t[i+1].d, para.not_mask17.d);
-		for (int i = 0; i < N; i+=C) fsub(t[i+2].s, t[i+1].s, t[i+2].s); // z
+		for (int i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+1].s, para.one.s); // b = 1 + a
+		for (int i = 0; i < N; i+=C) lsr(t[i+1].s, t[i+0].s, 17); // bL
+		for (int i = 0; i < N; i+=C) fexpa(t[i+1].s, t[i+1].s); // c = fexpa(bL)
+		for (int i = 0; i < N; i+=C) fscale(t[i+1].s, p, t[i+2].s); // t[i+3] *= 2^n
+		for (int i = 0; i < N; i+=C) and_(t[i+2].d, t[i+0].d, para.not_mask17.d);
+		for (int i = 0; i < N; i+=C) fsub(t[i+2].s, t[i+0].s, t[i+2].s); // z
 		for (int i = 0; i < N; i+=C) {
 			movprfx(t[i+0].s, p, para.coeff2.s);
 			fmad(t[i+0].s, p, t[i+2].s, para.coeff1.s);
 		}
 		for (int i = 0; i < N; i+=C) fmad(t[i+0].s, p, t[i+2].s, para.one.s);
-		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+3].s, t[i+0].s);
+		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+1].s, t[i+0].s);
 	}
 	// tanh(x) = 1 - 2/(1 + exp(2 x))
 	void genTanh1(int unrollN, const PReg& p, const std::array<ZReg, allN>& t, const ExpParam& para)

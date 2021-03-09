@@ -33,6 +33,7 @@ struct Code : CodeGenerator {
 		ld1w(z1.s, p0/T_z, ptr(src2, idx, LSL, 2));
 		switch (op) {
 		case 0:
+//movprfx(z2.s, p0/T_z, z0.s);
 			frintm(z2.s, p0, z0.s); // floor
 			break;
 		case 1:

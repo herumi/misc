@@ -25,6 +25,6 @@ emu:
 	env QEMU_LD_PREFIX=/usr/aarch64-linux-gnu qemu-aarch64 -cpu max,sve512=on ./a.out
 
 clean:
-	rm -rf $(EXE) $(DEP) $(OBJ)
+	rm -rf $(EXE) *.o *.d
 
 .SECONDARY: $(OBJ) $(DEP)
