@@ -55,7 +55,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	typedef void (*VecFunc)(float *dst, const float *src, size_t n);
 	VecFunc expf_v;
 	VecFunc tanhf_v;
-	static const int regN = 4;
+	static const int regN = 3;
 	static const int maxUnrollN = 3;
 	static const size_t allN = maxUnrollN * regN;
 	struct ExpParam {
@@ -92,7 +92,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		ready();
 	}
 	// C = regN
-	// t[0+i*C] = exp(t[0+i*C]), using t[0+i*C], t[1+i*C], t[2+i*C], t[3+i*C]
+	// t[0+i*C] = exp(t[0+i*C]), using t[0+i*C], t[1+i*C], t[2+i*C]
 	void genExp1(int unrollN, const PReg& p, const std::array<ZReg, allN>& t, const ExpParam& para)
 	{
 		using namespace Xbyak_aarch64;
@@ -109,7 +109,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		for (int i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+1].s, para.one.s); // b = 1 + a
 		for (int i = 0; i < N; i+=C) lsr(t[i+1].s, t[i+0].s, 17); // bL
 		for (int i = 0; i < N; i+=C) fexpa(t[i+1].s, t[i+1].s); // c = fexpa(bL)
-		for (int i = 0; i < N; i+=C) fscale(t[i+1].s, p, t[i+2].s); // t[i+3] *= 2^n
+		for (int i = 0; i < N; i+=C) fscale(t[i+1].s, p, t[i+2].s); // t[i+1] *= 2^n
 		for (int i = 0; i < N; i+=C) and_(t[i+2].d, t[i+0].d, para.not_mask17.d);
 		for (int i = 0; i < N; i+=C) fsub(t[i+2].s, t[i+0].s, t[i+2].s); // z
 		for (int i = 0; i < N; i+=C) {
@@ -133,10 +133,10 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 
 		// 1/(1+exp(2x))
 		// 1st aprox ; a = 1/x + e
-		for (int i = 0; i < N; i+=C) frecpe(t[i+3].s, t[i+0].s);
+		for (int i = 0; i < N; i+=C) frecpe(t[i+1].s, t[i+0].s);
 		// 2nd aprox ; a' = (2 - ax)a = 1/x - e^2 x
-		for (int i = 0; i < N; i+=C) frecps(t[i+2].s, t[i+0].s, t[i+3].s);
-		for (int i = 0; i < N; i+=C) fmul(t[i+2].s, t[i+2].s, t[i+3].s);
+		for (int i = 0; i < N; i+=C) frecps(t[i+2].s, t[i+0].s, t[i+1].s);
+		for (int i = 0; i < N; i+=C) fmul(t[i+2].s, t[i+2].s, t[i+1].s);
 		// 3rd aprox ; a'' = (2 - a'x)a'
 		for (int i = 0; i < N; i+=C) frecps(t[i+0].s, t[i+0].s, t[i+2].s);
 		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, t[i+2].s);
@@ -169,7 +169,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, coeff2)));
 		cpy(param.coeff2.s, p0/T_z, w4);
 
-		const auto args = std::array<ZReg, allN>{z0, z1, z2, z24, z25, z26, z27, z28, z29, z30, z31, z23};
+		const auto args = std::array<ZReg, allN>{z0, z1, z2, z24, z25, z26, z27, z28, z29};
 		const int unrollN = 3;
 		if (unrollN == 3) {
 			sub(sp, sp, 64);
