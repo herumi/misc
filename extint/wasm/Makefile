@@ -19,8 +19,8 @@ sub.o: sub.cpp
 multi3.o: multi3.ll
 	$(CXX) -c -o $@ $< $(CLANG_WASM_OPT)
 
-dis: addsub.wasm
-	llvm-objdump$(LLVM_VER) -disassemble addsub.wasm
+dis: add.o
+	llvm-objdump$(LLVM_VER) -s -d add.o
 
 test: addsub.wasm
 	node test.js
