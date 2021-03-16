@@ -1,8 +1,6 @@
 (gen => {
-  console.log(`exports=${exports}`)
   gen(exports)
 })(exports => {
-  console.log(`exports 2=${exports}`)
   const fs = require('fs')
   const buf = fs.readFileSync('./addsub.wasm')
   // 1 = 64KiB
@@ -18,20 +16,29 @@
     ret => {
       exports.ret = ret
       exports.mod = ret.instance.exports
+      const mod = exports.mod
       const mem = exports.mod.memory.buffer
+      console.log(`mem=${mem}`)
       exports.mem = mem
-      const u8 = new Uint8Array(mem)
-      console.log(`add=${exports.mod.add(12, 34)}`)
-      console.log(`sub=${exports.mod.sub(12, 34)}`)
-      console.log(`callJS=${exports.mod.callJS(3, 5)}`)
-      exports.mod.setMem(u8, 10)
-      for (let i = 0; i < 10; i++) {
-        console.log(`mem[${i}]=${u8[i]}`)
+      const u32 = new Uint32Array(mem)
+      const N = 8
+      const INT_SIZE = N * 4
+      const xPos = 0
+      const yPos = INT_SIZE
+      const zPos = INT_SIZE * 2
+      for (let i = 0; i < N; i++) {
+        u32[i] = i + 1
+        u32[N + i] = i + 10
       }
-      console.log(`mem length=${mem.byteLength}`)
-      console.log(`getPtr=${exports.mod.getPtr(4)}`)
-      console.log(`getPtr=${exports.mod.getPtr(32)}`)
-      console.log(`getPtr=${exports.mod.getPtr(64)}`)
+      console.log('before')
+      for (let i = 0; i < N * 3; i++) {
+        console.log(`mem[${i}]=${u32[i]}`)
+      }
+      mod.add256(zPos, yPos, xPos)
+      console.log('after')
+      for (let i = 0; i < N * 3; i++) {
+        console.log(`mem[${i}]=${u32[i]}`)
+      }
     }
   )
   return exports
