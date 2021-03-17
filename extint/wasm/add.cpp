@@ -268,12 +268,12 @@ API void mul384_u32(uint32_t *z, const uint32_t *x, const uint32_t *y)
 
 API void add384_u64(uint64_t *z, const uint64_t *x, const uint64_t *y)
 {
-	addT64<8>(z, x, y);
+	addT64<6>(z, x, y);
 }
 
 API void mul384_u64(uint64_t *z, const uint64_t *x, const uint64_t *y)
 {
-	vint::mulNM<uint64_t>(z, x, 8, y, 8);
+	vint::mulNM<uint64_t>(z, x, 6, y, 6);
 }
 
 
