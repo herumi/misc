@@ -22,33 +22,19 @@ def mk_sqr(N):
 	print('template<>')
 	print(f'void sqrT<{N}>(uint32_t *y, const uint32_t *x)')
 	print(f'{{')
-	print(f'	uint64_t v, L, H, L2, H2;')
-	print(f'	v = uint64_t(x[0]) * x[0];')
-	print(f'	y[0] = uint32_t(v);')
-	print(f'	L = 0;')
-	print(f'	H = v >> 32;')
-	for d in range(1, N * 2):
-		print(f'	L = L >> 32;')
-		print(f'	L += H;')
-		print(f'	H = 0;')
-		h = d // 2
-		if (d % 2) == 0:
-			print(f'	v = uint64_t(x[{h}]) * x[{h}];')
-			print(f'	L += uint32_t(v);')
-			print(f'	H += uint32_t(v >> 32);')
-		print(f'	L2 = 0;')
-		print(f'	H2 = 0;')
-		for i in range(max(0, d+1-N), min(d+1, N)):
-			if i >= d - i:
-				break
-			print(f'	v = uint64_t(x[{i}]) * x[{d - i}];')
-			print(f'	L2 += uint32_t(v);')
-			print(f'	H2 += uint32_t(v >> 32);')
-		print(f'	L += L2 * 2;')
-		print(f'	H += H2 * 2;')
-		print(f'	y[{d}] = uint32_t(L);')
+	print(f'	uint64_t v, L, H;')
+	print(f'	v = uint64_t(x[0]) * uint64_t(x[{N - 1}]);')
+	print(f'	y[{N - 1}] = uint32_t(v);');
+	print(f'	y[{N}] = uint32_t(v >> 32);');
+	for i in range(2, N):
+		print(f'	v = uint64_t(x[0]) * x[{i}];')
+		print(f'	y[{i}] = uint32_t(v);')
+		print(f'	L = v >> 32;')
+		for j in range(
+		for i in range(step+1, N-step):
+			print(f'	L += y[{step + i}]')
+			print(f'	y[{step + i}] = uint32_t(L);')
 	print(f'}}')
-
 
 
 def main():
@@ -63,4 +49,5 @@ def main():
 	for i in [1, 2, 3, 4, 6, 8, 12]:
 		mk_sqr(i)
 
-main()
+#main()
+mk_sqr(4)

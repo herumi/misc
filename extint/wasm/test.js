@@ -36,9 +36,9 @@
       const BYTE_SIZE = N * 4
       const xPos = 0
       const yPos = BYTE_SIZE
-      const z1Pos = BYTE_SIZE * 2
-      const z2Pos = BYTE_SIZE * 4
-      const z3Pos = BYTE_SIZE * 6
+      const z1Pos = BYTE_SIZE * 4
+      const z2Pos = BYTE_SIZE * 8
+      const z3Pos = BYTE_SIZE * 12
       const dump = (msg, pos) => {
         console.log(`msg=${msg}, pos=${pos}`)
         for (let i = 0; i < N; i += 4) {
@@ -78,15 +78,25 @@
       bench('u32   ', C, () => { mod.add256_u32(yPos, yPos, yPos) })
       bench('extInt', C, () => { mod.add256_extInt(yPos, yPos, yPos) })
 
+      const C2 = 10000
+
       console.log(`mul256 test`)
       mod.mul256_u32(z2Pos, yPos, xPos)
       mod.mul256_u64(z3Pos, yPos, xPos)
       cmpArray(z2Pos, z3Pos, N * 2)
-      const C2 = 10000
       bench('mul u64', C2, () => { mod.mul256_u64(z1Pos, z1Pos, z1Pos) })
       bench('mul u32', C2, () => { mod.mul256_u32(z1Pos, z1Pos, z1Pos) })
       bench('mul u64', C2, () => { mod.mul256_u64(z1Pos, z1Pos, z1Pos) })
       bench('mul u32', C2, () => { mod.mul256_u32(z1Pos, z1Pos, z1Pos) })
+
+      console.log(`mul384 test`)
+      mod.mul384_u32(z2Pos, yPos, xPos)
+      mod.mul384_u64(z3Pos, yPos, xPos)
+      cmpArray(z2Pos, z3Pos, N * 2)
+      bench('mul u64', C2, () => { mod.mul384_u64(z1Pos, z1Pos, z1Pos) })
+      bench('mul u32', C2, () => { mod.mul384_u32(z1Pos, z1Pos, z1Pos) })
+      bench('mul u64', C2, () => { mod.mul384_u64(z1Pos, z1Pos, z1Pos) })
+      bench('mul u32', C2, () => { mod.mul384_u32(z1Pos, z1Pos, z1Pos) })
     }
   )
   return exports
