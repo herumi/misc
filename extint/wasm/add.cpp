@@ -227,14 +227,15 @@ API void add256_extInt(uint32_t *z, const uint32_t *x, const uint32_t *y)
 	*cast256(z) = *cast256(x) + *cast256(y);
 }
 
-/*
+#if 0
+
 API void mulPre256_extInt(uint32_t *z, const uint32_t *x, const uint32_t *y)
 {
 	exti256_t tx = (exti256_t)*(const unsigned _ExtInt(128)*)x;
 	exti256_t ty = (exti256_t)*(const unsigned _ExtInt(128)*)y;
 	*cast256(z) = tx * ty;
 }
-*/
+#endif
 
 API void add256_u32(uint32_t *z, const uint32_t *x, const uint32_t *y)
 {
