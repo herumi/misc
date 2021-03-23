@@ -175,47 +175,9 @@ static inline void mulNM(T *z, const T *x, size_t xn, const T *y, size_t yn)
 
 } // vint
 
-
 namespace u32 {
 
-// [return:z[N]] = x[N] * y
-template<size_t N>
-uint32_t mulUnitT(uint32_t z[N], const uint32_t x[N], uint32_t y)
-{
-	uint32_t H = 0;
-	for (size_t i = 0; i < N; i++) {
-		uint64_t v = uint64_t(x[i]) * y;
-		v += H;
-		z[i] = uint32_t(v);
-		H = uint32_t(v >> 32);
-	}
-	return H;
-}
-
-// [return:z[N]] = z[N] + x[N] * y
-template<size_t N>
-uint32_t addMulUnitT(uint32_t z[N], const uint32_t x[N], uint32_t y)
-{
-	uint32_t H = 0;
-	for (size_t i = 0; i < N; i++) {
-		uint64_t v = uint64_t(x[i]) * y;
-		v += H;
-		v += z[i];
-		z[i] = uint32_t(v);
-		H = uint32_t(v >> 32);
-	}
-	return H;
-}
-
-// z[N * 2] = x[N] * y[N]
-template<size_t N>
-void mulT(uint32_t z[N * 2], const uint32_t x[N], const uint32_t y[N])
-{
-	z[N] = mulUnitT<N>(z, x, y[0]);
-	for (size_t i = 1; i < N; i++) {
-		z[N + i] = addMulUnitT<N>(&z[i], x, y[i]);
-	}
-}
+#include "src/low_func_wasm.hpp"
 
 } // u32
 
@@ -244,7 +206,7 @@ API void add256_u32(uint32_t *z, const uint32_t *x, const uint32_t *y)
 
 API void mul256_u32(uint32_t *z, const uint32_t *x, const uint32_t *y)
 {
-	u32::mulT<8>(z, x, y);
+	u32::mcl::mulT<8>(z, x, y);
 }
 
 API void add256_u64(uint64_t *z, const uint64_t *x, const uint64_t *y)
@@ -264,7 +226,7 @@ API void add384_u32(uint32_t *z, const uint32_t *x, const uint32_t *y)
 
 API void mul384_u32(uint32_t *z, const uint32_t *x, const uint32_t *y)
 {
-	u32::mulT<12>(z, x, y);
+	u32::mcl::mulT<12>(z, x, y);
 }
 
 API void add384_u64(uint64_t *z, const uint64_t *x, const uint64_t *y)
