@@ -1,7 +1,7 @@
 CXX?=clang++
 INC_DIR?=../../fujitsu/xbyak_aarch64/
 LIB_DIR?=$(INC_DIR)/lib
-CPPFLAGS=$(OPT) -Wall -I $(INC_DIR) -I ./include
+CPPFLAGS=$(OPT) -Wall -I $(INC_DIR) -I ../../cybozulib/include
 ifneq ($(DEBUG),1)
 CPPFLAGS+=-O2 -DNDEBUG
 endif
