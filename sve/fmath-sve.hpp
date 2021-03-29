@@ -37,6 +37,8 @@ struct ConstVar {
 	float one;
 	float coeff1; // about log2
 	float coeff2; // about 0.5 * log2 * log2
+	uint32_t expMax;
+	uint32_t expMin;
 	static const uint32_t not_mask17= ~((1u << 17) - 1);
 	//
 	void init()
@@ -45,6 +47,8 @@ struct ConstVar {
 		one = 1.0f;
 		coeff1 = 0.6931473921;
 		coeff2 = 0.2413862043;
+		expMax = 0x42b17218;
+		expMin = 0xc47a0000;//0xc2aeac50;
 	}
 };
 
@@ -64,12 +68,16 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		ZReg one;
 		ZReg coeff1;
 		ZReg coeff2;
-		ExpParam(int i0, int i1, int i2, int i3, int i4)
+		ZReg expMax;
+		ZReg expMin;
+		ExpParam(int i0, int i1, int i2, int i3, int i4, int i5, int i6)
 			: log2_e(i0)
 			, not_mask17(i1)
 			, one(i2)
 			, coeff1(i3)
 			, coeff2(i4)
+			, expMax(i5)
+			, expMin(i6)
 		{
 		}
 	};
@@ -99,6 +107,8 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		const int C = regN;
 		const int N = regN * unrollN;
 		assert(N <= allN);
+		for (int i = 0; i < N; i+=C) fmin(t[i+0].s, p, para.expMax.s);
+		for (int i = 0; i < N; i+=C) fmax(t[i+0].s, p, para.expMin.s);
 		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, para.log2_e.s);
 		for (int i = 0; i < N; i+=C) {
 			movprfx(t[i+1].s, p, t[i+0].s); // clear implicit dependency
@@ -155,7 +165,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		const XReg& src = x1;
 		const XReg& n = x2;
 
-		ExpParam param(3, 4, 5, 6, 7);
+		ExpParam param(3, 4, 5, 6, 7, 24, 25);
 		ptrue(p0.s);
 
 		adr(x3, constVarL);
@@ -168,8 +178,12 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		cpy(param.coeff1.s, p0/T_z, w4);
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, coeff2)));
 		cpy(param.coeff2.s, p0/T_z, w4);
+		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, expMax)));
+		cpy(param.expMax.s, p0/T_z, w4);
+		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, expMin)));
+		cpy(param.expMin.s, p0/T_z, w4);
 
-		const auto args = std::array<ZReg, allN>{z0, z1, z2, z24, z25, z26, z27, z28, z29};
+		const auto args = std::array<ZReg, allN>{z0, z1, z2, z26, z27, z28, z29, z30, z31};
 		const int unrollN = 3;
 		if (unrollN == 3) {
 			sub(sp, sp, 64);
