@@ -27,10 +27,10 @@ ave=3.778634e-07
 ctest:module=expf_v
 ctest:module=bench
 for float x[16384];
-std::exp 217.31nsec
-fmath::expf_v 8.27nsec
-fmath::expf_v 8.02nsec
-fmath::tanhf_v 15.56nsec
+std::exp 217.30nsec
+fmath::expf_v 9.80nsec
+fmath::expf_v 9.25nsec
+fmath::tanhf_v 16.52nsec
 ctest:module=expLimit
 expLimit
 x=0.000000e+00 std=1.000000e+00 fmath2=1.000000e+00 diff=0.000000e+00
@@ -47,8 +47,8 @@ x=1.000000e+02 std=inf fmath2=inf diff=nan
 x=-1.000000e+02 std=3.783506e-44 fmath2=3.643376e-44 diff=1.401298e-45
 x=1.000000e+03 std=inf fmath2=inf diff=nan
 x=-1.000000e+03 std=0.000000e+00 fmath2=0.000000e+00 diff=0.000000e+00
-x=3.402823e+38 std=inf fmath2=nan diff=nan
-x=-3.402823e+38 std=0.000000e+00 fmath2=nan diff=nan
+x=3.402823e+38 std=inf fmath2=inf diff=nan
+x=-3.402823e+38 std=0.000000e+00 fmath2=0.000000e+00 diff=0.000000e+00
 ctest:module=tanhLimit
 tanhLimit
 x=0.000000e+00 std=0.000000e+00 fmath2=0.000000e+00 diff=0.000000e+00
@@ -65,6 +65,6 @@ x=1.000000e+02 std=1.000000e+00 fmath2=1.000000e+00 diff=0.000000e+00
 x=-1.000000e+02 std=-1.000000e+00 fmath2=-1.000000e+00 diff=0.000000e+00
 x=1.000000e+03 std=1.000000e+00 fmath2=1.000000e+00 diff=0.000000e+00
 x=-1.000000e+03 std=-1.000000e+00 fmath2=-1.000000e+00 diff=0.000000e+00
-x=3.402823e+38 std=1.000000e+00 fmath2=-nan diff=nan
-x=-3.402823e+38 std=-1.000000e+00 fmath2=-nan diff=nan
+x=3.402823e+38 std=1.000000e+00 fmath2=1.000000e+00 diff=0.000000e+00
+x=-3.402823e+38 std=-1.000000e+00 fmath2=-1.000000e+00 diff=0.000000e+00
 ctest:name=exp_v, module=6, total=25730, ok=25730, ng=0, exception=0

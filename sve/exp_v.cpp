@@ -228,10 +228,16 @@ CYBOZU_TEST_AUTO(expLimit)
 {
 	puts("expLimit");
 	limitTest(std::exp, fmath_expf);
+	float x = 0.000151307;
+	printf("std:  exp=%.8e\n", expf(x));
+	printf("fmath:exp=%.8e\n", fmath_expf(x));
 }
 
 CYBOZU_TEST_AUTO(tanhLimit)
 {
 	puts("tanhLimit");
 	limitTest(std::tanh, fmath_tanhf);
+	float x = 0.000151307;
+	printf("std:  tanh=%.8e\n", tanhf(x));
+	printf("fmath:tanh=%.8e\n", fmath_tanhf(x));
 }

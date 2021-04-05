@@ -130,6 +130,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+1].s, t[i+0].s);
 	}
 	// tanh(x) = 1 - 2/(1 + exp(2 x))
+	// tanh(x) = (e - 1)/(e + 1) where e = exp(2 x)
 	void genTanh1(int unrollN, const PReg& p, const std::array<ZReg, allN>& t, const ExpParam& para)
 	{
 		const int C = regN;
