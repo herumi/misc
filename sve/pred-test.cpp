@@ -50,6 +50,11 @@ struct Code : CodeGenerator {
 			puts("cmplt");
 			cmplt(p1.s, p0.s, src1.s, src2.s);
 			break;
+		case 5:
+			puts("cmple + not pred");
+			cmple(p1.s, p0.s, src1.s, src2.s);
+			not_(p1.b, p0.b, p1.b);
+			break;
 		default:
 			printf("bad mode=%d\n", mode);
 			exit(1);
