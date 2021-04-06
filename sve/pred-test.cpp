@@ -5,6 +5,13 @@
 
 using namespace Xbyak_aarch64;
 
+void putBin(uint8_t x)
+{
+	for (int i = 3; i >= 0; i--) {
+		printf("%d", (x >> i) & 1);
+	}
+}
+
 struct Code : CodeGenerator {
 	explicit Code(int mode)
 		 : CodeGenerator(4096)
@@ -39,6 +46,10 @@ struct Code : CodeGenerator {
 			puts("cmple");
 			cmple(p1.s, p0.s, src1.s, src2.s);
 			break;
+		case 4:
+			puts("cmplt");
+			cmplt(p1.s, p0.s, src1.s, src2.s);
+			break;
 		default:
 			printf("bad mode=%d\n", mode);
 			exit(1);
@@ -54,7 +65,7 @@ int main(int argc, char *argv[])
 	printf("mode=%d\n", mode);
 	Code c(mode);
 	c.ready();
-	auto func = c.getCode<void (*)(uint64_t *, const float *, const float *)>();
+	auto func = c.getCode<void (*)(void *, const float *, const float *)>();
 	const size_t N = 16;
 	float src1[N] = {};
 	float src2[N] = {};
@@ -84,7 +95,7 @@ int main(int argc, char *argv[])
 		ff.set(1 - s, e, f);
 		src1[i * 2 + 1] = ff.get().f;
 		src2[i * 2 + 0] = 1.0f;
-		src2[i * 2 + 1] = -1.0f;
+		src2[i * 2 + 1] = 1.0f;
 	}
 	func(&pred, src1, src2);
 	for (size_t i = 0; i < N; i++) {
@@ -92,12 +103,9 @@ int main(int argc, char *argv[])
 		fi.f = src1[i];
 		printf("%e(%08x) ", fi.f, fi.i);
 		fi.f = src2[i];
-		printf("%e(%08x)\n", fi.f, fi.i);
-	}
-	puts("->");
-	for (int i = 63; i >= 0; i--) {
-		printf("%d", int((pred >> i) & 1));
-		if ((i & 3) == 0) printf(":");
+		printf("%e(%08x) -> ", fi.f, fi.i);
+		putBin((pred >> (i * 4)) & 0xf);
+		printf("\n");
 	}
 	printf("\n");
 } catch (std::exception& e) {
