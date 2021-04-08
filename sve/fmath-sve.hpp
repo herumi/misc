@@ -41,6 +41,8 @@ struct ConstVar {
 	uint32_t expMax;
 	uint32_t expMin;
 	static const uint32_t not_mask17= ~((1u << 17) - 1);
+	float tanhRange;
+	float f1p3;
 	//
 	void init()
 	{
@@ -50,13 +52,19 @@ struct ConstVar {
 		coeff2 = 0.2413862043;
 		expMax = 0x42b17218;
 		expMin = 0xc47a0000;//0xc2aeac50;
+		tanhRange = 0.01;
+		f1p3 = 1.0f / 3;
 	}
 };
 
 struct UsedReg {
-	int pos;
+	size_t pos;
+	size_t maxFreeN;
+	size_t maxSaveN;
 	UsedReg()
 		: pos(0)
+		, maxFreeN(0)
+		, maxSaveN(0)
 	{
 	}
 	int allocRegIdx()
@@ -64,11 +72,11 @@ struct UsedReg {
 		const int freeTbl[] = {
 			3, 4, 5, 6, 7, 0, 1, 2, 24, 25, 26, 27, 28, 29, 30, 31
 		};
-		const size_t maxFreeN = sizeof(freeTbl)/sizeof(freeTbl[0]);
+		maxFreeN = sizeof(freeTbl)/sizeof(freeTbl[0]);
 		const int saveTbl[] = {
-			8, 9, 10, 11,
+			8, 9, 10, 11, 12, 13
 		};
-		const size_t maxSaveN = sizeof(saveTbl)/sizeof(saveTbl[0]);
+		maxSaveN = sizeof(saveTbl)/sizeof(saveTbl[0]);
 		if (pos < maxFreeN) {
 			return freeTbl[pos++];
 		}
@@ -77,7 +85,8 @@ struct UsedReg {
 		}
 		throw std::runtime_error("allocRegIdx");
 	}
-	int getPos() const { return pos; }
+	size_t getMaxFreeN() { return maxFreeN; }
+	size_t getPos() const { return pos; }
 };
 
 struct Code : public Xbyak_aarch64::CodeGenerator {
@@ -96,7 +105,9 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		ZReg coeff2;
 		ZReg expMax;
 		ZReg expMin;
-		ExpParam(bool isTanh, UsedReg& usedReg)
+		ZReg tanhRange;
+		ZReg f1p3; // 1/3
+		ExpParam(bool isPreciseTanh, UsedReg& usedReg)
 			: log2_e(ZReg(usedReg.allocRegIdx()))
 			, not_mask17(ZReg(usedReg.allocRegIdx()))
 			, one(ZReg(usedReg.allocRegIdx()))
@@ -104,6 +115,8 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 			, coeff2(ZReg(usedReg.allocRegIdx()))
 			, expMax(ZReg(usedReg.allocRegIdx()))
 			, expMin(ZReg(usedReg.allocRegIdx()))
+			, tanhRange(isPreciseTanh ? usedReg.allocRegIdx() : 0)
+			, f1p3(isPreciseTanh ? usedReg.allocRegIdx() : 0)
 		{
 		}
 	};
@@ -183,8 +196,12 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		for (int i = 0; i < N; i+=C) fsub(t[i+0].s, para.one.s, t[i+0].s);
 	}
 	// f(float *dst, const float *src, size_t n);
-	void genFunc(bool isTanh, int regN, int unrollN, void (Code::*gen1)(int, int, const PReg&, const std::vector<ZReg>&, const ExpParam&), const Xbyak_aarch64::Label& constVarL)
+	void genFunc(void (Code::*gen1)(int, int, const PReg&, const std::vector<ZReg>&, const ExpParam&), const Xbyak_aarch64::Label& constVarL)
 	{
+		const int unrollN = 3;
+		const int isPreciseTanh = true;
+		const int regN = isPreciseTanh ? 4 : 3;
+
 		using namespace Xbyak_aarch64;
 		const XReg& dst = x0;
 		const XReg& src = x1;
@@ -192,7 +209,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 
 		UsedReg usedReg;
 
-		ExpParam param(isTanh, usedReg);
+		ExpParam param(isPreciseTanh, usedReg);
 		ptrue(p0.s);
 
 		adr(x3, constVarL);
@@ -209,17 +226,26 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		cpy(param.expMax.s, p0/T_z, w4);
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, expMin)));
 		cpy(param.expMin.s, p0/T_z, w4);
+		if (isPreciseTanh) {
+			ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, tanhRange)));
+			cpy(param.tanhRange.s, p0/T_z, w4);
+			ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, f1p3)));
+			cpy(param.f1p3.s, p0/T_z, w4);
+		}
 
 		std::vector<ZReg> args;
 		for (size_t i = 0; i < regN * unrollN; i++) {
 			args.push_back(ZReg(usedReg.allocRegIdx()));
 		}
-#if 0
-		if (unrollN == 3) {
-			sub(sp, sp, 64);
-			st1w(z23.s, p0, ptr(sp));
+		const size_t maxN = usedReg.getMaxFreeN();
+		const size_t pos = usedReg.getPos();
+		if (pos > maxN) {
+			size_t n = pos - maxN;
+			sub(sp, sp, int((n + 1) & ~1) * 64);
+			for (int i = 0; i < n; i++) {
+				st1w(ZReg(pos + i).s, p0, ptr(sp, i));
+			}
 		}
-#endif
 		Label skip;
 		b(skip);
 	Label lp = L();
@@ -248,25 +274,22 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	L(cond);
 		whilelt(p1.s, x3, n);
 		b_first(lp2);
-#if 0
-		if (unrollN == 3) {
-			ld1w(z23.s, p0, ptr(sp));
-			add(sp, sp, 64);
+		if (pos > maxN) {
+			int n = pos - maxN;
+			for (int i = 0; i < n; i++) {
+				ld1w(ZReg(pos + i).s, p0, ptr(sp, i));
+			}
+			add(sp, sp, int((n + 1) & ~1) * 64);
 		}
-#endif
 		ret();
 	}
 	void genExp(const Xbyak_aarch64::Label& constVarL)
 	{
-		const int regN = 3;
-		const int unrollN = 3;
-		genFunc(false, regN, unrollN, &Code::genExp1, constVarL);
+		genFunc( &Code::genExp1, constVarL);
 	}
 	void genTanh(const Xbyak_aarch64::Label& constVarL)
 	{
-		const int regN = 3;
-		const int unrollN = 3;
-		genFunc(true, regN, unrollN, &Code::genTanh1, constVarL);
+		genFunc(&Code::genTanh1, constVarL);
 	}
 };
 
