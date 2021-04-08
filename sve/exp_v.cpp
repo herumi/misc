@@ -211,7 +211,7 @@ CYBOZU_TEST_AUTO(bench)
 
 void limitTest(float f1(float), float f2(float))
 {
-	float tbl[] = { 0, FLT_MIN, 0.5, 1,  80, 100, 1000, FLT_MAX };
+	float tbl[] = { 0, FLT_MIN, 0.5, 1,  80, 100, 1000, FLT_MAX, INFINITY };
 	for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(tbl); i++) {
 		float x = tbl[i];
 		float a = f1(x);
