@@ -6,6 +6,7 @@
 */
 #include <xbyak_aarch64/xbyak_aarch64.h>
 #include <cmath>
+#include <vector>
 
 namespace fmath {
 
@@ -59,9 +60,6 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	typedef void (*VecFunc)(float *dst, const float *src, size_t n);
 	VecFunc expf_v;
 	VecFunc tanhf_v;
-	static const int regN = 3;
-	static const int maxUnrollN = 3;
-	static const size_t allN = maxUnrollN * regN;
 	struct ExpParam {
 		ZReg log2_e;
 		ZReg not_mask17;
@@ -101,12 +99,11 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	}
 	// C = regN
 	// t[0+i*C] = exp(t[0+i*C]), using t[0+i*C], t[1+i*C], t[2+i*C]
-	void genExp1(int unrollN, const PReg& p, const std::array<ZReg, allN>& t, const ExpParam& para)
+	void genExp1(int regN, int unrollN, const PReg& p, const std::vector<ZReg>& t, const ExpParam& para)
 	{
 		using namespace Xbyak_aarch64;
 		const int C = regN;
 		const int N = regN * unrollN;
-		assert(N <= allN);
 		for (int i = 0; i < N; i+=C) fmin(t[i+0].s, p, para.expMax.s);
 		for (int i = 0; i < N; i+=C) fmax(t[i+0].s, p, para.expMin.s);
 		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, para.log2_e.s);
@@ -131,14 +128,14 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	}
 	// tanh(x) = 1 - 2/(1 + exp(2 x))
 	// tanh(x) = (e - 1)/(e + 1) where e = exp(2 x)
-	void genTanh1(int unrollN, const PReg& p, const std::array<ZReg, allN>& t, const ExpParam& para)
+	void genTanh1(int regN, int unrollN, const PReg& p, const std::vector<ZReg>& t, const ExpParam& para)
 	{
 		const int C = regN;
 		const int N = regN * unrollN;
 		// 2x
 		for (int i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, t[i+0].s);
 		// exp(2x)
-		genExp1(unrollN, p, t, para);
+		genExp1(regN, unrollN, p, t, para);
 		// 1+exp(2x)
 		for (int i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, para.one.s);
 
@@ -158,8 +155,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		for (int i = 0; i < N; i+=C) fsub(t[i+0].s, para.one.s, t[i+0].s);
 	}
 	// f(float *dst, const float *src, size_t n);
-	template<size_t N>
-	void genFunc(void (Code::*gen1)(int unrollN, const PReg&, const std::array<ZReg, N>&, const ExpParam&), const Xbyak_aarch64::Label& constVarL)
+	void genFunc(int regN, int unrollN, void (Code::*gen1)(int, int, const PReg&, const std::vector<ZReg>&, const ExpParam&), const Xbyak_aarch64::Label& constVarL)
 	{
 		using namespace Xbyak_aarch64;
 		const XReg& dst = x0;
@@ -184,12 +180,13 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, expMin)));
 		cpy(param.expMin.s, p0/T_z, w4);
 
-		const auto args = std::array<ZReg, allN>{z0, z1, z2, z26, z27, z28, z29, z30, z31};
-		const int unrollN = 3;
+		std::vector<ZReg> args = {z0, z1, z2, z26, z27, z28, z29, z30, z31};
+#if 0
 		if (unrollN == 3) {
 			sub(sp, sp, 64);
 			st1w(z23.s, p0, ptr(sp));
 		}
+#endif
 		Label skip;
 		b(skip);
 	Label lp = L();
@@ -197,7 +194,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		if (unrollN > 1) ld1w(args[regN].s, p0/T_z, ptr(src, 1));
 		if (unrollN > 2) ld1w(args[regN * 2].s, p0/T_z, ptr(src, 2));
 		add(src, src, 64 * unrollN);
-		(this->*gen1)(unrollN, p0, args, param);
+		(this->*gen1)(regN, unrollN, p0, args, param);
 		st1w(z0.s, p0, ptr(dst));
 		if (unrollN > 1) st1w(args[regN].s, p0, ptr(dst, 1));
 		if (unrollN > 2) st1w(args[regN * 2].s, p0, ptr(dst, 2));
@@ -212,25 +209,31 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		b(cond);
 	Label lp2 = L();
 		ld1w(z0.s, p1/T_z, ptr(src, x3, LSL, 2));
-		(this->*gen1)(1, p1, args, param);
+		(this->*gen1)(regN, 1, p1, args, param);
 		st1w(z0.s, p1, ptr(dst, x3, LSL, 2));
 		incd(x3);
 	L(cond);
 		whilelt(p1.s, x3, n);
 		b_first(lp2);
+#if 0
 		if (unrollN == 3) {
 			ld1w(z23.s, p0, ptr(sp));
 			add(sp, sp, 64);
 		}
+#endif
 		ret();
 	}
 	void genExp(const Xbyak_aarch64::Label& constVarL)
 	{
-		genFunc(&Code::genExp1, constVarL);
+		const int regN = 3;
+		const int unrollN = 3;
+		genFunc(regN, unrollN, &Code::genExp1, constVarL);
 	}
 	void genTanh(const Xbyak_aarch64::Label& constVarL)
 	{
-		genFunc(&Code::genTanh1, constVarL);
+		const int regN = 3;
+		const int unrollN = 3;
+		genFunc(regN, unrollN, &Code::genTanh1, constVarL);
 	}
 };
 
