@@ -208,13 +208,10 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 #endif
 		// tanh(x) = x(1 - x^2/3) for |x| < para.tanhRange
 		for (int i = 0; i < N; i+=C) fmul(t[i+1].s, t[i+3].s, t[i+3].s); // x^2
-		for (int i = 0; i < N; i+=C) {
-			fmad(t[i+1].s, p, para.m1d3.s, para.one.s); // 1-x^2/3
-		}
-		const auto& T_z = Xbyak_aarch64::T_z;
+		for (int i = 0; i < N; i+=C) fmad(t[i+1].s, p, para.m1d3.s, para.one.s); // 1-x^2/3
 		for (int i = 0; i < N; i+=C) fmul(t[i+1].s, p, t[i+3].s); // x(1-x^2/3)
 		// select the value if |x| < tanhRange
-		for (int i = 0; i < N; i+=C) mov(t[i+0].s, PReg(i/C+1)/T_z, t[i+1].s);
+		for (int i = 0; i < N; i+=C) mov(t[i+0].s, PReg(i/C+1), t[i+1].s);
 	}
 	// f(float *dst, const float *src, size_t n);
 	void genFunc(void (Code::*gen1)(const ExpParam&, int unrollN, const PReg&, const std::vector<ZReg>&), const Xbyak_aarch64::Label& constVarL)
