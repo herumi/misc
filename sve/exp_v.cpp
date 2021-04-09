@@ -103,14 +103,14 @@ CYBOZU_TEST_AUTO(preciseTanh)
 		float x = tbl[i];
 		float a = tanh(x);
 		float b = fmath_tanhf(x);
-		printf("x=%e correct=%e asm=%e(%e)\n", x, a, b, fabs(b-a));
+		float e = x ? fabs(a - b) / x : fabs(a - b);
+		CYBOZU_TEST_ASSERT(e < 1e-5);
 	}
-	exit(1);
 	for (float x = 1e-7; x < 0.1; x += 1e-4) {
 		float a = tanh(x);
 		float b = fmath_tanhf(x);
-		float e = fabs(a - b) / a;
-		printf("x=%e a=%e b=%e e=%e\n", x, a, b, e);
+		float e = x ? fabs(a - b) / x : fabs(a - b);
+		CYBOZU_TEST_ASSERT(e < 1e-5);
 	}
 }
 #endif

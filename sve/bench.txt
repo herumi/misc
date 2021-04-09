@@ -1,10 +1,11 @@
+ctest:module=preciseTanh
 ctest:module=tanh
 tanh
 fmath::tanhf_v
 range [-4.00e+00, 4.00e+00] step=1.00e-05
-maxe =2.826870e-03 (x=1.739412e-05)
+maxe =3.504947e-06 (x=5.852437e-02)
 maxe2=2.980232e-07 (x=-2.439293e+00)
-ave=-5.127760e-08
+ave=-3.590077e-08
 ctest:module=setMaxE
 expfC
 range [-1.00e+01, 1.00e+01] step=5.00e-01
@@ -27,10 +28,10 @@ ave=3.778634e-07
 ctest:module=expf_v
 ctest:module=bench
 for float x[16384];
-std::exp 217.30nsec
-fmath::expf_v 9.78nsec
-fmath::expf_v 9.24nsec
-fmath::tanhf_v 17.21nsec
+std::exp 217.40nsec
+fmath::expf_v 10.00nsec
+fmath::expf_v 9.64nsec
+fmath::tanhf_v 19.99nsec
 ctest:module=expLimit
 expLimit
 x=0.000000e+00 std=1.000000e+00 fmath2=1.000000e+00 diff=0.000000e+00
@@ -56,9 +57,9 @@ fmath:exp=1.00015128e+00
 ctest:module=tanhLimit
 tanhLimit
 x=0.000000e+00 std=0.000000e+00 fmath2=0.000000e+00 diff=0.000000e+00
-x=-0.000000e+00 std=-0.000000e+00 fmath2=0.000000e+00 diff=0.000000e+00
-x=1.175494e-38 std=1.175494e-38 fmath2=0.000000e+00 diff=1.175494e-38
-x=-1.175494e-38 std=-1.175494e-38 fmath2=0.000000e+00 diff=1.175494e-38
+x=-0.000000e+00 std=-0.000000e+00 fmath2=-0.000000e+00 diff=0.000000e+00
+x=1.175494e-38 std=1.175494e-38 fmath2=1.175494e-38 diff=0.000000e+00
+x=-1.175494e-38 std=-1.175494e-38 fmath2=-1.175494e-38 diff=0.000000e+00
 x=5.000000e-01 std=4.621172e-01 fmath2=4.621171e-01 diff=2.980232e-08
 x=-5.000000e-01 std=-4.621172e-01 fmath2=-4.621171e-01 diff=8.940697e-08
 x=1.000000e+00 std=7.615942e-01 fmath2=7.615942e-01 diff=0.000000e+00
@@ -74,5 +75,5 @@ x=-3.402823e+38 std=-1.000000e+00 fmath2=-1.000000e+00 diff=0.000000e+00
 x=inf std=1.000000e+00 fmath2=1.000000e+00 diff=0.000000e+00
 x=-inf std=-1.000000e+00 fmath2=-1.000000e+00 diff=0.000000e+00
 std:  tanh=1.51307002e-04
-fmath:tanh=1.51336193e-04
-ctest:name=exp_v, module=6, total=25730, ok=25730, ng=0, exception=0
+fmath:tanh=1.51307002e-04
+ctest:name=exp_v, module=7, total=26746, ok=26746, ng=0, exception=0
