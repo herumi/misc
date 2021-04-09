@@ -42,7 +42,7 @@ struct ConstVar {
 	uint32_t expMin;
 	static const uint32_t not_mask17= ~((1u << 17) - 1);
 	float tanhRange;
-	float f1p3;
+	float m1d3; // -1/3
 	//
 	void init()
 	{
@@ -52,8 +52,8 @@ struct ConstVar {
 		coeff2 = 0.2413862043;
 		expMax = 0x42b17218;
 		expMin = 0xc47a0000;//0xc2aeac50;
-		tanhRange = 0.01;
-		f1p3 = 1.0f / 3;
+		tanhRange = 0.05;
+		m1d3 = -1.0f / 3.0f;
 	}
 };
 
@@ -108,7 +108,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		ZReg expMax;
 		ZReg expMin;
 		ZReg tanhRange;
-		ZReg f1p3; // 1/3
+		ZReg m1d3; // -1/3
 		ExpParam(bool isPreciseTanh, UsedReg& usedReg)
 			: isPreciseTanh(isPreciseTanh)
 			, regN(isPreciseTanh ? 4 : 3)
@@ -120,7 +120,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 			, expMax(ZReg(usedReg.allocRegIdx()))
 			, expMin(ZReg(usedReg.allocRegIdx()))
 			, tanhRange(isPreciseTanh ? usedReg.allocRegIdx() : 0)
-			, f1p3(isPreciseTanh ? usedReg.allocRegIdx() : 0)
+			, m1d3(isPreciseTanh ? usedReg.allocRegIdx() : 0)
 		{
 		}
 	};
@@ -177,6 +177,12 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	{
 		const int C = para.regN;
 		const int N = C * unrollN;
+		if (para.isPreciseTanh) {
+			for (int i = 0; i < N; i+=C) mov(t[i+3].s, p, t[i+0].s);
+			for (int i = 0; i < N; i+=C) fabs(t[i+1].s, p, t[i+0].s);
+			for (int i = 0; i < N; i+=C) cmplt(PReg(i/C+1).s, p, t[i+1].s, para.tanhRange.s);
+		}
+#if 1
 		// 2x
 		for (int i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, t[i+0].s);
 		// exp(2x)
@@ -198,6 +204,16 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		for (int i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, t[i+0].s);
 		// 1-2/(1+exp(2x))
 		for (int i = 0; i < N; i+=C) fsub(t[i+0].s, para.one.s, t[i+0].s);
+		if (!para.isPreciseTanh) return;
+#endif
+		// tanh(x) = x(1 - x^2/3) for |x| < para.tanhRange
+		for (int i = 0; i < N; i+=C) fmul(t[i+1].s, t[i+3].s, t[i+3].s); // x^2
+		for (int i = 0; i < N; i+=C) {
+			fmad(t[i+1].s, p, para.m1d3.s, para.one.s); // 1-x^2/3
+		}
+		const auto& T_z = Xbyak_aarch64::T_z;
+		for (int i = 0; i < N; i+=C) fmul(t[i+1].s, p, t[i+3].s); // x(1-x^2/3)
+for (int i = 0; i < N; i+=C) mov(t[i+0].s, PReg(i/C+1)/T_z, t[i+1].s); // merge
 	}
 	// f(float *dst, const float *src, size_t n);
 	void genFunc(void (Code::*gen1)(const ExpParam&, int unrollN, const PReg&, const std::vector<ZReg>&), const Xbyak_aarch64::Label& constVarL)
@@ -232,8 +248,8 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		if (isPreciseTanh) {
 			ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, tanhRange)));
 			cpy(param.tanhRange.s, p0/T_z, w4);
-			ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, f1p3)));
-			cpy(param.f1p3.s, p0/T_z, w4);
+			ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, m1d3)));
+			cpy(param.m1d3.s, p0/T_z, w4);
 		}
 
 		std::vector<ZReg> args;
@@ -270,12 +286,12 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		mov(x3, 0);
 		b(cond);
 	Label lp2 = L();
-		ld1w(args[0].s, p1/T_z, ptr(src, x3, LSL, 2));
-		(this->*gen1)(param, 1, p1, args);
-		st1w(args[0].s, p1, ptr(dst, x3, LSL, 2));
+		ld1w(args[0].s, p2/T_z, ptr(src, x3, LSL, 2));
+		(this->*gen1)(param, 1, p2, args);
+		st1w(args[0].s, p2, ptr(dst, x3, LSL, 2));
 		incd(x3);
 	L(cond);
-		whilelt(p1.s, x3, n);
+		whilelt(p2.s, x3, n);
 		b_first(lp2);
 		if (pos > maxN) {
 			int n = pos - maxN;

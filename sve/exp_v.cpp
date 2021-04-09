@@ -74,6 +74,12 @@ inline float expfC(float x)
 	return powf(2.0f, n) * c * d;
 }
 
+inline float tanhfC(float x)
+{
+	float y = expfC(x * 2);
+	return 1 - 2 / (1 + y);
+}
+
 void std_exp_v(float *dst, const float *src, size_t n)
 {
 	for (size_t i = 0; i < n; i++) {
@@ -88,6 +94,28 @@ void std_tanh_v(float *dst, const float *src, size_t n)
 	}
 }
 
+#if 1
+CYBOZU_TEST_AUTO(preciseTanh)
+{
+	float tbl[] = { -INFINITY, -100, -1, -0.6, -0.5, -0.4, -0.1, -0.000151307, 0.000151307, 0.1, 0.4, 0.5, 0.6, 1, 100, INFINITY };
+	const size_t n = CYBOZU_NUM_OF_ARRAY(tbl);
+	for (size_t i = 0; i < n; i++) {
+		float x = tbl[i];
+		float a = tanh(x);
+		float b = fmath_tanhf(x);
+		printf("x=%e correct=%e asm=%e(%e)\n", x, a, b, fabs(b-a));
+	}
+	exit(1);
+	for (float x = 1e-7; x < 0.1; x += 1e-4) {
+		float a = tanh(x);
+		float b = fmath_tanhf(x);
+		float e = fabs(a - b) / a;
+		printf("x=%e a=%e b=%e e=%e\n", x, a, b, e);
+	}
+}
+#endif
+
+#if 1
 template<class F>
 float putDiff(float begin, float end, float step, const F& f, bool doPut = false, float stdf(float) = std::exp)
 {
@@ -224,6 +252,7 @@ void limitTest(float f1(float), float f2(float))
 		printf("x=%e std=%e fmath2=%e diff=%e\n", -x, a, b, e);
 	}
 }
+
 CYBOZU_TEST_AUTO(expLimit)
 {
 	puts("expLimit");
@@ -241,3 +270,4 @@ CYBOZU_TEST_AUTO(tanhLimit)
 	printf("std:  tanh=%.8e\n", tanhf(x));
 	printf("fmath:tanh=%.8e\n", fmath_tanhf(x));
 }
+#endif
