@@ -98,6 +98,8 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	VecFunc expf_v;
 	VecFunc tanhf_v;
 	struct ExpParam {
+		bool isPreciseTanh;
+		int regN;
 		ZReg log2_e;
 		ZReg not_mask17;
 		ZReg one;
@@ -108,7 +110,9 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		ZReg tanhRange;
 		ZReg f1p3; // 1/3
 		ExpParam(bool isPreciseTanh, UsedReg& usedReg)
-			: log2_e(ZReg(usedReg.allocRegIdx()))
+			: isPreciseTanh(isPreciseTanh)
+			, regN(isPreciseTanh ? 4 : 3)
+			, log2_e(ZReg(usedReg.allocRegIdx()))
 			, not_mask17(ZReg(usedReg.allocRegIdx()))
 			, one(ZReg(usedReg.allocRegIdx()))
 			, coeff1(ZReg(usedReg.allocRegIdx()))
@@ -140,11 +144,11 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	}
 	// C = regN
 	// t[0+i*C] = exp(t[0+i*C]), using t[0+i*C], t[1+i*C], t[2+i*C]
-	void genExp1(int regN, int unrollN, const PReg& p, const std::vector<ZReg>& t, const ExpParam& para)
+	void genExp1(const ExpParam& para, int unrollN, const PReg& p, const std::vector<ZReg>& t)
 	{
 		using namespace Xbyak_aarch64;
-		const int C = regN;
-		const int N = regN * unrollN;
+		const int C = para.regN;
+		const int N = C * unrollN;
 		for (int i = 0; i < N; i+=C) fmin(t[i+0].s, p, para.expMax.s);
 		for (int i = 0; i < N; i+=C) fmax(t[i+0].s, p, para.expMin.s);
 		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, para.log2_e.s);
@@ -169,14 +173,14 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	}
 	// tanh(x) = 1 - 2/(1 + exp(2 x))
 	// tanh(x) = (e - 1)/(e + 1) where e = exp(2 x)
-	void genTanh1(int regN, int unrollN, const PReg& p, const std::vector<ZReg>& t, const ExpParam& para)
+	void genTanh1(const ExpParam& para, int unrollN, const PReg& p, const std::vector<ZReg>& t)
 	{
-		const int C = regN;
-		const int N = regN * unrollN;
+		const int C = para.regN;
+		const int N = C * unrollN;
 		// 2x
 		for (int i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, t[i+0].s);
 		// exp(2x)
-		genExp1(regN, unrollN, p, t, para);
+		genExp1(para, unrollN, p, t);
 		// 1+exp(2x)
 		for (int i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, para.one.s);
 
@@ -196,12 +200,8 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		for (int i = 0; i < N; i+=C) fsub(t[i+0].s, para.one.s, t[i+0].s);
 	}
 	// f(float *dst, const float *src, size_t n);
-	void genFunc(void (Code::*gen1)(int, int, const PReg&, const std::vector<ZReg>&, const ExpParam&), const Xbyak_aarch64::Label& constVarL)
+	void genFunc(void (Code::*gen1)(const ExpParam&, int unrollN, const PReg&, const std::vector<ZReg>&), const Xbyak_aarch64::Label& constVarL)
 	{
-		const int unrollN = 3;
-		const int isPreciseTanh = true;
-		const int regN = isPreciseTanh ? 4 : 3;
-
 		using namespace Xbyak_aarch64;
 		const XReg& dst = x0;
 		const XReg& src = x1;
@@ -209,7 +209,10 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 
 		UsedReg usedReg;
 
+		const bool isPreciseTanh = true;
 		ExpParam param(isPreciseTanh, usedReg);
+		const int unrollN = 3;
+		const int regN = param.regN;
 		ptrue(p0.s);
 
 		adr(x3, constVarL);
@@ -253,7 +256,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		if (unrollN > 1) ld1w(args[regN].s, p0/T_z, ptr(src, 1));
 		if (unrollN > 2) ld1w(args[regN * 2].s, p0/T_z, ptr(src, 2));
 		add(src, src, 64 * unrollN);
-		(this->*gen1)(regN, unrollN, p0, args, param);
+		(this->*gen1)(param, unrollN, p0, args);
 		st1w(args[0].s, p0, ptr(dst));
 		if (unrollN > 1) st1w(args[regN].s, p0, ptr(dst, 1));
 		if (unrollN > 2) st1w(args[regN * 2].s, p0, ptr(dst, 2));
@@ -268,7 +271,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		b(cond);
 	Label lp2 = L();
 		ld1w(args[0].s, p1/T_z, ptr(src, x3, LSL, 2));
-		(this->*gen1)(regN, 1, p1, args, param);
+		(this->*gen1)(param, 1, p1, args);
 		st1w(args[0].s, p1, ptr(dst, x3, LSL, 2));
 		incd(x3);
 	L(cond);
@@ -285,7 +288,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	}
 	void genExp(const Xbyak_aarch64::Label& constVarL)
 	{
-		genFunc( &Code::genExp1, constVarL);
+		genFunc(&Code::genExp1, constVarL);
 	}
 	void genTanh(const Xbyak_aarch64::Label& constVarL)
 	{
