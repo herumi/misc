@@ -16,7 +16,7 @@ float x[1024]
 using namespace Xbyak_aarch64;
 
 struct Code : CodeGenerator {
-	Code(int op, int mode)
+	Code(int op, int mode, bool addMovprfx)
 	{
 		const auto& out = x0;
 		const auto& src1 = x1;
@@ -33,7 +33,7 @@ struct Code : CodeGenerator {
 		ld1w(z1.s, p0/T_z, ptr(src2, idx, LSL, 2));
 		switch (op) {
 		case 0:
-//movprfx(z2.s, p0/T_z, z0.s);
+			if (addMovprfx) movprfx(z2.s, p0/T_z, z0.s);
 			frintm(z2.s, p0, z0.s); // floor
 			break;
 		case 1:
@@ -123,6 +123,7 @@ int main(int argc, char *argv[])
 	try
 {
 	int op = argc == 1 ? 0 : atoi(argv[1]);
+	bool addMovprfx = argc == 3;
 	const char *opTbl[] = {
 		"floor",
 		"add",
@@ -135,10 +136,10 @@ int main(int argc, char *argv[])
 		"frecpsx2 z3",
 		"frecps+fma",
 	};
-	printf("op=%d %s\n", op, opTbl[op]);
+	printf("op=%d %s addMovprfx=%d\n", op, opTbl[op], addMovprfx);
 	for (int mode = 0; mode < sizeof(modeTbl)/sizeof(modeTbl[0]); mode++) {
 		printf("mode=%s\n", modeTbl[mode]);
-		Code c(op, mode);
+		Code c(op, mode, addMovprfx);
 		auto fA = c.getCode<void (*)(float *, const float *, const float *, size_t)>();
 		c.ready();
 		const size_t n = 1024;
