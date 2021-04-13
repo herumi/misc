@@ -33,11 +33,19 @@ struct Code : CodeGenerator {
 		ld1w(z1.s, p0/T_z, ptr(src2, idx, LSL, 2));
 		switch (op) {
 		case 0:
-			if (addMovprfx) movprfx(z2.s, p0/T_z, z0.s);
+			if (addMovprfx) movprfx(z2.s, p0, z0.s);
 			frintm(z2.s, p0, z0.s); // floor
 			break;
 		case 1:
 			fadd(z2.s, z0.s, z0.s);
+			break;
+		case 2:
+			if (addMovprfx) {
+				movprfx(z2.s, p0, z0.s); // T_z
+			} else {
+				mov(z2.s, p0, z0.s); // T_m
+			}
+			fadd(z2.s, p0, z0.s);
 			break;
 		}
 		fadd(z0.s, z1.s, z2.s);
@@ -109,6 +117,7 @@ void fC(int op, float *z, const float *x, const float *y, size_t n)
 			v = floor(x[i]) + y[i];
 			break;
 		case 1:
+		case 2:
 			v = (x[i] + x[i]) + y[i];
 			break;
 		default:
@@ -127,6 +136,7 @@ int main(int argc, char *argv[])
 	const char *opTbl[] = {
 		"floor",
 		"add",
+		"add(pred)",
 	};
 	const char *modeTbl[] = {
 		"fdivr",
