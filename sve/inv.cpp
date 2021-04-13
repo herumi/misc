@@ -43,8 +43,6 @@ struct Code : CodeGenerator {
 		fadd(z0.s, z1.s, z2.s);
 		switch (mode) {
 		case 0:
-//			movprfx(z0.s, p0, one.s);
-//			fdiv(z0.s, p0, z0.s);
 			fdivr(z0.s, p0, one.s);
 			break;
 		case 1:
@@ -72,6 +70,26 @@ struct Code : CodeGenerator {
 
 			frecps(z3.s, z0.s, z1.s);
 			fmul(z0.s, z1.s, z3.s);
+			break;
+		case 5:
+		/*
+			y = approx(1/x)
+			y = 1/x + e
+			d = 1 - x y = 1 - x(1/x+e) = -xe
+			d = d d + d = d(1+d) = -xe(1-xe)
+			d = d y + y = y(1+d) = (1/x+e)(1-xe+(xe)^2)
+			  = 1/x + x^2 e^3
+			fmls(a, b, c) : a = a - b * c
+			fmad(a, b, c) ; a = a * b + c
+		*/
+			frecpe(z1.s, z0.s);
+			// d = 1 - x * y
+			movprfx(z0.s, p0, one.s);
+			fmls(z0.s, p0, z0.s, z1.s);
+			// d = d * d + d
+			fmad(z0.s, p0, z0.s, z0.s);
+			// d = d * y + y
+			fmad(z0.s, p0, z1.s, z1.s);
 			break;
 		}
 		st1w(z0.s, p0, ptr(out, idx, LSL, 2));
@@ -115,9 +133,10 @@ int main(int argc, char *argv[])
 		"frecps z3",
 		"frecpsx2 z2",
 		"frecpsx2 z3",
+		"frecps+fma",
 	};
 	printf("op=%d %s\n", op, opTbl[op]);
-	for (int mode = 0; mode < 5; mode++) {
+	for (int mode = 0; mode < sizeof(modeTbl)/sizeof(modeTbl[0]); mode++) {
 		printf("mode=%s\n", modeTbl[mode]);
 		Code c(op, mode);
 		auto fA = c.getCode<void (*)(float *, const float *, const float *, size_t)>();

@@ -78,9 +78,21 @@ struct Code : CodeGenerator {
 	// err < 1e-5
 	void invW(const ZReg& dst, const ZReg& src1, const ZReg& src2)
 	{
+#if 1
+		frecpe(src2.s, src1.s);
+		fcpy(dst.s, p0, 1.0);
+		// fmls(a, b, c) : a -= b * c
+		// dst = 1 - x * y
+		fmls(dst.s, p0, src1.s, src2.s);
+		// dst = dst * dst + dst
+		fmad(dst.s, p0, dst.s, dst.s);
+		// dst = dst * y + y
+		fmad(dst.s, p0, src2.s, src2.s);
+#else
 		frecpe(src2.s, src1.s);
 		frecps(dst.s, src1.s, src2.s);
 		fmul(dst.s, dst.s, src2.s);
+#endif
 	}
 	void frecpsW(const ZReg& dst, const ZReg& src1, const ZReg& src2)
 	{
