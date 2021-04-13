@@ -1,11 +1,11 @@
 #include <xbyak_aarch64/xbyak_aarch64.h>
 
-struct Code : public Xbyak_aarch64::CodeGenerator {
-	typedef Xbyak_aarch64::ZReg ZReg;
-	typedef Xbyak_aarch64::PReg PReg;
+using namespace Xbyak_aarch64;
+
+struct Code : public CodeGenerator {
 	Code()
 	{
-		mov(w0, ~0x1ffff);
+		fadd(z0.s, p0/T_m, z0.s);
 		ret();
 	}
 };
@@ -15,8 +15,8 @@ int main()
 {
 	Code c;
 	c.ready();
-	int (*f)() = c.getCode<int (*)()>();
-	printf("f=%08x\n", f());
+	const uint32_t* d = c.getCode<uint32_t*>();
+	printf("d=%08x\n", *d);
 } catch (std::exception& e) {
 	printf("err %s\n", e.what());
 }

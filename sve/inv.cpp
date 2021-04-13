@@ -156,6 +156,7 @@ int main(int argc, char *argv[])
 		float x[n], y[n], z1[n], z2[n];
 		for (size_t i = 0; i < n; i++) {
 			x[i] = i + 1;
+x[i] = 1e30;
 			y[i] = i;
 			z1[i] = -99;
 			z2[i] = z1[i];

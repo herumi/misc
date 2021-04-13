@@ -182,7 +182,6 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 			for (int i = 0; i < N; i+=C) fabs(t[i+1].s, p, t[i+0].s);
 			for (int i = 0; i < N; i+=C) cmplt(PReg(i/C+1).s, p, t[i+1].s, para.tanhRange.s);
 		}
-#if 1
 		// 2x
 		for (int i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, t[i+0].s);
 		// exp(2x)
@@ -190,6 +189,19 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		// 1+exp(2x)
 		for (int i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, para.one.s);
 
+#if 0
+		// y = approx(1/x)
+		for (int i = 0; i < N; i+=C) frecpe(t[i+1].s, t[i+0].s);
+		// d = 1 - x * y
+		for (int i = 0; i < N; i+=C) {
+			movprfx(t[i+0].s, p, para.one.s);
+			fmls(t[i+0].s, p, t[i+0].s, t[i+1].s);
+		}
+		// d = d * d + d
+		for (int i = 0; i < N; i+=C) fmad(t[i+0].s, p, t[i+0].s, t[i+0].s);
+		// d = d * y + y
+		for (int i = 0; i < N; i+=C) fmad(t[i+0].s, p, t[i+1].s, t[i+1].s);
+#else
 		// 1/(1+exp(2x))
 		// 1st aprox ; a = 1/x + e
 		for (int i = 0; i < N; i+=C) frecpe(t[i+1].s, t[i+0].s);
@@ -199,13 +211,14 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		// 3rd aprox ; a'' = (2 - a'x)a'
 		for (int i = 0; i < N; i+=C) frecps(t[i+0].s, t[i+0].s, t[i+2].s);
 		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, t[i+2].s);
+#endif
 
 		// 2/(1+exp(2x))
 		for (int i = 0; i < N; i+=C) fadd(t[i+0].s, t[i+0].s, t[i+0].s);
 		// 1-2/(1+exp(2x))
 		for (int i = 0; i < N; i+=C) fsub(t[i+0].s, para.one.s, t[i+0].s);
 		if (!para.isPreciseTanh) return;
-#endif
+
 		// tanh(x) = x(1 - x^2/3) for |x| < para.tanhRange
 		for (int i = 0; i < N; i+=C) fmul(t[i+1].s, t[i+3].s, t[i+3].s); // x^2
 		for (int i = 0; i < N; i+=C) fmad(t[i+1].s, p, para.m1d3.s, para.one.s); // 1-x^2/3
