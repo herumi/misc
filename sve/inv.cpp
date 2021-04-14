@@ -99,6 +99,21 @@ struct Code : CodeGenerator {
 			// d = d * y + y
 			fmad(z0.s, p0, z1.s, z1.s);
 			break;
+		case 6:
+			/*
+				if x = inf then d = 1 - x approx(1/x) = nan
+			*/
+			frecpe(z1.s, z0.s);
+			cmpeq(p1.s, p0, z1.s, 0);
+			// d = 1 - x * y
+			movprfx(z0.s, p0, one.s);
+			fmls(z0.s, p0, z0.s, z1.s);
+			// d = d * d + d
+			fmad(z0.s, p0, z0.s, z0.s);
+			// d = d * y + y
+			fmad(z0.s, p0, z1.s, z1.s);
+			mov(z0.s, p1/T_z, z0.s); // z0 = 0 if x = inf
+			break;
 		}
 		st1w(z0.s, p0, ptr(out, idx, LSL, 2));
 		add(idx, idx, 16);
@@ -145,6 +160,7 @@ int main(int argc, char *argv[])
 		"frecpsx2 z2",
 		"frecpsx2 z3",
 		"frecps+fma",
+		"frecps+fma+cmpeq",
 	};
 	printf("op=%d %s addMovprfx=%d\n", op, opTbl[op], addMovprfx);
 	for (int mode = 0; mode < sizeof(modeTbl)/sizeof(modeTbl[0]); mode++) {
@@ -156,7 +172,6 @@ int main(int argc, char *argv[])
 		float x[n], y[n], z1[n], z2[n];
 		for (size_t i = 0; i < n; i++) {
 			x[i] = i + 1;
-x[i] = 1e30;
 			y[i] = i;
 			z1[i] = -99;
 			z2[i] = z1[i];
@@ -166,11 +181,18 @@ x[i] = 1e30;
 		bool ok = true;
 		float maxe = 0;
 		for (size_t i = 0; i < 16; i++) {
+			union {
+				float f;
+				uint32_t i;
+			} fi;
 			float d = fabs(z1[i] - z2[i]);
 			if (d > maxe) maxe = d;
 			if (d > 1e-5) {
 				ok = false;
-				printf("i=%zd z1=%f z2=%f\n", i, z1[i], z2[i]);
+				fi.f = z1[i];
+				printf("i=%zd x=%f y=%f z1=%f(%08x) ", i, x[i], y[i], fi.f, fi.i);
+				fi.f = z2[i];
+				printf("z2=%f(%08x)\n", fi.f, fi.i);
 			}
 		}
 		printf("%s maxe=%e\n", ok ? "ok" : "ng", maxe);
