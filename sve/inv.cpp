@@ -112,7 +112,7 @@ struct Code : CodeGenerator {
 			fmad(z0.s, p0, z0.s, z0.s);
 			// d = d * y + y
 			fmad(z0.s, p0, z1.s, z1.s);
-			mov(z0.s, p1/T_z, z0.s); // z0 = 0 if x = inf
+			mov(z0.s, p1/T_m, 0); // z0 = 0 if x = inf
 			break;
 		}
 		st1w(z0.s, p0, ptr(out, idx, LSL, 2));
@@ -172,6 +172,7 @@ int main(int argc, char *argv[])
 		float x[n], y[n], z1[n], z2[n];
 		for (size_t i = 0; i < n; i++) {
 			x[i] = i + 1;
+			if (i == 3) x[i] = INFINITY;
 			y[i] = i;
 			z1[i] = -99;
 			z2[i] = z1[i];
@@ -187,7 +188,7 @@ int main(int argc, char *argv[])
 			} fi;
 			float d = fabs(z1[i] - z2[i]);
 			if (d > maxe) maxe = d;
-			if (d > 1e-5) {
+			if (isnan(d) || d > 1e-5) {
 				ok = false;
 				fi.f = z1[i];
 				printf("i=%zd x=%f y=%f z1=%f(%08x) ", i, x[i], y[i], fi.f, fi.i);
