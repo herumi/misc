@@ -6,7 +6,7 @@ ifneq ($(DEBUG),1)
 CPPFLAGS+=-O2 -DNDEBUG
 endif
 LDFLAGS=-s -L $(LIB_DIR) -lxbyak_aarch64 -g
-SRC=double-vec.cpp int-vec.cpp float-vec.cpp float-test.cpp exp_v.cpp
+SRC=double-vec.cpp int-vec.cpp float-vec.cpp float-test.cpp exp_v.cpp log.cpp
 OBJ=$(SRC:.cpp=.o)
 EXE=$(SRC:.cpp=.exe)
 DEP=$(SRC:.cpp=.d)
