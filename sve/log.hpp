@@ -24,9 +24,9 @@ inline float cvt(uint32_t x)
 	return fi.f;
 }
 
-static const size_t logN = 9;
 
 struct ConstVar {
+	static const size_t logN = 9;
 	uint32_t i127shl23;
 	uint32_t x7fffff;
 	float log2;
