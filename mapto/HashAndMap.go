@@ -3,7 +3,6 @@ package BN254
 import (
 	"math/big"
 	"github.com/0chain/gosdk/miracl/core"
-	"fmt"
 )
 
 func StringToFP(s string, base int) *FP {
@@ -161,28 +160,22 @@ func (H *HashAndMap) copyAndMask(b []byte) *FP {
 	for i := 0; i < n; i++ {
 		rb[i] = b[n - 1 - i]
 	}
-	fmt.Printf("rb=%x\n", rb)
 	const bitLen = 254
 	mask := 1 << ((bitLen % 8) - 1) - 1
-	fmt.Printf("mask=%x\n", mask)
 	rb[0] = byte(int(rb[0]) & mask)
-	fmt.Printf("rb2=%x\n", rb)
 	xb := new(big.Int)
 	xb.SetBytes(rb)
 	if xb.Cmp(H.sq.p) >= 0 {
 		xb.Sub(xb, H.sq.p)
 	}
-	fmt.Printf("x=%v\n", xb.String())
 	x := BigInttoFP(xb)
 	return x
 }
 
 func (H *HashAndMap) SetHashOf(msg []byte) *ECP {
-fmt.Printf("msg=%x\n", msg)
 	hash := core.NewHASH256()
 	hash.Process_array(msg)
 	md := hash.Hash()
-	fmt.Printf("md=%x\n", md)
 	x := H.copyAndMask(md)
 	return H.MapToG1(x)
 }
