@@ -15,6 +15,7 @@ func TestMain(t *testing.T) {
 	fmt.Printf("x=%v\n", x.ToString())
 	H := NewHashAndMap()
 	P := H.MapToG1(x)
+/*
 	fmt.Printf("P=%v\n", P.ToString())
 	for i := 1; i < 10; i++ {
 		x = NewFPint(i)
@@ -22,5 +23,8 @@ func TestMain(t *testing.T) {
 		P = H.MapToG1(x)
 		fmt.Printf("P=%v\n", P.ToString())
 	}
+*/
+	P = H.SetHashOf([]byte("abc"))
+	fmt.Printf("P=%v\n", P.ToString())
 }
 
