@@ -25,10 +25,6 @@ func BigInttoFP(x *big.Int) *FP {
 
 type SquareRoot struct {
 	p             *big.Int
-	g             *big.Int
-	r             int
-	q             *big.Int
-	s             *big.Int
 	q_add_1_div_2 *big.Int
 }
 
@@ -36,12 +32,6 @@ func NewSquareRoot() *SquareRoot {
 	sq := new(SquareRoot)
 	sq.p = new(big.Int)
 	sq.p.SetString("2523648240000001ba344d80000000086121000000000013a700000000000013", 16)
-	sq.g = big.NewInt(2)
-	sq.r = 1
-	sq.q = new(big.Int)
-	sq.q.SetString("1291b24120000000dd1a26c0000000043090800000000009d380000000000009", 16)
-	sq.s = new(big.Int)
-	sq.s.SetString("2523648240000001ba344d80000000086121000000000013a700000000000012", 16)
 	sq.q_add_1_div_2 = new(big.Int)
 	sq.q_add_1_div_2.SetString("948d920900000006e8d1360000000021848400000000004e9c0000000000005", 16)
 	return sq
@@ -56,7 +46,7 @@ func (sq *SquareRoot) get(a *big.Int) *big.Int {
 	if big.Jacobi(a, sq.p) < 0 {
 		return nil
 	}
-	// (p + 1) / 4 = (q + 1) / 2
+	// (p + 1) / 4
 	x.Exp(a, sq.q_add_1_div_2, sq.p)
 	return x
 }
