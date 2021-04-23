@@ -1,16 +1,9 @@
 package BN254
 
 import (
-	"math/big"
 	"github.com/0chain/gosdk/miracl/core"
+	"math/big"
 )
-
-func StringToFP(s string, base int) *FP {
-	var t big.Int
-	t.SetString(s, base)
-	tb := FromBytes(t.Bytes())
-	return NewFPbig(tb)
-}
 
 func FPtoBigInt(x *FP) *big.Int {
 	t := new(big.Int)
@@ -19,15 +12,23 @@ func FPtoBigInt(x *FP) *big.Int {
 }
 
 func BigInttoFP(x *big.Int) *FP {
-	return StringToFP(x.String(), 10)
+	buf := make([]byte, 32)
+	xb := x.Bytes()
+	n := len(xb)
+	if n > 32 {
+		panic("err")
+	}
+	copy(buf[32-n:], xb)
+	fp := FP_fromBytes(buf)
+	return fp
 }
 
 type SquareRoot struct {
-	p *big.Int
-	g *big.Int
-	r int
-	q *big.Int
-	s *big.Int
+	p             *big.Int
+	g             *big.Int
+	r             int
+	q             *big.Int
+	s             *big.Int
 	q_add_1_div_2 *big.Int
 }
 
@@ -70,12 +71,12 @@ func (sq *SquareRoot) Get(a *FP) *FP {
 }
 
 type HashAndMap struct {
-	a *FP
-	b *FP
+	a   *FP
+	b   *FP
 	one *FP
-	c1 *FP
-	c2 *FP
-	sq *SquareRoot
+	c1  *FP
+	c2  *FP
+	sq  *SquareRoot
 }
 
 func NewHashAndMap() *HashAndMap {
@@ -105,7 +106,6 @@ func (H *HashAndMap) getWeierstrass(x *FP) *FP {
 
 func (H *HashAndMap) MapToG1(t *FP) *ECP {
 	negative := t.jacobi() < 0
-	P := NewECP()
 	w := NewFPcopy(t)
 	w.sqr()
 	w.add(H.b)
@@ -140,6 +140,7 @@ func (H *HashAndMap) MapToG1(t *FP) *ECP {
 			if negative {
 				y.neg()
 			}
+			P := NewECP()
 			P.x = &x
 			P.y = y
 			P.z = NewFPint(1)
@@ -151,22 +152,23 @@ func (H *HashAndMap) MapToG1(t *FP) *ECP {
 
 /*
 	use b as little endian
-	mask b with (1 << bitLen - 1) - 1 where bitLen = 254
+	1. b &= (1 << bitLen) - 1
+	2. b &= (1 << (bitLen - 1)) - 1 if b >= p
 	big.Int.SetBytes accepts big endian
 */
 func (H *HashAndMap) copyAndMask(b []byte) *FP {
 	n := len(b)
 	rb := make([]byte, n)
 	for i := 0; i < n; i++ {
-		rb[i] = b[n - 1 - i]
+		rb[i] = b[n-1-i]
 	}
 	const bitLen = 254
-	mask := 1 << ((bitLen % 8) - 1) - 1
+	mask := 1<<(bitLen%8) - 1
 	rb[0] = byte(int(rb[0]) & mask)
 	xb := new(big.Int)
 	xb.SetBytes(rb)
 	if xb.Cmp(H.sq.p) >= 0 {
-		xb.Sub(xb, H.sq.p)
+		xb.SetBit(xb, bitLen-1, 0)
 	}
 	x := BigInttoFP(xb)
 	return x
@@ -179,4 +181,3 @@ func (H *HashAndMap) SetHashOf(msg []byte) *ECP {
 	x := H.copyAndMask(md)
 	return H.MapToG1(x)
 }
-

@@ -1,8 +1,9 @@
 package BN254
 
 import (
-	"testing"
 	"fmt"
+	"strconv"
+	"testing"
 )
 
 func TestMain(t *testing.T) {
@@ -11,26 +12,9 @@ func TestMain(t *testing.T) {
 		return
 	}
 	H := NewHashAndMap()
-/*
-	x := StringToFP("ac00f2c9af814438db241461ec7825ed88d00b0951049aa1b5116e6dca345ea", 16)
-
-	fmt.Printf("x=%v\n", x.ToString())
-	P := H.MapToG1(x)
-	fmt.Printf("P=%v\n", P.ToString())
-	for i := 1; i < 10; i++ {
-		x = NewFPint(i)
-		fmt.Printf("x=%v\n", x.ToString())
-		P = H.MapToG1(x)
-		fmt.Printf("P=%v\n", P.ToString())
-	}
-	P = H.SetHashOf([]byte("abc"))
-	fmt.Printf("P=%v\n", P.ToString())
-*/
-	x := []byte("abcx");
-	for i := 0; i < 100; i++ {
-		x[3] = byte(i);
-		P := H.SetHashOf(x)
+	for i := 0; i < 10000; i++ {
+		s := strconv.Itoa(i)
+		P := H.SetHashOf([]byte(s))
 		fmt.Printf("%d %v\n", i, P.ToString())
 	}
 }
-
