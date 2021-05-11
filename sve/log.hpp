@@ -104,6 +104,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		ZReg log2;
 		ZReg log1p5;
 		ZReg f2div3;
+		ZRegVec coeffTbl;
 		ExpParam(UsedReg& usedReg)
 			: regN(5)
 			, i127shl23(ZReg(usedReg.allocRegIdx()))
@@ -112,6 +113,9 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 			, log1p5(ZReg(usedReg.allocRegIdx()))
 			, f2div3(ZReg(usedReg.allocRegIdx()))
 		{
+			for (int i = 0; i < (int)ConstVar::logN; i++) {
+				coeffTbl.push_back(ZReg(usedReg.allocRegIdx()));
+			}
 		}
 	};
 	Code()
@@ -133,12 +137,19 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	{
 		using namespace Xbyak_aarch64;
 		const int C = para.regN;
-		const int N = C * unrollN;
-		sub(t[1].s, t[1].s, para.i127shl23.s);
-		lsr(t[1].s, t[0].s, 23);
+//		const int N = C * unrollN;
+		sub(t[1].s, t[0].s, para.i127shl23.s);
+		asr(t[1].s, t[1].s, 23);
+		// int -> float
 		scvtf(t[1].s, p0, t[1].s);
 		and_(t[0].s, p0, para.x7fffff.s);
 		orr(t[0].s, p0, para.i127shl23.s);
+
+		// fnmsb(a, b, c) = a * b - c
+		fnmsb(t[0].s, p0, para.f2div3.s, para.coeffTbl[0].s);
+		fmad(t[1].s, p0, para.log2.s, para.log1p5.s);
+//orr(t[0].d, t[1].d, t[1].d);
+//return;
 	}
 	// f(float *dst, const float *src, size_t n);
 	void genFunc(void (Code::*gen1)(const ExpParam&, int unrollN, const PReg&, const std::vector<ZReg>&), const Xbyak_aarch64::Label& constVarL)
@@ -172,14 +183,19 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, f2div3)));
 		cpy(param.f2div3.s, p0/T_z, w4);
 
+		for (int i = 0; i < (int)ConstVar::logN; i++) {
+			ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, logCoeff) + i * 4));
+			cpy(param.coeffTbl[i].s, p0/T_z, w4);
+		}
+
 		std::vector<ZReg> args;
-		for (size_t i = 0; i < regN * unrollN; i++) {
+		for (int i = 0; i < regN * unrollN; i++) {
 			args.push_back(ZReg(usedReg.allocRegIdx()));
 		}
 		const size_t maxN = usedReg.getMaxFreeN();
 		const size_t pos = usedReg.getPos();
 		if (pos > maxN) {
-			size_t n = pos - maxN;
+			int n = pos - maxN;
 			sub(sp, sp, int((n + 1) & ~1) * 64);
 			for (int i = 0; i < n; i++) {
 				st1w(ZReg(pos + i).s, p0, ptr(sp, i));

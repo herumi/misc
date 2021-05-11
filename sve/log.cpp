@@ -32,7 +32,7 @@ float logfC(float x)
 	const local::ConstVar& C = *local::Inst<>::code.constVar;
 	local::fi fi;
 	fi.f = x;
-	float e = (int(fi.i - (127 << 23))) >> 23;
+	float e = int(fi.i - (127 << 23)) >> 23;
 	fi.i = (fi.i & 0x7fffff) | (127 << 23);
 	float y = fi.f;
 	/*
@@ -69,10 +69,12 @@ CYBOZU_TEST_AUTO(log)
 	const size_t n = CYBOZU_NUM_OF_ARRAY(tbl);
 	for (size_t i = 0; i < n; i++) {
 		float x = tbl[i];
-		float a = log(x);
-		float b = logfC(x);//fmath::logf(x);
+//		float a = log(x);
+		float a = logfC(x);
+		float b = fmath::logf(x);
 		float e = x ? fabs(a - b) / x : fabs(a - b);
 		printf("%zd x=%e a=%e b=%e e=%e\n", i, x, a, b, e);
+		printf("    x=%08x a=%08x b=%08x\n", f2u(x), f2u(a), f2u(b));
 //		CYBOZU_TEST_ASSERT(e < 1e-5);
 	}
 }
