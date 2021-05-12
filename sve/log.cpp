@@ -79,17 +79,21 @@ CYBOZU_TEST_AUTO(log)
 	}
 }
 
-void checkDiff(const float *x, const float *y, size_t n, bool put = true)
+void checkDiff(const float *x, const float *y1, const float *y2, size_t n, bool put = false)
 {
 	for (size_t i = 0; i < n; i++) {
-		float d = diff(x[i], y[i]);
+		float d = diff(y1[i], y2[i]);
 		if (put) {
 			if (d > g_maxe) {
-				printf("err n=%zd, i=%zd x=%e y=%e\n", n, i, x[i], y[i]);
+				printf("err n=%zd, i=%zd x=%e y1=%e y2=%e\n", n, i, x[i], y1[i], y2[i]);
 				exit(1);
 			}
 		} else {
 			CYBOZU_TEST_ASSERT(d <= g_maxe);
+			if (d > g_maxe) {
+				printf("err n=%zd, i=%zd x=%e y1=%e y2=%e\n", n, i, x[i], y1[i], y2[i]);
+				exit(1);
+			}
 		}
 	}
 }
@@ -105,7 +109,7 @@ CYBOZU_TEST_AUTO(logf_v)
 	}
 	std_log_v(y1, x, n);
 	fmath::logf_v(y2, x, n);
-	checkDiff(y1, y2, n);
+	checkDiff(x, y1, y2, n);
 }
 
 typedef std::vector<float> Fvec;
@@ -132,15 +136,15 @@ CYBOZU_TEST_AUTO(bench)
 	for (int i = 0; i < 100; i++) {
 		memset(&y1[0], 0, i * sizeof(float));
 		fmath::logf_v(&y1[0], &x[0], i);
-		checkDiff(&y0[0], &y1[0], i);
+		checkDiff(&x[0], &y0[0], &y1[0], i);
 	}
 	CYBOZU_BENCH_C("", C, fmath::logf_v, &y1[0], &x[0], n);
 	putClk("fmath::logf_v", C * (n / 16));
-	checkDiff(&y0[0], &y1[0], n);
+	checkDiff(&x[0], &y0[0], &y1[0], n);
 	n = 1024 * 4;
 	memset(y1.data(), 0, n * sizeof(float));
 	CYBOZU_BENCH_C("", C, fmath::logf_v, &y1[0], &x[0], n);
 	putClk("fmath::logf_v", C * (n / 16));
-	checkDiff(&y0[0], &y1[0], n);
+	checkDiff(&x[0], &y0[0], &y1[0], n);
 }
 
