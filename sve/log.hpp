@@ -106,7 +106,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		ZReg f2div3;
 		ZRegVec coeffTbl;
 		ExpParam(UsedReg& usedReg)
-			: regN(5)
+			: regN(3)
 			, i127shl23(ZReg(usedReg.allocRegIdx()))
 			, x7fffff(ZReg(usedReg.allocRegIdx()))
 			, log2(ZReg(usedReg.allocRegIdx()))
@@ -137,25 +137,28 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	{
 		using namespace Xbyak_aarch64;
 		const int C = para.regN;
-//		const int N = C * unrollN;
-		sub(t[1].s, t[0].s, para.i127shl23.s);
-		asr(t[1].s, t[1].s, 23);
+		const int N = C * unrollN;
+		for (int i = 0; i < N; i+=C) sub(t[i+1].s, t[i+0].s, para.i127shl23.s);
+		for (int i = 0; i < N; i+=C) asr(t[i+1].s, t[i+1].s, 23);
 		// int -> float
-		scvtf(t[1].s, p0, t[1].s);
-		and_(t[0].s, p0, para.x7fffff.s);
-		orr(t[0].s, p0, para.i127shl23.s);
+		for (int i = 0; i < N; i+=C) scvtf(t[i+1].s, p0, t[i+1].s);
+		for (int i = 0; i < N; i+=C) and_(t[i+0].s, p0, para.x7fffff.s);
+		for (int i = 0; i < N; i+=C) orr(t[i+0].s, p0, para.i127shl23.s);
 
 		// fnmsb(a, b, c) = a * b - c
-		fnmsb(t[0].s, p0, para.f2div3.s, para.coeffTbl[0].s);
-		fmad(t[1].s, p0, para.log2.s, para.log1p5.s);
+		for (int i = 0; i < N; i+=C) fnmsb(t[i+0].s, p0, para.f2div3.s, para.coeffTbl[0].s);
+		for (int i = 0; i < N; i+=C) fmad(t[i+1].s, p0, para.log2.s, para.log1p5.s);
 		const int logN = (int)ConstVar::logN;
 		// fmad(a, b, c) ; a = a * b + c
-		movprfx(t[2].s, p0, para.coeffTbl[logN - 1].s);
-		for (int i = logN - 2; i >= 0; i--) {
-			fmad(t[2].s, p0, t[0].s, para.coeffTbl[i].s);
+		for (int i = 0; i < N; i+=C) {
+			movprfx(t[i+2].s, p0, para.coeffTbl[logN - 1].s);
+			fmad(t[i+2].s, p0, t[i+0].s, para.coeffTbl[logN - 1].s);
+		}
+		for (int j = logN - 3; j >= 0; j--) {
+			for (int i = 0; i < N; i+=C) fmad(t[i+2].s, p0, t[i+0].s, para.coeffTbl[j].s);
 		}
 		// a * x + e
-		fmad(t[0].s, p0, t[2].s, t[1].s);
+		for (int i = 0; i < N; i+=C) fmad(t[i+0].s, p0, t[i+2].s, t[i+1].s);
 	}
 	// f(float *dst, const float *src, size_t n);
 	void genFunc(void (Code::*gen1)(const ExpParam&, int unrollN, const PReg&, const std::vector<ZReg>&), const Xbyak_aarch64::Label& constVarL)
@@ -168,7 +171,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		UsedReg usedReg;
 
 		ExpParam param(usedReg);
-		const int unrollN = 1;
+		const int unrollN = 3;
 		const int regN = param.regN;
 		ptrue(p0.s);
 
