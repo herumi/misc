@@ -148,8 +148,14 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		// fnmsb(a, b, c) = a * b - c
 		fnmsb(t[0].s, p0, para.f2div3.s, para.coeffTbl[0].s);
 		fmad(t[1].s, p0, para.log2.s, para.log1p5.s);
-//orr(t[0].d, t[1].d, t[1].d);
-//return;
+		const int logN = (int)ConstVar::logN;
+		// fmad(a, b, c) ; a = a * b + c
+		movprfx(t[2].s, p0, para.coeffTbl[logN - 1].s);
+		for (int i = logN - 2; i >= 0; i--) {
+			fmad(t[2].s, p0, t[0].s, para.coeffTbl[i].s);
+		}
+		// a * x + e
+		fmad(t[0].s, p0, t[2].s, t[1].s);
 	}
 	// f(float *dst, const float *src, size_t n);
 	void genFunc(void (Code::*gen1)(const ExpParam&, int unrollN, const PReg&, const std::vector<ZReg>&), const Xbyak_aarch64::Label& constVarL)
