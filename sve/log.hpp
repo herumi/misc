@@ -84,7 +84,6 @@ struct UsedReg {
 		}
 		throw std::runtime_error("allocRegIdx");
 	}
-	size_t getMaxFreeN() { return maxFreeN; }
 	size_t getPos() const { return pos; }
 };
 
