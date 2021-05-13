@@ -65,12 +65,12 @@ void std_log_v(float *dst, const float *src, size_t n)
 
 CYBOZU_TEST_AUTO(log)
 {
-	float tbl[] = { 0, 0.000151307, 0.1, 0.4, 0.5, 0.6, 1, 100, FLT_MAX, INFINITY };
+	float tbl[] = { FLT_MIN, 0.000151307, 0.1, 0.4, 0.5, 0.6, 1 - 1e-4, 1 - 1e-6, 1, 1 + 1e-6, 1 + 1e-4, 100, FLT_MAX, INFINITY };
 	const size_t n = CYBOZU_NUM_OF_ARRAY(tbl);
 	for (size_t i = 0; i < n; i++) {
 		float x = tbl[i];
 		float a = log(x);
-//		float a = logfC(x);
+//		float b = logfC(x);
 		float b = fmath::logf(x);
 		float e = x ? fabs(a - b) / x : fabs(a - b);
 		printf("%zd x=%e a=%e b=%e e=%e\n", i, x, a, b, e);
@@ -79,21 +79,17 @@ CYBOZU_TEST_AUTO(log)
 	}
 }
 
-void checkDiff(const float *x, const float *y1, const float *y2, size_t n, bool put = false)
+void checkDiff(const float *x, const float *y1, const float *y2, size_t n, bool put = true)
 {
 	for (size_t i = 0; i < n; i++) {
 		float d = diff(y1[i], y2[i]);
 		if (put) {
-			if (d > g_maxe) {
+			if (!(d <= g_maxe)) {
 				printf("err n=%zd, i=%zd x=%e y1=%e y2=%e\n", n, i, x[i], y1[i], y2[i]);
 				exit(1);
 			}
 		} else {
 			CYBOZU_TEST_ASSERT(d <= g_maxe);
-			if (d > g_maxe) {
-				printf("err n=%zd, i=%zd x=%e y1=%e y2=%e\n", n, i, x[i], y1[i], y2[i]);
-				exit(1);
-			}
 		}
 	}
 }

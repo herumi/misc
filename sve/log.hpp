@@ -58,26 +58,24 @@ struct ConstVar {
 	}
 };
 
+const int freeTbl[] = {
+	0, 1, 2, 3, 4, 5, 6, 7, 24, 25, 26, 27, 28, 29, 30, 31
+};
+static const size_t maxFreeN = sizeof(freeTbl)/sizeof(freeTbl[0]);
+
+const int saveTbl[] = {
+	8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23
+};
+static const size_t maxSaveN = sizeof(saveTbl)/sizeof(saveTbl[0]);
+
 struct UsedReg {
 	size_t pos;
-	size_t maxFreeN;
-	size_t maxSaveN;
 	UsedReg()
 		: pos(0)
-		, maxFreeN(0)
-		, maxSaveN(0)
 	{
 	}
 	int allocRegIdx()
 	{
-		const int freeTbl[] = {
-			3, 4, 5, 6, 7, 0, 1, 2, 24, 25, 26, 27, 28, 29, 30, 31
-		};
-		maxFreeN = sizeof(freeTbl)/sizeof(freeTbl[0]);
-		const int saveTbl[] = {
-			8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23
-		};
-		maxSaveN = sizeof(saveTbl)/sizeof(saveTbl[0]);
 		if (pos < maxFreeN) {
 			return freeTbl[pos++];
 		}
@@ -171,7 +169,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		UsedReg usedReg;
 
 		ExpParam param(usedReg);
-		const int unrollN = 3;
+		const int unrollN = 1;
 		const int regN = param.regN;
 		ptrue(p0.s);
 
@@ -201,13 +199,13 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		for (int i = 0; i < regN * unrollN; i++) {
 			args.push_back(ZReg(usedReg.allocRegIdx()));
 		}
-		const size_t maxN = usedReg.getMaxFreeN();
 		const size_t pos = usedReg.getPos();
-		if (pos > maxN) {
-			int n = pos - maxN;
+		if (pos > maxFreeN) {
+			int n = pos - maxFreeN;
 			sub(sp, sp, int((n + 1) & ~1) * 64);
 			for (int i = 0; i < n; i++) {
-				st1w(ZReg(pos + i).s, p0, ptr(sp, i));
+				int idx = saveTbl[i];
+				st1w(ZReg(idx).s, p0, ptr(sp, i));
 			}
 		}
 		Label skip;
@@ -238,10 +236,11 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	L(cond);
 		whilelt(p2.s, x3, n);
 		b_first(lp2);
-		if (pos > maxN) {
-			int n = pos - maxN;
+		if (pos > maxFreeN) {
+			int n = pos - maxFreeN;
 			for (int i = 0; i < n; i++) {
-				ld1w(ZReg(pos + i).s, p0, ptr(sp, i));
+				int idx = saveTbl[i];
+				ld1w(ZReg(idx).s, p0, ptr(sp, i));
 			}
 			add(sp, sp, int((n + 1) & ~1) * 64);
 		}
