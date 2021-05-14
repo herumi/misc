@@ -63,6 +63,21 @@ void std_log_v(float *dst, const float *src, size_t n)
 	}
 }
 
+CYBOZU_TEST_AUTO(aaa)
+{
+	uint32_t xx[] = {
+		0x0, 0xc0c00000, 0x3db269e2, 0xbd3dd738, 0x42200000, 0xc1a00000,
+		0x3da50df1, 0xbf06254e, 0x42b110c2, 0x0, 0x0, 0x40a00000, 0xc1100000,
+		0x3d85daf8, 0xbcdb0c30, 0x42200000
+	};
+	const float *x = (const float*)xx;
+	float y[16];
+	fmath::logf_v(y, x, 16);
+	for (int i = 0; i < 16; i++) {
+		printf("x=%e fmath=%e std=%e\n", x[i], y[i], log(x[i]));
+	}
+}
+
 CYBOZU_TEST_AUTO(log)
 {
 	float tbl[] = { FLT_MIN, 0.000151307, 0.1, 0.4, 0.5, 0.6, 1 - 1e-4, 1 - 1e-6, 1, 1 + 1e-6, 1 + 1e-4, 100, FLT_MAX, INFINITY };

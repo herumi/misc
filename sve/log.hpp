@@ -24,6 +24,7 @@ inline float cvt(uint32_t x)
 	return fi.f;
 }
 
+const bool supportNan = true;
 
 struct ConstVar {
 	static const size_t logN = 9;
@@ -32,6 +33,8 @@ struct ConstVar {
 	float log2;
 	float log1p5;
 	float f2div3;
+	float fNan;
+	float fMInf;
 	float logCoeff[logN];
 	//
 	void init()
@@ -41,6 +44,11 @@ struct ConstVar {
 		log2 = std::log(2.0f);
 		log1p5 = std::log(1.5f);
 		f2div3 = 2.0f/3;
+		fi fi;
+		fi.i = 0x7fc00000;
+		fNan = fi.f;
+		fi.i = 0xff800000;
+		fMInf = fi.f;
 		const float logTbl[logN] = {
 			 1.0, // must be 1
 			-0.49999985195974875681242,
@@ -101,6 +109,8 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		ZReg log2;
 		ZReg log1p5;
 		ZReg f2div3;
+		ZReg fNan;
+		ZReg fMInf;
 		ZRegVec coeffTbl;
 		ExpParam(UsedReg& usedReg)
 			: regN(3)
@@ -109,6 +119,8 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 			, log2(ZReg(usedReg.allocRegIdx()))
 			, log1p5(ZReg(usedReg.allocRegIdx()))
 			, f2div3(ZReg(usedReg.allocRegIdx()))
+			, fNan(ZReg(supportNan ? usedReg.allocRegIdx() : 0))
+			, fMInf(ZReg(supportNan ? usedReg.allocRegIdx() : 0))
 		{
 			for (int i = 0; i < (int)ConstVar::logN; i++) {
 				coeffTbl.push_back(ZReg(usedReg.allocRegIdx()));
@@ -135,6 +147,11 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		using namespace Xbyak_aarch64;
 		const int C = para.regN;
 		const int N = C * unrollN;
+		if (supportNan) {
+			assert(unrollN == 1);
+			fcmlt(p3.s, p, t[0].s, 0); // neg
+			fcmeq(p4.s, p, t[0].s, 0); // = 0
+		}
 		for (int i = 0; i < N; i+=C) sub(t[i+1].s, t[i+0].s, para.i127shl23.s);
 		for (int i = 0; i < N; i+=C) asr(t[i+1].s, t[i+1].s, 23);
 		// int -> float
@@ -156,6 +173,10 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		}
 		// a * x + e
 		for (int i = 0; i < N; i+=C) fmad(t[i+0].s, p0, t[i+2].s, t[i+1].s);
+		if (supportNan) {
+			mov(t[0].s, p3, para.fNan.s);
+			mov(t[0].s, p4, para.fMInf.s);
+		}
 	}
 	// f(float *dst, const float *src, size_t n);
 	void genFunc(void (Code::*gen1)(const ExpParam&, int unrollN, const PReg&, const std::vector<ZReg>&), const Xbyak_aarch64::Label& constVarL)
@@ -168,7 +189,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		UsedReg usedReg;
 
 		ExpParam param(usedReg);
-		const int unrollN = 1;
+		const int unrollN = supportNan ? 1 : 1;
 		const int regN = param.regN;
 		ptrue(p0.s);
 
@@ -188,6 +209,13 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, f2div3)));
 		cpy(param.f2div3.s, p0/T_z, w4);
+
+		if (supportNan) {
+			ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, fNan)));
+			cpy(param.fNan.s, p0/T_z, w4);
+			ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, fMInf)));
+			cpy(param.fMInf.s, p0/T_z, w4);
+		}
 
 		for (int i = 0; i < (int)ConstVar::logN; i++) {
 			ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, logCoeff) + i * 4));
