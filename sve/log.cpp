@@ -1,9 +1,90 @@
-#include "log.hpp"
 #include <cybozu/test.hpp>
 #include <cybozu/benchmark.hpp>
 #include <cybozu/inttype.hpp>
 #include <vector>
 #include <float.h>
+#include <math.h>
+#ifdef __x86_64__
+
+#include <limits>
+
+namespace fmath {
+
+namespace local {
+
+union fi {
+	uint32_t i;
+	float f;
+};
+
+struct ConstVar {
+	static const size_t logN = 9;
+	uint32_t i127shl23;
+	uint32_t x7fffff;
+	float log2;
+	float log1p5;
+	float f2div3;
+	float fNan;
+	float fMInf;
+	float logCoeff[logN];
+	//
+	void init()
+	{
+		i127shl23 = 127 << 23;
+		x7fffff = 0x7fffff;
+		log2 = std::log(2.0f);
+		log1p5 = std::log(1.5f);
+		f2div3 = 2.0f/3;
+		fi fi;
+		fi.i = 0x7fc00000;
+		fNan = fi.f;
+		fi.i = 0xff800000;
+		fMInf = fi.f;
+		const float logTbl[logN] = {
+			 1.0, // must be 1
+			-0.49999985195974875681242,
+			 0.33333220526061677705782,
+			-0.25004206220486390058000,
+			 0.20010985747510067100077,
+			-0.16481566812093889672203,
+			 0.13988269735629330763020,
+			-0.15049504706005165294002,
+			 0.14095711402233803479921,
+		};
+		for (size_t i = 0; i < logN; i++) {
+			logCoeff[i] = logTbl[i];
+		}
+	}
+};
+
+struct Code {
+	static ConstVar s_constVar;
+	ConstVar *constVar;
+	Code()
+		: constVar(&s_constVar)
+	{
+		constVar->init();
+	}
+};
+
+ConstVar Code::s_constVar;
+
+template<size_t dummy = 0>
+struct Inst {
+	static const Code code;
+};
+
+template<size_t dummy>
+alignas(32) const Code Inst<dummy>::code;
+
+} // fmath::local
+
+} // fmath
+#else
+
+#include "log.hpp"
+
+#endif
 
 float g_maxe = 1e-5;
 
@@ -29,6 +110,8 @@ uint32_t f2u(float x)
 
 float logfC(float x)
 {
+	if (x < 0) return -std::numeric_limits<float>::quiet_NaN();
+	if (x == 0) return -std::numeric_limits<float>::infinity();
 	using namespace fmath;
 	const local::ConstVar& C = *local::Inst<>::code.constVar;
 	local::fi fi;
@@ -56,6 +139,22 @@ float logfC(float x)
 	x = x * a + e;
 	return x;
 }
+
+#ifdef __x86_64__
+namespace fmath {
+void logf_v(float *y, const float *x, size_t n)
+{
+	for (size_t i = 0; i < n; i++) {
+		y[i] = logfC(x[i]);
+	}
+}
+
+float logf(float x)
+{
+	return logfC(x);
+}
+}
+#endif
 
 void std_log_v(float *dst, const float *src, size_t n)
 {
@@ -131,6 +230,7 @@ void putClk(const char *msg, size_t n)
 	printf("%s %.2fnsec\n", msg, cybozu::bench::g_clk.getClock() / double(n));
 }
 
+#ifndef __x86_64__
 CYBOZU_TEST_AUTO(bench)
 {
 	Fvec x, y0, y1;
@@ -159,4 +259,4 @@ CYBOZU_TEST_AUTO(bench)
 	putClk("fmath::logf_v", C * (n / 16));
 	checkDiff(&x[0], &y0[0], &y1[0], n);
 }
-
+#endif
