@@ -149,7 +149,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		// fmad(a, b, c) ; a = a * b + c
 		for (int i = 0; i < N; i+=C) {
 			movprfx(t[i+2].s, p0, para.coeffTbl[logN - 1].s);
-			fmad(t[i+2].s, p0, t[i+0].s, para.coeffTbl[logN - 1].s);
+			fmad(t[i+2].s, p0, t[i+0].s, para.coeffTbl[logN - 2].s);
 		}
 		for (int j = logN - 3; j >= 0; j--) {
 			for (int i = 0; i < N; i+=C) fmad(t[i+2].s, p0, t[i+0].s, para.coeffTbl[j].s);

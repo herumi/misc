@@ -70,10 +70,12 @@ CYBOZU_TEST_AUTO(log)
 	for (size_t i = 0; i < n; i++) {
 		float x = tbl[i];
 		float a = log(x);
-//		float b = logfC(x);
 		float b = fmath::logf(x);
-		float e = x ? fabs(a - b) / x : fabs(a - b);
-		printf("%zd x=%e a=%e b=%e e=%e\n", i, x, a, b, e);
+//		float c = logfC(x);
+		float e1 = x ? fabs(a - b) / x : fabs(a - b);
+//		float e2 = x ? fabs(a - c) / x : fabs(a - c);
+//		printf("%zd x=%e a=%e b=%e c=%e e1=%e e2=%e di=%e\n", i, x, a, b, c, e1, e2, fabs(e1 - e2));
+		printf("%zd x=%e a=%e b=%e e1=%e\n", i, x, a, b, e1);
 		printf("    x=%08x a=%08x b=%08x\n", f2u(x), f2u(a), f2u(b));
 //		CYBOZU_TEST_ASSERT(e < 1e-5);
 	}
