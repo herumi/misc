@@ -113,7 +113,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		ZReg fMInf;
 		ZRegVec coeffTbl;
 		ExpParam(UsedReg& usedReg)
-			: regN(3)
+			: regN(supportNan ? 4 : 3)
 			, i127shl23(ZReg(usedReg.allocRegIdx()))
 			, x7fffff(ZReg(usedReg.allocRegIdx()))
 			, log2(ZReg(usedReg.allocRegIdx()))
@@ -148,9 +148,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		const int C = para.regN;
 		const int N = C * unrollN;
 		if (supportNan) {
-			assert(unrollN == 1);
-			fcmlt(p3.s, p, t[0].s, 0); // neg
-			fcmeq(p4.s, p, t[0].s, 0); // = 0
+			for (int i = 0; i < N; i+=C) mov(t[i+3].s, p0, t[i+0].s);
 		}
 		for (int i = 0; i < N; i+=C) sub(t[i+1].s, t[i+0].s, para.i127shl23.s);
 		for (int i = 0; i < N; i+=C) asr(t[i+1].s, t[i+1].s, 23);
@@ -174,8 +172,12 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		// a * x + e
 		for (int i = 0; i < N; i+=C) fmad(t[i+0].s, p0, t[i+2].s, t[i+1].s);
 		if (supportNan) {
-			mov(t[0].s, p3, para.fNan.s);
-			mov(t[0].s, p4, para.fMInf.s);
+			for (int i = 0; i < N; i+=C) {
+				fcmlt(p1.s, p, t[i+3].s, 0); // neg
+				mov(t[i+0].s, p1, para.fNan.s);
+				fcmeq(p1.s, p, t[i+3].s, 0); // = 0
+				mov(t[i+0].s, p1, para.fMInf.s);
+			}
 		}
 	}
 	// f(float *dst, const float *src, size_t n);
@@ -189,7 +191,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		UsedReg usedReg;
 
 		ExpParam param(usedReg);
-		const int unrollN = supportNan ? 1 : 1;
+		const int unrollN = 1;
 		const int regN = param.regN;
 		ptrue(p0.s);
 

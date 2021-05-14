@@ -9,7 +9,8 @@ float g_maxe = 1e-5;
 
 float diff(float x, float y)
 {
-	return std::abs(x - y) / x;
+	float d = abs(x - y);
+	return x == 0 ? d : d / x;
 }
 
 float u2f(uint32_t x)
@@ -80,16 +81,14 @@ CYBOZU_TEST_AUTO(aaa)
 
 CYBOZU_TEST_AUTO(log)
 {
-	float tbl[] = { FLT_MIN, 0.000151307, 0.1, 0.4, 0.5, 0.6, 1 - 1e-4, 1 - 1e-6, 1, 1 + 1e-6, 1 + 1e-4, 100, FLT_MAX, INFINITY };
+	float tbl[] = { FLT_MIN, 0.000151307, 0.1, 0.4, 0.5, 0.6, 1 - 1e-4, 1 - 1e-6, 1, 1 + 1e-6, 1 + 1e-4, 1.000333, 100, FLT_MAX, INFINITY };
 	const size_t n = CYBOZU_NUM_OF_ARRAY(tbl);
 	for (size_t i = 0; i < n; i++) {
 		float x = tbl[i];
 		float a = log(x);
 		float b = fmath::logf(x);
 //		float c = logfC(x);
-		float e1 = x ? fabs(a - b) / x : fabs(a - b);
-//		float e2 = x ? fabs(a - c) / x : fabs(a - c);
-//		printf("%zd x=%e a=%e b=%e c=%e e1=%e e2=%e di=%e\n", i, x, a, b, c, e1, e2, fabs(e1 - e2));
+		float e1 = diff(a, b);
 		printf("%zd x=%e a=%e b=%e e1=%e\n", i, x, a, b, e1);
 		printf("    x=%08x a=%08x b=%08x\n", f2u(x), f2u(a), f2u(b));
 //		CYBOZU_TEST_ASSERT(e < 1e-5);
