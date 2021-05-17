@@ -129,6 +129,11 @@ float logfC(float x)
 	*/
 	float a = C.f2div3 * y - C.logCoeff[0];
 	e = e * C.log2 + C.log1p5;
+	float d = x - 1;
+	if (fabs(d) < 1e-2) {
+		a = d;
+		e = 0;
+	}
 
 	const float *tbl = C.logCoeff;
 	const int logN = C.logN;
