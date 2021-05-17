@@ -25,6 +25,7 @@ inline float cvt(uint32_t x)
 }
 
 const bool supportNan = true;
+const bool supportLog1p = true;
 
 struct ConstVar {
 	static const size_t logN = 9;
@@ -113,7 +114,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		ZReg fMInf;
 		ZRegVec coeffTbl;
 		ExpParam(UsedReg& usedReg)
-			: regN(supportNan ? 4 : 3)
+			: regN((supportNan || supportLog1p) ? 4 : 3)
 			, i127shl23(ZReg(usedReg.allocRegIdx()))
 			, x7fffff(ZReg(usedReg.allocRegIdx()))
 			, log2(ZReg(usedReg.allocRegIdx()))
@@ -142,12 +143,14 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		align(16);
 		ready();
 	}
-	void genLog1(const ExpParam& para, int unrollN, const PReg& p, const std::vector<ZReg>& t)
+	// assume p0 is all true
+	// use p1, ..., p_unrollN if supportLog1p
+	void genLog1(const ExpParam& para, int unrollN, const std::vector<ZReg>& t)
 	{
 		using namespace Xbyak_aarch64;
 		const int C = para.regN;
 		const int N = C * unrollN;
-		if (supportNan) {
+		if (supportNan || supportLog1p) {
 			for (int i = 0; i < N; i+=C) mov(t[i+3].s, p0, t[i+0].s);
 		}
 		for (int i = 0; i < N; i+=C) sub(t[i+1].s, t[i+0].s, para.i127shl23.s);
@@ -160,6 +163,19 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		// fnmsb(a, b, c) = a * b - c
 		for (int i = 0; i < N; i+=C) fnmsb(t[i+0].s, p0, para.f2div3.s, para.coeffTbl[0].s);
 		for (int i = 0; i < N; i+=C) fmad(t[i+1].s, p0, para.log2.s, para.log1p5.s);
+#if 0
+		if (supportLog1p) {
+			for (int i = 0; i < N; i+=C) {
+				fcpy(t[i+2].s, p0, 1.0);
+				fsub(t[i+2].s, t[i+3].s, t[i+2].s); // x - 1
+				fabs(t[i+2].s, p0, t[i+2].s);
+				fclt(p1.s, p0, t[i+2].s, 1.0/8);
+				mov(t[i+0].s, p1, t[i+2].s);
+				fcpy(t[i+2].s, p0, 1.0);
+				mov(t[i+1].s, p1, t[i+2].s);
+			}
+		}
+#endif
 		const int logN = (int)ConstVar::logN;
 		// fmad(a, b, c) ; a = a * b + c
 		for (int i = 0; i < N; i+=C) {
@@ -173,15 +189,15 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		for (int i = 0; i < N; i+=C) fmad(t[i+0].s, p0, t[i+2].s, t[i+1].s);
 		if (supportNan) {
 			for (int i = 0; i < N; i+=C) {
-				fcmlt(p1.s, p, t[i+3].s, 0); // neg
+				fcmlt(p1.s, p0, t[i+3].s, 0); // neg
 				mov(t[i+0].s, p1, para.fNan.s);
-				fcmeq(p1.s, p, t[i+3].s, 0); // = 0
+				fcmeq(p1.s, p0, t[i+3].s, 0); // = 0
 				mov(t[i+0].s, p1, para.fMInf.s);
 			}
 		}
 	}
 	// f(float *dst, const float *src, size_t n);
-	void genFunc(void (Code::*gen1)(const ExpParam&, int unrollN, const PReg&, const std::vector<ZReg>&), const Xbyak_aarch64::Label& constVarL)
+	void genFunc(void (Code::*gen1)(const ExpParam&, int unrollN, const std::vector<ZReg>&), const Xbyak_aarch64::Label& constVarL)
 	{
 		using namespace Xbyak_aarch64;
 		const XReg& dst = x0;
@@ -244,7 +260,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		if (unrollN > 1) ld1w(args[regN].s, p0/T_z, ptr(src, 1));
 		if (unrollN > 2) ld1w(args[regN * 2].s, p0/T_z, ptr(src, 2));
 		add(src, src, 64 * unrollN);
-		(this->*gen1)(param, unrollN, p0, args);
+		(this->*gen1)(param, unrollN, args);
 		st1w(args[0].s, p0, ptr(dst));
 		if (unrollN > 1) st1w(args[regN].s, p0, ptr(dst, 1));
 		if (unrollN > 2) st1w(args[regN * 2].s, p0, ptr(dst, 2));
@@ -258,15 +274,16 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		mov(x3, 0);
 		b(cond);
 	Label lp2 = L();
-		ld1w(args[0].s, p2/T_z, ptr(src, x3, LSL, 2));
-		(this->*gen1)(param, 1, p2, args);
-		st1w(args[0].s, p2, ptr(dst, x3, LSL, 2));
+		ld1w(args[0].s, p0/T_z, ptr(src, x3, LSL, 2));
+		(this->*gen1)(param, 1, args);
+		st1w(args[0].s, p0, ptr(dst, x3, LSL, 2));
 		incd(x3);
 	L(cond);
-		whilelt(p2.s, x3, n);
+		whilelt(p0.s, x3, n);
 		b_first(lp2);
 		if (pos > maxFreeN) {
 			int n = pos - maxFreeN;
+			ptrue(p0.s);
 			for (int i = 0; i < n; i++) {
 				int idx = saveTbl[i];
 				ld1w(ZReg(idx).s, p0, ptr(sp, i));
