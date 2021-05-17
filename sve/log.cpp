@@ -130,7 +130,7 @@ float logfC(float x)
 	float a = C.f2div3 * y - C.logCoeff[0];
 	e = e * C.log2 + C.log1p5;
 	float d = x - 1;
-	if (fabs(d) < 1e-2) {
+	if (fabs(d) <= 1.0/8) {
 		a = d;
 		e = 0;
 	}
@@ -175,17 +175,23 @@ CYBOZU_TEST_AUTO(aaa)
 		0x3da50df1, 0xbf06254e, 0x42b110c2, 0x0, 0x0, 0x40a00000, 0xc1100000,
 		0x3d85daf8, 0xbcdb0c30, 0x42200000
 	};
-	const float *x = (const float*)xx;
+	const size_t n = CYBOZU_NUM_OF_ARRAY(xx);
+	float x[n];
+	for (size_t i = 0; i < n; i++) {
+		fmath::local::fi fi;
+		fi.i = xx[i];
+		x[i] = fi.f;
+	}
 	float y[16];
 	fmath::logf_v(y, x, 16);
 	for (int i = 0; i < 16; i++) {
-		printf("x=%e fmath=%e std=%e\n", x[i], y[i], log(x[i]));
+		printf("x=%e fmath=%e std=%e\n", x[i], y[i], std::log(x[i]));
 	}
 }
 
 CYBOZU_TEST_AUTO(log)
 {
-	float tbl[] = { FLT_MIN, 0.000151307, 0.1, 0.4, 0.5, 0.6, 1 - 1e-4, 1 - 1e-6, 1, 1 + 1e-6, 1 + 1e-4, 1.000333, 100, FLT_MAX, INFINITY };
+	float tbl[] = { FLT_MIN, 0.000151307, 0.1, 0.4, 0.5, 0.6, 1 - 1.0/8, 1 - 1e-4, 1 - 1e-6, 1, 1 + 1e-6, 1 + 1e-4, 1.000333, 1 + 1.0/8, 100, FLT_MAX, INFINITY };
 	const size_t n = CYBOZU_NUM_OF_ARRAY(tbl);
 	for (size_t i = 0; i < n; i++) {
 		float x = tbl[i];
