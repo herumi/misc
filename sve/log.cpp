@@ -197,7 +197,7 @@ CYBOZU_TEST_AUTO(log)
 		float x = tbl[i];
 		float a = log(x);
 		float b = fmath::logf(x);
-//		float c = logfC(x);
+//		float b = logfC(x);
 		float e1 = diff(a, b);
 		printf("%zd x=%e a=%e b=%e e1=%e\n", i, x, a, b, e1);
 		printf("    x=%08x a=%08x b=%08x\n", f2u(x), f2u(a), f2u(b));

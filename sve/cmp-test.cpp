@@ -67,6 +67,10 @@ struct Code : CodeGenerator {
 			puts("fcvtzs");
 			fcvtzs(dst.s, p0, src1.s);
 			break;
+		case 6:
+			puts("fcpy");
+			fcpy(dst.s, p0, 0);
+			break;
 		default:
 			printf("bad mode=%d\n", mode);
 			exit(1);

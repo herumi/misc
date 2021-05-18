@@ -110,6 +110,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		ZReg log2;
 		ZReg log1p5;
 		ZReg f2div3;
+		ZReg tmp;
 		ZReg fNan;
 		ZReg fMInf;
 		ZRegVec coeffTbl;
@@ -120,6 +121,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 			, log2(ZReg(usedReg.allocRegIdx()))
 			, log1p5(ZReg(usedReg.allocRegIdx()))
 			, f2div3(ZReg(usedReg.allocRegIdx()))
+			, tmp(ZReg(usedReg.allocRegIdx()))
 			, fNan(ZReg(supportNan ? usedReg.allocRegIdx() : 0))
 			, fMInf(ZReg(supportNan ? usedReg.allocRegIdx() : 0))
 		{
@@ -163,19 +165,15 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		// fnmsb(a, b, c) = a * b - c
 		for (int i = 0; i < N; i+=C) fnmsb(t[i+0].s, p0, para.f2div3.s, para.coeffTbl[0].s);
 		for (int i = 0; i < N; i+=C) fmad(t[i+1].s, p0, para.log2.s, para.log1p5.s);
-#if 0
 		if (supportLog1p) {
 			for (int i = 0; i < N; i+=C) {
-				fcpy(t[i+2].s, p0, 1.0);
-				fsub(t[i+2].s, t[i+3].s, t[i+2].s); // x - 1
-				fabs(t[i+2].s, p0, t[i+2].s);
-				fclt(p1.s, p0, t[i+2].s, 1.0/8);
+				fsub(t[i+2].s, t[i+3].s, para.coeffTbl[0].s); // x-1
+				fcpy(para.tmp.s, p0, 1.0/8);
+				facge(p1.s, p0, para.tmp.s, t[i+2].s); // 1/8 >= abs(x-1)
 				mov(t[i+0].s, p1, t[i+2].s);
-				fcpy(t[i+2].s, p0, 1.0);
-				mov(t[i+1].s, p1, t[i+2].s);
+				eor(t[i+1].s, p1, t[i+1].s);
 			}
 		}
-#endif
 		const int logN = (int)ConstVar::logN;
 		// fmad(a, b, c) ; a = a * b + c
 		for (int i = 0; i < N; i+=C) {
