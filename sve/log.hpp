@@ -227,9 +227,9 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		cpy(param.f2div3.s, p0/T_z, w4);
 
 		if (supportNan) {
-			ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, fNan)));
+			mov(w4, 0x7fc00000); // Nan
 			cpy(param.fNan.s, p0/T_z, w4);
-			ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, fMInf)));
+			mov(w4, 0xff800000); // -Inf
 			cpy(param.fMInf.s, p0/T_z, w4);
 		}
 
