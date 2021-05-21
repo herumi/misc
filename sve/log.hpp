@@ -209,6 +209,20 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		const int regN = param.regN;
 		ptrue(p0.s);
 
+		std::vector<ZReg> args;
+		for (int i = 0; i < regN * unrollN; i++) {
+			args.push_back(ZReg(usedReg.allocRegIdx()));
+		}
+		const size_t pos = usedReg.getPos();
+		if (pos > maxFreeN) {
+			int n = pos - maxFreeN;
+			sub(sp, sp, int((n + 1) & ~1) * 64);
+			for (int i = 0; i < n; i++) {
+				int idx = saveTbl[i];
+				st1w(ZReg(idx).s, p0, ptr(sp, i));
+			}
+		}
+
 		adr(x3, constVarL);
 
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, i127shl23)));
@@ -238,19 +252,6 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 			cpy(param.coeffTbl[i].s, p0/T_z, w4);
 		}
 
-		std::vector<ZReg> args;
-		for (int i = 0; i < regN * unrollN; i++) {
-			args.push_back(ZReg(usedReg.allocRegIdx()));
-		}
-		const size_t pos = usedReg.getPos();
-		if (pos > maxFreeN) {
-			int n = pos - maxFreeN;
-			sub(sp, sp, int((n + 1) & ~1) * 64);
-			for (int i = 0; i < n; i++) {
-				int idx = saveTbl[i];
-				st1w(ZReg(idx).s, p0, ptr(sp, i));
-			}
-		}
 		Label skip;
 		b(skip);
 	Label lp = L();
@@ -279,6 +280,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	L(cond);
 		whilelt(p0.s, x3, n);
 		b_first(lp2);
+
 		if (pos > maxFreeN) {
 			int n = pos - maxFreeN;
 			ptrue(p0.s);

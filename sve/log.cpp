@@ -4,6 +4,8 @@
 #include <vector>
 #include <float.h>
 #include <math.h>
+const float g_maxe = 1e-5;
+
 #ifdef __x86_64__
 
 #include <limits>
@@ -86,7 +88,6 @@ alignas(32) const Code Inst<dummy>::code;
 
 #endif
 
-float g_maxe = 1e-5;
 
 float diff(float x, float y)
 {
@@ -185,7 +186,12 @@ CYBOZU_TEST_AUTO(aaa)
 	float y[16];
 	fmath::logf_v(y, x, 16);
 	for (int i = 0; i < 16; i++) {
-		printf("x=%e fmath=%e std=%e\n", x[i], y[i], std::log(x[i]));
+		float a = std::log(x[i]);
+		float b = y[i];
+		float e = diff(a, b);
+		if (e > g_maxe) {
+			printf("%d x=%e std=%e fmath=%e e=%e\n", i, x[i], a, b, e);
+		}
 	}
 }
 
@@ -195,12 +201,14 @@ CYBOZU_TEST_AUTO(log)
 	const size_t n = CYBOZU_NUM_OF_ARRAY(tbl);
 	for (size_t i = 0; i < n; i++) {
 		float x = tbl[i];
-		float a = log(x);
+		float a = std::log(x);
 		float b = fmath::logf(x);
 //		float b = logfC(x);
-		float e1 = diff(a, b);
-		printf("%zd x=%e a=%e b=%e e1=%e\n", i, x, a, b, e1);
-		printf("    x=%08x a=%08x b=%08x\n", f2u(x), f2u(a), f2u(b));
+		float e = diff(a, b);
+		if (e > g_maxe) {
+			printf("%zd x=%e a=%e b=%e e=%e\n", i, x, a, b, e);
+			printf("    x=%08x a=%08x b=%08x\n", f2u(x), f2u(a), f2u(b));
+		}
 //		CYBOZU_TEST_ASSERT(e < 1e-5);
 	}
 }
@@ -271,3 +279,4 @@ CYBOZU_TEST_AUTO(bench)
 	checkDiff(&x[0], &y0[0], &y1[0], n);
 }
 #endif
+
