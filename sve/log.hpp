@@ -34,8 +34,6 @@ struct ConstVar {
 	float log2;
 	float log1p5;
 	float f2div3;
-	float fNan;
-	float fMInf;
 	float logCoeff[logN];
 	//
 	void init()
@@ -45,11 +43,6 @@ struct ConstVar {
 		log2 = std::log(2.0f);
 		log1p5 = std::log(1.5f);
 		f2div3 = 2.0f/3;
-		fi fi;
-		fi.i = 0x7fc00000;
-		fNan = fi.f;
-		fi.i = 0xff800000;
-		fMInf = fi.f;
 		const float logTbl[logN] = {
 			 1.0, // must be 1
 			-0.49999985195974875681242,
@@ -205,8 +198,9 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		UsedReg usedReg;
 
 		ExpParam param(usedReg);
-		const int unrollN = 1;
+		const int unrollN = 3;
 		const int regN = param.regN;
+
 		ptrue(p0.s);
 
 		std::vector<ZReg> args;
@@ -216,13 +210,12 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		const size_t pos = usedReg.getPos();
 		if (pos > maxFreeN) {
 			int n = pos - maxFreeN;
-			sub(sp, sp, int((n + 1) & ~1) * 64);
 			for (int i = 0; i < n; i++) {
 				int idx = saveTbl[i];
-				st1w(ZReg(idx).s, p0, ptr(sp, i));
+				sub(sp, sp, 64);
+				st1w(ZReg(idx).s, p0, ptr(sp));
 			}
 		}
-
 		adr(x3, constVarL);
 
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, i127shl23)));
@@ -285,10 +278,10 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 			int n = pos - maxFreeN;
 			ptrue(p0.s);
 			for (int i = 0; i < n; i++) {
-				int idx = saveTbl[i];
-				ld1w(ZReg(idx).s, p0, ptr(sp, i));
+				int idx = saveTbl[n - 1 - i];
+				ld1w(ZReg(idx).s, p0, ptr(sp));
+				add(sp, sp, 64);
 			}
-			add(sp, sp, int((n + 1) & ~1) * 64);
 		}
 		ret();
 	}
