@@ -237,7 +237,22 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		ExpParam param(isPreciseTanh, usedReg);
 		const int unrollN = 3;
 		const int regN = param.regN;
+
 		ptrue(p0.s);
+
+		std::vector<ZReg> args;
+		for (int i = 0; i < regN * unrollN; i++) {
+			args.push_back(ZReg(usedReg.allocRegIdx()));
+		}
+		const size_t pos = usedReg.getPos();
+		if (pos > maxFreeN) {
+			int n = pos - maxFreeN;
+			for (int i = 0; i < n; i++) {
+				int idx = saveTbl[i];
+				sub(sp, sp, 64);
+				st1w(ZReg(idx).s, p0, ptr(sp));
+			}
+		}
 
 		adr(x3, constVarL);
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, log2_e)));
@@ -260,19 +275,6 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 			cpy(param.m1d3.s, p0/T_z, w4);
 		}
 
-		std::vector<ZReg> args;
-		for (int i = 0; i < regN * unrollN; i++) {
-			args.push_back(ZReg(usedReg.allocRegIdx()));
-		}
-		const size_t pos = usedReg.getPos();
-		if (pos > maxFreeN) {
-			int n = pos - maxFreeN;
-			sub(sp, sp, int((n + 1) & ~1) * 64);
-			for (int i = 0; i < n; i++) {
-				int idx = saveTbl[i];
-				st1w(ZReg(idx).s, p0, ptr(sp, i));
-			}
-		}
 		Label skip;
 		b(skip);
 	Label lp = L();
@@ -304,10 +306,10 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		if (pos > maxFreeN) {
 			int n = pos - maxFreeN;
 			for (int i = 0; i < n; i++) {
-				int idx = saveTbl[i];
-				ld1w(ZReg(idx).s, p0, ptr(sp, i));
+				int idx = saveTbl[n - 1 - i];
+				ld1w(ZReg(idx).s, p0, ptr(sp));
+				add(sp, sp, 64);
 			}
-			add(sp, sp, int((n + 1) & ~1) * 64);
 		}
 		ret();
 	}
