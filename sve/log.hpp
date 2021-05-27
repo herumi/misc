@@ -35,6 +35,8 @@ const bool supportLog1p = true;
 
 struct ConstVar {
 	static const size_t logN = 9;
+	static const size_t L = 5;
+	static const size_t LN = 1 << L;
 	uint32_t i127shl23;
 	uint32_t x7fffff;
 	float log2;
@@ -43,6 +45,8 @@ struct ConstVar {
 	float logCoeff[logN];
 	float sqrt2;
 	float inv_sqrt2;
+	float tbl1[LN];
+	float tbl2[LN];
 	//
 	void init()
 	{
@@ -66,6 +70,12 @@ struct ConstVar {
 		};
 		for (size_t i = 0; i < logN; i++) {
 			logCoeff[i] = logTbl[i];
+		}
+		for (size_t i = 0; i < LN; i++) {
+			fi fi;
+			fi.i = i127shl23 | (i << (23 - L));
+			tbl1[i] = sqrt2 / fi.f;
+			tbl2[i] = log(tbl1[i]);
 		}
 	}
 };

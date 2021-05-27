@@ -92,22 +92,21 @@ float logfC2(float x)
 	const int L = 5;
 	local::fi fi;
 	fi.f = x * C.sqrt2;
-	int n = int(fi.i - (127 << 23)) >> 23;
-	int d = fi.i & 0x7fffff;
-	fi.i = d | (127 << 23);
+	int n = int(fi.i - C.i127shl23) >> 23;
+	int d = fi.i & C.x7fffff;
+	fi.i = d | C.i127shl23;
+	d >>= 23 - L;
 	float b = fi.f;
-	float c = b * (1 / sqrt(2));
-	float f;
-	{
-		fi.i = (d & (((1 << L) - 1) << (23 - L))) | (127 << 23);
-		f = sqrt(2) / fi.f;
-	}
+	float c = b * C.inv_sqrt2;
+	float f = C.tbl1[d];
+	float h = C.tbl2[d];
 	if (fabs(x - 1) <= 1.0/32) {
 		f = 1;
 		c = x;
+		h = 0;
 	}
 	float g = f * c - 1;
-	return n * log(2) - log(f) + g * (1 - g * (0.5 - g * (1/3.0)));
+	return n * C.log2 - h + g * (1 + g * (-0.5 + g * (1/3.0)));
 }
 
 #ifdef __x86_64__
@@ -115,13 +114,13 @@ namespace fmath {
 void logf_v(float *y, const float *x, size_t n)
 {
 	for (size_t i = 0; i < n; i++) {
-		y[i] = logfC(x[i]);
+		y[i] = logfC2(x[i]);
 	}
 }
 
 float logf(float x)
 {
-	return logfC(x);
+	return logfC2(x);
 }
 }
 #endif
@@ -214,7 +213,7 @@ void putClk(const char *msg, size_t n)
 	printf("%s %.2fnsec\n", msg, cybozu::bench::g_clk.getClock() / double(n));
 }
 
-#ifndef __x86_64__
+#if 1//#ifndef __x86_64__
 CYBOZU_TEST_AUTO(bench)
 {
 	Fvec x, y0, y1;
