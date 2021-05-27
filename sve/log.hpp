@@ -4,9 +4,15 @@
 	@note modified new BSD license
 	http://opensource.org/licenses/BSD-3-Clause
 */
+#ifdef __x86_64__
+	#define FMATH_ONLY_CONSTVAR
+#endif
+
+#ifndef FMATH_ONLY_CONSTVAR
 #include <xbyak_aarch64/xbyak_aarch64.h>
 #include <cmath>
 #include <vector>
+#endif
 
 namespace fmath {
 
@@ -35,6 +41,8 @@ struct ConstVar {
 	float log1p5;
 	float f2div3;
 	float logCoeff[logN];
+	float sqrt2;
+	float inv_sqrt2;
 	//
 	void init()
 	{
@@ -43,6 +51,8 @@ struct ConstVar {
 		log2 = std::log(2.0f);
 		log1p5 = std::log(1.5f);
 		f2div3 = 2.0f/3;
+		sqrt2 = sqrt(2);
+		inv_sqrt2 = 1 / sqrt(2);
 		const float logTbl[logN] = {
 			 1.0, // must be 1
 			-0.49999985195974875681242,
@@ -60,6 +70,7 @@ struct ConstVar {
 	}
 };
 
+#ifndef FMATH_ONLY_CONSTVAR
 const int freeTbl[] = {
 	0, 1, 2, 3, 4, 5, 6, 7, 24, 25, 26, 27, 28, 29, 30, 31
 };
@@ -88,6 +99,23 @@ struct UsedReg {
 	}
 	size_t getPos() const { return pos; }
 };
+
+#endif
+
+#ifdef FMATH_ONLY_CONSTVAR
+
+struct Code {
+	static ConstVar s_constVar;
+	ConstVar *constVar;
+	Code()
+		: constVar(&s_constVar)
+	{
+		constVar->init();
+	}
+};
+ConstVar Code::s_constVar;
+
+#else
 
 struct Code : public Xbyak_aarch64::CodeGenerator {
 	typedef Xbyak_aarch64::ZReg ZReg;
@@ -290,6 +318,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		genFunc(&Code::genLog1, constVarL);
 	}
 };
+#endif
 
 template<size_t dummy = 0>
 struct Inst {
@@ -301,6 +330,7 @@ alignas(32) const Code Inst<dummy>::code;
 
 } // fmath::local
 
+#ifndef FMATH_ONLY_CONSTVAR
 inline void logf_v(float *dst, const float *src, size_t n)
 {
 	local::Inst<>::code.logf_v(dst, src, n);
@@ -313,5 +343,6 @@ inline float logf(float x)
 	logf_v(xs, xs, 1);
 	return xs[0];
 }
+#endif
 
 } // fmath2

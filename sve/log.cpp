@@ -4,90 +4,10 @@
 #include <vector>
 #include <float.h>
 #include <math.h>
-const float g_maxe = 1e-5;
-
-#ifdef __x86_64__
-
 #include <limits>
-
-namespace fmath {
-
-namespace local {
-
-union fi {
-	uint32_t i;
-	float f;
-};
-
-struct ConstVar {
-	static const size_t logN = 9;
-	uint32_t i127shl23;
-	uint32_t x7fffff;
-	float log2;
-	float log1p5;
-	float f2div3;
-	float fNan;
-	float fMInf;
-	float logCoeff[logN];
-	//
-	void init()
-	{
-		i127shl23 = 127 << 23;
-		x7fffff = 0x7fffff;
-		log2 = std::log(2.0f);
-		log1p5 = std::log(1.5f);
-		f2div3 = 2.0f/3;
-		fi fi;
-		fi.i = 0x7fc00000;
-		fNan = fi.f;
-		fi.i = 0xff800000;
-		fMInf = fi.f;
-		const float logTbl[logN] = {
-			 1.0, // must be 1
-			-0.49999985195974875681242,
-			 0.33333220526061677705782,
-			-0.25004206220486390058000,
-			 0.20010985747510067100077,
-			-0.16481566812093889672203,
-			 0.13988269735629330763020,
-			-0.15049504706005165294002,
-			 0.14095711402233803479921,
-		};
-		for (size_t i = 0; i < logN; i++) {
-			logCoeff[i] = logTbl[i];
-		}
-	}
-};
-
-struct Code {
-	static ConstVar s_constVar;
-	ConstVar *constVar;
-	Code()
-		: constVar(&s_constVar)
-	{
-		constVar->init();
-	}
-};
-
-ConstVar Code::s_constVar;
-
-template<size_t dummy = 0>
-struct Inst {
-	static const Code code;
-};
-
-template<size_t dummy>
-alignas(32) const Code Inst<dummy>::code;
-
-} // fmath::local
-
-} // fmath
-#else
-
 #include "log.hpp"
 
-#endif
-
+const float g_maxe = 1e-5;
 
 float diff(float x, float y)
 {
@@ -171,7 +91,7 @@ float logfC2(float x)
 	*/
 	const int L = 5;
 	local::fi fi;
-	fi.f = x * sqrt(2);
+	fi.f = x * C.sqrt2;
 	int n = int(fi.i - (127 << 23)) >> 23;
 	int d = fi.i & 0x7fffff;
 	fi.i = d | (127 << 23);
