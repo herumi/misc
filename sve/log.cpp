@@ -109,6 +109,11 @@ uint32_t f2u(float x)
 	return fi.i;
 }
 
+void putf(const char *msg, float x)
+{
+	printf("%s x=%f(%08x)\n", msg, x, f2u(x));
+}
+
 float logfC(float x)
 {
 	if (x < 0) return -std::numeric_limits<float>::quiet_NaN();
@@ -144,6 +149,45 @@ float logfC(float x)
 	}
 	x = x * a + e;
 	return x;
+}
+
+float logfC2(float x)
+{
+	if (x < 0) return -std::numeric_limits<float>::quiet_NaN();
+	if (x == 0) return -std::numeric_limits<float>::infinity();
+	using namespace fmath;
+	const local::ConstVar& C = *local::Inst<>::code.constVar;
+	/*
+		a = sqrt(2) x
+		a = b 2^n, (1 <= b < 2)
+		c = (1/sqrt(2)) b, (1/sqrt(2) <= c < sqrt(2))
+		L = 5
+		d = (f2u(b) & mask(23)) >> (23 - L)
+		f = T1[d] = 1/c = sqrt(2) / b
+		g = f c - 1, |g| <= 1/2^L
+		log c = log ((1 + g)/f) = log(1+g) - log f
+		h = T2[d] = log f
+		log x = log (c * 2^n)
+	*/
+	const int L = 5;
+	local::fi fi;
+	fi.f = x * sqrt(2);
+	int n = int(fi.i - (127 << 23)) >> 23;
+	int d = fi.i & 0x7fffff;
+	fi.i = d | (127 << 23);
+	float b = fi.f;
+	float c = b * (1 / sqrt(2));
+	float f;
+	{
+		fi.i = (d & (((1 << L) - 1) << (23 - L))) | (127 << 23);
+		f = sqrt(2) / fi.f;
+	}
+	if (fabs(x - 1) <= 1.0/32) {
+		f = 1;
+		c = x;
+	}
+	float g = f * c - 1;
+	return n * log(2) - log(f) + g * (1 - g * (0.5 - g * (1/3.0)));
 }
 
 #ifdef __x86_64__
@@ -202,8 +246,9 @@ CYBOZU_TEST_AUTO(log)
 	for (size_t i = 0; i < n; i++) {
 		float x = tbl[i];
 		float a = std::log(x);
-		float b = fmath::logf(x);
+//		float b = fmath::logf(x);
 //		float b = logfC(x);
+		float b = logfC2(x);
 		float e = diff(a, b);
 		if (e > g_maxe) {
 			printf("%zd x=%e a=%e b=%e e=%e\n", i, x, a, b, e);
