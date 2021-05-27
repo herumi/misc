@@ -96,17 +96,21 @@ float logfC2(float x)
 	int d = fi.i & C.x7fffff;
 	fi.i = d | C.i127shl23;
 	d >>= 23 - L;
-	float b = fi.f;
-	float c = b * C.inv_sqrt2;
+	float y = fi.f;
+	y *= C.inv_sqrt2;
 	float f = C.tbl1[d];
 	float h = C.tbl2[d];
 	if (fabs(x - 1) <= 1.0/32) {
 		f = 1;
-		c = x;
+		y = x;
 		h = 0;
 	}
-	float g = f * c - 1;
-	return n * C.log2 - h + g * (1 + g * (-0.5 + g * (1/3.0)));
+	y = y * f - 1;
+	x = n * C.log2 - h;
+	f = y * (1/3.0) + (-0.5);
+	f = f * y + 1;
+	f = f * y + x;
+	return f;
 }
 
 #ifdef __x86_64__
