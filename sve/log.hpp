@@ -14,6 +14,8 @@
 #include <vector>
 #endif
 
+#define FMATH_USE_LOG_TBL
+
 namespace fmath {
 
 namespace local {
@@ -45,6 +47,7 @@ struct ConstVar {
 	float logCoeff[logN];
 	float sqrt2;
 	float inv_sqrt2;
+	float f1p32;
 	float tbl1[LN];
 	float tbl2[LN];
 	//
@@ -57,6 +60,7 @@ struct ConstVar {
 		f2div3 = 2.0f/3;
 		sqrt2 = sqrt(2);
 		inv_sqrt2 = 1 / sqrt(2);
+		f1p32 = 1.0 / 32;
 		const float logTbl[logN] = {
 			 1.0, // must be 1
 			-0.49999985195974875681242,
@@ -134,29 +138,50 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	ConstVar *constVar;
 	typedef void (*VecFunc)(float *dst, const float *src, size_t n);
 	VecFunc logf_v;
-	struct ExpParam {
+	struct LogParam {
 		int regN;
 		ZReg i127shl23;
 		ZReg x7fffff;
 		ZReg log2;
+#ifdef FMATH_USE_LOG_TBL
+		ZReg sqrt2;
+		ZReg inv_sqrt2;
+		ZReg f1p32;
+#else
 		ZReg log1p5;
 		ZReg f2div3;
 		ZReg tmp;
+#endif
 		ZReg fNan;
 		ZReg fMInf;
 		ZRegVec coeffTbl;
-		ExpParam(UsedReg& usedReg)
+		LogParam(UsedReg& usedReg)
+#ifdef FMATH_USE_LOG_TBL
+			: regN(5)
+#else
 			: regN((supportNan || supportLog1p) ? 4 : 3)
+#endif
 			, i127shl23(ZReg(usedReg.allocRegIdx()))
 			, x7fffff(ZReg(usedReg.allocRegIdx()))
 			, log2(ZReg(usedReg.allocRegIdx()))
+#ifdef FMATH_USE_LOG_TBL
+			, sqrt2(ZReg(usedReg.allocRegIdx()))
+			, inv_sqrt2(ZReg(usedReg.allocRegIdx()))
+			, f1p32(ZReg(usedReg.allocRegIdx()))
+#else
 			, log1p5(ZReg(usedReg.allocRegIdx()))
 			, f2div3(ZReg(usedReg.allocRegIdx()))
 			, tmp(ZReg(usedReg.allocRegIdx()))
+#endif
 			, fNan(ZReg(supportNan ? usedReg.allocRegIdx() : 0))
 			, fMInf(ZReg(supportNan ? usedReg.allocRegIdx() : 0))
 		{
-			for (int i = 0; i < (int)ConstVar::logN; i++) {
+#ifdef FMATH_USE_LOG_TBL
+			const int n = 3;
+#else
+			const int n = (int)ConstVar::logN;
+#endif
+			for (int i = 0; i < n; i++) {
 				coeffTbl.push_back(ZReg(usedReg.allocRegIdx()));
 			}
 		}
@@ -178,11 +203,45 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	}
 	// assume p0 is all true
 	// use p1, ..., p_unrollN if supportLog1p
-	void genLog1(const ExpParam& para, int unrollN, const std::vector<ZReg>& t)
+	void genLog1(const LogParam& para, int unrollN, const std::vector<ZReg>& t)
 	{
 		using namespace Xbyak_aarch64;
 		const int C = para.regN;
 		const int N = C * unrollN;
+#ifdef FMATH_USE_LOG_TBL
+		for (int i = 0; i < N; i+=C) mov(t[i+4].s, p0, t[i+0].s);
+
+		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, para.sqrt2.s);
+		for (int i = 0; i < N; i+=C) sub(t[i+1].s, t[i+0].s, para.i127shl23.s);
+		for (int i = 0; i < N; i+=C) asr(t[i+1].s, t[i+1].s, 23); // n
+		for (int i = 0; i < N; i+=C) scvtf(t[i+1].s, p0, t[i+1].s); // int -> float
+		for (int i = 0; i < N; i+=C) and_(t[i+0].s, p0, para.x7fffff.s);
+		for (int i = 0; i < N; i+=C) asr(t[i+2].s, t[i+0].s, 23 - ConstVar::L); // d
+		for (int i = 0; i < N; i+=C) lsl(t[i+2].s, t[i+2].s, 2); // d *= 4
+		for (int i = 0; i < N; i+=C) orr(t[i+0].s, p0, para.i127shl23.s); // y
+		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, para.inv_sqrt2.s);
+		add(x4, x3, (uint32_t)offsetof(ConstVar, tbl1));
+		for (int i = 0; i < N; i+=C) ld1w(t[i+3].s, p0, ptr(x4, t[i+2].s, SXTW)); // f
+		for (int i = 0; i < N; i+=C) fnmsb(t[i+0].s, p0, t[i+3].s, para.coeffTbl[0].s); // y = y * f - 1
+		add(x4, x3, (uint32_t)offsetof(ConstVar, tbl2));
+		for (int i = 0; i < N; i+=C) ld1w(t[i+2].s, p0, ptr(x4, t[i+2].s, SXTW)); // h
+		for (int i = 0; i < N; i+=C) {
+			fsub(t[i+4].s, t[i+4].s, para.coeffTbl[0].s); // x-1
+			facge(p1.s, p0, para.f1p32.s, t[i+4].s); // 1/32 >= abs(x-1)
+			mov(t[i+0].s, p1, t[i+4].s);
+			eor(t[i+2].s, p1, t[i+2].s);
+		}
+
+		for (int i = 0; i < N; i+=C) fnmsb(t[i+1].s, p0, para.log2.s, t[i+2].s); // x = n * log2 - h
+		for (int i = 0; i < N; i+=C) {
+			movprfx(t[i+2].s, p0, para.coeffTbl[2].s);
+			fmad(t[i+2].s, p0, t[i+0].s, para.coeffTbl[1].s); // f
+		}
+		for (int i = 0; i < N; i+=C) fmad(t[i+2].s, p0, t[i+0].s, para.coeffTbl[0].s); // f * y + 1
+		for (int i = 0; i < N; i+=C) fmad(t[i+0].s, p0, t[i+2].s, t[i+1].s); // y * f + x
+//mov(t[0].s, p0, t[2].s);
+return;
+#else
 		if (supportNan || supportLog1p) {
 			for (int i = 0; i < N; i+=C) mov(t[i+3].s, p0, t[i+0].s);
 		}
@@ -224,9 +283,10 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 				mov(t[i+0].s, p1, para.fMInf.s);
 			}
 		}
+#endif
 	}
 	// f(float *dst, const float *src, size_t n);
-	void genFunc(void (Code::*gen1)(const ExpParam&, int unrollN, const std::vector<ZReg>&), const Xbyak_aarch64::Label& constVarL)
+	void genFunc(void (Code::*gen1)(const LogParam&, int unrollN, const std::vector<ZReg>&), const Xbyak_aarch64::Label& constVarL)
 	{
 		using namespace Xbyak_aarch64;
 		const XReg& dst = x0;
@@ -235,7 +295,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 
 		UsedReg usedReg;
 
-		ExpParam param(usedReg);
+		LogParam param(usedReg);
 		const int unrollN = 3;
 		const int regN = param.regN;
 
@@ -264,12 +324,20 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, log2)));
 		cpy(param.log2.s, p0/T_z, w4);
-
+#ifdef FMATH_USE_LOG_TBL
+		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, sqrt2)));
+		cpy(param.sqrt2.s, p0/T_z, w4);
+		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, inv_sqrt2)));
+		cpy(param.inv_sqrt2.s, p0/T_z, w4);
+		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, f1p32)));
+		cpy(param.f1p32.s, p0/T_z, w4);
+#else
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, log1p5)));
 		cpy(param.log1p5.s, p0/T_z, w4);
 
 		ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, f2div3)));
 		cpy(param.f2div3.s, p0/T_z, w4);
+#endif
 
 		if (supportNan) {
 			mov(w4, 0x7fc00000); // Nan
@@ -278,7 +346,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 			cpy(param.fMInf.s, p0/T_z, w4);
 		}
 
-		for (int i = 0; i < (int)ConstVar::logN; i++) {
+		for (int i = 0; i < (int)param.coeffTbl.size(); i++) {
 			ldr(w4, ptr(x3, (uint32_t)offsetof(ConstVar, logCoeff) + i * 4));
 			cpy(param.coeffTbl[i].s, p0/T_z, w4);
 		}
@@ -301,15 +369,15 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		bge(lp);
 
 		Label cond;
-		mov(x3, 0);
+		mov(x5, 0);
 		b(cond);
 	Label lp2 = L();
-		ld1w(args[0].s, p0/T_z, ptr(src, x3, LSL, 2));
+		ld1w(args[0].s, p0/T_z, ptr(src, x5, LSL, 2));
 		(this->*gen1)(param, 1, args);
-		st1w(args[0].s, p0, ptr(dst, x3, LSL, 2));
-		incd(x3);
+		st1w(args[0].s, p0, ptr(dst, x5, LSL, 2));
+		incd(x5);
 	L(cond);
-		whilelt(p0.s, x3, n);
+		whilelt(p0.s, x5, n);
 		b_first(lp2);
 
 		if (pos > maxFreeN) {

@@ -77,3 +77,36 @@ x=-inf std=-1.000000e+00 fmath2=-1.000000e+00 diff=0.000000e+00
 std:  tanh=1.51307002e-04
 fmath:tanh=1.51307002e-04
 ctest:name=exp_v, module=7, total=26746, ok=26746, ng=0, exception=0
+-------------------------------------------
+use gather
+ctest:module=aaa
+ctest:module=log
+15 x=3.402823e+38 a=8.872284e+01 b=8.837627e+01 e=3.906242e-03
+    x=7f7fffff a=42b17218 b=42b0c0a6
+ctest:module=logf_v
+ctest:module=bench
+for float x[16384];
+std::log 256.43nsec
+unrollN = 1
+fmath::logf_v 17.93nsec
+fmath::logf_v 17.45nsec
+unrollN = 3
+fmath::logf_v 15.04nsec
+fmath::logf_v 14.24nsec
+ctest:name=log, module=4, total=0, ok=0, ng=0, exception=0
+-------------------------------------------
+use non gather
+ctest:module=aaa
+ctest:module=log
+ctest:module=logf_v
+ctest:module=bench
+for float x[16384];
+std::log 256.53nsec
+unrollN = 1
+fmath::logf_v 23.35nsec
+fmath::logf_v 21.51nsec
+unrollN = 3
+fmath::logf_v 14.28nsec
+fmath::logf_v 13.82nsec
+ctest:name=log, module=4, total=0, ok=0, ng=0, exception=0
+-------------------------------------------

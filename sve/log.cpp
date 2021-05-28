@@ -89,7 +89,7 @@ float logfC2(float x)
 		h = T2[d] = log f
 		log x = log (c * 2^n)
 	*/
-	const int L = 5;
+	const int L = C.L;
 	local::fi fi;
 	fi.f = x * C.sqrt2;
 	int n = int(fi.i - C.i127shl23) >> 23;
@@ -99,18 +99,19 @@ float logfC2(float x)
 	float y = fi.f;
 	y *= C.inv_sqrt2;
 	float f = C.tbl1[d];
+	y = y * f - 1;
 	float h = C.tbl2[d];
-	if (fabs(x - 1) <= 1.0/32) {
-		f = 1;
-		y = x;
+	float x1 = x - 1;
+	bool select = fabs(x1) <= 1.0/32;
+	if (select) {
+		y = x1;
 		h = 0;
 	}
-	y = y * f - 1;
 	x = n * C.log2 - h;
 	f = y * (1/3.0) + (-0.5);
 	f = f * y + 1;
-	f = f * y + x;
-	return f;
+	y = y * f + x;
+	return y;
 }
 
 #ifdef __x86_64__
@@ -154,6 +155,7 @@ CYBOZU_TEST_AUTO(aaa)
 	fmath::logf_v(y, x, 16);
 	for (int i = 0; i < 16; i++) {
 		float a = std::log(x[i]);
+//		float a = logfC2(x[i]);
 		float b = y[i];
 		float e = diff(a, b);
 		if (e > g_maxe) {
@@ -169,17 +171,22 @@ CYBOZU_TEST_AUTO(log)
 	for (size_t i = 0; i < n; i++) {
 		float x = tbl[i];
 		float a = std::log(x);
-//		float b = fmath::logf(x);
+//		float a = logfC2(x);
+		float b = fmath::logf(x);
 //		float b = logfC(x);
-		float b = logfC2(x);
 		float e = diff(a, b);
+#if 0
+		printf("x=%e(%08x) a=%e(%08x) b=%e(%08x) e=%e\n", x, f2u(x), a, f2u(a), b, f2u(b), e);
+#else
 		if (e > g_maxe) {
 			printf("%zd x=%e a=%e b=%e e=%e\n", i, x, a, b, e);
 			printf("    x=%08x a=%08x b=%08x\n", f2u(x), f2u(a), f2u(b));
 		}
+#endif
 //		CYBOZU_TEST_ASSERT(e < 1e-5);
 	}
 }
+#if 1
 
 void checkDiff(const float *x, const float *y1, const float *y2, size_t n, bool put = true)
 {
@@ -246,5 +253,6 @@ CYBOZU_TEST_AUTO(bench)
 	putClk("fmath::logf_v", C * (n / 16));
 	checkDiff(&x[0], &y0[0], &y1[0], n);
 }
+#endif
 #endif
 
