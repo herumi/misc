@@ -209,6 +209,25 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		const int C = para.regN;
 		const int N = C * unrollN;
 #ifdef FMATH_USE_LOG_TBL
+#if 1
+		Label tbl1L, tbl2L, skipL;
+		b(skipL);
+	L(tbl1L);
+		for (size_t i = 0; i < ConstVar::LN; i++) {
+			fi fi;
+			fi.i = (127 << 23) | (i << (23 - ConstVar::L));
+			fi.f = std::sqrt(2) / fi.f;
+			dd(fi.i);
+		}
+	L(tbl2L);
+		const float *tbl1Addr = (const float *)tbl1L.getAddress();
+		for (size_t i = 0; i < ConstVar::LN; i++) {
+			fi fi;
+			fi.f = std::log(tbl1Addr[i]);
+			dd(fi.i);
+		}
+	L(skipL);
+#endif
 		for (int i = 0; i < N; i+=C) mov(t[i+4].s, p0, t[i+0].s);
 
 		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, para.sqrt2.s);
@@ -220,10 +239,12 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		for (int i = 0; i < N; i+=C) lsl(t[i+2].s, t[i+2].s, 2); // d *= 4
 		for (int i = 0; i < N; i+=C) orr(t[i+0].s, p0, para.i127shl23.s); // y
 		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, para.inv_sqrt2.s);
-		add(x4, x3, (uint32_t)offsetof(ConstVar, tbl1));
+//		add(x4, x3, (uint32_t)offsetof(ConstVar, tbl1));
+		adr(x4, tbl1L);
 		for (int i = 0; i < N; i+=C) ld1w(t[i+3].s, p0, ptr(x4, t[i+2].s, SXTW)); // f
 		for (int i = 0; i < N; i+=C) fnmsb(t[i+0].s, p0, t[i+3].s, para.coeffTbl[0].s); // y = y * f - 1
-		add(x4, x3, (uint32_t)offsetof(ConstVar, tbl2));
+//		add(x4, x3, (uint32_t)offsetof(ConstVar, tbl2));
+		adr(x4, tbl2L);
 		for (int i = 0; i < N; i+=C) ld1w(t[i+2].s, p0, ptr(x4, t[i+2].s, SXTW)); // h
 		for (int i = 0; i < N; i+=C) {
 			fsub(t[i+4].s, t[i+4].s, para.coeffTbl[0].s); // x-1
