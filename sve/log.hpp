@@ -247,9 +247,9 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		adr(x4, tbl2L);
 		for (int i = 0; i < N; i+=C) ld1w(t[i+2].s, p0, ptr(x4, t[i+2].s, SXTW)); // h
 		for (int i = 0; i < N; i+=C) {
-			fsub(t[i+4].s, t[i+4].s, para.coeffTbl[0].s); // x-1
-			facge(p1.s, p0, para.f1p32.s, t[i+4].s); // 1/32 >= abs(x-1)
-			mov(t[i+0].s, p1, t[i+4].s);
+			fsub(t[i+3].s, t[i+4].s, para.coeffTbl[0].s); // x-1
+			facge(p1.s, p0, para.f1p32.s, t[i+3].s); // 1/32 >= abs(x-1)
+			mov(t[i+0].s, p1, t[i+3].s);
 			eor(t[i+2].s, p1, t[i+2].s);
 		}
 
@@ -260,8 +260,14 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		}
 		for (int i = 0; i < N; i+=C) fmad(t[i+2].s, p0, t[i+0].s, para.coeffTbl[0].s); // f * y + 1
 		for (int i = 0; i < N; i+=C) fmad(t[i+0].s, p0, t[i+2].s, t[i+1].s); // y * f + x
-//mov(t[0].s, p0, t[2].s);
-return;
+#if 1
+		for (int i = 0; i < N; i+=C) {
+			fcmlt(p1.s, p0, t[i+4].s, 0); // neg
+			mov(t[i+0].s, p1, para.fNan.s);
+			fcmeq(p1.s, p0, t[i+4].s, 0); // = 0
+			mov(t[i+0].s, p1, para.fMInf.s);
+		}
+#endif
 #else
 		if (supportNan || supportLog1p) {
 			for (int i = 0; i < N; i+=C) mov(t[i+3].s, p0, t[i+0].s);
