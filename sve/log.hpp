@@ -14,7 +14,7 @@
 #include <vector>
 #endif
 
-#define FMATH_USE_LOG_TBL
+//#define FMATH_USE_LOG_TBL
 
 namespace fmath {
 
@@ -212,6 +212,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 #if 1
 		Label tbl1L, tbl2L, skipL;
 		b(skipL);
+		align(128);
 	L(tbl1L);
 		for (size_t i = 0; i < ConstVar::LN; i++) {
 			fi fi;
@@ -228,7 +229,9 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		}
 	L(skipL);
 #endif
-		for (int i = 0; i < N; i+=C) mov(t[i+4].s, p0, t[i+0].s);
+		if (supportNan || supportLog1p) {
+			for (int i = 0; i < N; i+=C) mov(t[i+4].s, p0, t[i+0].s);
+		}
 
 		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, para.sqrt2.s);
 		for (int i = 0; i < N; i+=C) sub(t[i+1].s, t[i+0].s, para.i127shl23.s);
@@ -246,13 +249,14 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 //		add(x4, x3, (uint32_t)offsetof(ConstVar, tbl2));
 		adr(x4, tbl2L);
 		for (int i = 0; i < N; i+=C) ld1w(t[i+2].s, p0, ptr(x4, t[i+2].s, SXTW)); // h
-		for (int i = 0; i < N; i+=C) {
-			fsub(t[i+3].s, t[i+4].s, para.coeffTbl[0].s); // x-1
-			facge(p1.s, p0, para.f1p32.s, t[i+3].s); // 1/32 >= abs(x-1)
-			mov(t[i+0].s, p1, t[i+3].s);
-			eor(t[i+2].s, p1, t[i+2].s);
+		if (supportLog1p) {
+			for (int i = 0; i < N; i+=C) {
+				fsub(t[i+3].s, t[i+4].s, para.coeffTbl[0].s); // x-1
+				facge(p1.s, p0, para.f1p32.s, t[i+3].s); // 1/32 >= abs(x-1)
+				mov(t[i+0].s, p1, t[i+3].s);
+				eor(t[i+2].s, p1, t[i+2].s);
+			}
 		}
-
 		for (int i = 0; i < N; i+=C) fnmsb(t[i+1].s, p0, para.log2.s, t[i+2].s); // x = n * log2 - h
 		for (int i = 0; i < N; i+=C) {
 			movprfx(t[i+2].s, p0, para.coeffTbl[2].s);
@@ -260,14 +264,14 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		}
 		for (int i = 0; i < N; i+=C) fmad(t[i+2].s, p0, t[i+0].s, para.coeffTbl[0].s); // f * y + 1
 		for (int i = 0; i < N; i+=C) fmad(t[i+0].s, p0, t[i+2].s, t[i+1].s); // y * f + x
-#if 1
-		for (int i = 0; i < N; i+=C) {
-			fcmlt(p1.s, p0, t[i+4].s, 0); // neg
-			mov(t[i+0].s, p1, para.fNan.s);
-			fcmeq(p1.s, p0, t[i+4].s, 0); // = 0
-			mov(t[i+0].s, p1, para.fMInf.s);
+		if (supportNan) {
+			for (int i = 0; i < N; i+=C) {
+				fcmlt(p1.s, p0, t[i+4].s, 0); // neg
+				mov(t[i+0].s, p1, para.fNan.s);
+				fcmeq(p1.s, p0, t[i+4].s, 0); // = 0
+				mov(t[i+0].s, p1, para.fMInf.s);
+			}
 		}
-#endif
 #else
 		if (supportNan || supportLog1p) {
 			for (int i = 0; i < N; i+=C) mov(t[i+3].s, p0, t[i+0].s);
