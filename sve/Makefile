@@ -3,7 +3,7 @@ INC_DIR?=../../fujitsu/xbyak_aarch64/
 LIB_DIR?=$(INC_DIR)/lib
 CPPFLAGS=$(OPT) -Wall -I $(INC_DIR) -I ../../cybozulib/include -g
 ifneq ($(DEBUG),1)
-CPPFLAGS+=-O2 -DNDEBUG
+CPPFLAGS+=-O3 -DNDEBUG
 endif
 LDFLAGS=-s -L $(LIB_DIR) -lxbyak_aarch64 -g
 SRC=double-vec.cpp int-vec.cpp float-vec.cpp float-test.cpp exp_v.cpp log.cpp
