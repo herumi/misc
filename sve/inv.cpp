@@ -16,7 +16,7 @@ float x[1024]
 using namespace Xbyak_aarch64;
 
 struct Code : CodeGenerator {
-	Code(int op, int mode, bool addMovprfx)
+	Code(int op, size_t mode, bool addMovprfx)
 	{
 		const auto& out = x0;
 		const auto& src1 = x1;
@@ -33,7 +33,8 @@ struct Code : CodeGenerator {
 		ld1w(z1.s, p0/T_z, ptr(src2, idx, LSL, 2));
 		switch (op) {
 		case 0:
-			if (addMovprfx) movprfx(z2.s, p0, z0.s);
+//			if (addMovprfx) movprfx(z2.s, p0, z0.s);
+			if (addMovprfx) movprfx(z2, z0);
 			frintm(z2.s, p0, z0.s); // floor
 			break;
 		case 1:
@@ -41,7 +42,8 @@ struct Code : CodeGenerator {
 			break;
 		case 2:
 			if (addMovprfx) {
-				movprfx(z2.s, p0, z0.s); // T_z
+//				movprfx(z2.s, p0, z0.s); // T_z
+				movprfx(z2, z0); // T_z
 			} else {
 				mov(z2.s, p0, z0.s); // T_m
 			}
@@ -163,7 +165,7 @@ int main(int argc, char *argv[])
 		"frecps+fma+cmpeq",
 	};
 	printf("op=%d %s addMovprfx=%d\n", op, opTbl[op], addMovprfx);
-	for (int mode = 0; mode < sizeof(modeTbl)/sizeof(modeTbl[0]); mode++) {
+	for (size_t mode = 0; mode < sizeof(modeTbl)/sizeof(modeTbl[0]); mode++) {
 		printf("mode=%s\n", modeTbl[mode]);
 		Code c(op, mode, addMovprfx);
 		auto fA = c.getCode<void (*)(float *, const float *, const float *, size_t)>();
