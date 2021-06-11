@@ -7,7 +7,7 @@
 #include <limits>
 #include "log.hpp"
 
-const float g_maxe = 1e-5;
+const float g_maxe = 1e-6;
 
 float diff(float x, float y)
 {
