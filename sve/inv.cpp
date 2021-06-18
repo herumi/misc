@@ -1,5 +1,6 @@
 #include <xbyak_aarch64/xbyak_aarch64.h>
 #include <cybozu/benchmark.hpp>
+#include <cybozu/option.hpp>
 #include <math.h>
 /*
 	clang -O3
@@ -16,7 +17,7 @@ float x[1024]
 using namespace Xbyak_aarch64;
 
 struct Code : CodeGenerator {
-	Code(int op, size_t mode, bool addMovprfx)
+	Code(size_t prefix, size_t op1, size_t op2)
 	{
 		const auto& out = x0;
 		const auto& src1 = x1;
@@ -31,27 +32,36 @@ struct Code : CodeGenerator {
 	Label lp = L();
 		ld1w(z0.s, p0/T_z, ptr(src1, idx, LSL, 2));
 		ld1w(z1.s, p0/T_z, ptr(src2, idx, LSL, 2));
-		switch (op) {
+		switch (prefix) {
 		case 0:
-//			if (addMovprfx) movprfx(z2.s, p0, z0.s);
-			if (addMovprfx) movprfx(z2, z0);
+			// none
+			break;
+		case 1:
+			movprfx(z2, z0);
+			break;
+		case 2:
+			mov(z2.s, p0, z0.s);
+			break;
+		case 3:
+			mov(z2.d, z0.d);
+			break;
+		case 4:
+			eor(z2.d, z0.d, z0.d);
+			break;
+		}
+		switch (op1) {
+		case 0:
 			frintm(z2.s, p0, z0.s); // floor
 			break;
 		case 1:
 			fadd(z2.s, z0.s, z0.s);
 			break;
 		case 2:
-			if (addMovprfx) {
-//				movprfx(z2.s, p0, z0.s); // T_z
-				movprfx(z2, z0); // T_z
-			} else {
-				mov(z2.s, p0, z0.s); // T_m
-			}
 			fadd(z2.s, p0, z0.s);
 			break;
 		}
 		fadd(z0.s, z1.s, z2.s);
-		switch (mode) {
+		switch (op2) {
 		case 0:
 			fdivr(z0.s, p0, one.s);
 			break;
@@ -125,11 +135,11 @@ struct Code : CodeGenerator {
 	}
 };
 
-void fC(int op, float *z, const float *x, const float *y, size_t n)
+void fC(int op1, float *z, const float *x, const float *y, size_t n)
 {
 	for (size_t i = 0; i < n; i++) {
 		float v;
-		switch (op) {
+		switch (op1) {
 		case 0:
 			v = floor(x[i]) + y[i];
 			break;
@@ -138,7 +148,7 @@ void fC(int op, float *z, const float *x, const float *y, size_t n)
 			v = (x[i] + x[i]) + y[i];
 			break;
 		default:
-			printf("ERR op=%d\n", op);
+			printf("ERR op1=%d\n", op1);
 			exit(1);
 		}
 		z[i] = 1 / v;
@@ -148,14 +158,19 @@ void fC(int op, float *z, const float *x, const float *y, size_t n)
 int main(int argc, char *argv[])
 	try
 {
-	int op = argc == 1 ? 0 : atoi(argv[1]);
-	bool addMovprfx = argc == 3;
-	const char *opTbl[] = {
+	const char *prefixTbl[] = {
+		"none",
+		"movprfx",
+		"mov",
+		"mov(pred)",
+		"eor",
+	};
+	const char *op1Tbl[] = {
 		"floor",
 		"add",
 		"add(pred)",
 	};
-	const char *modeTbl[] = {
+	const char *op2Tbl[] = {
 		"fdivr",
 		"frecps z2",
 		"frecps z3",
@@ -164,10 +179,36 @@ int main(int argc, char *argv[])
 		"frecps+fma",
 		"frecps+fma+cmpeq",
 	};
-	printf("op=%d %s addMovprfx=%d\n", op, opTbl[op], addMovprfx);
-	for (size_t mode = 0; mode < sizeof(modeTbl)/sizeof(modeTbl[0]); mode++) {
-		printf("mode=%s\n", modeTbl[mode]);
-		Code c(op, mode, addMovprfx);
+	size_t prefix;
+	size_t op1;
+	cybozu::Option opt;
+	opt.appendOpt(&prefix, 0, "p", "prefix");
+	opt.appendOpt(&op1, 0, "o1", "op1");
+	opt.appendHelp("h");
+	if (!opt.parse(argc, argv)) {
+		opt.usage();
+		return 1;
+	}
+	const struct {
+		size_t v;
+		size_t n;
+		const char *name;
+	} rangeTbl[] = {
+		{ prefix, CYBOZU_NUM_OF_ARRAY(prefixTbl), "prefix" },
+		{ op1, CYBOZU_NUM_OF_ARRAY(op1Tbl), "op1" },
+	};
+	for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(rangeTbl); i++) {
+		const size_t v = rangeTbl[i].v;
+		const size_t n = rangeTbl[i].n;
+		if (v >= n) {
+			fprintf(stderr, "%s is too large %zd max=%zd\n", rangeTbl[i].name,v, n);
+			return 1; 
+		}
+	}
+	printf("prefix=%s op1=%s\n", prefixTbl[prefix], op1Tbl[op1]);
+	for (size_t op2 = 0; op2 < CYBOZU_NUM_OF_ARRAY(op2Tbl); op2++) {
+		printf("op2=%s\n", op2Tbl[op2]);
+		Code c(prefix, op1, op2);
 		auto fA = c.getCode<void (*)(float *, const float *, const float *, size_t)>();
 		c.ready();
 		const size_t n = 1024;
@@ -179,7 +220,7 @@ int main(int argc, char *argv[])
 			z1[i] = -99;
 			z2[i] = z1[i];
 		}
-		fC(op, z1, x, y, n);
+		fC(op1, z1, x, y, n);
 		fA(z2, x, y, n);
 		bool ok = true;
 		float maxe = 0;
