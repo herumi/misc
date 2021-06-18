@@ -46,6 +46,9 @@ struct Code : CodeGenerator {
 			mov(z2.d, z0.d);
 			break;
 		case 4:
+			eor(z2.d, z2.d, z2.d);
+			break;
+		case 5:
 			eor(z2.d, z0.d, z0.d);
 			break;
 		}
@@ -163,7 +166,8 @@ int main(int argc, char *argv[])
 		"movprfx",
 		"mov",
 		"mov(pred)",
-		"eor",
+		"eor(B, B, B)",
+		"eor(B, A, A)",
 	};
 	const char *op1Tbl[] = {
 		"floor",

@@ -151,6 +151,9 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		for (int i = 0; i < N; i+=C) fmul(t[i+0].s, t[i+0].s, para.log2_e.s);
 		for (int i = 0; i < N; i+=C) {
 			movprfx(t[i+1], t[i+0]); // clear implicit dependency
+//mov(t[i+1].s, 0);
+//eor(t[i+1].d, t[i+0].d, t[i+0].d); // a little slower
+//eor(t[i+1].d, t[i+1].d, t[i+1].d); // more slower
 			frintm(t[i+1].s, p, t[i+0].s); // floor : float -> float
 		}
 		for (int i = 0; i < N; i+=C) fcvtzs(t[i+2].s, p, t[i+1].s); // n = float -> int
