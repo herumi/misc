@@ -3,19 +3,20 @@
 	require git clone https://github.com/herumi/mcl && make lib/libmcl.a
 
 	on x64 Linux (4 core VM)
+	g++ openmp-reduction.cpp -O2 -DNDEBUG -lmcl -I ../mcl/include/ -L ../mcl/lib/ -fopenmp
 	% ./a.out
-	sumVec1   2.345Mclk
-	sumVec2 857.796Kclk
+	sumVec1   2.306Mclk
+	sumVec2 667.347Kclk
 
 	brew install libomp
 	on Intel Mac
-	clang++ openmp-reduction.cpp -O2 -Xpreprocessor -fopenmp -lomp -lmcl -I ../mcl/include/ -L ../mcl/lib/
+	clang++ openmp-reduction.cpp -O2 -DNDEBUG -lmcl -I ../mcl/include/ -L ../mcl/lib/ -Xpreprocessor -fopenmp -lomp
 	% ./a.out
-	sumVec1   1.651Mclk
-	sumVec2 622.100Kclk
+	sumVec1   1.562Mclk
+	sumVec2 435.000Kclk
 
 	on M1 Mac
-	clang++ openmp-reduction.cpp -O3 -Xpreprocessor -fopenmp -lmcl -I ../mcl/include/ -L ../mcl/lib/ -lomp -L /opt/homebrew/lib/ -I/opt/homebrew/include
+	clang++ openmp-reduction.cpp -O2 -DNDEBUG -lmcl -I ../mcl/include/ -L ../mcl/lib/ -Xpreprocessor -fopenmp -lomp -L /opt/homebrew/lib/ -I/opt/homebrew/include
 	% ./a.out
 	sumVec1   1.307msec
 	sumVec2   2.848msec ; slower!!!
