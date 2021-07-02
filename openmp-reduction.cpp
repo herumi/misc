@@ -1,7 +1,29 @@
 /*
-	g++ openmp-reduction.cpp -O2 -fopenmp
+	g++ openmp-reduction.cpp -O2 -fopenmp ../mcl/lib/libmcl.a
+	require git clone https://github.com/herumi/mcl && make lib/libmcl.a
+
+	on x64 Linux (4 core VM)
+	% ./a.out
+	sumVec1   2.345Mclk
+	sumVec2 857.796Kclk
+
+	brew install libomp
+	on Intel Mac
+	clang++ openmp-reduction.cpp -O2 -Xpreprocessor -fopenmp -lomp -lmcl -I ../mcl/include/ -L ../mcl/lib/
+	% ./a.out
+	sumVec1   1.651Mclk
+	sumVec2 622.100Kclk
+
+	on M1 Mac
+	clang++ openmp-reduction.cpp -O3 -Xpreprocessor -fopenmp -lmcl -I ../mcl/include/ -L ../mcl/lib/ -lomp -L /opt/homebrew/lib/ -I/opt/homebrew/include
+	% ./a.out
+	sumVec1   1.307msec
+	sumVec2   2.848msec ; slower!!!
+	d=1000
+	d=1000
 */
 #define MCL_USE_VINT
+#define MCL_DONT_USE_OPENSSL
 #include <mcl/she.hpp>
 #include <cybozu/benchmark.hpp>
 using namespace mcl::she;
