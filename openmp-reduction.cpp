@@ -19,7 +19,7 @@
 	clang++ openmp-reduction.cpp -O2 -DNDEBUG -lmcl -I ../mcl/include/ -L ../mcl/lib/ -Xpreprocessor -fopenmp -lomp -L /opt/homebrew/lib/ -I/opt/homebrew/include
 	% ./a.out
 	sumVec1   1.307msec
-	sumVec2   2.848msec ; slower!!!
+	sumVec2   2.848msec ; total CPU time
 	d=1000
 	d=1000
 */
@@ -49,9 +49,9 @@ void sumVec2(CipherTextG1& r, const CTVec& cv)
 	}
 }
 
-int main()
+int main(int argc, char *[])
 {
-	const size_t N = 1000;
+	const size_t N = 10000;
 	const size_t hashSize = 65536;
 	initG1only(mcl::ecparam::secp256k1, hashSize);
 	SecretKey sec;
@@ -65,10 +65,13 @@ int main()
 		ppub.enc(cv[i], 1);
 	}
 	CipherTextG1 r1, r2;
-	CYBOZU_BENCH_C("sumVec1", 100, sumVec1, r1, cv);
-	CYBOZU_BENCH_C("sumVec2", 100, sumVec2, r2, cv);
-	int d = sec.dec(r1);
-	printf("d=%d\n", d);
-	d = sec.dec(r2);
+	int d;
+	if (argc == 1) {
+		CYBOZU_BENCH_C("sumVec1", 100, sumVec1, r1, cv);
+		d = sec.dec(r1);
+	} else {
+		CYBOZU_BENCH_C("sumVec2", 100, sumVec2, r2, cv);
+		d = sec.dec(r2);
+	}
 	printf("d=%d\n", d);
 }
