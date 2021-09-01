@@ -1,5 +1,7 @@
 # Pattern Matching
-[P1371R2](https://github.com/mpark/wg21/blob/master/P1371R2.md)
+- [P1371R2](https://github.com/mpark/wg21/blob/master/P1371R2.md)
+- [P1371R3](https://github.com/mpark/wg21/blob/master/P1371R3.md)
+  - [P2392R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2392r0.pdf)
 
 switch caseに代わる新しいパターンマッチ構文の導入
 ## サンプル
@@ -17,11 +19,17 @@ switch (x) {
 提案
 ```
 inspect (x) {
-  0: std::cout << "got zero";
-  1: std::cout << "got one";
-  __: std::cout << "don't care";
-}
+  0 => { std::cout << "got zero"; }
+  1 => { std::cout << "got one"; }
+  __ => { std::cout << "don't care"; }
+};
 ```
+- `:`が`=>`に変わった。
+- `,`で区切っていたのが`;`になった。
+- breakが無くなった。
+- 最後`;`がついた(inspectはいつもexpression)。
+- binding patternは削除
+
 ### _の禁止
 [p1469r0](https://github.com/mpark/wg21/blob/master/generated/P1469R0.pdf)
 
@@ -50,10 +58,10 @@ if (s == "foo") {
 提案
 ```
 inspect (s) {
-  "foo": std::cout << "got foo";
-  "bar": std::cout << "got bar";
-  __: std::cout << "don't care";
-}
+  "foo" => { std::cout << "got foo"; }
+  "bar" => { std::cout << "got bar"; }
+  __ => { std::cout << "don't care"; }
+};
 ```
 
 ### 構造化束縛のマッチ
@@ -75,11 +83,11 @@ if (x == 0 && y == 0) {
 提案
 ```
 inspect (p) {
-  [0, 0]: std::cout << "on origin";
-  [0, y]: std::cout << "on y-axis";
-  [x, 0]: std::cout << "on x-axis";
-  [x, y]: std::cout << x << ',' << y;
-}
+  [0, 0] => { std::cout << "on origin"; }
+  [0, y] => { std::cout << "on y-axis"; }
+  [x, 0] => { std::cout << "on x-axis"; }
+  [x, y] => { std::cout << x << ',' << y; }
+};
 ```
 ### 入れ子
 従来
@@ -133,9 +141,9 @@ std::visit(visitor{strm}, v);
 提案
 ```
 inspect (v) {
-  <int> i: strm << "got int: " << i;
-  <float> f: strm << "got float: " << f;
-}
+  <int> i => { strm << "got int: " << i; }
+  <float> f => { strm << "got float: " << f; }
+};
 ```
 
 ### 式評価
@@ -199,13 +207,13 @@ int eval(const Expr& expr) {
 ```
 int eval(const Expr& expr) {
   return inspect (expr) {
-    <int> i => i,
-    <Neg> [(*?) e] => -eval(e),
-    <Add> [(*?) l, (*?) r] => eval(l) + eval(r),
+    <int> i => i;
+    <Neg> [(*?) e] => -eval(e);
+    <Add> [(*?) l, (*?) r] => eval(l) + eval(r);
     // Optimize multiplication by 0.
-    <Mul> [(*?) <int> 0, __] => 0,
-    <Mul> [__, (*?) <int> 0] => 0,
-    <Mul> [(*?) l, (*?) r] => eval(l) * eval(r)
+    <Mul> [(*?) <int> 0, __] => 0;
+    <Mul> [__, (*?) <int> 0] => 0;
+    <Mul> [(*?) l, (*?) r] => eval(l) * eval(r);
   };
 }
 ```
@@ -235,35 +243,49 @@ Op parseOp(Parser& parser) {
 enum class Op { Add, Sub, Mul, Div };
 Op parseOp(Parser& parser) {
   return inspect(parser.consumeToken()) {
-    '+' => Op::Add,
-    '-' => Op::Sub,
-    '*' => Op::Mul,
-    '/' => Op::Div,
-    token: {
+    '+' => Op::Add;
+    '-' => Op::Sub;
+    '*' => Op::Mul;
+    '/' => Op::Div;
+    token => !{
       std::cerr << "Unexpected: " << token;
       std::terminate();
     }
-  }
+  };
 }
 ```
+それ以外のtokenで`!`がついた。
+
 # 文法
 
 ```
-inspect (cond) {
-  pattern guard_opt => expression,
-  pattern guard_opt: statement
+inspect constexpr_opt (cond) trailing-return-type_opt {
+  pattern guard_opt => statement
+  pattern guard_opt => !_opt { statement-seq }
 }
 ```
-- `=>` ; 返すための値を生成する式
-- `:` ; 値は返さない. 中身を実行する. returnするとinspectを実行してる関数から抜ける
-- __ ; wildcard
-- `guard:`は `if (expression)`をかける
+- 内部的にはinspectはswitchとifの組み合わせと同等
+- ただし条件の評価のときに変換も型昇格も行われない
+- inspectは式で内部のstatementによってvoidか値を返す
+  - 型はstatementから静的に決まる(ラムダ式と同じ)
+  - 型は全て同じでなければならない
+  - trailing-return-typeを指定すれば全ての値はその型に暗黙変換される
+- `!`はcompound statementの前で使われる
+  - 型推論には影響しない
+  - マッチするものが無かったらここにくる
+  - 終わったらstd::terminateが呼ばれる
+
+履歴
+- `=>`の後ろが`expression,`だったのが`statement`になった
+- `:`は無くなった
+- `!`が追加された
 
 ## 識別子(identifier)パターン
 
+- `__`は任意のパターンにマッチする(`_`は無し)
 - identifierは任意の値にマッチする
-- identifierはvを参照するlvalueとして振る舞う
-- スコープは次のパターンラベルの直前のstatementの終わりまで
+  - identifierはvを参照するlvalueとして振る舞う
+- スコープはその直後のstatementの終わりまで
 
 ```
 int v = ...;
@@ -272,21 +294,23 @@ inspect (v) {
 }
 ```
 
-## 式(expression)マッチ
+## 式(expression)パターン
 
-下記のeはconstant-expression
 ```
 inspect (v) {
-  e: ...
+  e => { ... }
 }
 ```
-について`e.match(v)`または`match(e, v)`の結果がtrueのときにマッチする。
-match(e, v)のデフォルト挙動はe == v
+expressionパターンはconstatnt-expressionの形eでinspect (v)のvに対して
+- e.match(v)がtrue
+- ADLによるmatch(e, v)がtrue
+  - match (e, v)のデフォルトはe == v
+のときマッチする
 
 ```
 inspect (v) {
-  0: std::cout << "zero";
-  1: std::cout << "one";
+  0 => { std::cout << "zero"; }
+  1 => { std::cout << "one"; }
 }
 ```
 
@@ -294,49 +318,95 @@ inspect (v) {
 enum class Color { Red, Green, Blue };
 Color color = ...;
 inspect (color) {
-  Color::Red: ...
-  Color::Green: ...
-  Color::Blue: ...
+  Color::Red   => ...
+  Color::Green => ...
+  Color::Blue  => ...
 }
 ```
 
-以下はidentifier patternになる
+注意 : 以下はidentifier patternになる
 ```
 static constexpr int zero = 0, one = 1;
 int v = 42;
 inspect (v) {
-   zero: std::cout << zero; // zeroという名前の一時変数が作られる
+   zero => { std::cout << zero; } // zeroという名前の一時変数で42を表示
 }
-// prints: 42
 ```
-Q. 42が表示されてうれしいか / 間違えないか?
+
+## 複合(compound)パターン
+
+構造化束縛は次の形のどちらか
+- [pattern_0, pattern_1, ..., pattern_N]
+- [designator_0:pattern_0, designator_1:pattern_1, ..., designator_N:pattern_N]
 
 ```
-static constexpr int zero = 0, one = 1;
-std::pair<int, int> p = /* ... */
+std::pair<int, int> p = /* ... */ ;
 inspect (p) {
-  case [zero, one]: {
-  //    ˆˆˆˆ  ˆˆˆ id-expression
-    std::cout << zero << ' ' << one;
-  }
+  [0, 0] => { std::cout << "on origin"; }
+  [0, y] => { std::cout << "on y-axis"; }
+//    ˆ identifier pattern
+  [x, 0] => { std::cout << "on x-axis"; }
+// ˆ expression pattern
+  [x, y] => { std::cout << x << ',' << y; }
+//ˆˆˆˆˆˆ structured binding pattern
+};
+```
+2番目のパターンはvのstaticでないメンバ変数でdesignator_iという名前がpattern_iにマッチする
+
+designatorの順序は構造体のメンバの順序と同じでなくてよい
+
+```
+struct Player { std::string name; int hitpoints; int coins; };
+
+void get_hint(const Player& p) {
+  inspect (p) {
+    [.hitpoints: 1] => { std::cout << "You're almost destroyed. Give up!\n"; }
+    [.hitpoints: 10, .coins: 10] => { std::cout << "I need the hints from you!\n"; }
+    [.coins: 10] => { std::cout << "Get more hitpoints!\n"; }
+    [.hitpoints: 10] => { std::cout << "Get more ammo!\n"; }
+    [.name: n] => {
+      if (n != "The Bruce Dickenson") {
+        std::cout << "Get more hitpoints and ammo!\n";
+      } else {
+        std::cout << "More cowbell!\n";
+      }
+    }
+  };
 }
 ```
-これもidentifier expression
-
 
 ## 代替パターン
 
 以下の順でマッチを試す
 - `<auto> pattern`
 - `<concept> pattern`
-- `<type>` pattern
+- `<type> pattern`
 - `<constant-expression> pattern`
 
+- マッチした値vに対して`V = std::remove_cvref_t<decltype(v)>`という型とする
+- `Alt`は`<>`の中のentityとする
+
 ### std::variant
-vに対して`V = std::remove_cvref_t<decltype(v)>`とし
-`get<v.index()>(v)`が正しく設定されているならそれにマッチする
 
 従来
+```
+std::visit(
+  [&](auto&& x) {
+    strm << "got auto: " << x;
+  },
+  v);
+```
+
+提案
+```
+inspect (v) {
+  <auto> x => {
+    strm << "got auto: " << x;
+  }
+};
+```
+
+
 ```
 std::visit([&](auto&& v) {
   using V = std::remove_cvref_t<decltype(v)>;
@@ -351,9 +421,9 @@ std::visit([&](auto&& v) {
 提案
 ```
 inspect (v) {
-  <C1> c1: strm << "got C1: " << c1;
-  <C2> c2: strm << "got C2: " << c2;
-}
+  <C1> c1 => { strm << "got C1: " << c1; }
+  <C2> c2 => { strm << "got C2: " << c2; }
+};
 ```
 
 従来
@@ -372,9 +442,9 @@ std::visit([&](auto&& v) {
 提案
 ```
 inspect (v) {
-  <int> i: strm << "got int: " << i;
-  <float> f: strm << "got float: " << f;
-}
+  <int> i => { strm << "got int: " << i; }
+  <float> f => { strm << "got float: " << f; }
+};
 ```
 
 ### indexの場合
@@ -401,9 +471,9 @@ std::visit([&](auto&& x) {
 std::variant<int, int> v = /* ... */;
 
 inspect (v) {
-  <0> x: strm << "got first: " << x;
-  <1> x: strm << "got second: " << x;
-}
+  <0> x => { strm << "got first: " << x; }
+  <1> x => { strm << "got second: " << x; }
+};
 ```
 
 ## Anyの場合
@@ -423,9 +493,9 @@ if (int* i = any_cast<int>(&a)) {
 提案
 ```
 inspect (a) {
-  <int> i: std::cout << "got int: " << i;
-  <float> f: std::cout << "got float: " << f;
-}
+  <int> i=> { std::cout << "got int: " << i; }
+  <float> f => { std::cout << "got float: " << f; }
+};
 ```
 
 ### 多態
@@ -453,10 +523,61 @@ int Rectangle::get_area() const override {
 ```
 int get_area(const Shape& shape) {
   return inspect (shape) {
-    <Circle>    [r]    => 3.14 * r * r,
-    <Rectangle> [w, h] => w * h
-  }
+    <Circle>    [r]    => 3.14 * r * r;
+    <Rectangle> [w, h] => w * h;
+  };
 }
+```
+
+## 括弧で囲まれたパターン
+
+```
+std::variant<Point, /* ... */ > v = /* ... */ ;
+
+inspect (v) {
+  <Point> ([x, y]) => // ...
+//          ˆˆˆˆ parenthesized pattern
+};
+```
+
+## caseパターン
+
+```
+enum Color { Red, Green, Blue };
+Color color = /* ... */ ;
+inspect (color) {
+  case Red => // ...
+  case Green => // ...
+//     ˆˆˆˆˆ id-expression
+case Blue => // ...
+//   ˆˆˆˆ case pattern
+};
+```
+
+```
+static constexpr int zero = 0;
+int v = /* ... */ ;
+inspect (v) {
+  case zero => { std::cout << "got zero"; }
+//     ˆˆˆˆ id-expression
+  case 1 => { std::cout << "got one"; }
+//     ˆ expression pattern
+  case 2 => { std::cout << "got two"; }
+//     ˆ case pattern
+};
+```
+
+```
+static constexpr int zero = 0, one = 1;
+std::pair<int, int> p = /* ... */
+inspect (p) {
+  [case zero, case one] => {
+//      ˆˆˆˆ       ^ˆˆ id-expression
+    std::cout << zero << ' ' << one;
+// Note that     ^ˆˆˆ and       ˆˆˆ are id-expressions
+// that refer to the `static constexpr` variables.
+  }
+};
 ```
 
 ## Dereferenceパターン
@@ -471,8 +592,8 @@ struct Node {
 
 void print_leftmost(const Node& node) {
   inspect (node) {
-    [.value: v, .lhs: nullptr]: std::cout << v << '\n';
-    [.lhs: (*!)l]: print_leftmost(l);
+    [.value: v, .lhs: nullptr] => { std::cout << v << '\n'; }
+    [.lhs: (*!)l] => { print_leftmost(l); }
   }
 }
 ```
@@ -497,32 +618,84 @@ struct PhoneNumber {
 
 inline constexpr PhoneNumber phone_number;
 inspect (s) {
-  (email?) [address, domain]: std::cout << "got an email";
-  (phone_number?) ["415", __, __]: std::cout << "got a San Francisco phone number";
+  (email?) [address, domain] => { std::cout << "got an email"; }
+  (phone_number?) ["415", __, __] => { std::cout << "got a San Francisco phone number"; }
   // ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ extractor pattern
 }
 ```
 
 ## パターンガード
 
+expressionがtrueなら対応するstmtを実行する。
+そうでなければ後続するパターンに制御を移す。
+
 ```
 inspect (v) {
-  pattern1 if (cond1): stmt1
-  pattern2: stmt2
-  // ...
+  pattern1 if (expression) => { stmt }
 }
 ```
 
-は
+```
+inspect (p) {
+[x, y] if (test(x, y)) => { std::cout << x << ',' << y << " passed"; }
+//     ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ pattern guard
+};
+```
+
+### constexpr
 
 ```
-if (MATCHES(pattern1, v) && cond1) stmt1
-else if (MATCHES(pattern2, v)) stmt2
+inspect constexpr (v) {
+  pattern1 if (cond1) => { stmt1 }
+  pattern2 => { stmt2 }
+  // ...
+};
+```
+は
+```
+if constexpr (MATCHES(pattern1, v) && cond1) stmt1
+else if constexpr (MATCHES(pattern2, v)) stmt2
 // ...
 ```
 
-の意味
+という意味。
 
+-----------------------------------------------------------------------------
+# Pattern matching using is and as
+
+- 構造化束縛[]はどこでも使えていいんじゃないか
+- x is C
+- x as T
+
+```
+constexpr auto even (auto const& x) { return x%2 == 0; } // given this example predicate
+// x can be anything suitable, incl. variant, any, optional<int>, future<string>, etc.
+
+void f(auto const& x) {
+  inspect (x) {
+    i as int => cout << "int " << i;
+    is std::integral => cout << "non-int integral " << x;
+    [a,b] is [int,int] => cout << "2-int tuple " << a << " " << b;
+    [_,y] is [0,even] => cout << "point on x-axis and even y " << y;
+    s as string => cout << "string \"" + s + "\"";
+    is _ => cout << "((no matching value))";
+  } // `;`はいる?
+}
+```
+
+```
+inspect (x) {
+  is Number => { cout << "some type of number"; } // type predicate match
+  is string => { cout << "a string"; } // specific type match
+  is in(1,2) => { cout << "1 or 2"; } // value predicate match
+  is 3 => { cout << "3"; } // specific value match
+  is x<10 => { cout << "<10, but not 1 2 3"; } // boolean condition match
+  is _ => { cout << "something else"; } // match anything
+}
+```
+
+昔の残り
+-----------------------------------------------------------------------------
 ## 網羅性と有用性
 `[[strict]]`をつけると網羅性と有用性のチェックをしてくれる
 - 網羅性 ; ありえる値の全てが少なくともどれか一つのケースで処理される
@@ -534,7 +707,7 @@ else if (MATCHES(pattern2, v)) stmt2
 
 ## 反駁
 
-- 反駁性(refutable) ; 失敗する可能性のあるパターン
+- 反駁性(refutable) ; マッチに失敗する可能性のあるパターン
   - expression pattern
 - 反駁不可性(irrefutable) ; 失敗しないパターン
   - identifier pattern
@@ -566,9 +739,9 @@ else if (MATCHES(pattern2, v)) stmt2
 bool f(int &); // defined in a different translation unit.
 int x = 1;
 inspect (x) {
-  0: std::cout << 0;
-  1 if (f(x)): std::cout << 1;
-  2: std::cout << 2;
+  0 => { std::cout << 0; }
+  1 if (f(x)) => { std::cout << 1; }
+  2 => { std::cout << 2; }
 }
 ```
 
