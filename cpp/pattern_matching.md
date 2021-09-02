@@ -3,6 +3,8 @@
 - [P1371R3](https://github.com/mpark/wg21/blob/master/P1371R3.md)
   - [P2392R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2392r0.pdf)
 
+cf. [Guarded_Command_Language](https://en.wikipedia.org/wiki/Guarded_Command_Language)
+
 switch caseに代わる新しいパターンマッチ構文の導入
 ## サンプル
 
@@ -99,28 +101,6 @@ auto const& [topBoundary, leftBoundary] = topLeft;
 ```
 auto const& [[topBoundary, leftBoundary], __] = getBoundaryRectangle();
 ```
-
-### メンバ変数指定
-```
-struct Player { std::string name; int hitpoints; int coins; };
-
-void get_hint(const Player& p) {
-    inspect (p) {
-        [.hitpoints: 1]: std::cout << "You're almost destroyed. Give up!\n";
-        [.hitpoints: 10, .coins: 10]: std::cout << "I need the hints from you!\n";
-        [.coins: 10]: std::cout << "Get more hitpoints!\n";
-        [.hitpoints: 10]: std::cout << "Get more ammo!\n";
-        [.name: n]: {
-            if (n != "The Bruce Dickenson") {
-                std::cout << "Get more hitpoints and ammo!\n";
-            } else {
-                std::cout << "More cowbell!\n";
-            }
-        }
-    }
-}
-```
-構造化の指定子(designator)はメンバ変数の宣言順序と一緒でなくてもよい。
 
 ### Variant
 
@@ -269,6 +249,7 @@ inspect constexpr_opt (cond) trailing-return-type_opt {
 - inspectは式で内部のstatementによってvoidか値を返す
   - 型はstatementから静的に決まる(ラムダ式と同じ)
   - 型は全て同じでなければならない
+  - compound statementのときはvoidになる
   - trailing-return-typeを指定すれば全ての値はその型に暗黙変換される
 - `!`はcompound statementの前で使われる
   - 型推論には影響しない
