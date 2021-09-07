@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+// see optimized version combination.cpp
+
 // return the next bit pattern of n-bits which contains k zeros.
 uint64_t nextCombination(uint64_t a)
 {
