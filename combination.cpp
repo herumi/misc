@@ -13,7 +13,6 @@
 
 #define USE_INTRIN
 
-#define XBYAK_NO_OP_NAMES
 #include <xbyak/xbyak.h>
 #include <xbyak/xbyak_util.h>
 
@@ -30,42 +29,43 @@ struct NextCombinationCode : Xbyak::CodeGenerator {
 	NextCombinationCode()
 		try
 	{
-		Xbyak::util::Cpu cpu;
-		if (!cpu.has(Xbyak::util::Cpu::tBMI1)) {
+		using namespace Xbyak;
+		util::Cpu cpu;
+		if (!cpu.has(util::Cpu::tBMI1)) {
 			printf("This CPU does not support blsi, ...\n");
 			exit(1);
 		}
 		g_isHaswell = true;
 #ifdef XBYAK32
-		const Xbyak::Reg32& a = eax;
-		const Xbyak::Reg32& c = ecx;
-		const Xbyak::Reg32& x = edx;
+		const Reg32& a = eax;
+		const Reg32& c = ecx;
+		const Reg32& x = edx;
 		mov(x, ptr [esp + 4]);
 #else
-		const Xbyak::Reg64& a = rax;
-		const Xbyak::Reg64& c = rcx;
+		const Reg64& a = rax;
+		const Reg64& c = rcx;
 #ifdef XBYAK64_WIN
-		const Xbyak::Reg64& x = r8;
+		const Reg64& x = r8;
 		mov(r8, rcx);
 #else
-		const Xbyak::Reg64& x = rdi;
+		const Reg64& x = rdi;
 #endif
 #endif
 		test(x, 1);
-		jz("@f");
+		Label evenL;
+		jz(evenL);
 		lea(a, ptr [x + 1]);
 		blsmsk(a, a); // y = (x+1) ^ (x+1-1) = x ^ (x+1)
 		lea(c, ptr [a + 1]); // y + 1
 		shr(a, 1); // y / 2
 		bsr(c, c); // rcx = bsr(y + 1)
-//tzcnt(rcx, rcx);
 		sub(x, a); // c
 		mov(a, x);
 		blsi(x, x); // c & (-c)
 		shrx(x, x, rcx);
 		sub(a, x);
 		ret();
-	L("@@");
+	L(evenL);
 		mov(a, x);
 		blsi(x, x); // x & -x
 		shr(x, 1);
@@ -167,21 +167,24 @@ size_t testLoop(size_t (*f)(size_t), size_t a)
 
 void bench()
 {
-	typedef size_t (*func)(size_t);
-	const func tbl[] = {
-		nextCombinationC,
+	typedef size_t (*Func)(size_t);
+	const struct {
+		Func f;
+		const char *name;
+	} tbl[] = {
+		{ nextCombinationC, "C     " },
 #ifdef USE_INTRIN
-		nextCombinationI,
+		{ nextCombinationI, "intrin" },
 #endif
-		nextCombination
+		{ nextCombination,  "asm   " },
 	};
 	size_t a = makeInit(31, 15);
 	for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(tbl); i++) {
 		Xbyak::util::Clock clk;
 		clk.begin();
-		size_t n = testLoop(tbl[i], a);
+		size_t n = testLoop(tbl[i].f, a);
 		clk.end();
-		printf("clk %.2f\n", clk.getClock() / double(n));
+		printf("%s clk %.2f\n", tbl[i].name, clk.getClock() / double(n));
 		if (!g_isHaswell) break;
 	}
 }
