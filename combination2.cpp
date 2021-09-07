@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 	uint64_t a = ((uint64_t(1) << (n - k)) - 1) << k;
 	int c = 1;
 	do {
-		printf("% 8d ", c++);
+		printf("% 8d: ", c++);
 		putB(n, a);
 	} while (a = nextCombination(a));
 }
