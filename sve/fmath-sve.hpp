@@ -302,7 +302,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		ld1w(args[0].s, p2/T_z, ptr(src, x3, LSL, 2));
 		(this->*gen1)(param, 1, p2, args);
 		st1w(args[0].s, p2, ptr(dst, x3, LSL, 2));
-		incd(x3);
+		incw(x3);
 	L(cond);
 		whilelt(p2.s, x3, n);
 		b_first(lp2);
