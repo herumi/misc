@@ -11,6 +11,8 @@ using namespace Xbyak::util;
 
 typedef uint64_t Unit;
 
+const char *pStr = "0x9401ff90f28bffb0c610fb10bf9e0fefd59211629a7991563c5e468d43ec9cfe1549fd59c20ab5b9a7cda7f27a0067b8303eeb4b31555cf4f24050ed155555cd7fa7a5f8aaaaaaad47ede1a6aaaaaaaab69e6dcb";
+
 struct Code : Xbyak::CodeGenerator {
 	const Reg64& gp0;
 	const Reg64& gp1;
@@ -28,6 +30,7 @@ struct Code : Xbyak::CodeGenerator {
 	static const int N = 11;
 	Unit rp_;
 	Unit p_[N];
+	int bitSize;
 
 	/*
 		@param op [in] ; use op.p, op.N, op.isFullBit
@@ -61,9 +64,12 @@ struct Code : Xbyak::CodeGenerator {
 		, p_()
 	{
 	}
-	void init(const mpz_class& p)
+	void init()
 	{
+		mpz_class p(pStr);
+		bitSize = mcl::gmp::getBitSize(p);
 		mcl::gmp::getArray(p_, N, p);
+		printf("bitSize=%d\n", bitSize);
 	}
 private:
 	Code(const Code&);
