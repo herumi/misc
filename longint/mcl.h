@@ -5,12 +5,12 @@
 extern "C" {
 #endif
 
-int code_init();
+int mcl_init();
 
 typedef void (*void3u)(uint64_t *z, const uint64_t *x, const uint64_t *y);
 // N = 11
 // z[N*2] = x[N] * y[N]
-extern void3u code_mulPre;
+extern void3u mcl_mulPre;
 
 #ifdef __cplusplus
 }

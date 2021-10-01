@@ -1,16 +1,16 @@
 #include <mcl/gmp_util.hpp>
-#include "code.hpp"
+#include "mcl.hpp"
 
 #ifdef _MSC_VER
 	#pragma warning(disable : 4127)
 #endif
 
-Code s_code;
+Code s_mcl;
 
-int code_init()
+int mcl_init()
 	try
 {
-	s_code.init();
+	s_mcl.init();
 	return 0;
 } catch (std::exception& e) {
 	fprintf(stderr, "err=%s\n", e.what());
