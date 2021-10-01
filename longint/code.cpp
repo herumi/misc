@@ -1,6 +1,5 @@
 #include <mcl/gmp_util.hpp>
 #include "code.hpp"
-#include "code.h"
 
 #ifdef _MSC_VER
 	#pragma warning(disable : 4127)
