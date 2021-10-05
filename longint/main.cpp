@@ -24,7 +24,7 @@ CYBOZU_TEST_AUTO(mulPre)
 	mcl_mulPre(xy1, x, y);
 	gmp_mulPre(xy2, x, y);
 	CYBOZU_TEST_EQUAL_ARRAY(xy1, xy2, N * 2);
-	const int C = 100000;
+	const int C = 1000000;
 	CYBOZU_BENCH_C("mcl", C, mcl_mulPre, xy1, x, y);
 	CYBOZU_BENCH_C("gmp", C, gmp_mulPre, xy2, x, y);
 }

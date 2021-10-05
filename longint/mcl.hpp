@@ -33,6 +33,14 @@ T getMontgomeryCoeff(T pLow)
 	return ret;
 }
 
+void dump(const char *msg, const Pack& p)
+{
+	printf("%s ", msg);
+	for (size_t i = 0; i < p.size(); i++) {
+		printf("%s ", p[i].toString());
+	}
+	printf("\n");
+}
 
 struct Code : Xbyak::CodeGenerator {
 	const Reg64& gp0;
@@ -124,8 +132,6 @@ private:
 		movq(xm0, px);
 		movq(xm1, rsp);
 
-
-#if 0
 		Pack pk(ta, t9, t8, t7, t6, t5, t4, t3, t2, t1, t0);
 		mulPack(pz, xm0, 8 * 0, py, pk);
 		Reg64 t = tb;
@@ -136,21 +142,7 @@ private:
 			pk.append(t);
 			t = s;
 		}
-#else
-		Pack pk(ta, t9, t8, t7, t6, t5, t4, t3, t2, t1, t0);
-		mulPack(pz, xm0, 8 * 0, py, pk);
-		mulPackAdd(pz, xm0, 8 * 1, py, tb, Pack(ta, t9, t8, t7, t6, t5, t4, t3, t2, t1, t0));
-		mulPackAdd(pz, xm0, 8 * 2, py, t0, Pack(tb, ta, t9, t8, t7, t6, t5, t4, t3, t2, t1));
-		mulPackAdd(pz, xm0, 8 * 3, py, t1, Pack(t0, tb, ta, t9, t8, t7, t6, t5, t4, t3, t2));
-		mulPackAdd(pz, xm0, 8 * 4, py, t2, Pack(t1, t0, tb, ta, t9, t8, t7, t6, t5, t4, t3));
-		mulPackAdd(pz, xm0, 8 * 5, py, t3, Pack(t2, t1, t0, tb, ta, t9, t8, t7, t6, t5, t4));
-		mulPackAdd(pz, xm0, 8 * 6, py, t4, Pack(t3, t2, t1, t0, tb, ta, t9, t8, t7, t6, t5));
-		mulPackAdd(pz, xm0, 8 * 7, py, t5, Pack(t4, t3, t2, t1, t0, tb, ta, t9, t8, t7, t6));
-		mulPackAdd(pz, xm0, 8 * 8, py, t6, Pack(t5, t4, t3, t2, t1, t0, tb, ta, t9, t8, t7));
-		mulPackAdd(pz, xm0, 8 * 9, py, t7, Pack(t6, t5, t4, t3, t2, t1, t0, tb, ta, t9, t8));
-		mulPackAdd(pz, xm0, 8 *10, py, t8, Pack(t7, t6, t5, t4, t3, t2, t1, t0, tb, ta, t9));
-#endif
-		store_mr(pz + 8 * 11, Pack(t8, t7, t6, t5, t4, t3, t2, t1, t0, tb, ta));
+		store_mr(pz + 8 * 11, pk);
 		movq(rsp, xm1);
 	}
 	/*
