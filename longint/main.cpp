@@ -142,6 +142,7 @@ CYBOZU_TEST_AUTO(mont)
 	mcl::vint::dump(xy3a, N);
 
 	CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy3a, N);
+	CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
 
 	std::cout << std::hex;
 	CYBOZU_BENCH_C("mcl", C, mcl_mont, xy1a, xa, ya);
