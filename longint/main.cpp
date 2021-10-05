@@ -4,8 +4,10 @@
 #include <cybozu/test.hpp>
 #include <mcl/gmp_util.hpp>
 #include <gmp.h>
+#include <low_func.hpp>
 
 static const int N = 11;
+const int C = 1000000;
 
 void gmp_mulPre(uint64_t *z, const uint64_t *x, const uint64_t *y)
 {
@@ -107,14 +109,14 @@ CYBOZU_TEST_AUTO(mulPre)
 	mcl_mulPre(xy1, x, y);
 	gmp_mulPre(xy2, x, y);
 	CYBOZU_TEST_EQUAL_ARRAY(xy1, xy2, N * 2);
-	const int C = 1000000;
 	CYBOZU_BENCH_C("mcl", C, mcl_mulPre, xy1, x, y);
 	CYBOZU_BENCH_C("gmp", C, gmp_mulPre, xy2, x, y);
 }
 
 CYBOZU_TEST_AUTO(mont)
 {
-	uint64_t xa[N], ya[N], xy1a[N], xy2a[N];
+	uint64_t xa[N], ya[N], xy1a[N], xy2a[N], xy3a[N];
+	uint64_t pp[N + 1];
 	cybozu::XorShift rg;
 	for (int i = 0; i < N; i++) {
 		xa[i] = rg.get64();
@@ -123,12 +125,25 @@ CYBOZU_TEST_AUTO(mont)
 
 	mpz_class p(pStr);
 	Montgomery mont(p);
+	mcl::gmp::getArray(pp + 1, N, p);
+	pp[0] = mont.rp_;
 	mpz_class x, y, z;
 	mcl::gmp::setArray(x, xa, N);
 	mcl::gmp::setArray(y, ya, N);
+
 	mont.mul(z, x, y);
 	mcl::gmp::getArray(xy1a, N, z);
 	mcl::vint::dump(xy1a, N);
+
 	mcl_mont(xy2a, xa, ya);
 	mcl::vint::dump(xy2a, N);
+
+	mcl::fp::Mont<11, false>::func(xy3a, xa, ya, pp + 1);
+	mcl::vint::dump(xy3a, N);
+
+	CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy3a, N);
+
+	std::cout << std::hex;
+	CYBOZU_BENCH_C("mcl", C, mcl_mont, xy1a, xa, ya);
+	CYBOZU_BENCH_C("gmp", C, (mcl::fp::Mont<11, false>::func), xy3a, xa, ya, pp + 1);
 }
