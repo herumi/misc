@@ -12,9 +12,10 @@ using namespace Xbyak::util;
 
 typedef uint64_t Unit;
 
-const char *pStr = "0x9401ff90f28bffb0c610fb10bf9e0fefd59211629a7991563c5e468d43ec9cfe1549fd59c20ab5b9a7cda7f27a0067b8303eeb4b31555cf4f24050ed155555cd7fa7a5f8aaaaaaad47ede1a6aaaaaaaab69e6dcb";
+static const char *pStr = "0x9401ff90f28bffb0c610fb10bf9e0fefd59211629a7991563c5e468d43ec9cfe1549fd59c20ab5b9a7cda7f27a0067b8303eeb4b31555cf4f24050ed155555cd7fa7a5f8aaaaaaad47ede1a6aaaaaaaab69e6dcb";
 
 void3u mcl_mulPre;
+void3u mcl_mont;
 
 template<class T>
 T getMontgomeryCoeff(T pLow)
@@ -104,6 +105,10 @@ struct Code : Xbyak::CodeGenerator {
 		align(16);
 		mcl_mulPre = getCurr<void3u>();
 		gen_mulPre11();
+
+		align(16);
+		mcl_mont = getCurr<void3u>();
+		gen_montMul11();
 
 		setProtectModeRE(); // set read/exec memory
 	}
@@ -218,22 +223,22 @@ private:
 		lea(rax, ptr[rip+pL]);
 		movq(xm2, rax);
 		movq(xm3, pz);
-		Pack pk(ta, t9, t8, t7, t6, t5, t4, t3, t2, t1, t0);
+		Pack pk(rsp, ta, t9, t8, t7, t6, t5, t4, t3, t2, t1, t0);
 		for (int i = 0; i < N; i++) {
 			mov(rdx, ptr [py + i * 8]);
 			montgomery11_1(pk, xm1, xm2, px, pz, true);
-			pk = rotatePack(pk);
+			if (i < N - 1) pk = rotatePack(pk);
 		}
-
-		const Pack z = Pack(t4, t3, t2, t1, t0, t6);
-		const Pack keep = Pack(rdx, rax, px, py, t7, t8);
-		mov_rr(keep, z);
-//		sub_rm(z, pp);
-		cmovc_rr(z, keep);
+		pk = pk.sub(1);
 
 		movq(pz, xm3);
-		store_mr(pz, z);
-
+		store_mr(pz, pk);
+		movq(py, xm2); // p
+		sub_rm(pk, py); // z - p
+		Label exitL;
+		jc(exitL);
+		store_mr(pz, pk);
+	L(exitL);
 		movq(rsp, xm0);
 		sf.close();
 		ret();
@@ -247,12 +252,13 @@ private:
 		c[n..0] = px[n-1..0] * rdx
 		use rax
 	*/
-	void mulPack1(const Pack& c, const RegExp& px)
+	void mulPack1(const Pack& c, const Xmm& xpx, const Reg64& t)
 	{
 		const int n = c.size() - 1;
-		mulx(c[1], c[0], ptr [px + 0 * 8]);
+		movq(t, xpx);
+		mulx(c[1], c[0], ptr [t + 0 * 8]);
 		for (int i = 1; i < n; i++) {
-			mulx(c[i + 1], rax, ptr[px + i * 8]);
+			mulx(c[i + 1], rax, ptr[t + i * 8]);
 			if (i == 1) {
 				add(c[i], rax);
 			} else {
@@ -282,7 +288,7 @@ private:
 		const Reg64& d = rdx;
 		if (isFirst) {
 			// c[n..0] = px[n-1..0] * rdx
-			mulPack1(c, xpx);
+			mulPack1(c, xpx, t0);
 		} else {
 			// c[n..0] = c[n-1..0] + px[n-1..0] * rdx because of not fuill bit
 			mulAdd(c, xpx, t0, t1, true);
