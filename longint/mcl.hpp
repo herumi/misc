@@ -285,25 +285,26 @@ private:
 	void montgomery11_1(const Pack& c, const Xmm& xpx, const Xmm& xpp, const Reg64& t0, const Reg64& t1, bool isFirst)
 	{
 		const Reg64& d = rdx;
+		movq(t0, xpx);
 		if (isFirst) {
 			// c[n..0] = px[n-1..0] * rdx
-			movq(t0, xpx);
 			mulPack1(c, t0);
 		} else {
 			// c[n..0] = c[n-1..0] + px[n-1..0] * rdx because of not fuill bit
-			mulAdd(c, xpx, t0, t1, true);
+			mulAdd(c, t0, t1, true);
 		}
 		mov(d, rp_);
 		imul(d, c[0]); // d = q = uint64_t(d * c[0])
 		// c[n..0] += p * q because of not fuill bit
-		mulAdd(c, xpp, t0, t1, false);
+		movq(t0, xpp);
+		mulAdd(c, t0, t1, false);
 	}
 	/*
 		c[n..0] = c[n-1..0] + px[n-1..0] * rdx if is_cn_zero = true
 		c[n..0] = c[n..0] + px[n-1..0] * rdx if is_cn_zero = false
 		use rax, rdx, t0, t1
 	*/
-	void mulAdd(const Pack& c, const Xmm& xpx, const Reg64& t0, const Reg64& t1, bool is_cn_zero)
+	void mulAdd(const Pack& c, const Reg64& px, const Reg64& t, bool is_cn_zero)
 	{
 		const int n = c.size() - 1;
 		const Reg64& a = rax;
@@ -312,14 +313,13 @@ private:
 		} else {
 			xor_(a, a);
 		}
-		movq(t1, xpx);
 		for (int i = 0; i < n; i++) {
-			mulx(t0, a, ptr [t1 + i * 8]);
+			mulx(t, a, ptr [px + i * 8]);
 			adox(c[i], a);
 			if (i == n - 1) break;
-			adcx(c[i + 1], t0);
+			adcx(c[i + 1], t);
 		}
-		adox(c[n], t0);
+		adox(c[n], t);
 		adc(c[n], 0);
 	}
 	/*
