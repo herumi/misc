@@ -252,13 +252,12 @@ private:
 		c[n..0] = px[n-1..0] * rdx
 		use rax
 	*/
-	void mulPack1(const Pack& c, const Xmm& xpx, const Reg64& t)
+	void mulPack1(const Pack& c, const Reg64& px)
 	{
 		const int n = c.size() - 1;
-		movq(t, xpx);
-		mulx(c[1], c[0], ptr [t + 0 * 8]);
+		mulx(c[1], c[0], ptr [px + 0 * 8]);
 		for (int i = 1; i < n; i++) {
-			mulx(c[i + 1], rax, ptr[t + i * 8]);
+			mulx(c[i + 1], rax, ptr[px + i * 8]);
 			if (i == 1) {
 				add(c[i], rax);
 			} else {
@@ -288,7 +287,8 @@ private:
 		const Reg64& d = rdx;
 		if (isFirst) {
 			// c[n..0] = px[n-1..0] * rdx
-			mulPack1(c, xpx, t0);
+			movq(t0, xpx);
+			mulPack1(c, t0);
 		} else {
 			// c[n..0] = c[n-1..0] + px[n-1..0] * rdx because of not fuill bit
 			mulAdd(c, xpx, t0, t1, true);
