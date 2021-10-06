@@ -39,9 +39,10 @@ struct Montgomery {
 
 	void mul(mpz_class& z, const mpz_class& x, const mpz_class& y) const
 	{
-#if 0
+#if 1
 		const size_t ySize = mcl::gmp::getUnitSize(y);
 		mpz_class c = x * mcl::gmp::getUnit(y, 0);
+//z=c&((mpz_class(1) << (64*11))-1); return;
 		Unit q = mcl::gmp::getUnit(c, 0) * rp_;
 		c += p_ * q;
 		c >>= sizeof(Unit) * 8;
@@ -115,7 +116,7 @@ CYBOZU_TEST_AUTO(mulPre)
 
 CYBOZU_TEST_AUTO(mont)
 {
-	uint64_t xa[N], ya[N], xy1a[N], xy2a[N], xy3a[N];
+	uint64_t xa[N], ya[N], xy1a[N], xy2a[N];
 	uint64_t pp[N + 1];
 	cybozu::XorShift rg;
 	for (int i = 0; i < N; i++) {
@@ -127,24 +128,26 @@ CYBOZU_TEST_AUTO(mont)
 	Montgomery mont(p);
 	mcl::gmp::getArray(pp + 1, N, p);
 	pp[0] = mont.rp_;
+
 	mpz_class x, y, z;
 	mcl::gmp::setArray(x, xa, N);
 	mcl::gmp::setArray(y, ya, N);
 
 	mont.mul(z, x, y);
 	mcl::gmp::getArray(xy1a, N, z);
-	mcl::vint::dump(xy1a, N);
-
 	mcl_mont(xy2a, xa, ya);
-	mcl::vint::dump(xy2a, N);
-
-	mcl::fp::Mont<11, false>::func(xy3a, xa, ya, pp + 1);
-	mcl::vint::dump(xy3a, N);
-
-	CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy3a, N);
 	CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
 
-	std::cout << std::hex;
+	mcl::fp::Mont<11, false>::func(xy1a, xa, ya, pp + 1);
+	CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
+
+	for (int i = 0; i < 100; i++) {
+		xa[0]++;
+		mcl::fp::Mont<11, false>::func(xy1a, xa, ya, pp + 1);
+		mcl_mont(xy2a, xa, ya);
+		CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
+	}
+
 	CYBOZU_BENCH_C("mcl", C, mcl_mont, xy1a, xa, ya);
-	CYBOZU_BENCH_C("gmp", C, (mcl::fp::Mont<11, false>::func), xy3a, xa, ya, pp + 1);
+	CYBOZU_BENCH_C("gmp", C, (mcl::fp::Mont<11, false>::func), xy2a, xa, ya, pp + 1);
 }

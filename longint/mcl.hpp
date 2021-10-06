@@ -196,6 +196,7 @@ private:
 		q.append(p[0]);
 		return q;
 	}
+	// use xm0, .., xm4
 	void gen_montMul11()
 	{
 		assert(!isFullBit_);
@@ -214,28 +215,27 @@ private:
 		const Reg64& t7 = sf.t[7];
 		const Reg64& t8 = sf.t[8];
 		const Reg64& t9 = sf.t[9];
-		const Reg64& ta = rsp;
 
-		movq(xm0, rsp);
-
-		movq(xm1, px);
-		Label pL;
+		Label pL, exitL;
 		lea(rax, ptr[rip+pL]);
+		movq(xm0, rsp);
+		movq(xm1, px);
 		movq(xm2, rax);
-		movq(xm3, pz);
-		Pack pk(rsp, ta, t9, t8, t7, t6, t5, t4, t3, t2, t1, t0);
+		movq(xm3, py);
+		movq(xm4, pz);
+		Pack pk(rsp, py, t9, t8, t7, t6, t5, t4, t3, t2, t1, t0);
 		for (int i = 0; i < N; i++) {
-			mov(rdx, ptr [py + i * 8]);
-			montgomery11_1(pk, xm1, xm2, px, pz, true);
+			movq(rax, xm3);
+			mov(rdx, ptr [rax + i * 8]);
+			montgomery11_1(pk, xm1, xm2, px, pz, i == 0);
 			if (i < N - 1) pk = rotatePack(pk);
 		}
 		pk = pk.sub(1);
 
-		movq(pz, xm3);
+		movq(pz, xm4);
 		store_mr(pz, pk);
 		movq(py, xm2); // p
 		sub_rm(pk, py); // z - p
-		Label exitL;
 		jc(exitL);
 		store_mr(pz, pk);
 	L(exitL);
@@ -295,7 +295,7 @@ private:
 		}
 		mov(d, rp_);
 		imul(d, c[0]); // d = q = uint64_t(d * c[0])
-		// c[6..0] += p * q because of not fuill bit
+		// c[n..0] += p * q because of not fuill bit
 		mulAdd(c, xpp, t0, t1, false);
 	}
 	/*
