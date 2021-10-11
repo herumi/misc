@@ -66,7 +66,7 @@ struct Code : Xbyak::CodeGenerator {
 		@param op [in] ; use op.p, op.N, op.isFullBit
 	*/
 	Code()
-		: CodeGenerator(4096 * 9, Xbyak::DontSetProtectRWE)
+		: CodeGenerator(4096 * 9)
 #ifdef XBYAK64_WIN
 		, gp0(rcx)
 		, gp1(r11)
@@ -109,8 +109,6 @@ struct Code : Xbyak::CodeGenerator {
 		align(16);
 		mcl_mont = getCurr<void3u>();
 		gen_montMul11();
-
-		setProtectModeRE(); // set read/exec memory
 	}
 private:
 	Code(const Code&);
@@ -134,8 +132,8 @@ private:
 		const Reg64& t9 = sf.t[9];
 		const Reg64& ta = px;
 		const Reg64& tb = rsp;
-		movq(xm0, px);
-		movq(xm1, rsp);
+		vmovq(xm0, px);
+		vmovq(xm1, rsp);
 
 		Pack pk(ta, t9, t8, t7, t6, t5, t4, t3, t2, t1, t0);
 		mulPack(pz, xm0, 8 * 0, py, pk);
@@ -148,7 +146,7 @@ private:
 			t = s;
 		}
 		store_mr(pz + 8 * 11, pk);
-		movq(rsp, xm1);
+		vmovq(rsp, xm1);
 	}
 	/*
 		[pd:pz[0]] <- py[n-1..0] * px[0]
@@ -157,7 +155,7 @@ private:
 	{
 		const Reg64& a = rax;
 		const Reg64& d = rdx;
-		movq(d, px);
+		vmovq(d, px);
 		mov(d, ptr [d + offset]);
 		mulx(pd[0], a, ptr [py + 8 * 0]);
 		mov(ptr [pz + offset], a);
@@ -176,7 +174,7 @@ private:
 	{
 		const Reg64& a = rax;
 		const Reg64& d = rdx;
-		movq(d, px);
+		vmovq(d, px);
 		mov(d, ptr [d + offset]);
 		xor_(a, a);
 		for (size_t i = 0; i < pd.size(); i++) {
@@ -200,7 +198,7 @@ private:
 	void gen_montMul11()
 	{
 		assert(!isFullBit_);
-		StackFrame sf(this, 3, 10 | UseRDX, 0, false);
+		StackFrame sf(this, 3, 10 | UseRDX);//, 0, false);
 		const Reg64& pz = sf.p[0];
 		const Reg64& px = sf.p[1];
 		const Reg64& py = sf.p[2];
@@ -216,37 +214,30 @@ private:
 		const Reg64& t8 = sf.t[8];
 		const Reg64& t9 = sf.t[9];
 
-		Label pL, exitL;
-		lea(rax, ptr[rip+pL]);
-		movq(xm0, rsp);
-		movq(xm1, px);
-		movq(xm2, rax);
-		movq(xm3, py);
-		movq(xm4, pz);
+		Label exitL;
+		mov(rax, size_t(p_));
+		vmovq(xm0, rsp);
+		vmovq(xm1, px);
+		vmovq(xm2, rax);
+		vmovq(xm3, py);
+		vmovq(xm4, pz);
 		Pack pk(rsp, py, t9, t8, t7, t6, t5, t4, t3, t2, t1, t0);
 		for (int i = 0; i < N; i++) {
-			movq(rax, xm3);
+			vmovq(rax, xm3);
 			mov(rdx, ptr [rax + i * 8]);
 			montgomery11_1(pk, xm1, xm2, px, pz, i == 0);
 			if (i < N - 1) pk = rotatePack(pk);
 		}
 		pk = pk.sub(1);
 
-		movq(pz, xm4);
+		vmovq(pz, xm4);
 		store_mr(pz, pk);
-		movq(py, xm2); // p
+		vmovq(py, xm2); // p
 		sub_rm(pk, py); // z - p
 		jc(exitL);
 		store_mr(pz, pk);
 	L(exitL);
-		movq(rsp, xm0);
-		sf.close();
-		ret();
-		align(16);
-	L(pL);
-		for (int i = 0; i < N; i++) {
-			dq(p_[i]);
-		}
+		vmovq(rsp, xm0);
 	}
 	/*
 		c[n..0] = px[n-1..0] * rdx
@@ -285,7 +276,7 @@ private:
 	void montgomery11_1(const Pack& c, const Xmm& xpx, const Xmm& xpp, const Reg64& t0, const Reg64& t1, bool isFirst)
 	{
 		const Reg64& d = rdx;
-		movq(t0, xpx);
+		vmovq(t0, xpx);
 		if (isFirst) {
 			// c[n..0] = px[n-1..0] * rdx
 			mulPack1(c, t0);
@@ -296,7 +287,7 @@ private:
 		mov(d, rp_);
 		imul(d, c[0]); // d = q = uint64_t(d * c[0])
 		// c[n..0] += p * q because of not fuill bit
-		movq(t0, xpp);
+		vmovq(t0, xpp);
 		mulAdd(c, t0, t1, false);
 	}
 	/*
@@ -335,13 +326,8 @@ private:
 	/*
 		m[] = x[]
 	*/
-	void store_mr(const RegExp& m, const Pack& x)
-	{
-		for (int i = 0, n = (int)x.size(); i < n; i++) {
-			mov(ptr [m + 8 * i], x[i]);
-		}
-	}
-	void store_mr(const Xbyak::RegRip& m, const Pack& x)
+	template<class REGT>
+	void store_mr(const REGT& m, const Pack& x)
 	{
 		for (int i = 0, n = (int)x.size(); i < n; i++) {
 			mov(ptr [m + 8 * i], x[i]);

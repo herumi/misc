@@ -116,7 +116,7 @@ CYBOZU_TEST_AUTO(mulPre)
 
 CYBOZU_TEST_AUTO(mont)
 {
-	uint64_t xa[N], ya[N], xy1a[N], xy2a[N];
+	uint64_t xa[N], ya[N], xy1a[N], xy2a[N + 1];
 	uint64_t pp[N + 1];
 	cybozu::XorShift rg;
 	for (int i = 0; i < N; i++) {
@@ -135,6 +135,8 @@ CYBOZU_TEST_AUTO(mont)
 
 	mont.mul(z, x, y);
 	mcl::gmp::getArray(xy1a, N, z);
+	const uint64_t dummy = 0x1234567890abc;
+	xy2a[N] = dummy;
 	mcl_mont(xy2a, xa, ya);
 	CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
 
@@ -147,6 +149,7 @@ CYBOZU_TEST_AUTO(mont)
 		mcl_mont(xy2a, xa, ya);
 		CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
 	}
+	CYBOZU_TEST_EQUAL(xy2a[N], dummy);
 
 	CYBOZU_BENCH_C("mcl", C, mcl_mont, xy1a, xa, ya);
 	CYBOZU_BENCH_C("gmp", C, (mcl::fp::Mont<11, false>::func), xy2a, xa, ya, pp + 1);
