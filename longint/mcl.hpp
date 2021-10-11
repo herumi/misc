@@ -197,22 +197,14 @@ private:
 	// use xm0, .., xm4
 	void gen_montMul11()
 	{
-		assert(!isFullBit_);
 		StackFrame sf(this, 3, 10 | UseRDX);//, 0, false);
 		const Reg64& pz = sf.p[0];
 		const Reg64& px = sf.p[1];
 		const Reg64& py = sf.p[2];
-
-		const Reg64& t0 = sf.t[0];
-		const Reg64& t1 = sf.t[1];
-		const Reg64& t2 = sf.t[2];
-		const Reg64& t3 = sf.t[3];
-		const Reg64& t4 = sf.t[4];
-		const Reg64& t5 = sf.t[5];
-		const Reg64& t6 = sf.t[6];
-		const Reg64& t7 = sf.t[7];
-		const Reg64& t8 = sf.t[8];
-		const Reg64& t9 = sf.t[9];
+		Pack pk = sf.t;
+		pk.append(py);
+		pk.append(rsp);
+		assert(pk.size() == N + 1);
 
 		Label exitL;
 		mov(rax, size_t(p_));
@@ -221,7 +213,6 @@ private:
 		vmovq(xm2, rax);
 		vmovq(xm3, py);
 		vmovq(xm4, pz);
-		Pack pk(rsp, py, t9, t8, t7, t6, t5, t4, t3, t2, t1, t0);
 		for (int i = 0; i < N; i++) {
 			vmovq(rax, xm3);
 			mov(rdx, ptr [rax + i * 8]);
