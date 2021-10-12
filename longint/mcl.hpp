@@ -132,8 +132,8 @@ private:
 		const Reg64& t9 = sf.t[9];
 		const Reg64& ta = px;
 		const Reg64& tb = rsp;
-		vmovq(xm0, px);
-		vmovq(xm1, rsp);
+		movq(xm0, px);
+		movq(xm1, rsp);
 
 		Pack pk(ta, t9, t8, t7, t6, t5, t4, t3, t2, t1, t0);
 		mulPack(pz, xm0, 8 * 0, py, pk);
@@ -146,7 +146,7 @@ private:
 			t = s;
 		}
 		store_mr(pz + 8 * 11, pk);
-		vmovq(rsp, xm1);
+		movq(rsp, xm1);
 	}
 	/*
 		[pd:pz[0]] <- py[n-1..0] * px[0]
@@ -155,7 +155,7 @@ private:
 	{
 		const Reg64& a = rax;
 		const Reg64& d = rdx;
-		vmovq(d, px);
+		movq(d, px);
 		mov(d, ptr [d + offset]);
 		mulx(pd[0], a, ptr [py + 8 * 0]);
 		mov(ptr [pz + offset], a);
@@ -174,7 +174,7 @@ private:
 	{
 		const Reg64& a = rax;
 		const Reg64& d = rdx;
-		vmovq(d, px);
+		movq(d, px);
 		mov(d, ptr [d + offset]);
 		xor_(a, a);
 		for (size_t i = 0; i < pd.size(); i++) {
@@ -208,26 +208,25 @@ private:
 
 		Label exitL;
 		mov(rax, size_t(p_));
-		vmovq(xm1, px);
-		vmovq(xm2, rax);
-		vmovq(xm3, py);
-		vmovq(xm4, pz);
+		movq(xm1, px);
+		movq(xm2, rax);
+		movq(xm3, py);
+		movq(xm4, pz);
 		for (int i = 0; i < N; i++) {
-			vmovq(rdx, xm3);
+			movq(rdx, xm3);
 			mov(rdx, ptr [rdx + i * 8]);
 			montgomery11_1(pk, xm1, xm2, px, pz, xm0, i == 0);
 			if (i < N - 1) pk = rotatePack(pk);
 		}
 		pk = pk.sub(1);
 
-		vmovq(pz, xm4);
+		movq(pz, xm4);
 		store_mr(pz, pk);
-		vmovq(py, xm2); // p
+		movq(py, xm2); // p
 		sub_rm(pk, py); // z - p
 		jc(exitL);
 		store_mr(pz, pk);
 	L(exitL);
-		vzeroupper();
 	}
 	/*
 		c[n..0] = px[n-1..0] * rdx
@@ -266,7 +265,7 @@ private:
 	void montgomery11_1(const Pack& c, const Xmm& xpx, const Xmm& xpp, const Reg64& t0, const Reg64& t1, const Xmm& xt, bool isFirst)
 	{
 		const Reg64& d = rdx;
-		vmovq(t0, xpx);
+		movq(t0, xpx);
 		if (isFirst) {
 			// c[n..0] = px[n-1..0] * rdx
 			mulPack1(c, t0, t1);
@@ -277,7 +276,7 @@ private:
 		mov(d, rp_);
 		imul(d, c[0]); // d = q = uint64_t(d * c[0])
 		// c[n..0] += p * q because of not fuill bit
-		vmovq(t0, xpp);
+		movq(t0, xpp);
 		mulAdd(c, t0, t1, xt, false);
 	}
 	/*
