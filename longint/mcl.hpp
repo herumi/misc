@@ -203,20 +203,19 @@ private:
 		const Reg64& py = sf.p[2];
 		Pack pk = sf.t;
 		pk.append(py);
-		pk.append(rsp);
+		pk.append(rax);
 		assert(pk.size() == N + 1);
 
 		Label exitL;
 		mov(rax, size_t(p_));
-		vmovq(xm0, rsp);
 		vmovq(xm1, px);
 		vmovq(xm2, rax);
 		vmovq(xm3, py);
 		vmovq(xm4, pz);
 		for (int i = 0; i < N; i++) {
-			vmovq(rax, xm3);
-			mov(rdx, ptr [rax + i * 8]);
-			montgomery11_1(pk, xm1, xm2, px, pz, i == 0);
+			vmovq(rdx, xm3);
+			mov(rdx, ptr [rdx + i * 8]);
+			montgomery11_1(pk, xm1, xm2, px, pz, xm0, i == 0);
 			if (i < N - 1) pk = rotatePack(pk);
 		}
 		pk = pk.sub(1);
@@ -228,22 +227,22 @@ private:
 		jc(exitL);
 		store_mr(pz, pk);
 	L(exitL);
-		vmovq(rsp, xm0);
+		vzeroupper();
 	}
 	/*
 		c[n..0] = px[n-1..0] * rdx
-		use rax
+		use t
 	*/
-	void mulPack1(const Pack& c, const Reg64& px)
+	void mulPack1(const Pack& c, const Reg64& px, const Reg64& t)
 	{
 		const int n = c.size() - 1;
 		mulx(c[1], c[0], ptr [px + 0 * 8]);
 		for (int i = 1; i < n; i++) {
-			mulx(c[i + 1], rax, ptr[px + i * 8]);
+			mulx(c[i + 1], t, ptr[px + i * 8]);
 			if (i == 1) {
-				add(c[i], rax);
+				add(c[i], t);
 			} else {
-				adc(c[i], rax);
+				adc(c[i], t);
 			}
 		}
 		adc(c[n], 0);
@@ -264,43 +263,44 @@ private:
 		c += p * q
 		c >>= 64
 	*/
-	void montgomery11_1(const Pack& c, const Xmm& xpx, const Xmm& xpp, const Reg64& t0, const Reg64& t1, bool isFirst)
+	void montgomery11_1(const Pack& c, const Xmm& xpx, const Xmm& xpp, const Reg64& t0, const Reg64& t1, const Xmm& xt, bool isFirst)
 	{
 		const Reg64& d = rdx;
 		vmovq(t0, xpx);
 		if (isFirst) {
 			// c[n..0] = px[n-1..0] * rdx
-			mulPack1(c, t0);
+			mulPack1(c, t0, t1);
 		} else {
 			// c[n..0] = c[n-1..0] + px[n-1..0] * rdx because of not fuill bit
-			mulAdd(c, t0, t1, true);
+			mulAdd(c, t0, t1, xt, true);
 		}
 		mov(d, rp_);
 		imul(d, c[0]); // d = q = uint64_t(d * c[0])
 		// c[n..0] += p * q because of not fuill bit
 		vmovq(t0, xpp);
-		mulAdd(c, t0, t1, false);
+		mulAdd(c, t0, t1, xt, false);
 	}
 	/*
 		c[n..0] = c[n-1..0] + px[n-1..0] * rdx if is_cn_zero = true
 		c[n..0] = c[n..0] + px[n-1..0] * rdx if is_cn_zero = false
 		use rax, rdx, t0, t1
 	*/
-	void mulAdd(const Pack& c, const Reg64& px, const Reg64& t, bool is_cn_zero)
+	void mulAdd(const Pack& c, const Reg64& px, const Reg64& t, const Xmm& xt, bool is_cn_zero)
 	{
 		const int n = c.size() - 1;
-		const Reg64& a = rax;
 		if (is_cn_zero) {
 			xor_(c[n], c[n]);
 		} else {
-			xor_(a, a);
+			xor_(t, t); // clear ZF
 		}
+		movq(xt, c[n]); // save
 		for (int i = 0; i < n; i++) {
-			mulx(t, a, ptr [px + i * 8]);
-			adox(c[i], a);
+			mulx(t, c[n], ptr [px + i * 8]);
+			adox(c[i], c[n]);
 			if (i == n - 1) break;
 			adcx(c[i + 1], t);
 		}
+		movq(c[n], xt);
 		adox(c[n], t);
 		adc(c[n], 0);
 	}
