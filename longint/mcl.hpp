@@ -12,10 +12,10 @@ using namespace Xbyak::util;
 
 typedef uint64_t Unit;
 
-static const char *pStr = "0x9401ff90f28bffb0c610fb10bf9e0fefd59211629a7991563c5e468d43ec9cfe1549fd59c20ab5b9a7cda7f27a0067b8303eeb4b31555cf4f24050ed155555cd7fa7a5f8aaaaaaad47ede1a6aaaaaaaab69e6dcb";
+static const char *pStr11 = "0x9401ff90f28bffb0c610fb10bf9e0fefd59211629a7991563c5e468d43ec9cfe1549fd59c20ab5b9a7cda7f27a0067b8303eeb4b31555cf4f24050ed155555cd7fa7a5f8aaaaaaad47ede1a6aaaaaaaab69e6dcb";
 
-void3u mcl_mulPre11;
-void3u mcl_mont11;
+void3u mcl_mulPre;
+void3u mcl_mont;
 
 template<class T>
 T getMontgomeryCoeff(T pLow)
@@ -57,9 +57,9 @@ struct Code : Xbyak::CodeGenerator {
 	const Reg64& gt7;
 	const Reg64& gt8;
 	const Reg64& gt9;
-	static const int N = 11;
+	int N;
 	Unit rp_;
-	Unit p_[N];
+	Unit p_[11];
 	int bitSize;
 
 	/*
@@ -90,31 +90,34 @@ struct Code : Xbyak::CodeGenerator {
 		, gt7(r13)
 		, gt8(r14)
 		, gt9(r15)
+		, N(0)
 		, rp_(0)
 		, p_()
 	{
 	}
-	void init()
+	void init(int n)
 	{
-		mpz_class p(pStr);
+		N = n;
+		if (N != 11) throw cybozu::Exception("mcl::init not uspport n") << n;
+		mpz_class p(pStr11);
 		bitSize = mcl::gmp::getBitSize(p);
-		mcl::gmp::getArray(p_, N, p);
+		mcl::gmp::getArray(p_, n, p);
 		rp_ = getMontgomeryCoeff(p_[0]);
 		printf("bitSize=%d rp_=%016llx\n", bitSize, (long long)rp_);
 
 		align(16);
-		mcl_mulPre11 = getCurr<void3u>();
-		gen_mulPre11();
+		mcl_mulPre = getCurr<void3u>();
+		gen_mulPre();
 
 		align(16);
-		mcl_mont11 = getCurr<void3u>();
+		mcl_mont = getCurr<void3u>();
 		gen_montMul11();
 	}
 private:
 	Code(const Code&);
 	void operator=(const Code&);
 	// [gp0] <- [gp1] * [gp2]
-	void gen_mulPre11()
+	void gen_mulPre()
 	{
 		StackFrame sf(this, 3, 10 | UseRDX);
 		const Reg64& pz = sf.p[0];

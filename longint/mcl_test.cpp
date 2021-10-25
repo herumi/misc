@@ -6,9 +6,9 @@
 #include <gmp.h>
 #include <low_func.hpp>
 
-static const int N = 11;
 const int C = 1000000;
 
+template<int N>
 void gmp_mulPre(uint64_t *z, const uint64_t *x, const uint64_t *y)
 {
 	mpn_mul_n((mp_limb_t*)z, (const mp_limb_t*)x, (const mp_limb_t*)y, N);
@@ -97,9 +97,10 @@ struct Montgomery {
 	}
 };
 
-CYBOZU_TEST_AUTO(mulPre)
+template<int N>
+void mulPreTest()
 {
-	mcl_init();
+	mcl_init(N);
 	cybozu::XorShift rg;
 	uint64_t x[N], y[N], xy1[N * 2], xy2[N * 2];
 	for (int i = 0; i < N; i++) {
@@ -107,14 +108,15 @@ CYBOZU_TEST_AUTO(mulPre)
 		y[i] = rg.get64();
 	}
 	puts("a");
-	mcl_mulPre11(xy1, x, y);
-	gmp_mulPre(xy2, x, y);
+	mcl_mulPre(xy1, x, y);
+	gmp_mulPre<N>(xy2, x, y);
 	CYBOZU_TEST_EQUAL_ARRAY(xy1, xy2, N * 2);
-	CYBOZU_BENCH_C("mcl", C, mcl_mulPre11, xy1, x, y);
-	CYBOZU_BENCH_C("gmp", C, gmp_mulPre, xy2, x, y);
+	CYBOZU_BENCH_C("mcl", C, mcl_mulPre, xy1, x, y);
+	CYBOZU_BENCH_C("gmp", C, gmp_mulPre<N>, xy2, x, y);
 }
 
-CYBOZU_TEST_AUTO(mont)
+template<int N>
+void montTest()
 {
 	uint64_t xa[N], ya[N], xy1a[N], xy2a[N + 1];
 	uint64_t pp[N + 1];
@@ -137,7 +139,7 @@ CYBOZU_TEST_AUTO(mont)
 	mcl::gmp::getArray(xy1a, N, z);
 	const uint64_t dummy = 0x1234567890abc;
 	xy2a[N] = dummy;
-	mcl_mont11(xy2a, xa, ya);
+	mcl_mont(xy2a, xa, ya);
 	CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
 
 	mcl::fp::Mont<11, false>::func(xy1a, xa, ya, pp + 1);
@@ -146,11 +148,18 @@ CYBOZU_TEST_AUTO(mont)
 	for (int i = 0; i < 100; i++) {
 		xa[0]++;
 		mcl::fp::Mont<11, false>::func(xy1a, xa, ya, pp + 1);
-		mcl_mont11(xy2a, xa, ya);
+		mcl_mont(xy2a, xa, ya);
 		CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
 	}
 	CYBOZU_TEST_EQUAL(xy2a[N], dummy);
 
-	CYBOZU_BENCH_C("mcl", C, mcl_mont11, xy1a, xa, ya);
+	CYBOZU_BENCH_C("mcl", C, mcl_mont, xy1a, xa, ya);
 	CYBOZU_BENCH_C("gmp", C, (mcl::fp::Mont<11, false>::func), xy2a, xa, ya, pp + 1);
 }
+
+CYBOZU_TEST_AUTO(N11)
+{
+	mulPreTest<11>();
+	montTest<11>();
+}
+

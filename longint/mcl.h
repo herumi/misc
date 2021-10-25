@@ -5,14 +5,15 @@
 extern "C" {
 #endif
 
-int mcl_init();
+// n = 9 or 11
+int mcl_init(int n);
 
 typedef void (*void3u)(uint64_t *z, const uint64_t *x, const uint64_t *y);
-// N = 11
-// z[N*2] = x[N] * y[N]
-extern void3u mcl_mulPre11;
-// z[N] = Montgomery(x[N], y[N]);
-extern void3u mcl_mont11;
+// n = 9 or 11
+// z[n*2] = x[n] * y[n]
+extern void3u mcl_mulPre;
+// z[n] = Montgomery(x[n], y[n]);
+extern void3u mcl_mont;
 
 #ifdef __cplusplus
 }
