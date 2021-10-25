@@ -107,10 +107,10 @@ CYBOZU_TEST_AUTO(mulPre)
 		y[i] = rg.get64();
 	}
 	puts("a");
-	mcl_mulPre(xy1, x, y);
+	mcl_mulPre11(xy1, x, y);
 	gmp_mulPre(xy2, x, y);
 	CYBOZU_TEST_EQUAL_ARRAY(xy1, xy2, N * 2);
-	CYBOZU_BENCH_C("mcl", C, mcl_mulPre, xy1, x, y);
+	CYBOZU_BENCH_C("mcl", C, mcl_mulPre11, xy1, x, y);
 	CYBOZU_BENCH_C("gmp", C, gmp_mulPre, xy2, x, y);
 }
 
@@ -137,7 +137,7 @@ CYBOZU_TEST_AUTO(mont)
 	mcl::gmp::getArray(xy1a, N, z);
 	const uint64_t dummy = 0x1234567890abc;
 	xy2a[N] = dummy;
-	mcl_mont(xy2a, xa, ya);
+	mcl_mont11(xy2a, xa, ya);
 	CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
 
 	mcl::fp::Mont<11, false>::func(xy1a, xa, ya, pp + 1);
@@ -146,11 +146,11 @@ CYBOZU_TEST_AUTO(mont)
 	for (int i = 0; i < 100; i++) {
 		xa[0]++;
 		mcl::fp::Mont<11, false>::func(xy1a, xa, ya, pp + 1);
-		mcl_mont(xy2a, xa, ya);
+		mcl_mont11(xy2a, xa, ya);
 		CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
 	}
 	CYBOZU_TEST_EQUAL(xy2a[N], dummy);
 
-	CYBOZU_BENCH_C("mcl", C, mcl_mont, xy1a, xa, ya);
+	CYBOZU_BENCH_C("mcl", C, mcl_mont11, xy1a, xa, ya);
 	CYBOZU_BENCH_C("gmp", C, (mcl::fp::Mont<11, false>::func), xy2a, xa, ya, pp + 1);
 }

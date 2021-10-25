@@ -10,9 +10,9 @@ int mcl_init();
 typedef void (*void3u)(uint64_t *z, const uint64_t *x, const uint64_t *y);
 // N = 11
 // z[N*2] = x[N] * y[N]
-extern void3u mcl_mulPre;
+extern void3u mcl_mulPre11;
 // z[N] = Montgomery(x[N], y[N]);
-extern void3u mcl_mont;
+extern void3u mcl_mont11;
 
 #ifdef __cplusplus
 }

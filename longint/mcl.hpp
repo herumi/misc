@@ -14,8 +14,8 @@ typedef uint64_t Unit;
 
 static const char *pStr = "0x9401ff90f28bffb0c610fb10bf9e0fefd59211629a7991563c5e468d43ec9cfe1549fd59c20ab5b9a7cda7f27a0067b8303eeb4b31555cf4f24050ed155555cd7fa7a5f8aaaaaaad47ede1a6aaaaaaaab69e6dcb";
 
-void3u mcl_mulPre;
-void3u mcl_mont;
+void3u mcl_mulPre11;
+void3u mcl_mont11;
 
 template<class T>
 T getMontgomeryCoeff(T pLow)
@@ -103,11 +103,11 @@ struct Code : Xbyak::CodeGenerator {
 		printf("bitSize=%d rp_=%016llx\n", bitSize, (long long)rp_);
 
 		align(16);
-		mcl_mulPre = getCurr<void3u>();
+		mcl_mulPre11 = getCurr<void3u>();
 		gen_mulPre11();
 
 		align(16);
-		mcl_mont = getCurr<void3u>();
+		mcl_mont11 = getCurr<void3u>();
 		gen_montMul11();
 	}
 private:
