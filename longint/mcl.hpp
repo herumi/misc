@@ -14,6 +14,9 @@ typedef uint64_t Unit;
 
 static const char *pStr11 = "0x9401ff90f28bffb0c610fb10bf9e0fefd59211629a7991563c5e468d43ec9cfe1549fd59c20ab5b9a7cda7f27a0067b8303eeb4b31555cf4f24050ed155555cd7fa7a5f8aaaaaaad47ede1a6aaaaaaaab69e6dcb";
 
+// dummy
+static const char *pStr9 = "0x10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000201";
+
 void3u mcl_mulPre;
 void3u mcl_mont;
 
@@ -98,8 +101,8 @@ struct Code : Xbyak::CodeGenerator {
 	void init(int n)
 	{
 		N = n;
-		if (N != 11) throw cybozu::Exception("mcl::init not uspport n") << n;
-		mpz_class p(pStr11);
+		if (N != 9 && N != 11) throw cybozu::Exception("mcl::init not uspport n") << n;
+		mpz_class p(N == 11 ? pStr11 : pStr9);
 		bitSize = mcl::gmp::getBitSize(p);
 		mcl::gmp::getArray(p_, n, p);
 		rp_ = getMontgomeryCoeff(p_[0]);
@@ -107,7 +110,11 @@ struct Code : Xbyak::CodeGenerator {
 
 		align(16);
 		mcl_mulPre = getCurr<void3u>();
-		gen_mulPre();
+		if (N == 11) {
+			gen_mulPre11();
+		} else {
+			gen_mulPre9();
+		}
 
 		align(16);
 		mcl_mont = getCurr<void3u>();
@@ -117,7 +124,7 @@ private:
 	Code(const Code&);
 	void operator=(const Code&);
 	// [gp0] <- [gp1] * [gp2]
-	void gen_mulPre()
+	void gen_mulPre11()
 	{
 		StackFrame sf(this, 3, 10 | UseRDX);
 		const Reg64& pz = sf.p[0];
@@ -153,6 +160,7 @@ private:
 	}
 	/*
 		[pd:pz[0]] <- py[n-1..0] * px[0]
+		use xmm
 	*/
 	void mulPack(const Reg64& pz, const Xmm& px, int offset, const RegExp& py, const Pack& pd)
 	{
@@ -179,6 +187,44 @@ private:
 		const Reg64& d = rdx;
 		movq(d, px);
 		mov(d, ptr [d + offset]);
+		xor_(a, a);
+		for (size_t i = 0; i < pd.size(); i++) {
+			mulx(hi, a, ptr [py + i * 8]);
+			adox(pd[i], a);
+			if (i == 0) mov(ptr[pz + offset], pd[0]);
+			if (i == pd.size() - 1) break;
+			adcx(pd[i + 1], hi);
+		}
+		mov(a, 0);
+		adox(hi, a);
+		adc(hi, a);
+	}
+	/*
+		[pd:pz[0]] <- py[n-1..0] * px[0]
+		does not use xmm
+	*/
+	void mulPack(const Reg64& pz, const Reg64& px, int offset, const RegExp& py, const Pack& pd)
+	{
+		const Reg64& a = rax;
+		const Reg64& d = rdx;
+		mov(d, ptr [px + offset]);
+		mulx(pd[0], a, ptr [py + 8 * 0]);
+		mov(ptr [pz + offset], a);
+		xor_(a, a);
+		for (size_t i = 1; i < pd.size(); i++) {
+			mulx(pd[i], a, ptr [py + 8 * i]);
+			adcx(pd[i - 1], a);
+		}
+		adc(pd[pd.size() - 1], 0);
+	}
+	/*
+		[hi:Pack(d_(n-1), .., d1):pz[0]] <- Pack(d_(n-1), ..., d0) + py[n-1..0] * px[0]
+	*/
+	void mulPackAdd(const RegExp& pz, const Reg64& px, int offset, const RegExp& py, const Reg64& hi, const Pack& pd)
+	{
+		const Reg64& a = rax;
+		const Reg64& d = rdx;
+		mov(d, ptr [px + offset]);
 		xor_(a, a);
 		for (size_t i = 0; i < pd.size(); i++) {
 			mulx(hi, a, ptr [py + i * 8]);
@@ -281,6 +327,35 @@ private:
 		// c[n..0] += p * q because of not fuill bit
 		movq(t0, xpp);
 		mulAdd(c, t0, t1, xt, false);
+	}
+	// [gp0] <- [gp1] * [gp2]
+	void gen_mulPre9()
+	{
+		StackFrame sf(this, 3, 10 | UseRDX);
+		const Reg64& pz = sf.p[0];
+		const Reg64& px = sf.p[1];
+		const Reg64& py = sf.p[2];
+		const Reg64& t0 = sf.t[0];
+		const Reg64& t1 = sf.t[1];
+		const Reg64& t2 = sf.t[2];
+		const Reg64& t3 = sf.t[3];
+		const Reg64& t4 = sf.t[4];
+		const Reg64& t5 = sf.t[5];
+		const Reg64& t6 = sf.t[6];
+		const Reg64& t7 = sf.t[7];
+		const Reg64& t8 = sf.t[8];
+
+		Pack pk(t8, t7, t6, t5, t4, t3, t2, t1, t0);
+		mulPack(pz, px, 9 * 0, py, pk);
+		Reg64 t = sf.t[9];
+		for (int i = 1; i < 9; i++) {
+			mulPackAdd(pz, px, 8 * i, py, t, pk);
+			Reg64 s = pk[0];
+			pk = pk.sub(1);
+			pk.append(t);
+			t = s;
+		}
+		store_mr(pz + 8 * 9, pk);
 	}
 	/*
 		c[n..0] = c[n-1..0] + px[n-1..0] * rdx if is_cn_zero = true

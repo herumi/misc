@@ -107,7 +107,6 @@ void mulPreTest()
 		x[i] = rg.get64();
 		y[i] = rg.get64();
 	}
-	puts("a");
 	mcl_mulPre(xy1, x, y);
 	gmp_mulPre<N>(xy2, x, y);
 	CYBOZU_TEST_EQUAL_ARRAY(xy1, xy2, N * 2);
@@ -159,7 +158,13 @@ void montTest()
 
 CYBOZU_TEST_AUTO(N11)
 {
+	puts("test N=11");
 	mulPreTest<11>();
 	montTest<11>();
 }
 
+CYBOZU_TEST_AUTO(N9)
+{
+	puts("test N=9");
+	mulPreTest<9>();
+}
