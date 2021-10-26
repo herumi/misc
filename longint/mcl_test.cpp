@@ -14,7 +14,9 @@ void gmp_mulPre(uint64_t *z, const uint64_t *x, const uint64_t *y)
 	mpn_mul_n((mp_limb_t*)z, (const mp_limb_t*)x, (const mp_limb_t*)y, N);
 }
 
-static const char *pStr = "0x9401ff90f28bffb0c610fb10bf9e0fefd59211629a7991563c5e468d43ec9cfe1549fd59c20ab5b9a7cda7f27a0067b8303eeb4b31555cf4f24050ed155555cd7fa7a5f8aaaaaaad47ede1a6aaaaaaaab69e6dcb";
+static const char *pStr11 = "0x9401ff90f28bffb0c610fb10bf9e0fefd59211629a7991563c5e468d43ec9cfe1549fd59c20ab5b9a7cda7f27a0067b8303eeb4b31555cf4f24050ed155555cd7fa7a5f8aaaaaaad47ede1a6aaaaaaaab69e6dcb";
+
+static const char *pStr9 = "0xbb9dfd549299f1c803ddd5d7c05e7cc0373d9b1ac15b47aa5aa84626f33e58fe66943943049031ae4ca1d2719b3a84fa363bcd2539a5cd02c6f4b6b645a58c1085e14411";
 
 struct Montgomery {
 	typedef mcl::fp::Unit Unit;
@@ -110,7 +112,7 @@ void mulPreTest()
 	mcl_mulPre(xy1, x, y);
 	gmp_mulPre<N>(xy2, x, y);
 	CYBOZU_TEST_EQUAL_ARRAY(xy1, xy2, N * 2);
-	CYBOZU_BENCH_C("mcl", C, mcl_mulPre, xy1, x, y);
+	CYBOZU_BENCH_C("mcl_mulPre", C, mcl_mulPre, xy1, x, y);
 	CYBOZU_BENCH_C("gmp", C, gmp_mulPre<N>, xy2, x, y);
 }
 
@@ -125,7 +127,7 @@ void montTest()
 		ya[i] = rg.get64();
 	}
 
-	mpz_class p(pStr);
+	mpz_class p(N == 11 ? pStr11 : pStr9);
 	Montgomery mont(p);
 	mcl::gmp::getArray(pp + 1, N, p);
 	pp[0] = mont.rp_;
@@ -141,19 +143,19 @@ void montTest()
 	mcl_mont(xy2a, xa, ya);
 	CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
 
-	mcl::fp::Mont<11, false>::func(xy1a, xa, ya, pp + 1);
+	mcl::fp::Mont<N, false>::func(xy1a, xa, ya, pp + 1);
 	CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
 
 	for (int i = 0; i < 100; i++) {
 		xa[0]++;
-		mcl::fp::Mont<11, false>::func(xy1a, xa, ya, pp + 1);
+		mcl::fp::Mont<N, false>::func(xy1a, xa, ya, pp + 1);
 		mcl_mont(xy2a, xa, ya);
 		CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
 	}
 	CYBOZU_TEST_EQUAL(xy2a[N], dummy);
 
-	CYBOZU_BENCH_C("mcl", C, mcl_mont, xy1a, xa, ya);
-	CYBOZU_BENCH_C("gmp", C, (mcl::fp::Mont<11, false>::func), xy2a, xa, ya, pp + 1);
+	CYBOZU_BENCH_C("mcl_mont", C, mcl_mont, xy1a, xa, ya);
+//	CYBOZU_BENCH_C("gmp", C, (mcl::fp::Mont<N, false>::func), xy2a, xa, ya, pp + 1);
 }
 
 CYBOZU_TEST_AUTO(N11)
@@ -167,4 +169,5 @@ CYBOZU_TEST_AUTO(N9)
 {
 	puts("test N=9");
 	mulPreTest<9>();
+	montTest<9>();
 }

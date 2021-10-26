@@ -107,17 +107,21 @@ struct Code : Xbyak::CodeGenerator {
 		rp_ = getMontgomeryCoeff(p_[0]);
 		printf("bitSize=%d rp_=%016llx\n", bitSize, (long long)rp_);
 
-		align(16);
-		mcl_mulPre = getCurr<void3u>();
 		if (N == 11) {
+			align(16);
+			mcl_mulPre = getCurr<void3u>();
 			gen_mulPre11();
+			align(16);
+			mcl_mont = getCurr<void3u>();
+			gen_montMul11();
 		} else {
+			align(16);
+			mcl_mulPre = getCurr<void3u>();
 			gen_mulPre9();
+			align(16);
+			mcl_mont = getCurr<void3u>();
+			gen_montMul9();
 		}
-
-		align(16);
-		mcl_mont = getCurr<void3u>();
-		gen_montMul11();
 	}
 private:
 	Code(const Code&);
@@ -355,6 +359,47 @@ private:
 			t = s;
 		}
 		store_mr(pz + 8 * 9, pk);
+	}
+	void gen_montMul9()
+	{
+		StackFrame sf(this, 3, 10 | UseRDX);//, 0, false);
+		const Reg64& pz = sf.p[0];
+		const Reg64& px = sf.p[1];
+		const Reg64& py = sf.p[2];
+		Pack pk = sf.t;
+		assert(pk.size() == N + 1);
+
+		Label exitL;
+		mov(rax, size_t(p_));
+		movq(xm1, pz);
+		for (int i = 0; i < N; i++) {
+			mov(rdx, ptr [py + i * 8]);
+			montgomery9_1(pk, px, rax, pz, xm0, i == 0);
+			if (i < N - 1) pk = rotatePack(pk);
+		}
+		pk = pk.sub(1);
+
+		movq(pz, xm1);
+		store_mr(pz, pk);
+		sub_rm(pk, rax); // z - p
+		jc(exitL);
+		store_mr(pz, pk);
+	L(exitL);
+	}
+	void montgomery9_1(const Pack& c, const Reg64& px, const Reg64& pp, const Reg64& t1, const Xmm& xt, bool isFirst)
+	{
+		const Reg64& d = rdx;
+		if (isFirst) {
+			// c[n..0] = px[n-1..0] * rdx
+			mulPack1(c, px, t1);
+		} else {
+			// c[n..0] = c[n-1..0] + px[n-1..0] * rdx because of not fuill bit
+			mulAdd(c, px, t1, xt, true);
+		}
+		mov(d, rp_);
+		imul(d, c[0]); // d = q = uint64_t(d * c[0])
+		// c[n..0] += p * q because of not fuill bit
+		mulAdd(c, pp, t1, xt, false);
 	}
 	/*
 		c[n..0] = c[n-1..0] + px[n-1..0] * rdx if is_cn_zero = true
