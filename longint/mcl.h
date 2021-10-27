@@ -5,8 +5,8 @@
 extern "C" {
 #endif
 
-// n = 9 or 11
-int mcl_init(int n);
+// pStr [in] hex string such as 0x94...
+int mcl_init(const char *pStr);
 
 typedef void (*void3u)(uint64_t *z, const uint64_t *x, const uint64_t *y);
 // n = 9 or 11

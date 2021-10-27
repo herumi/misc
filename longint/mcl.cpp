@@ -7,10 +7,10 @@
 
 Code s_mcl;
 
-int mcl_init(int n)
+int mcl_init(const char *pStr)
 	try
 {
-	s_mcl.init(n);
+	s_mcl.init(pStr);
 	return 0;
 } catch (std::exception& e) {
 	fprintf(stderr, "err=%s\n", e.what());

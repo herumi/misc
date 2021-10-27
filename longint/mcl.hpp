@@ -12,10 +12,6 @@ using namespace Xbyak::util;
 
 typedef uint64_t Unit;
 
-static const char *pStr11 = "0x9401ff90f28bffb0c610fb10bf9e0fefd59211629a7991563c5e468d43ec9cfe1549fd59c20ab5b9a7cda7f27a0067b8303eeb4b31555cf4f24050ed155555cd7fa7a5f8aaaaaaad47ede1a6aaaaaaaab69e6dcb";
-
-static const char *pStr9 = "0xbb9dfd549299f1c803ddd5d7c05e7cc0373d9b1ac15b47aa5aa84626f33e58fe66943943049031ae4ca1d2719b3a84fa363bcd2539a5cd02c6f4b6b645a58c1085e14411";
-
 void3u mcl_mulPre;
 void3u mcl_mont;
 
@@ -59,9 +55,10 @@ struct Code : Xbyak::CodeGenerator {
 	const Reg64& gt7;
 	const Reg64& gt8;
 	const Reg64& gt9;
+	static const int MAX_N = 11;
 	int N;
 	Unit rp_;
-	Unit p_[11];
+	Unit p_[MAX_N];
 	int bitSize;
 
 	/*
@@ -97,13 +94,14 @@ struct Code : Xbyak::CodeGenerator {
 		, p_()
 	{
 	}
-	void init(int n)
+	void init(const char *pStr)
 	{
-		N = n;
-		if (N != 9 && N != 11) throw cybozu::Exception("mcl::init not uspport n") << n;
-		mpz_class p(N == 11 ? pStr11 : pStr9);
+		mpz_class p(pStr);
 		bitSize = mcl::gmp::getBitSize(p);
-		mcl::gmp::getArray(p_, n, p);
+		N = (bitSize + 63) / 64;
+		if (N > MAX_N) throw cybozu::Exception("too large pStr") << N;
+		if (N != 9 && N != 11) throw cybozu::Exception("not support N") << N;
+		mcl::gmp::getArray(p_, N, p);
 		rp_ = getMontgomeryCoeff(p_[0]);
 		printf("bitSize=%d rp_=%016llx\n", bitSize, (long long)rp_);
 

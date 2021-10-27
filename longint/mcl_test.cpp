@@ -14,10 +14,6 @@ void gmp_mulPre(uint64_t *z, const uint64_t *x, const uint64_t *y)
 	mpn_mul_n((mp_limb_t*)z, (const mp_limb_t*)x, (const mp_limb_t*)y, N);
 }
 
-static const char *pStr11 = "0x9401ff90f28bffb0c610fb10bf9e0fefd59211629a7991563c5e468d43ec9cfe1549fd59c20ab5b9a7cda7f27a0067b8303eeb4b31555cf4f24050ed155555cd7fa7a5f8aaaaaaad47ede1a6aaaaaaaab69e6dcb";
-
-static const char *pStr9 = "0xbb9dfd549299f1c803ddd5d7c05e7cc0373d9b1ac15b47aa5aa84626f33e58fe66943943049031ae4ca1d2719b3a84fa363bcd2539a5cd02c6f4b6b645a58c1085e14411";
-
 struct Montgomery {
 	typedef mcl::fp::Unit Unit;
 	mpz_class p_;
@@ -102,7 +98,6 @@ struct Montgomery {
 template<int N>
 void mulPreTest()
 {
-	mcl_init(N);
 	cybozu::XorShift rg;
 	uint64_t x[N], y[N], xy1[N * 2], xy2[N * 2];
 	for (int i = 0; i < N; i++) {
@@ -117,7 +112,7 @@ void mulPreTest()
 }
 
 template<int N>
-void montTest()
+void montTest(const char *pStr)
 {
 	uint64_t xa[N], ya[N], xy1a[N], xy2a[N + 1];
 	uint64_t pp[N + 1];
@@ -127,7 +122,7 @@ void montTest()
 		ya[i] = rg.get64();
 	}
 
-	mpz_class p(N == 11 ? pStr11 : pStr9);
+	mpz_class p(pStr);
 	Montgomery mont(p);
 	mcl::gmp::getArray(pp + 1, N, p);
 	pp[0] = mont.rp_;
@@ -161,13 +156,18 @@ void montTest()
 CYBOZU_TEST_AUTO(N11)
 {
 	puts("test N=11");
+	const char *pStr = "0x9401ff90f28bffb0c610fb10bf9e0fefd59211629a7991563c5e468d43ec9cfe1549fd59c20ab5b9a7cda7f27a0067b8303eeb4b31555cf4f24050ed155555cd7fa7a5f8aaaaaaad47ede1a6aaaaaaaab69e6dcb";
+
+	mcl_init(pStr);
 	mulPreTest<11>();
-	montTest<11>();
+	montTest<11>(pStr);
 }
 
 CYBOZU_TEST_AUTO(N9)
 {
 	puts("test N=9");
+	const char *pStr = "0xbb9dfd549299f1c803ddd5d7c05e7cc0373d9b1ac15b47aa5aa84626f33e58fe66943943049031ae4ca1d2719b3a84fa363bcd2539a5cd02c6f4b6b645a58c1085e14411";
+	mcl_init(pStr);
 	mulPreTest<9>();
-	montTest<9>();
+	montTest<9>(pStr);
 }
