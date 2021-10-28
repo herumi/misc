@@ -150,7 +150,9 @@ private:
 		mulPack(pz, xm0, 8 * 0, py, pk);
 		Reg64 t = tb;
 		for (int i = 1; i < 11; i++) {
-			mulPackAdd(pz, xm0, 8 * i, py, t, pk);
+			movq(rdx, xm0);
+			mov(rdx, ptr[rdx + 8 * i]);
+			mulPackAdd(pz, 8 * i, py, t, pk);
 			Reg64 s = pk[0];
 			pk = pk.sub(1);
 			pk.append(t);
@@ -179,15 +181,13 @@ private:
 		adc(pd[pd.size() - 1], 0);
 	}
 	/*
-		xmm = px
-		[hi:Pack(d_(n-1), .., d1):pz[0]] <- Pack(d_(n-1), ..., d0) + py[n-1..0] * px[0]
+		implicit input : rdx
+		[hi:Pack(d_(n-1), .., d1):pz[0]] <- Pack(d_(n-1), ..., d0) + py[n-1..0] * rdx
+		use : rax
 	*/
-	void mulPackAdd(const RegExp& pz, const Xmm& px, int offset, const RegExp& py, const Reg64& hi, const Pack& pd)
+	void mulPackAdd(const RegExp& pz, int offset, const RegExp& py, const Reg64& hi, const Pack& pd)
 	{
 		const Reg64& a = rax;
-		const Reg64& d = rdx;
-		movq(d, px);
-		mov(d, ptr [d + offset]);
 		xor_(a, a);
 		for (size_t i = 0; i < pd.size(); i++) {
 			mulx(hi, a, ptr [py + i * 8]);
@@ -217,26 +217,6 @@ private:
 			adcx(pd[i - 1], a);
 		}
 		adc(pd[pd.size() - 1], 0);
-	}
-	/*
-		[hi:Pack(d_(n-1), .., d1):pz[0]] <- Pack(d_(n-1), ..., d0) + py[n-1..0] * px[0]
-	*/
-	void mulPackAdd(const RegExp& pz, const Reg64& px, int offset, const RegExp& py, const Reg64& hi, const Pack& pd)
-	{
-		const Reg64& a = rax;
-		const Reg64& d = rdx;
-		mov(d, ptr [px + offset]);
-		xor_(a, a);
-		for (size_t i = 0; i < pd.size(); i++) {
-			mulx(hi, a, ptr [py + i * 8]);
-			adox(pd[i], a);
-			if (i == 0) mov(ptr[pz + offset], pd[0]);
-			if (i == pd.size() - 1) break;
-			adcx(pd[i + 1], hi);
-		}
-		mov(a, 0);
-		adox(hi, a);
-		adc(hi, a);
 	}
 	Pack rotatePack(const Pack& p) const
 	{
@@ -350,7 +330,8 @@ private:
 		mulPack(pz, px, 9 * 0, py, pk);
 		Reg64 t = sf.t[9];
 		for (int i = 1; i < 9; i++) {
-			mulPackAdd(pz, px, 8 * i, py, t, pk);
+			mov(rdx, ptr[px + 8 * i]);
+			mulPackAdd(pz, 8 * i, py, t, pk);
 			Reg64 s = pk[0];
 			pk = pk.sub(1);
 			pk.append(t);
