@@ -131,24 +131,14 @@ private:
 		const Reg64& pz = sf.p[0];
 		const Reg64& px = sf.p[1];
 		const Reg64& py = sf.p[2];
-		const Reg64& t0 = sf.t[0];
-		const Reg64& t1 = sf.t[1];
-		const Reg64& t2 = sf.t[2];
-		const Reg64& t3 = sf.t[3];
-		const Reg64& t4 = sf.t[4];
-		const Reg64& t5 = sf.t[5];
-		const Reg64& t6 = sf.t[6];
-		const Reg64& t7 = sf.t[7];
-		const Reg64& t8 = sf.t[8];
-		const Reg64& t9 = sf.t[9];
-		const Reg64& ta = px;
-		const Reg64& tb = rsp;
 		movq(xm0, px);
 		movq(xm1, rsp);
 
-		Pack pk(ta, t9, t8, t7, t6, t5, t4, t3, t2, t1, t0);
-		mulPack(pz, xm0, 8 * 0, py, pk);
-		Reg64 t = tb;
+		Pack pk = sf.t;
+		pk.append(px);
+		mov(rdx, ptr[px + 8 * 0]);
+		mulPack(pz, 8 * 0, py, pk);
+		Reg64 t = rsp;
 		for (int i = 1; i < 11; i++) {
 			movq(rdx, xm0);
 			mov(rdx, ptr[rdx + 8 * i]);
@@ -162,26 +152,7 @@ private:
 		movq(rsp, xm1);
 	}
 	/*
-		[pd:pz[0]] <- py[n-1..0] * px[0]
-		use xmm
-	*/
-	void mulPack(const Reg64& pz, const Xmm& px, int offset, const RegExp& py, const Pack& pd)
-	{
-		const Reg64& a = rax;
-		const Reg64& d = rdx;
-		movq(d, px);
-		mov(d, ptr [d + offset]);
-		mulx(pd[0], a, ptr [py + 8 * 0]);
-		mov(ptr [pz + offset], a);
-		xor_(a, a);
-		for (size_t i = 1; i < pd.size(); i++) {
-			mulx(pd[i], a, ptr [py + 8 * i]);
-			adcx(pd[i - 1], a);
-		}
-		adc(pd[pd.size() - 1], 0);
-	}
-	/*
-		implicit input : rdx
+		input : rdx(implicit)
 		[hi:Pack(d_(n-1), .., d1):pz[0]] <- Pack(d_(n-1), ..., d0) + py[n-1..0] * rdx
 		use : rax
 	*/
@@ -201,14 +172,13 @@ private:
 		adc(hi, a);
 	}
 	/*
-		[pd:pz[0]] <- py[n-1..0] * px[0]
-		does not use xmm
+		input : rdx(implicit)
+		[pd:pz[offset:offset+n]] <- py[offset:offset+n] * rdx
+		use : rax
 	*/
-	void mulPack(const Reg64& pz, const Reg64& px, int offset, const RegExp& py, const Pack& pd)
+	void mulPack(const Reg64& pz, int offset, const RegExp& py, const Pack& pd)
 	{
 		const Reg64& a = rax;
-		const Reg64& d = rdx;
-		mov(d, ptr [px + offset]);
 		mulx(pd[0], a, ptr [py + 8 * 0]);
 		mov(ptr [pz + offset], a);
 		xor_(a, a);
@@ -303,10 +273,10 @@ private:
 			// c[n..0] = c[n-1..0] + px[n-1..0] * rdx because of not fuill bit
 			mulAdd(c, t0, t1, xt, true);
 		}
+		movq(t0, xpp);
 		mov(d, rp_);
 		imul(d, c[0]); // d = q = uint64_t(d * c[0])
 		// c[n..0] += p * q because of not fuill bit
-		movq(t0, xpp);
 		mulAdd(c, t0, t1, xt, false);
 	}
 	// [gp0] <- [gp1] * [gp2]
@@ -316,20 +286,12 @@ private:
 		const Reg64& pz = sf.p[0];
 		const Reg64& px = sf.p[1];
 		const Reg64& py = sf.p[2];
-		const Reg64& t0 = sf.t[0];
-		const Reg64& t1 = sf.t[1];
-		const Reg64& t2 = sf.t[2];
-		const Reg64& t3 = sf.t[3];
-		const Reg64& t4 = sf.t[4];
-		const Reg64& t5 = sf.t[5];
-		const Reg64& t6 = sf.t[6];
-		const Reg64& t7 = sf.t[7];
-		const Reg64& t8 = sf.t[8];
 
-		Pack pk(t8, t7, t6, t5, t4, t3, t2, t1, t0);
-		mulPack(pz, px, 9 * 0, py, pk);
-		Reg64 t = sf.t[9];
-		for (int i = 1; i < 9; i++) {
+		Pack pk = sf.t.sub(0, N);
+		mov(rdx, ptr[px + 8 * 0]);
+		mulPack(pz, 8 * 0, py, pk);
+		Reg64 t = sf.t[N];
+		for (int i = 1; i < N; i++) {
 			mov(rdx, ptr[px + 8 * i]);
 			mulPackAdd(pz, 8 * i, py, t, pk);
 			Reg64 s = pk[0];
@@ -337,11 +299,11 @@ private:
 			pk.append(t);
 			t = s;
 		}
-		store_mr(pz + 8 * 9, pk);
+		store_mr(pz + 8 * N, pk);
 	}
 	void gen_montMul9()
 	{
-		StackFrame sf(this, 3, 10 | UseRDX);//, 0, false);
+		StackFrame sf(this, 3, 10 | UseRDX);
 		const Reg64& pz = sf.p[0];
 		const Reg64& px = sf.p[1];
 		const Reg64& py = sf.p[2];
