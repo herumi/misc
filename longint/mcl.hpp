@@ -127,29 +127,32 @@ private:
 	// [gp0] <- [gp1] * [gp2]
 	void gen_mulPre11()
 	{
-		StackFrame sf(this, 3, 10 | UseRDX);
+		StackFrame sf(this, 3, 10 | UseRDX, N * 8 * 2);
 		const Reg64& pz = sf.p[0];
 		const Reg64& px = sf.p[1];
 		const Reg64& py = sf.p[2];
-		movq(xm0, px);
-		movq(xm1, rsp);
+		// copy px and py to stack to use px and py
+		for (int i = 0; i < N; i++) {
+			mov(rax, ptr[px + 8 * i]);
+			mov(ptr[rsp + 8 * i], rax);
+			mov(rdx, ptr[py + 8 * i]);
+			mov(ptr[rsp + 8 * N + 8 * i], rdx);
+		}
 
 		Pack pk = sf.t;
 		pk.append(px);
-		mov(rdx, ptr[px + 8 * 0]);
-		mulPack(pz, 8 * 0, py, pk);
-		Reg64 t = rsp;
+		mov(rdx, ptr[rsp + 8 * 0]);
+		mulPack(pz, 8 * 0, rsp + N * 8, pk);
+		Reg64 t = py;
 		for (int i = 1; i < 11; i++) {
-			movq(rdx, xm0);
-			mov(rdx, ptr[rdx + 8 * i]);
-			mulPackAdd(pz, 8 * i, py, t, pk);
+			mov(rdx, ptr[rsp + 8 * i]);
+			mulPackAdd(pz, 8 * i, rsp + N * 8, t, pk);
 			Reg64 s = pk[0];
 			pk = pk.sub(1);
 			pk.append(t);
 			t = s;
 		}
 		store_mr(pz + 8 * 11, pk);
-		movq(rsp, xm1);
 	}
 	/*
 		input : rdx(implicit)
