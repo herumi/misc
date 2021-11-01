@@ -124,6 +124,22 @@ struct Code : Xbyak::CodeGenerator {
 private:
 	Code(const Code&);
 	void operator=(const Code&);
+
+	void gen_mulPreN(const Reg64& pz, const RegExp& px, const RegExp& py, Pack pk, Reg64 t)
+	{
+		mov(rdx, ptr[px + 8 * 0]);
+		mulPack(pz, 8 * 0, py, pk);
+		for (int i = 1; i < N; i++) {
+			mov(rdx, ptr[px + 8 * i]);
+			mulPackAdd(pz, 8 * i, py, t, pk);
+			Reg64 s = pk[0];
+			pk = pk.sub(1);
+			pk.append(t);
+			t = s;
+		}
+		store_mr(pz + 8 * N, pk);
+	}
+
 	// [gp0] <- [gp1] * [gp2]
 	void gen_mulPre11()
 	{
@@ -141,18 +157,8 @@ private:
 
 		Pack pk = sf.t;
 		pk.append(px);
-		mov(rdx, ptr[rsp + 8 * 0]);
-		mulPack(pz, 8 * 0, rsp + N * 8, pk);
-		Reg64 t = py;
-		for (int i = 1; i < 11; i++) {
-			mov(rdx, ptr[rsp + 8 * i]);
-			mulPackAdd(pz, 8 * i, rsp + N * 8, t, pk);
-			Reg64 s = pk[0];
-			pk = pk.sub(1);
-			pk.append(t);
-			t = s;
-		}
-		store_mr(pz + 8 * 11, pk);
+
+		gen_mulPreN(pz, rsp, rsp + N * 8, pk, py);
 	}
 	/*
 		input : rdx(implicit)
@@ -291,18 +297,8 @@ private:
 		const Reg64& py = sf.p[2];
 
 		Pack pk = sf.t.sub(0, N);
-		mov(rdx, ptr[px + 8 * 0]);
-		mulPack(pz, 8 * 0, py, pk);
-		Reg64 t = sf.t[N];
-		for (int i = 1; i < N; i++) {
-			mov(rdx, ptr[px + 8 * i]);
-			mulPackAdd(pz, 8 * i, py, t, pk);
-			Reg64 s = pk[0];
-			pk = pk.sub(1);
-			pk.append(t);
-			t = s;
-		}
-		store_mr(pz + 8 * N, pk);
+
+		gen_mulPreN(pz, px, py, pk, sf.t[N]);
 	}
 	void gen_montMul9()
 	{
