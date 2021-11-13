@@ -23,6 +23,9 @@ endif
 clean:
 	rm -rf $(EXE) $(OBJ) $(DEP)
 
+test: ./add.exe
+	./add.exe
+
 .PHONY: clean
 
 .SECONDARY: $(OBJ)
