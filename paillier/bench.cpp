@@ -1,3 +1,9 @@
+/*
+N=78
+enc  45.196Mclk
+add  13.355Kclk
+dec  23.229Mclk
+*/
 #include <vector>
 #include <mcl/paillier.hpp>
 #include <cybozu/benchmark.hpp>
