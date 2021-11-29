@@ -18,25 +18,29 @@ const int KEY_SIZE = 2048;
 
 struct Param {
 	int sumNum;
-	int bitLen;
+	int bit;
+	int sign;
+	int maxBitLen;
 	int adj;
 	int n;
 	void set(int sumNum, int bit, bool sign)
 	{
 		this->sumNum = sumNum;
-		this->bitLen = bit + int(ceil(log2(sumNum)));
+		this->bit = bit;
+		this->sign = sign;
+		this->maxBitLen = int(ceil(log2(((1 << bit) - 1) * sumNum)));
 		this->adj = sign ? (1 << (bit - 1)) : 0;
-		this->n = KEY_SIZE / this->bitLen;
+		this->n = KEY_SIZE / this->maxBitLen;
 	}
 	void put() const
 	{
-		printf("sumNum=%d bitLen=%d adj=%d n=%d\n", sumNum, bitLen, adj, n);
+		printf("sumNum=%d maxBitLen=%d adj=%d n=%d\n", sumNum, maxBitLen, adj, n);
 	}
 } g_p;
 
 #define PUT(x) std::cout << std::hex << #x << '=' << x << std::endl;
 
-uint64_t mask(int n)
+uint64_t makeMask(int n)
 {
 	return (uint64_t(1) << n) - 1;
 }
@@ -45,7 +49,7 @@ void pack(mpz_class& m, const IntVec& v)
 {
 	m = 0;
 	for (int i = 0; i < g_p.n; i++) {
-		m |= mpz_class(v[i] + g_p.adj) << (g_p.bitLen * i);
+		m |= mpz_class(v[i] + g_p.adj) << (g_p.maxBitLen * i);
 	}
 }
 
@@ -59,8 +63,8 @@ void unpack(IntVec& v, mpz_class m)
 		} else {
 			low = mcl::gmp::getUnit(m)[0];
 		}
-		v[i] = int(low & mask(g_p.bitLen)) - g_p.sumNum * g_p.adj;
-		m >>= g_p.bitLen;
+		v[i] = int(low & makeMask(g_p.maxBitLen)) - g_p.sumNum * g_p.adj;
+		m >>= g_p.maxBitLen;
 	}
 }
 
@@ -72,9 +76,10 @@ int main(int argc, char *argv[])
 	int sumNum;
 	int bit;
 	bool sign;
-	opt.appendOpt(&sumNum, 7, "sum", "max sum num");
-	opt.appendOpt(&bit, 1, "bit", "bit per element");
-	opt.appendBoolOpt(&sign, "sign", "true if element is signed");
+	opt.appendOpt(&sumNum, 1000, "sum", "max sum num");
+	opt.appendOpt(&bit, 16, "bit", "bit per element");
+	opt.appendOpt(&sign, true, "sign", "true if element is signed");
+	opt.appendHelp("h");
 	if (!opt.parse(argc, argv)) {
 		opt.put();
 		return 1;
@@ -89,8 +94,18 @@ int main(int argc, char *argv[])
 	IntVec v;
 	v.resize(g_p.n);
 	for (int i = 0; i < g_p.n; i++) {
-		v[i] = short(rg.get32());
+		uint32_t x = rg.get32() & makeMask(g_p.bit);
+		if (g_p.sign) {
+			v[i] = int(x) - (1 << (g_p.bit - 1));
+		} else {
+			v[i] = x;
+		}
 	}
+	printf("top of v ");
+	for (int i = 0; i < 16; i++) {
+		printf("%d ", v[i]);
+	}
+	printf("\n");
 	mpz_class m;
 	pack(m, v);
 	mpz_class c;
