@@ -1,5 +1,6 @@
 /*
-./a.out -sum 1000 -bit 16 -sign
+./a.out -sum 1000 -bit 16 -sign 1
+./a.out -sum 7 -bit 1 -sign 0
 enc  45.196Mclk
 add  13.355Kclk
 dec  23.229Mclk
