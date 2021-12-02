@@ -14,6 +14,7 @@ typedef uint64_t Unit;
 
 void3u mcl_mulPre;
 void3u mcl_mont;
+void2u mcl_mod;
 
 template<class T>
 T getMontgomeryCoeff(T pLow)
@@ -366,6 +367,73 @@ private:
 		movq(c[n], xt);
 		adox(c[n], t);
 		adc(c[n], 0);
+	}
+	/*
+		@input (z, xy)
+		z[n-1..0] <- montgomery reduction(x[2n-1..0])
+	*/
+	void gen_fpDbl_modNF(const Reg64& z, const Reg64& xy, Pack t, int n)
+	{
+		assert(!isFullBit_);
+
+		const Reg64& d = rdx;
+		Pack pk = t.sub(0, n + 1);
+		Reg64 CF = t[n + 1];
+		const Reg64& tt = t[n + 2];
+		const Reg64& pp = t[n + 3];
+
+//		lea(pp, ptr[rip + pL_]);
+		mov(pp, size_t(p_));
+
+		load_rm(pk, xy);
+		mov(d, rp_);
+		imul(d, pk[0]); // q
+		mulAdd2(pk, pp, tt);
+
+		for (int i = 1; i < n; i++) {
+			mov(d, rp_);
+			imul(d, pk[1]);
+			mov(CF, ptr[xy + (n + i) * 8]);
+			pk.append(CF);
+			CF = pk[0];
+			pk = pk.sub(1);
+			mulAdd2(pk, pp, tt, &CF, i < n - 1);
+		}
+
+		Reg64 pk0 = pk[0];
+		Pack zp = pk.sub(1);
+		Pack keep = Pack(xy, rax, rdx, tt);
+		assert(n == 4 || n == 6);
+		if (n == 6) {
+			keep.append(CF);
+			keep.append(pk0);
+		}
+		mov_rr(keep, zp);
+		sub_rm(zp, pp); // z -= p
+		cmovc_rr(zp, keep);
+		store_mr(z, zp);
+	}
+	/*
+		(c[0], c[n..1]) = c[n..0] + px[n-1..0] * rdx + (cc << n)
+		c[0] = 0 or 1
+		use rax, H
+	*/
+	void mulAdd2(const Pack& c, const RegExp& px, const Reg64& H, const Reg64 *cc = 0, bool updateCarry = true)
+	{
+		assert(!isFullBit_);
+		const Reg64& a = rax;
+		xor_(a, a);
+		for (int i = 0; i < N; i++) {
+			mulx(H, a, ptr [px + i * 8]);
+			adox(c[i], a);
+			if (i == N - 1) break;
+			adcx(c[i + 1], H);
+		}
+		// we can suppose that c[0] = 0
+		adox(H, c[0]); // no carry
+		if (cc) adox(H, *cc); // no carry
+		adcx(c[N], H);
+		if (updateCarry) setc(c[0].cvt8());
 	}
 	/*
 		z[] = x[]
