@@ -115,7 +115,7 @@ struct Code : Xbyak::CodeGenerator {
 			gen_montMul11();
 			align(16);
 			mcl_mod = getCurr<void2u>();
-//			gen_mod11();
+			gen_mod11();
 		} else {
 			align(16);
 			mcl_mulPre = getCurr<void3u>();
@@ -378,23 +378,24 @@ private:
 		@input (z, xy)
 		z[n-1..0] <- montgomery reduction(x[2n-1..0])
 	*/
-	void gen_fpDbl_modNF(Pack pk, const Reg64& CF, const Reg64& tt, const RegExp& pp, const Xmm& tz, const RegExp& xy, int n)
+	template<class ADDR>
+	void gen_fpDbl_modNF(Pack pk, const Reg64& CF, const Reg64& tt, const ADDR& pp, const Xmm& tz, const RegExp& xy, int n, const Xmm *ta = 0)
 	{
-		assert(pk.size() == n);
+		assert(pk.size() == n + 1);
 		const Reg64& d = rdx;
 
 		xor_(CF, CF);
 		load_rm(pk.sub(0, n), xy);
 		mov(d, rp_);
 		imul(d, pk[0]); // q
-		mulAdd2(pk, xy + n * 8, pp, tt, CF, false);
+		mulAdd2(pk, xy + n * 8, pp, tt, CF, false, false, ta);
 
 		for (int i = 1; i < n; i++) {
 			pk.append(pk[0]);
 			pk = pk.sub(1);
 			mov(d, rp_);
 			imul(d, pk[0]);
-			mulAdd2(pk, xy + (n + i) * 8, pp, tt, CF, true, i < n - 1);
+			mulAdd2(pk, xy + (n + i) * 8, pp, tt, CF, true, i < n - 1, ta);
 		}
 
 #if 1
@@ -432,15 +433,41 @@ private:
 		}
 		gen_fpDbl_modNF(pk, pxy/*CF*/, z, pp, xm0, rsp, N);
 	}
+	void gen_mod11()
+	{
+		StackFrame sf(this, 3, 10 | UseRDX, 8 * N * 2, false);
+		const Reg64& z = sf.p[0];
+		const Reg64& pxy = sf.p[1];
+		Pack pk = sf.t;
+		pk.append(sf.p[2]);
+		movq(xm0, z);
+		Label ppL;
+		// copy pxy to stack
+		for (int i = 0; i < N * 2; i++) {
+			mov(rax, ptr[pxy + 8 * i]);
+			mov(ptr[rsp + 8 * i], rax);
+		}
+		pk.append(pxy);
+		gen_fpDbl_modNF(pk, rax/*CF*/, z, rip + ppL, xm0, rsp, N, &xm1);
+		sf.close();
+		align(16);
+	L(ppL);
+		for (int i = 0; i < N; i++) {
+			dq(p_[i]);
+		}
+	}
 	/*
 		output : CF:c[n..0] = c[n..0] + px[n-1..0] * rdx + (CF << n)
 		inout : CF = 0 or 1
 		use rax, tt
 	*/
-	void mulAdd2(const Pack& c, const RegExp& pxy, const RegExp& pp, const Reg64& tt, const Reg64& CF, bool addCF, bool updateCF = true)
+	template<class ADDR>
+	void mulAdd2(const Pack& c, const RegExp& pxy, const ADDR& pp, const Reg64& tt, const Reg64& CF, bool addCF, bool updateCF = true, const Xmm *ta = 0)
 	{
 		assert(!isFullBit_);
 		const Reg64& a = rax;
+		assert(ta && CF == rax);
+		if (ta) movq(*ta, CF);
 		xor_(a, a);
 		for (int i = 0; i < N; i++) {
 			mulx(tt, a, ptr [pp + i * 8]);
@@ -451,6 +478,7 @@ private:
 		}
 		// we can suppose that c[0] = 0
 		adox(tt, c[0]); // no carry
+		if (ta) movq(CF, *ta);
 		if (addCF) adox(tt, CF); // no carry
 		adcx(c[N], tt);
 		if (updateCF) setc(CF.cvt8());

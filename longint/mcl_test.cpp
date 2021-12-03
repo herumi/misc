@@ -192,7 +192,7 @@ void modTest(const char *pStr)
 	}
 	CYBOZU_TEST_EQUAL(z2a[N], dummy);
 
-	CYBOZU_BENCH_C("mcl_mont", C, mcl_mod, z2a, xya);
+	CYBOZU_BENCH_C("mcl_mod", C, mcl_mod, z2a, xya);
 //	CYBOZU_BENCH_C("gmp", C, (mcl::fp::Mont<N, false>::func), xy2a, xa, ya, pp + 1);
 }
 
@@ -205,6 +205,7 @@ CYBOZU_TEST_AUTO(N11)
 	mcl_init(pStr);
 	mulPreTest<11>();
 	montTest<11>(pStr);
+	modTest<11>(pStr);
 }
 
 CYBOZU_TEST_AUTO(N9)
