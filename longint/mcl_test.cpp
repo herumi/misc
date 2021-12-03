@@ -153,6 +153,50 @@ void montTest(const char *pStr)
 //	CYBOZU_BENCH_C("gmp", C, (mcl::fp::Mont<N, false>::func), xy2a, xa, ya, pp + 1);
 }
 
+template<int N>
+void modTest(const char *pStr)
+{
+	uint64_t xya[N * 2], z1a[N], z2a[N + 1];
+	uint64_t pp[N + 1];
+	cybozu::XorShift rg;
+	for (int i = 0; i < N * 2; i++) {
+		xya[i] = rg.get64();
+	}
+
+	mpz_class p(pStr);
+	mpz_class p2 = p * p;
+	Montgomery mont(p);
+	mcl::gmp::getArray(pp + 1, N, p);
+	pp[0] = mont.rp_;
+
+	mpz_class xy, z;
+	mcl::gmp::setArray(xy, xya, N * 2);
+	xy %= p2;
+	mcl::gmp::getArray(xya, N * 2, xy);
+
+	mont.mod(z, xy);
+	mcl::gmp::getArray(z1a, N, z);
+	const uint64_t dummy = 0x1234567890abc;
+	z2a[N] = dummy;
+	mcl_mod(z2a, xya);
+	CYBOZU_TEST_EQUAL_ARRAY(z1a, z2a, N);
+
+	mcl::fp::MontRed<N, false>::func(z1a, xya, pp + 1);
+	CYBOZU_TEST_EQUAL_ARRAY(z1a, z2a, N);
+
+	for (int i = 0; i < 100; i++) {
+		xya[0]++;
+		mcl::fp::MontRed<N, false>::func(z1a, xya, pp + 1);
+		mcl_mod(z2a, xya);
+		CYBOZU_TEST_EQUAL_ARRAY(z1a, z2a, N);
+	}
+	CYBOZU_TEST_EQUAL(z2a[N], dummy);
+
+	CYBOZU_BENCH_C("mcl_mont", C, mcl_mod, z2a, xya);
+//	CYBOZU_BENCH_C("gmp", C, (mcl::fp::Mont<N, false>::func), xy2a, xa, ya, pp + 1);
+}
+
+
 CYBOZU_TEST_AUTO(N11)
 {
 	puts("test N=11");
@@ -170,4 +214,5 @@ CYBOZU_TEST_AUTO(N9)
 	mcl_init(pStr);
 	mulPreTest<9>();
 	montTest<9>(pStr);
+	modTest<9>(pStr);
 }
