@@ -113,6 +113,9 @@ struct Code : Xbyak::CodeGenerator {
 			align(16);
 			mcl_mont = getCurr<void3u>();
 			gen_montMul11();
+			align(16);
+			mcl_mod = getCurr<void2u>();
+//			gen_mod11();
 		} else {
 			align(16);
 			mcl_mulPre = getCurr<void3u>();
@@ -120,6 +123,9 @@ struct Code : Xbyak::CodeGenerator {
 			align(16);
 			mcl_mont = getCurr<void3u>();
 			gen_montMul9();
+			align(16);
+			mcl_mod = getCurr<void2u>();
+			gen_mod9();
 		}
 	}
 private:
@@ -372,68 +378,82 @@ private:
 		@input (z, xy)
 		z[n-1..0] <- montgomery reduction(x[2n-1..0])
 	*/
-	void gen_fpDbl_modNF(const Reg64& z, const Reg64& xy, Pack t, int n)
+	void gen_fpDbl_modNF(Pack pk, const Reg64& CF, const Reg64& tt, const RegExp& pp, const Xmm& tz, const RegExp& xy, int n)
 	{
-		assert(!isFullBit_);
-
+		assert(pk.size() == n);
 		const Reg64& d = rdx;
-		Pack pk = t.sub(0, n + 1);
-		Reg64 CF = t[n + 1];
-		const Reg64& tt = t[n + 2];
-		const Reg64& pp = t[n + 3];
 
-//		lea(pp, ptr[rip + pL_]);
-		mov(pp, size_t(p_));
-
-		load_rm(pk, xy);
+		xor_(CF, CF);
+		load_rm(pk.sub(0, n), xy);
 		mov(d, rp_);
 		imul(d, pk[0]); // q
-		mulAdd2(pk, pp, tt);
+		mulAdd2(pk, xy + n * 8, pp, tt, CF, false);
 
 		for (int i = 1; i < n; i++) {
-			mov(d, rp_);
-			imul(d, pk[1]);
-			mov(CF, ptr[xy + (n + i) * 8]);
-			pk.append(CF);
-			CF = pk[0];
+			pk.append(pk[0]);
 			pk = pk.sub(1);
-			mulAdd2(pk, pp, tt, &CF, i < n - 1);
+			mov(d, rp_);
+			imul(d, pk[0]);
+			mulAdd2(pk, xy + (n + i) * 8, pp, tt, CF, true, i < n - 1);
 		}
 
+#if 1
+		pk = pk.sub(1);
+		movq(tt, tz);
+		store_mr(tt, pk);
+		sub_rm(pk, pp);
+		Label exitL;
+		jc(exitL);
+		store_mr(tt, pk);
+	L(exitL);
+#else
 		Reg64 pk0 = pk[0];
 		Pack zp = pk.sub(1);
-		Pack keep = Pack(xy, rax, rdx, tt);
-		assert(n == 4 || n == 6);
-		if (n == 6) {
-			keep.append(CF);
-			keep.append(pk0);
-		}
+		Pack keep = Pack(xy, rax, rdx, tt, CF, pk0).sub(0, n);
 		mov_rr(keep, zp);
 		sub_rm(zp, pp); // z -= p
 		cmovc_rr(zp, keep);
 		store_mr(z, zp);
+#endif
+	}
+	void gen_mod9()
+	{
+		StackFrame sf(this, 3, 10 | UseRDX, 8 * N * 2);
+		const Reg64& z = sf.p[0];
+		const Reg64& pxy = sf.p[1];
+		const Reg64& pp = sf.p[2];
+		Pack pk = sf.t;
+		movq(xm0, z);
+		mov(pp, size_t(p_));
+		// copy pxy to stack
+		for (int i = 0; i < N * 2; i++) {
+			mov(rax, ptr[pxy + 8 * i]);
+			mov(ptr[rsp + 8 * i], rax);
+		}
+		gen_fpDbl_modNF(pk, pxy/*CF*/, z, pp, xm0, rsp, N);
 	}
 	/*
-		(c[0], c[n..1]) = c[n..0] + px[n-1..0] * rdx + (cc << n)
-		c[0] = 0 or 1
-		use rax, H
+		output : CF:c[n..0] = c[n..0] + px[n-1..0] * rdx + (CF << n)
+		inout : CF = 0 or 1
+		use rax, tt
 	*/
-	void mulAdd2(const Pack& c, const RegExp& px, const Reg64& H, const Reg64 *cc = 0, bool updateCarry = true)
+	void mulAdd2(const Pack& c, const RegExp& pxy, const RegExp& pp, const Reg64& tt, const Reg64& CF, bool addCF, bool updateCF = true)
 	{
 		assert(!isFullBit_);
 		const Reg64& a = rax;
 		xor_(a, a);
 		for (int i = 0; i < N; i++) {
-			mulx(H, a, ptr [px + i * 8]);
+			mulx(tt, a, ptr [pp + i * 8]);
 			adox(c[i], a);
+			if (i == 0) mov(c[N], ptr[pxy]);
 			if (i == N - 1) break;
-			adcx(c[i + 1], H);
+			adcx(c[i + 1], tt);
 		}
 		// we can suppose that c[0] = 0
-		adox(H, c[0]); // no carry
-		if (cc) adox(H, *cc); // no carry
-		adcx(c[N], H);
-		if (updateCarry) setc(c[0].cvt8());
+		adox(tt, c[0]); // no carry
+		if (addCF) adox(tt, CF); // no carry
+		adcx(c[N], tt);
+		if (updateCF) setc(CF.cvt8());
 	}
 	/*
 		z[] = x[]
