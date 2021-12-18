@@ -16,26 +16,40 @@ def invMod(x, p):
 	return rev
 
 class Field:
-	p_ = 0
+	p_ = 1
+
 	@classmethod
 	def init(cls, p):
 		cls.p_ = p
-	def __init__(self, v):
-		self.v = v % Field.p_
+
+	def __init__(self, v_=0):
+		self.v_ = v_ % Field.p_
+
+	def __eq__(self, rhs):
+		if type(rhs) is int:
+			return self.v_ == rhs
+		return self.v_ == rhs.v_
+
 	def __str__(self):
-		return str(self.v)
-	def __neg(self):
-		return Field(-self.v)
+		return str(self.v_)
+
+	def __neg__(self):
+		return Field(-self.v_)
+
 	def __add__(self, rhs):
-		return Field(self.v + rhs.v)
+		return Field(self.v_ + rhs.v_)
+
 	def __sub__(self, rhs):
-		return Field(self.v - rhs.v)
+		return Field(self.v_ - rhs.v_)
+
 	def __mul__(self, rhs):
-		return Field(self.v * rhs.v)
+		return Field(self.v_ * rhs.v_)
+
 	def __truediv__(self, rhs):
 		return self * rhs.inv()
+
 	def inv(self):
-		return Field(invMod(self.v, Field.p_))
+		return Field(invMod(self.v_, Field.p_))
 
 
 def main():
