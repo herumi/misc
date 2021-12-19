@@ -49,21 +49,23 @@ class Field:
 		return self * rhs.inv()
 
 	def inv(self):
-		return Field(invMod(self.v_, Field.p_))
+		return Field(pow(self.v_, Field.p_ - 2, Field.p_))
+#		return Field(invMod(self.v_, Field.p_))
 
 
 def main():
-	p = 17
+	p = 43
 	Field.init(p)
-	a = Field(5)
-	print(a)
-	b = Field(-5)
-	print(b)
-	print(a + b)
+	m1 = 8
+	m2 = 5
+	assert Field(m1) + Field(m2) == Field(m1 + m2), "add"
+	assert Field(m1) - Field(m2) == Field(m1 - m2), "sub"
+	assert Field(m1) * Field(m2) == Field(m1 * m2), "sub"
+	assert -Field(m1) == Field(-m1), "minus"
 	for v in range(1, p):
 		x = Field(v)
 		r = x.inv()
-		print(x, r, x * r, (x * r) / r)
+		assert (x * r) / r == x, "inv"
 
 if __name__ == '__main__':
 	main()
