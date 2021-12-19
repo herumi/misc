@@ -5,21 +5,30 @@ class Ec:
 	b_ = Fp()
 	n_ = 0
 
+	# E : y^2 = x^3 + ax + b mod p. n is the order of E
 	@classmethod
 	def init(cls, a, b, n):
 		print(f"a={a} b={b}")
-		cls.a_ = Fp(a)
-		cls.b_ = Fp(b)
-		cls.n_ = 0
+		if type(a) is int:
+			a = Fp(a)
+		if type(b) is int:
+			b = Fp(b)
+		cls.a_ = a
+		cls.b_ = b
+		cls.n_ = n
 
-	def __init__(self, x=None, y=None):
+	def __init__(self, x=None, y=None, doVerify=True):
 		self.isZero_ = True
 		if x is None and y is None:
 			return
+		if type(x) is int:
+			x = Fp(x)
+		if type(y) is int:
+			y = Fp(y)
 		self.x_ = x
 		self.y_ = y
 		self.isZero_ = False
-		if not self.isValid():
+		if doVerify and not self.isValid():
 			raise Exception(f"isValid x={x}, y={y}")
 	def __str__(self):
 		if self.isZero_:
@@ -44,11 +53,7 @@ class Ec:
 	def __neg__(self):
 		if self.isZero():
 			return self
-		ret = Ec()
-		ret.x_ = self.x_
-		ret.y_ = -self.y_
-		ret.isZero_ = False
-		return ret
+		return Ec(self.x_, -self.y_, False)
 
 	def __add__(self, rhs):
 		if self.isZero():
@@ -56,19 +61,17 @@ class Ec:
 		if rhs.isZero():
 			return self
 		if self.x_ == rhs.x_:
+			# P + (-P) = 0
 			if self.y_ == -rhs.y_:
 				return Ec()
+			# dbl
 			L = self.x_ * self.x_
 			L = (L + L + L + self.a_) / (self.y_ + self.y_)
 		else:
 			L = (self.y_ - rhs.y_) / (self.x_ - rhs.x_)
 		x3 = L * L - (self.x_ + rhs.x_)
 		y3 = L * (self.x_ - x3) - self.y_
-		ret = Ec()
-		ret.x_ = x3
-		ret.y_ = y3
-		ret.isZero_ = False
-		return ret
+		return Ec(x3, y3, False)
 
 	def pow(self, n):
 		if n == 0:
@@ -88,8 +91,8 @@ def initSecp256k1():
 	b = 7
 	n = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141
 	Ec.init(a, b, n)
-	x = Fp(0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798)
-	y = Fp(0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8)
+	x = 0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798
+	y = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8
 	P = Ec(x, y)
 	return P
 
@@ -98,16 +101,14 @@ def main():
 	Q = Ec()
 	for i in range(200):
 		R = P.pow(i)
-		if Q != R:
-			print(f"err i={i} Q={Q} R={R}")
+		assert Q == R, f"pow i={i}"
 		Q += P
-	print(P.pow(Ec.n_).isZero())
+	assert P.pow(Ec.n_).isZero(), "order"
 	a = 12345678932
 	b = 98763445345
 	aP = P.pow(a)
 	bP = P.pow(b)
-	print(aP.pow(b))
-	print(bP.pow(a))
+	assert aP.pow(b) == bP.pow(a), "DH"
 
 if __name__ == '__main__':
 	main()
