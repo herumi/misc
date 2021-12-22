@@ -1,13 +1,14 @@
-from field import Field as Fp
+from field import Fp
+from field import Fr
 
 class Ec:
 	a_ = Fp()
 	b_ = Fp()
-	n_ = 0
+	r_ = 0
 
-	# E : y^2 = x^3 + ax + b mod p. n is the order of E
+	# E : y^2 = x^3 + ax + b mod p. r is the order of E
 	@classmethod
-	def init(cls, a, b, n):
+	def init(cls, a, b, r):
 		print(f"a={a} b={b}")
 		if type(a) is int:
 			a = Fp(a)
@@ -15,7 +16,7 @@ class Ec:
 			b = Fp(b)
 		cls.a_ = a
 		cls.b_ = b
-		cls.n_ = n
+		cls.r_ = r
 
 	def __init__(self, x=None, y=None, doVerify=True):
 		self.isZero_ = True
@@ -73,10 +74,10 @@ class Ec:
 		y3 = L * (self.x_ - x3) - self.y_
 		return Ec(x3, y3, False)
 
-	def pow(self, n):
-		if n == 0:
+	def pow(self, r):
+		if r == 0:
 			return Ec()
-		bs = bin(n)[2:]
+		bs = bin(r)[2:]
 		ret = Ec()
 		for b in bs:
 			ret += ret
@@ -85,12 +86,13 @@ class Ec:
 		return ret
 
 def initSecp256k1():
-	Fp.init(0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f)
-
+	p = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f
 	a = 0
 	b = 7
-	n = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141
-	Ec.init(a, b, n)
+	r = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141
+	Fp.init(p)
+	Fr.init(r)
+	Ec.init(a, b, r)
 	x = 0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798
 	y = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8
 	P = Ec(x, y)
@@ -103,7 +105,7 @@ def main():
 		R = P.pow(i)
 		assert Q == R, f"pow i={i}"
 		Q += P
-	assert P.pow(Ec.n_).isZero(), "order"
+	assert P.pow(Ec.r_).isZero(), "order"
 	a = 12345678932
 	b = 98763445345
 	aP = P.pow(a)

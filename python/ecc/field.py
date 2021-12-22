@@ -15,7 +15,7 @@ def invMod(x, p):
 		rev += p
 	return rev
 
-class Field:
+class Fp:
 	p_ = 1
 
 	@classmethod
@@ -23,7 +23,7 @@ class Field:
 		cls.p_ = p
 
 	def __init__(self, v_=0):
-		self.v_ = v_ % Field.p_
+		self.v_ = v_ % Fp.p_
 
 	def __eq__(self, rhs):
 		if type(rhs) is int:
@@ -34,38 +34,83 @@ class Field:
 		return str(self.v_)
 
 	def __neg__(self):
-		return Field(-self.v_)
+		return Fp(-self.v_)
 
 	def __add__(self, rhs):
-		return Field(self.v_ + rhs.v_)
+		return Fp(self.v_ + rhs.v_)
 
 	def __sub__(self, rhs):
-		return Field(self.v_ - rhs.v_)
+		return Fp(self.v_ - rhs.v_)
 
 	def __mul__(self, rhs):
-		return Field(self.v_ * rhs.v_)
+		return Fp(self.v_ * rhs.v_)
 
 	def __truediv__(self, rhs):
 		return self * rhs.inv()
 
 	def inv(self):
-		return Field(pow(self.v_, Field.p_ - 2, Field.p_))
-#		return Field(invMod(self.v_, Field.p_))
+		return Fp(pow(self.v_, Fp.p_ - 2, Fp.p_))
+#		return Fp(invMod(self.v_, Fr.p_))
 
+class Fr:
+	p_ = 1
+
+	@classmethod
+	def init(cls, p):
+		cls.p_ = p
+
+	def __init__(self, v_=0):
+		self.v_ = v_ % Fr.p_
+
+	def __eq__(self, rhs):
+		if type(rhs) is int:
+			return self.v_ == rhs
+		return self.v_ == rhs.v_
+
+	def __str__(self):
+		return str(self.v_)
+
+	def __neg__(self):
+		return Fr(-self.v_)
+
+	def __add__(self, rhs):
+		return Fr(self.v_ + rhs.v_)
+
+	def __sub__(self, rhs):
+		return Fr(self.v_ - rhs.v_)
+
+	def __mul__(self, rhs):
+		return Fr(self.v_ * rhs.v_)
+
+	def __truediv__(self, rhs):
+		return self * rhs.inv()
+
+	def inv(self):
+		return Fr(pow(self.v_, Fr.p_ - 2, Fr.p_))
+#		return Fr(invMod(self.v_, Fr.p_))
+
+def FieldTest(F):
+	m1 = 8
+	m2 = 17
+	assert F(m1).v_ == m1, "eq1"
+	assert F(-m1).v_ == (-m1) % F.p_, "eq2"
+	assert F(m1 * m2).v_ == (m1 * m2) % F.p_, "eq3"
+	assert F(m1) + F(m2) == F(m1 + m2), "add"
+	assert F(m1) - F(m2) == F(m1 - m2), "sub"
+	assert F(m1) * F(m2) == F(m1 * m2), "sub"
+	assert -F(m1) == F(-m1), "minus"
+	for v in range(1, F.p_):
+		x = F(v)
+		r = x.inv()
+		assert (x * r) / r == x, "inv"
 
 def main():
 	p = 43
-	Field.init(p)
-	m1 = 8
-	m2 = 5
-	assert Field(m1) + Field(m2) == Field(m1 + m2), "add"
-	assert Field(m1) - Field(m2) == Field(m1 - m2), "sub"
-	assert Field(m1) * Field(m2) == Field(m1 * m2), "sub"
-	assert -Field(m1) == Field(-m1), "minus"
-	for v in range(1, p):
-		x = Field(v)
-		r = x.inv()
-		assert (x * r) / r == x, "inv"
+	r = 41
+	Fp.init(p)
+	Fr.init(r)
+	FieldTest(Fp)
+	FieldTest(Fr)
 
 if __name__ == '__main__':
 	main()
