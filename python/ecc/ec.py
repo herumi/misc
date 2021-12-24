@@ -75,6 +75,8 @@ class Ec:
 		return Ec(x3, y3, False)
 
 	def pow(self, r):
+		if type(r) is not int:
+			r = r.v_
 		if r == 0:
 			return Ec()
 		bs = bin(r)[2:]
