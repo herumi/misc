@@ -1,3 +1,4 @@
+import secrets
 # return (gcd, x, y) such that gcd = a * x + b * y
 def extGcd(a, b):
 	if a == 0:
@@ -21,6 +22,8 @@ class Fp:
 	@classmethod
 	def init(cls, p):
 		cls.p_ = p
+	def setByCSPRNG(self):
+		self.v_ = secrets.randbelow(self.p_)
 
 	def __init__(self, v_=0):
 		self.v_ = v_ % Fp.p_
@@ -58,6 +61,8 @@ class Fr:
 	@classmethod
 	def init(cls, p):
 		cls.p_ = p
+	def setByCSPRNG(self):
+		self.v_ = secrets.randbelow(self.p_)
 
 	def __init__(self, v_=0):
 		self.v_ = v_ % Fr.p_

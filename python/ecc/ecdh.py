@@ -3,8 +3,10 @@ import secrets
 
 def main():
 	P = initSecp256k1()
-	a = Fr(secrets.randbelow(Ec.r_))
-	b = Fr(secrets.randbelow(Ec.r_))
+	a = Fr()
+	b = Fr()
+	a.setByCSPRNG()
+	b.setByCSPRNG()
 	print(f"a={a}")
 	print(f"b={b}")
 	aP = P.pow(a)
