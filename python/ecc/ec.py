@@ -1,5 +1,5 @@
-from field import Fp
-from field import Fr
+from fp import Fp
+from fr import Fr
 
 class Ec:
 	a_ = Fp()
