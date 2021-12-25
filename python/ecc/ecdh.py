@@ -1,5 +1,4 @@
 from ec import Ec, Fp, Fr, initSecp256k1
-import secrets
 
 def main():
 	P = initSecp256k1()
