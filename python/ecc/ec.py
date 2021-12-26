@@ -74,12 +74,12 @@ class Ec:
 		y3 = L * (self.x_ - x3) - self.y_
 		return Ec(x3, y3, False)
 
-	def pow(self, r):
-		if type(r) is not int:
-			r = r.v_
-		if r == 0:
+	def __mul__(self, rhs):
+		if type(rhs) is not int:
+			rhs = rhs.v_
+		if rhs == 0:
 			return Ec()
-		bs = bin(r)[2:]
+		bs = bin(rhs)[2:]
 		ret = Ec()
 		for b in bs:
 			ret += ret
@@ -104,15 +104,15 @@ def main():
 	P = initSecp256k1()
 	Q = Ec()
 	for i in range(200):
-		R = P.pow(i)
-		assert Q == R, f"pow i={i}"
+		R = P * i
+		assert Q == R, f"mul i={i}"
 		Q += P
-	assert P.pow(Ec.r_).isZero(), "order"
+	assert (P * Ec.r_).isZero(), "order"
 	a = 12345678932
 	b = 98763445345
-	aP = P.pow(a)
-	bP = P.pow(b)
-	assert aP.pow(b) == bP.pow(a), "DH"
+	aP = P * a
+	bP = P * b
+	assert aP * b == bP * a, "DH"
 
 if __name__ == '__main__':
 	main()

@@ -8,10 +8,10 @@ def main():
 	b.setByCSPRNG()
 	print(f"a={a}")
 	print(f"b={b}")
-	aP = P.pow(a)
-	bP = P.pow(b)
-	baP = aP.pow(b)
-	abP = bP.pow(a)
+	aP = P * a
+	bP = P * b
+	baP = aP * b
+	abP = bP * a
 	print(f"baP={baP}")
 	print(f"abP={abP}")
 	print(f"baP == abP? {baP == abP}")
