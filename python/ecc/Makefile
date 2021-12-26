@@ -8,3 +8,4 @@ test: fr.py
 	python3 fr.py
 	python3 ec.py
 	python3 ecdh.py
+	python3 ecdsa.py
