@@ -18,9 +18,7 @@ def sign(P, sec, msg):
 	k.setByCSPRNG()
 	Q = P * k
 	r = Fr(Q.x_.v_)
-	s = r * sec
-	s += z
-	s /= k
+	s = (r * sec + z) / k
 	return (r, s)
 
 def verify(P, sig, pub, msg):
@@ -29,10 +27,8 @@ def verify(P, sig, pub, msg):
 	w = Fr(1) / s
 	u1 = z * w
 	u2 = r * w
-	Q1 = P * u1
-	Q2 = pub * u2
-	Q1 += Q2
-	x = Fr(Q1.x_.v_)
+	Q = P * u1 + pub * u2
+	x = Fr(Q.x_.v_)
 	return r == x
 
 def main():
