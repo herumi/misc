@@ -75,8 +75,10 @@ class Ec:
 		return Ec(x3, y3, False)
 
 	def __mul__(self, rhs):
-		if type(rhs) is not int:
+		if type(rhs) is Fr:
 			rhs = rhs.v_
+		elif type(rhs) is not int:
+			raise Exception("bad type", rhs)
 		if rhs == 0:
 			return Ec()
 		bs = bin(rhs)[2:]
