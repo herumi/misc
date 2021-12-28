@@ -22,6 +22,7 @@ class Fp:
 	@classmethod
 	def init(cls, p):
 		cls.p_ = p
+
 	def setByCSPRNG(self):
 		self.v_ = secrets.randbelow(self.p_)
 
@@ -52,6 +53,7 @@ class Fp:
 		return self * rhs.inv()
 
 	def inv(self):
+		# v * v^(p-2) = v^(p-1) = 1 mod p
 		return Fp(pow(self.v_, Fp.p_ - 2, Fp.p_))
 #		return Fp(invMod(self.v_, Fr.p_))
 
