@@ -54,6 +54,8 @@ class Fp:
 
 	def inv(self):
 		# v * v^(p-2) = v^(p-1) = 1 mod p
+		if self.v_ == 0:
+			raise Exception("zero inv")
 		return Fp(pow(self.v_, Fp.p_ - 2, Fp.p_))
 #		return Fp(invMod(self.v_, Fr.p_))
 
