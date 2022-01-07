@@ -15,7 +15,7 @@ def msgToFr(msg):
 def sign(P, sec, msg):
 	z = msgToFr(msg)
 	k = Fr()
-	k.setByCSPRNG()
+	k.setRand()
 	Q = P * k
 	r = Fr(Q.x_.v_)
 	s = (r * sec + z) / k

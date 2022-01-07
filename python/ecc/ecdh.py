@@ -4,8 +4,8 @@ def main():
 	P = initSecp256k1()
 	a = Fr()
 	b = Fr()
-	a.setByCSPRNG()
-	b.setByCSPRNG()
+	a.setRand()
+	b.setRand()
 	print(f"a={a}")
 	print(f"b={b}")
 	aP = P * a

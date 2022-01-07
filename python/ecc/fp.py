@@ -23,7 +23,7 @@ class Fp:
 	def init(cls, p):
 		cls.p_ = p
 
-	def setByCSPRNG(self):
+	def setRand(self):
 		self.v_ = secrets.randbelow(self.p_)
 
 	def __init__(self, v_=0):
