@@ -224,6 +224,27 @@ void subTest(const uint64_t *pp)
 }
 
 template<int N>
+void negTest(const uint64_t *pp)
+{
+	uint64_t y1[N], y2[N], x[N];
+	cybozu::XorShift rg;
+
+	for (int i = 0; i < 100; i++) {
+		for (int i = 0; i < N; i++) {
+			x[i] = rg.get64();
+		}
+		mcl::fp::Neg<N>::func(y1, x, pp + 1);
+		mcl_neg(y2, x);
+		CYBOZU_TEST_EQUAL_ARRAY(y1, y2, N);
+	}
+	CYBOZU_BENCH_C("mcl_neg", C, mcl_neg, y2, y2);
+	memset(x, 0, sizeof(x));
+	mcl_neg(y2, x);
+	CYBOZU_TEST_EQUAL_ARRAY(x, y2, N);
+}
+
+
+template<int N>
 void testAll(const char *pStr)
 {
 	printf("test N=%d\n", N);
@@ -238,7 +259,7 @@ void testAll(const char *pStr)
 	modTest<N>(p, pp, mont);
 	addTest<N>(pp);
 	subTest<N>(pp);
-//	negTest<N>(pStr);
+	negTest<N>(pp);
 }
 
 CYBOZU_TEST_AUTO(N11)
