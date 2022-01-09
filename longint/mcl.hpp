@@ -140,16 +140,11 @@ private:
 
 	void gen_add(size_t n)
 	{
-		StackFrame sf(this, 3, 10 | UseRDX);
+		StackFrame sf(this, 3, n);
 		const Reg64& pz = sf.p[0];
 		const Reg64& px = sf.p[1];
 		const Reg64& py = sf.p[2];
 		Pack t = sf.t;
-		if (t.size() < n) {
-			t.append(rdx);
-		} else if (t.size() > n) {
-			t = t.sub(0, n);
-		}
 		for (size_t i = 0; i < n; i++) {
 			mov(t[i], ptr[px + i * 8]);
 			if (i == 0) {
@@ -168,16 +163,11 @@ private:
 	}
 	void gen_sub(size_t n)
 	{
-		StackFrame sf(this, 3, 10 | UseRDX);
+		StackFrame sf(this, 3, n);
 		const Reg64& pz = sf.p[0];
 		const Reg64& px = sf.p[1];
 		const Reg64& py = sf.p[2];
 		Pack t = sf.t;
-		if (t.size() < n) {
-			t.append(rdx);
-		} else if (t.size() > n) {
-			t = t.sub(0, n);
-		}
 		for (size_t i = 0; i < n; i++) {
 			mov(t[i], ptr[px + i * 8]);
 			if (i == 0) {
