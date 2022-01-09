@@ -1,6 +1,5 @@
-#define PUT(x) std::cout << #x "=" << x << std::endl;
-#include <tfns.hpp>
 #include <cybozu/test.hpp>
+#include <tfns.hpp>
 #include <cybozu/xorshift.hpp>
 
 CYBOZU_TEST_AUTO(correctness)
@@ -25,29 +24,18 @@ CYBOZU_TEST_AUTO(correctness)
 
 	// main key generation
 	msk.setByCSPRNG();
-	PUT(msk);
 	msk.getMainPublicKey(mpk);
-	PUT(mpk);
 
 	// make secret key for each id
 	msk.getSecretKey(skA, idA);
 	msk.getSecretKey(skB, idB);
-	PUT(skA);
-	PUT(skB);
 
 	// make ephemeral public key and values derived from esk
 	skA.makeEPK(epkA, xA, idA, mpk);
-	PUT(epkA);
-	PUT(xA);
 	skB.makeEPK(epkB, xB, idB, mpk);
-	PUT(epkB);
-	PUT(xB);
-puts("---");
 
-	skB.makeSessionKey(mdB, mpk, idA, epkA, idB, epkB, xB, 1);
-puts("---");
-	skA.makeSessionKey(mdA, mpk, idA, epkA, idB, epkB, xA, 0);
+	skB.makeSessionKey(mdB, mpk, idA, epkA, idB, epkB, xB);
+	skA.makeSessionKey(mdA, mpk, idB, epkB, idA, epkA, xA);
 
-//	CYBOZU_TEST_EQUAL_ARRAY(mdA, mdB, sizeof(mdA));
-	CYBOZU_TEST_ASSERT(memcmp(mdA, mdB, sizeof(mdA)) == 0);
+	CYBOZU_TEST_EQUAL_ARRAY(mdA, mdB, sizeof(mdA));
 }

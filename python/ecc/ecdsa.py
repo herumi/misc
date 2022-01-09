@@ -17,7 +17,7 @@ def sign(P, sec, msg):
 	k = Fr()
 	k.setRand()
 	Q = P * k
-	r = Fr(Q.x_.v_)
+	r = Fr(Q.x.v)
 	s = (r * sec + z) / k
 	return (r, s)
 
@@ -28,7 +28,7 @@ def verify(P, sig, pub, msg):
 	u1 = z * w
 	u2 = r * w
 	Q = P * u1 + pub * u2
-	x = Fr(Q.x_.v_)
+	x = Fr(Q.x.v)
 	return r == x
 
 def main():
@@ -40,8 +40,8 @@ def main():
 	pubx = 0x653bd02ba1367e5d4cd695b6f857d1cd90d4d8d42bc155d85377b7d2d0ed2e71
 	puby = 0x04e8f5da403ab78decec1f19e2396739ea544e2b14159beb5091b30b418b813a
 	print("check pub")
-	assert pub.x_ == pubx, "pubx"
-	assert pub.y_ == puby, "puby"
+	assert pub.x == pubx, "pubx"
+	assert pub.y == puby, "puby"
 
 	sig = sign(P, sec, msg)
 	print("check verify1, 2")

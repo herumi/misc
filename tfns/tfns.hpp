@@ -78,7 +78,7 @@ struct TFNST {
 		/*
 			I am userB and *this is skB
 		*/
-		void makeSessionKey(uint8_t md[32], const G1& mpk, const std::string& idA, const G1& epkA, const std::string& idB, const G1& epkB, const Fr& xB, bool isB) const
+		void makeSessionKey(uint8_t md[32], const G1& mpk, const std::string& idA, const G1& epkA, const std::string& idB, const G1& epkB, const Fr& xB) const
 		{
 			const G2& skB(*this);
 			Fr dA, dB, iB;
@@ -87,21 +87,17 @@ struct TFNST {
 			H.get(dA);
 			H << epkB << idA << idB;
 			H.get(dB);
-			H << (isB ? idB : idA);
+			H << idB;
 			H.get(iB);
-PUT(dA);
-PUT(dB);
-PUT(iB);
 			G1 T;
 			G1::mul(T, P_, iB);
 			T += mpk;
-			T *= isB ? dA : dB;
-			T += isB ? epkA : epkB;
+			T *= dA;
+			T += epkA;
 			dB += xB;
-			T *= isB ? dB : dA;
+			T *= dB;
 			GT e;
 			pairing(e, T, skB);
-PUT(e.a.a.a);
 			H << e << idA << idB << epkA << epkB;
 			H.digest(md);
 		}

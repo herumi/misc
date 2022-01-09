@@ -2,9 +2,9 @@ from fp import Fp
 from fr import Fr
 
 class Ec:
-	a_ = Fp()
-	b_ = Fp()
-	r_ = 0
+	a = Fp()
+	b = Fp()
+	r = 0
 
 	# E : y^2 = x^3 + ax + b mod p. r is the order of E
 	@classmethod
@@ -14,69 +14,66 @@ class Ec:
 			a = Fp(a)
 		if type(b) is int:
 			b = Fp(b)
-		cls.a_ = a
-		cls.b_ = b
-		cls.r_ = r
+		cls.a = a
+		cls.b = b
+		cls.r = r
 
 	def __init__(self, x=None, y=None, doVerify=True):
-		self.isZero_ = True
+		self.isZero = True
 		if x is None and y is None:
 			return
 		if type(x) is int:
 			x = Fp(x)
 		if type(y) is int:
 			y = Fp(y)
-		self.x_ = x
-		self.y_ = y
-		self.isZero_ = False
+		self.x = x
+		self.y = y
+		self.isZero = False
 		if doVerify and not self.isValid():
 			raise Exception(f"isValid x={x}, y={y}")
 	def __str__(self):
-		if self.isZero_:
+		if self.isZero:
 			return "O"
 		else:
-			return f"({self.x_}, {self.y_})"
+			return f"({self.x}, {self.y})"
 	def __eq__(self, rhs):
-		if self.isZero_:
-			return rhs.isZero_
-		if rhs.isZero_:
+		if self.isZero:
+			return rhs.isZero
+		if rhs.isZero:
 			return False
-		return self.x_ == rhs.x_ and self.y_ == rhs.y_
+		return self.x == rhs.x and self.y == rhs.y
 
 	def isValid(self):
-		if self.isZero_:
+		if self.isZero:
 			return True
-		return self.y_ * self.y_ == (self.x_ * self.x_ + self.a_) * self.x_ + self.b_
-
-	def isZero(self):
-		return self.isZero_
+		return self.y * self.y == (self.x * self.x + self.a) * self.x + self.b
 
 	def __neg__(self):
-		if self.isZero():
+		if self.isZero:
 			return self
-		return Ec(self.x_, -self.y_, False)
+		return Ec(self.x, -self.y, False)
 
 	def __add__(self, rhs):
-		if self.isZero():
+		if self.isZero:
 			return rhs
-		if rhs.isZero():
+		if rhs.isZero:
 			return self
-		if self.x_ == rhs.x_:
+		if self.x == rhs.x:
 			# P + (-P) = 0
-			if self.y_ == -rhs.y_:
+			if self.y == -rhs.y:
 				return Ec()
 			# dbl
-			L = self.x_ * self.x_
-			L = (L + L + L + self.a_) / (self.y_ + self.y_)
+			L = self.x * self.x
+			L = (L + L + L + self.a) / (self.y + self.y)
 		else:
-			L = (self.y_ - rhs.y_) / (self.x_ - rhs.x_)
-		x3 = L * L - (self.x_ + rhs.x_)
-		y3 = L * (self.x_ - x3) - self.y_
+			L = (self.y - rhs.y) / (self.x - rhs.x)
+		x3 = L * L - (self.x + rhs.x)
+		y3 = L * (self.x - x3) - self.y
 		return Ec(x3, y3, False)
 
 	def __mul__(self, rhs):
 		if type(rhs) is Fr:
-			rhs = rhs.v_
+			rhs = rhs.v
 		elif type(rhs) is not int:
 			raise Exception("bad type", rhs)
 		if rhs == 0:
@@ -109,7 +106,7 @@ def main():
 		R = P * i
 		assert Q == R, f"mul i={i}"
 		Q += P
-	assert (P * Ec.r_).isZero(), "order"
+	assert (P * Ec.r).isZero, "order"
 	a = 12345678932
 	b = 98763445345
 	aP = P * a
