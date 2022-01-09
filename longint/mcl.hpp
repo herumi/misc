@@ -17,6 +17,7 @@ void3u mcl_mont;
 void2u mcl_mod;
 void3u mcl_add;
 void3u mcl_sub;
+void2u mcl_neg;
 
 template<class T>
 T getMontgomeryCoeff(T pLow)
@@ -133,6 +134,8 @@ struct Code : Xbyak::CodeGenerator {
 		gen_add(N);
 		mcl_sub = getCurr<void3u>();
 		gen_sub(N);
+		mcl_neg = getCurr<void2u>();
+		gen_neg(N);
 	}
 private:
 	Code(const Code&);
@@ -182,6 +185,39 @@ private:
 		add_rm(t, rax);
 	L(exitL);
 		store_mr(pz, t);
+	}
+	void gen_neg(size_t n)
+	{
+		StackFrame sf(this, 3, n);
+		const Reg64& py = sf.p[0];
+		const Reg64& px = sf.p[1];
+		const Reg64& v = sf.p[2];
+		Pack t = sf.t;
+		for (size_t i = 0; i < n; i++) {
+			mov(t[i], ptr[px + i * 8]);
+			if (i == 0) {
+				mov(rax, t[0]);
+			} else {
+				or_(rax, t[i]);
+			}
+		}
+		test(rax, rax);
+		Label nonZeroL, exitL;
+		jnz(exitL);
+		store_mr(py, t);
+		jmp(exitL);
+	L(nonZeroL);
+		mov(rax, size_t(p_));
+		for (size_t i = 0; i < n; i++) {
+			mov(v, ptr[rax + i * 8]);
+			if (i == 0) {
+				sub(v, t[i]);
+			} else {
+				sbb(v, t[i]);
+			}
+			mov(ptr[py + i * 8], v);
+		}
+	L(exitL);
 	}
 	void gen_mulPreN(const Reg64& pz, const RegExp& px, const RegExp& py, Pack pk, Reg64 t)
 	{

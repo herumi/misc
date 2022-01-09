@@ -112,20 +112,14 @@ void mulPreTest()
 }
 
 template<int N>
-void montTest(const char *pStr)
+void montTest(const uint64_t *pp, const Montgomery& mont)
 {
 	uint64_t xa[N], ya[N], xy1a[N], xy2a[N + 1];
-	uint64_t pp[N + 1];
 	cybozu::XorShift rg;
 	for (int i = 0; i < N; i++) {
 		xa[i] = rg.get64();
 		ya[i] = rg.get64();
 	}
-
-	mpz_class p(pStr);
-	Montgomery mont(p);
-	mcl::gmp::getArray(pp + 1, N, p);
-	pp[0] = mont.rp_;
 
 	mpz_class x, y, z;
 	mcl::gmp::setArray(x, xa, N);
@@ -154,20 +148,15 @@ void montTest(const char *pStr)
 }
 
 template<int N>
-void modTest(const char *pStr)
+void modTest(const mpz_class& p, const uint64_t *pp, const Montgomery& mont)
 {
 	uint64_t xya[N * 2], z1a[N], z2a[N + 1];
-	uint64_t pp[N + 1];
 	cybozu::XorShift rg;
 	for (int i = 0; i < N * 2; i++) {
 		xya[i] = rg.get64();
 	}
 
-	mpz_class p(pStr);
 	mpz_class p2 = p * p;
-	Montgomery mont(p);
-	mcl::gmp::getArray(pp + 1, N, p);
-	pp[0] = mont.rp_;
 
 	mpz_class xy, z;
 	mcl::gmp::setArray(xy, xya, N * 2);
@@ -197,21 +186,15 @@ void modTest(const char *pStr)
 }
 
 template<int N>
-void addTest(const char *pStr)
+void addTest(const uint64_t *pp)
 {
 	uint64_t x1[N], x2[N], y[N];
-	uint64_t pp[N + 1];
 	cybozu::XorShift rg;
 	for (int i = 0; i < N; i++) {
 		x1[i] = rg.get64();
 		x2[i] = x1[i];
 		y[i] = rg.get64();
 	}
-
-	mpz_class p(pStr);
-	Montgomery mont(p);
-	mcl::gmp::getArray(pp + 1, N, p);
-	pp[0] = mont.rp_;
 
 	for (int i = 0; i < 100; i++) {
 		mcl::fp::Add<N, false>::func(x1, x1, y, pp + 1);
@@ -222,21 +205,15 @@ void addTest(const char *pStr)
 }
 
 template<int N>
-void subTest(const char *pStr)
+void subTest(const uint64_t *pp)
 {
 	uint64_t x1[N], x2[N], y[N];
-	uint64_t pp[N + 1];
 	cybozu::XorShift rg;
 	for (int i = 0; i < N; i++) {
 		x1[i] = rg.get64();
 		x2[i] = x1[i];
 		y[i] = rg.get64();
 	}
-
-	mpz_class p(pStr);
-	Montgomery mont(p);
-	mcl::gmp::getArray(pp + 1, N, p);
-	pp[0] = mont.rp_;
 
 	for (int i = 0; i < 100; i++) {
 		mcl::fp::Sub<N, false>::func(x1, x1, y, pp + 1);
@@ -246,27 +223,32 @@ void subTest(const char *pStr)
 	CYBOZU_BENCH_C("mcl_sub", C, mcl_sub, x1, x1, y);
 }
 
+template<int N>
+void testAll(const char *pStr)
+{
+	printf("test N=%d\n", N);
+	mcl_init(pStr);
+	mpz_class p(pStr);
+	uint64_t pp[N + 1];
+	Montgomery mont(p);
+	mcl::gmp::getArray(pp + 1, N, p);
+	pp[0] = mont.rp_;
+	mulPreTest<N>();
+	montTest<N>(pp, mont);
+	modTest<N>(p, pp, mont);
+	addTest<N>(pp);
+	subTest<N>(pp);
+//	negTest<N>(pStr);
+}
+
 CYBOZU_TEST_AUTO(N11)
 {
-	puts("test N=11");
 	const char *pStr = "0x9401ff90f28bffb0c610fb10bf9e0fefd59211629a7991563c5e468d43ec9cfe1549fd59c20ab5b9a7cda7f27a0067b8303eeb4b31555cf4f24050ed155555cd7fa7a5f8aaaaaaad47ede1a6aaaaaaaab69e6dcb";
-
-	mcl_init(pStr);
-	mulPreTest<11>();
-	montTest<11>(pStr);
-	modTest<11>(pStr);
-	addTest<11>(pStr);
-	subTest<11>(pStr);
+	testAll<11>(pStr);
 }
 
 CYBOZU_TEST_AUTO(N9)
 {
-	puts("test N=9");
 	const char *pStr = "0xbb9dfd549299f1c803ddd5d7c05e7cc0373d9b1ac15b47aa5aa84626f33e58fe66943943049031ae4ca1d2719b3a84fa363bcd2539a5cd02c6f4b6b645a58c1085e14411";
-	mcl_init(pStr);
-	mulPreTest<9>();
-	montTest<9>(pStr);
-	modTest<9>(pStr);
-	addTest<9>(pStr);
-	subTest<9>(pStr);
+	testAll<9>(pStr);
 }
