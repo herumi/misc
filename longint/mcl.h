@@ -15,6 +15,9 @@ extern void3u mcl_mulPre;
 // z[n] = Montgomery-mul(x[n], y[n]);
 extern void3u mcl_mont;
 
+// z[] = (x[] + y[]) mod p[]
+extern void3u mcl_add;
+
 typedef void (*void2u)(uint64_t *x, const uint64_t *xy);
 // z[n] = Montgomery-mod(xy[n * 2]);
 extern void2u mcl_mod;

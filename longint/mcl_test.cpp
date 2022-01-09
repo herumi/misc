@@ -196,6 +196,31 @@ void modTest(const char *pStr)
 //	CYBOZU_BENCH_C("gmp", C, (mcl::fp::MontRed<N, false>::func), z1a, xya, pp + 1);
 }
 
+template<int N>
+void addTest(const char *pStr)
+{
+	uint64_t x1[N], x2[N], y[N];
+	uint64_t pp[N + 1];
+	cybozu::XorShift rg;
+	for (int i = 0; i < N; i++) {
+		x1[i] = rg.get64();
+		x2[i] = x1[i];
+		y[i] = rg.get64();
+	}
+
+	mpz_class p(pStr);
+	Montgomery mont(p);
+	mcl::gmp::getArray(pp + 1, N, p);
+	pp[0] = mont.rp_;
+
+	for (int i = 0; i < 100; i++) {
+		mcl::fp::Add<N, false>::func(x1, x1, y, pp + 1);
+		mcl_add(x2, x2, y);
+		CYBOZU_TEST_EQUAL_ARRAY(x1, x2, N);
+	}
+	CYBOZU_BENCH_C("mcl_add", C, mcl_add, x1, x1, y);
+//	CYBOZU_BENCH_C("gmp", C, (mcl::fp::MontRed<N, false>::func), z1a, xya, pp + 1);
+}
 
 CYBOZU_TEST_AUTO(N11)
 {
@@ -206,6 +231,7 @@ CYBOZU_TEST_AUTO(N11)
 	mulPreTest<11>();
 	montTest<11>(pStr);
 	modTest<11>(pStr);
+	addTest<11>(pStr);
 }
 
 CYBOZU_TEST_AUTO(N9)
@@ -216,4 +242,5 @@ CYBOZU_TEST_AUTO(N9)
 	mulPreTest<9>();
 	montTest<9>(pStr);
 	modTest<9>(pStr);
+	addTest<9>(pStr);
 }
