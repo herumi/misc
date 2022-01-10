@@ -2,14 +2,9 @@ from fp import Fp
 from fr import Fr
 
 class Ec:
-	a = Fp()
-	b = Fp()
-	r = 0
-
 	# E : y^2 = x^3 + ax + b mod p. r is the order of E
 	@classmethod
 	def init(cls, a, b, r):
-		print(f"a={a} b={b}")
 		if type(a) is int:
 			a = Fp(a)
 		if type(b) is int:

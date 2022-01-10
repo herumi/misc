@@ -17,8 +17,6 @@ def invMod(x, p):
 	return rev
 
 class Fp:
-	p = 1
-
 	@classmethod
 	def init(cls, p):
 		cls.p = p
