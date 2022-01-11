@@ -20,6 +20,6 @@ import IterExt "mo:iterext";
 module {
 
   public func sum(x : Nat) : Nat {
-	return 2:Nat**x;
+	2:Nat**x;
   }
 };
