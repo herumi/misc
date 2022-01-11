@@ -23,7 +23,7 @@ let
         , version = "dfx-0.8.4"
         , repo = "https://github.com/dfinity/motoko-base.git"
         , dependencies = [] : List Text
-        }   
+        }
     ]
 
 -- in  upstream # additions # overrides
