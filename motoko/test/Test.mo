@@ -4,7 +4,7 @@ import M "../src";
 assert(M.Fp().get() == 0);
 
 var x = M.Fp();
-let p:Nat = 65537;
+let p = 65537;
 var v1 = p + 123;
 
 x.set_nomod(v1);
@@ -12,8 +12,8 @@ assert(x.get() == v1);
 x.set(v1);
 assert(x.get() == v1 % p);
 
-let m1:Nat = 50000;
-let m2:Nat = 60000;
+let m1 = 50000;
+let m2 = 60000;
 
 var x1 = M.Fp();
 var x2 = M.Fp();
