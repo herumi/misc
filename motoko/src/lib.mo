@@ -22,8 +22,12 @@ module {
   public func sum(x : Nat) : Nat {
 	2:Nat**x;
   };
+  private let p : Nat = 65537;
   public class Fp() {
-    var v : Nat = 0;
-    public func value(): Nat { v };
+    private var v_ : Nat = 0;
+    public func get(): Nat { v_ };
+    public func set(v : Nat) {
+      v_ := v;
+    };
   };
 };
