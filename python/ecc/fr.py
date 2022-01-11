@@ -12,7 +12,7 @@ def invMod(x, p):
 	gcd, rev, _ = extGcd(x, p)
 	if gcd != 1:
 		raise Exception("invMod", x, p, gcd, rev)
-	if rev < p:
+	if rev < 0:
 		rev += p
 	return rev
 
