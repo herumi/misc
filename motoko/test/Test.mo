@@ -35,3 +35,8 @@ assert(x3.is_zero());
 x3.set(m1);
 x3 := M.neg(x3);
 assert(x3.get() == p - m1);
+
+x1.set(m1);
+x2.set(m2);
+x3 := M.mul(x1, x2);
+assert(x3.get() == (m1 * m2) % p);

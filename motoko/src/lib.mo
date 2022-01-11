@@ -49,6 +49,11 @@ module {
     ret.set_nomod(v);
     ret;
   };
+  public func mul(x : Fp, y : Fp) : Fp {
+    let ret = Fp();
+    ret.set((x.get() * y.get()) % p_);
+    ret;
+  };
   public func neg(x : Fp) : Fp {
     if (x.get() == 0) {
       Fp();
