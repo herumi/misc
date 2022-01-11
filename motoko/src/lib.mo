@@ -50,41 +50,53 @@ module {
   public class Fp() {
     private var v_ : Nat = 0;
     public func get(): Nat { v_ };
-    public func set(v : Nat) {
+    public func set(v:Nat) {
       v_ := v % p_;
     };
     // set v without modulo
-    public func set_nomod(v : Nat) {
+    public func set_nomod(v:Nat) {
       v_ := v;
     };
     public func is_zero() : Bool {
       v_ == 0
     };
+    public func add(rhs:Fp) : Fp {
+      let ret = Fp();
+      ret.set_nomod(add_mod(v_, rhs.get(), p_));
+      ret
+    };
+    public func sub(rhs:Fp) : Fp {
+      let ret = Fp();
+      ret.set_nomod(sub_mod(v_, rhs.get(), p_));
+      ret
+    };
+    public func mul(rhs:Fp) : Fp {
+      let ret = Fp();
+      ret.set_nomod(mul_mod(v_, rhs.get(), p_));
+      ret
+    };
+    public func inv() : Fp {
+      let ret = Fp();
+      ret.set_nomod(inv_mod(v_, p_));
+      ret
+    };
+    public func div(rhs:Fp) : Fp {
+      mul(rhs.inv())
+    };
+    public func neg() : Fp {
+      let ret = Fp();
+      ret.set_nomod(neg_mod(v_, p_));
+      ret
+    };
   };
-  public func add(x : Fp, y : Fp) : Fp {
+  public func newFp(x:Nat) : Fp {
     let ret = Fp();
-    ret.set_nomod(add_mod(x.get(), y.get(), p_));
+    ret.set(x);
     ret
   };
-  public func sub(x : Fp, y : Fp) : Fp {
+  public func newFp_nomod(x:Nat) : Fp {
     let ret = Fp();
-    ret.set_nomod(sub_mod(x.get(), y.get(), p_));
-    ret
-  };
-  public func mul(x : Fp, y : Fp) : Fp {
-    let ret = Fp();
-    ret.set_nomod(mul_mod(x.get(), y.get(), p_));
-    ret
-  };
-  // return inverse of x if x != 0 else 0
-  public func inv(x : Fp) : Fp {
-    let ret = Fp();
-    ret.set_nomod(inv_mod(x.get(), p_));
-    ret
-  };
-  public func neg(x : Fp) : Fp {
-    let ret = Fp();
-    ret.set_nomod(neg_mod(x.get(), p_));
+    ret.set_nomod(x);
     ret
   };
 };
