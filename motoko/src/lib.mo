@@ -25,6 +25,9 @@ module {
     public func set_nomod(v : Nat) {
       v_ := v;
     };
+    public func is_zero() : Bool {
+      return v_ == 0;
+    };
   };
   public func add(x : Fp, y : Fp) : Fp {
     var v = x.get() + y.get();
@@ -36,12 +39,23 @@ module {
     ret;
   };
   public func sub(x : Fp, y : Fp) : Fp {
-    let ret = Fp();
-    if (x.get() < y.get()) {
-      ret.set_nomod(x.get() + p_ - y.get());
+    var v:Nat = 0;
+    if (x.get() >= y.get()) {
+      v := x.get() - y.get();
     } else {
-      ret.set_nomod(x.get() - y.get());
+      v := x.get() + p_ - y.get();
     };
+    let ret = Fp();
+    ret.set_nomod(v);
     ret;
+  };
+  public func neg(x : Fp) : Fp {
+    if (x.get() == 0) {
+      Fp();
+    } else {
+      let v = Fp();
+      v.set_nomod(p_ - x.get());
+      v;
+    };
   };
 };
