@@ -18,16 +18,34 @@ import Blob "mo:base/Blob";
 import IterExt "mo:iterext";
 
 module {
-
-  public func sum(x : Nat) : Nat {
-	2:Nat**x;
-  };
-  private let p : Nat = 65537;
+  private let p_ : Nat = 65537;
   public class Fp() {
     private var v_ : Nat = 0;
     public func get(): Nat { v_ };
     public func set(v : Nat) {
+      v_ := v % p_;
+    };
+    // set v without modulo
+    public func set_nomod(v : Nat) {
       v_ := v;
     };
+  };
+  public func add(x : Fp, y : Fp) : Fp {
+    var v = x.get() + y.get();
+    if (v >= p_) {
+      v -= p_;
+    };
+    let ret = Fp();
+    ret.set_nomod(v);
+    ret;
+  };
+  public func sub(x : Fp, y : Fp) : Fp {
+    let ret = Fp();
+    if (x.get() < y.get()) {
+      ret.set_nomod(x.get() + p_ - y.get());
+    } else {
+      ret.set_nomod(x.get() - y.get());
+    };
+    ret;
   };
 };
