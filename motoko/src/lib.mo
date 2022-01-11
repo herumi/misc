@@ -11,6 +11,42 @@ import Int "mo:base/Int";
 
 module {
   private let p_ : Nat = 65537;
+
+  // return (gcd, x, y) such that gcd = a * x + b * y
+  public func ext_gcd(a:Int, b:Int) :(Int, Int, Int) {
+    if (a == 0) return (b, 0, 1);
+    let q = b / a;
+    let r = b % a;
+    let (gcd, x, y) = ext_gcd(r, a);
+    (gcd, y - q * x, x)
+  };
+  public func add_mod(x:Nat, y:Nat, p:Nat) : Nat {
+    let v = x + y;
+    if (v < p) return v;
+    return v - p;
+  };
+  public func sub_mod(x:Nat, y:Nat, p:Nat) : Nat {
+    if (x >= y) return x - y;
+    x + p - y;
+  };
+  public func mul_mod(x:Nat, y:Nat, p:Nat) : Nat {
+    (x * y) % p;
+  };
+  // return rev such that x * rev mod p = 1 if success else 0
+  public func inv_mod(x:Nat, p:Nat) : Nat {
+    let (gcd, rev, dummy) = ext_gcd(x, p);
+    if (gcd != 1) return 0;
+    var v = rev;
+    if (rev < 0) v := rev + p;
+    // use assert?
+    if (0 <= v and v < p) return Int.abs(v);
+    0;
+  };
+  public func neg_mod(x:Nat, p:Nat) : Nat {
+    if (x == 0) return 0;
+    p - x;
+  };
+
   public class Fp() {
     private var v_ : Nat = 0;
     public func get(): Nat { v_ };
@@ -25,56 +61,30 @@ module {
       v_ == 0
     };
   };
-  // return (gcd, x, y) such that gcd = a * x + b * y
-  public func ext_gcd(a:Int, b:Int) :(Int, Int, Int) {
-    if (a == 0) return (b, 0, 1);
-    let q = b / a;
-    let r = b % a;
-    let (gcd, x, y) = ext_gcd(r, a);
-    (gcd, y - q * x, x)
-  };
-  // return rev such that x * rev mod p = 1
-  public func inv_mod(x:Int, p:Int) : Int {
-    let (gcd, rev, dummy) = ext_gcd(x, p);
-    if (gcd != 1) return 0;
-    if (rev < p) return rev + p;
-    rev;
-  };
   public func add(x : Fp, y : Fp) : Fp {
-    var v = x.get() + y.get();
-    if (v >= p_) v -= p_;
     let ret = Fp();
-    ret.set_nomod(v);
+    ret.set_nomod(add_mod(x.get(), y.get(), p_));
     ret
   };
   public func sub(x : Fp, y : Fp) : Fp {
-    var v:Nat = 0;
-    if (x.get() >= y.get()) {
-      v := x.get() - y.get();
-    } else {
-      v := x.get() + p_ - y.get();
-    };
     let ret = Fp();
-    ret.set_nomod(v);
+    ret.set_nomod(sub_mod(x.get(), y.get(), p_));
     ret
   };
   public func mul(x : Fp, y : Fp) : Fp {
     let ret = Fp();
-    ret.set(x.get() * y.get());
+    ret.set_nomod(mul_mod(x.get(), y.get(), p_));
     ret
   };
   // return inverse of x if x != 0 else 0
   public func inv(x : Fp) : Fp {
-    let v = inv_mod(x.get(), p_);
-    if (v <= 0) return Fp();
     let ret = Fp();
-    ret.set_nomod(Int.abs(v));
+    ret.set_nomod(inv_mod(x.get(), p_));
     ret
   };
   public func neg(x : Fp) : Fp {
-    if (x.get() == 0) return Fp();
-    let v = Fp();
-    v.set_nomod(p_ - x.get());
-    v
+    let ret = Fp();
+    ret.set_nomod(neg_mod(x.get(), p_));
+    ret
   };
 };

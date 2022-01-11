@@ -47,10 +47,10 @@ assert(gcd2 == 10);
 assert(gcd3 == -27);
 
 let inv123 = M.inv_mod(123, 65537);
-assert(inv123 == 80456);
+assert(inv123 == 14919);
 x1.set(123);
 x2 := M.inv(x1);
-assert(x2.get() == 80456);
+assert(x2.get() == 14919);
 
 let xx:Int = 3;
 let yy:Nat = Int.abs(xx);
