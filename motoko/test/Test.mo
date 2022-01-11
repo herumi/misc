@@ -48,9 +48,17 @@ assert(gcd3 == -27);
 
 let inv123 = M.inv_mod(123, 65537);
 assert(inv123 == 80456);
+x1.set(123);
+x2 := M.inv(x1);
+assert(x2.get() == 80456);
 
 let xx:Int = 3;
 let yy:Nat = Int.abs(xx);
 let zz:Int = yy;
 
-
+var i = 1;
+while (i < 20) {
+  x1.set(i);
+  assert(M.mul(x1, M.inv(x1)).get() == 1);
+  i += 1;
+}

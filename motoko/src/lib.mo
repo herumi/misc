@@ -63,12 +63,13 @@ module {
     ret.set(x.get() * y.get());
     ret
   };
-  public func inv(x : Fp) : ?Fp {
+  // return inverse of x if x != 0 else 0
+  public func inv(x : Fp) : Fp {
     let v = inv_mod(x.get(), p_);
-    if (v <= 0) return null;
+    if (v <= 0) return Fp();
     let ret = Fp();
     ret.set_nomod(Int.abs(v));
-    ?ret
+    ret
   };
   public func neg(x : Fp) : Fp {
     if (x.get() == 0) return Fp();
