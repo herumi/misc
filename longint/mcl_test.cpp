@@ -140,6 +140,10 @@ void montTest(const uint64_t *pp, const Montgomery& mont)
 		mcl::fp::Mont<N, false>::func(xy1a, xa, ya, pp + 1);
 		mcl_mont(xy2a, xa, ya);
 		CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
+
+		mcl::fp::Mont<N, false>::func(xy1a, xa, xa, pp + 1);
+		mcl_mont(xy2a, xa, xa);
+		CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
 	}
 	CYBOZU_TEST_EQUAL(xy2a[N], dummy);
 
