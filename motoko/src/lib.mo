@@ -21,5 +21,9 @@ module {
 
   public func sum(x : Nat) : Nat {
 	2:Nat**x;
-  }
+  };
+  public class Fp() {
+    var v : Nat = 0;
+    public func value(): Nat { v };
+  };
 };
