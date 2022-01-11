@@ -1,4 +1,4 @@
-import Blob "mo:base/Blob";
+import Int "mo:base/Int";
 import M "../src";
 
 assert(M.Fp().get() == 0);
@@ -40,3 +40,17 @@ x1.set(m1);
 x2.set(m2);
 x3 := M.mul(x1, x2);
 assert(x3.get() == (m1 * m2) % p);
+
+let (gcd1, gcd2, gcd3) = M.ext_gcd(100, 37);
+assert(gcd1 == 1);
+assert(gcd2 == 10);
+assert(gcd3 == -27);
+
+let inv123 = M.inv_mod(123, 65537);
+assert(inv123 == 80456);
+
+let xx:Int = 3;
+let yy:Nat = Int.abs(xx);
+let zz:Int = yy;
+
+
