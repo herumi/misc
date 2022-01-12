@@ -41,6 +41,13 @@ struct Hash {
 	}
 };
 
+inline void make_d(Fr& d, const G1& epk, const std::string& idA, const std::string& idB)
+{
+	Hash H;
+	H << epk << idA << idB;
+	H.get(d);
+}
+
 } // local
 
 template<int dummy = 0>
@@ -51,7 +58,7 @@ struct TFNST {
 	static G2 Q_;
 
 	struct SecretKey : G2 {
-		void makeX(Fr& x, const Fr& esk) const
+		void make_x(Fr& x, const Fr& esk) const
 		{
 			local::Hash H;
 			H << *this << esk;
@@ -72,32 +79,36 @@ struct TFNST {
 			epk += mpk;
 			Fr esk;
 			esk.setByCSPRNG();
-			makeX(x, esk);
+			make_x(x, esk);
 			epk *= x;
 		}
 		/*
 			I am userB and *this is skB
 		*/
-		void makeSessionKey(uint8_t md[32], const G1& mpk, const std::string& idA, const G1& epkA, const std::string& idB, const G1& epkB, const Fr& xB) const
+		void makeGT(GT& e, const G1& mpk, const std::string& idA, const G1& epkA, const std::string& idB, const G1& epkB, const Fr& xB) const
 		{
 			const G2& skB(*this);
 			Fr dA, dB, iB;
+			local::make_d(dA, epkA, idA, idB);
+			local::make_d(dB, epkB, idA, idB);
 			local::Hash H;
-			H << epkA << idA << idB;
-			H.get(dA);
-			H << epkB << idA << idB;
-			H.get(dB);
 			H << idB;
 			H.get(iB);
 			G1 T;
 			G1::mul(T, P_, iB);
-			T += mpk;
+			T += mpk; // ok1
+PUT(T);
 			T *= dA;
-			T += epkA;
-			dB += xB;
-			T *= dB;
-			GT e;
+			T += epkA; // epkA + dA(mpk + iB P)
+			dB += xB; // ok
+			T *= dB; // (epkA + dA(mpk + iB P))(dB + xB)
 			pairing(e, T, skB);
+		}
+		void makeSessionKey(uint8_t md[32], const G1& mpk, const std::string& idA, const G1& epkA, const std::string& idB, const G1& epkB, const Fr& xB) const
+		{
+			GT e;
+			makeGT(e, mpk, idA, epkA, idB, epkB, xB);
+			local::Hash H;
 			H << e << idA << idB << epkA << epkB;
 			H.digest(md);
 		}
