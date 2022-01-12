@@ -11,7 +11,7 @@ import Int "mo:base/Int";
 
 module {
   private let p_ : Nat = 65537;
-  public func get_prime() : Nat {
+  public func get_p() : Nat {
     p_
   };
 

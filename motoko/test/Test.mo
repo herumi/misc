@@ -1,7 +1,7 @@
 import Int "mo:base/Int";
 import M "../src";
 
-let p = M.get_prime();
+let p = M.get_p();
 
 func cstr_test() {
   assert(M.Fp().get() == 0);
