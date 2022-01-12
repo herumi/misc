@@ -31,6 +31,8 @@ def verify(P, sig, pub, msg):
 	u1 = z * w
 	u2 = r * w
 	Q = P * u1 + pub * u2
+	if Q.isZero:
+		return False
 	x = Fr(Q.x.v)
 	return r == x
 
