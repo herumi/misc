@@ -10,7 +10,16 @@
 import Int "mo:base/Int";
 
 module {
+  // Ec/Fp : y^2 = x^3 + ax + b
+  // (gx, gy) in Ec
+  // #Ec = r
   private let p_ : Nat = 65537;
+  private let a_ = 3;
+  private let b_ = 5;
+  private let r_ : Nat = 0;
+  private let gx_ : Nat = 0;
+  private let gy_ : Nat = 0;
+
   public func get_p() : Nat {
     p_
   };
@@ -100,5 +109,21 @@ module {
     let ret = Fp();
     ret.set_nomod(x);
     ret
+  };
+  // return y^2 == x^3 + ax + b
+  public func is_valid(x:Fp, y:Fp) : Bool {
+    y.mul(y).get() == (x.mul(x).add(newFp_nomod(a_))).mul(x).add(newFp_nomod(b_)).get()
+  };
+  public class Ec() {
+    private var x_  = 0;
+    private var y_  = 0;
+    private var isZero_ : Bool = true;
+    public func get() : (Nat, Nat) { (x_, y_) };
+    public func is_zero() : Bool { isZero_ };
+    public func is_valid() : Bool {
+      if (isZero_) return true;
+//      return is_valid(x_, y_);
+      false
+    };
   };
 };
