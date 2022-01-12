@@ -19,6 +19,14 @@ void3u mcl_add;
 void3u mcl_sub;
 void2u mcl_neg;
 
+
+template<class T>
+void setFuncInfo(Xbyak::util::Profiler& prof, const char *name, const T& begin, const uint8_t* end)
+{
+	const uint8_t*p = (const uint8_t*)begin;
+	prof.set((std::string("mcl_") + name).c_str(), p, end - p);
+}
+
 template<class T>
 T getMontgomeryCoeff(T pLow)
 {
@@ -64,6 +72,7 @@ struct Code : Xbyak::CodeGenerator {
 	Unit rp_;
 	Unit p_[MAX_N];
 	int bitSize;
+	Xbyak::util::Profiler prof_;
 
 	/*
 		@param op [in] ; use op.p, op.N, op.isFullBit
@@ -100,6 +109,14 @@ struct Code : Xbyak::CodeGenerator {
 	}
 	void init(const char *pStr)
 	{
+		const char *s = getenv("MCL_PROF");
+		int profMode = 0;
+		if (s && s[0] && s[1] == '\0') profMode = s[0] - '0';
+		printf("profMode=%d\n", profMode);
+		if (profMode) {
+			prof_.init(profMode);
+			prof_.setStartAddr(getCurr());
+		}
 		mpz_class p(pStr);
 		bitSize = mcl::gmp::getBitSize(p);
 		N = (bitSize + 63) / 64;
@@ -109,33 +126,18 @@ struct Code : Xbyak::CodeGenerator {
 		rp_ = getMontgomeryCoeff(p_[0]);
 		printf("bitSize=%d rp_=%016llx\n", bitSize, (long long)rp_);
 
-		if (N == 11) {
-			align(16);
-			mcl_mulPre = getCurr<void3u>();
-			gen_mulPre11();
-			align(16);
-			mcl_mont = getCurr<void3u>();
-			gen_montMul11();
-			align(16);
-			mcl_mod = getCurr<void2u>();
-			gen_mod11();
-		} else {
-			align(16);
-			mcl_mulPre = getCurr<void3u>();
-			gen_mulPre9();
-			align(16);
-			mcl_mont = getCurr<void3u>();
-			gen_montMul9();
-			align(16);
-			mcl_mod = getCurr<void2u>();
-			gen_mod9();
-		}
+		gen_mulPre(N);
+		gen_montMul(N);
+		gen_mod(N);
 		mcl_add = getCurr<void3u>();
 		gen_add(N);
+		setFuncInfo(prof_, "_add", mcl_add, getCurr());
 		mcl_sub = getCurr<void3u>();
 		gen_sub(N);
+		setFuncInfo(prof_, "_sub", mcl_sub, getCurr());
 		mcl_neg = getCurr<void2u>();
 		gen_neg(N);
+		setFuncInfo(prof_, "_neg", mcl_neg, getCurr());
 	}
 private:
 	Code(const Code&);
@@ -234,6 +236,39 @@ private:
 		store_mr(pz + 8 * N, pk);
 	}
 
+	void gen_mulPre(int n)
+	{
+		align(16);
+		mcl_mulPre = getCurr<void3u>();
+		switch (n) {
+		case 9: gen_mulPre9(); break;
+		case 11: gen_mulPre11(); break;
+		default: throw cybozu::Exception("bad n") << n;
+		}
+		setFuncInfo(prof_, "_mulPre", mcl_mulPre, getCurr());
+	}
+	void gen_montMul(int n)
+	{
+		align(16);
+		mcl_mont = getCurr<void3u>();
+		switch (n) {
+		case 9: gen_montMul9(); break;
+		case 11: gen_montMul11(); break;
+		default: throw cybozu::Exception("bad n") << n;
+		}
+		setFuncInfo(prof_, "_mont", mcl_mont, getCurr());
+	}
+	void gen_mod(int n)
+	{
+		align(16);
+		mcl_mod = getCurr<void2u>();
+		switch (n) {
+		case 9: gen_mod9(); break;
+		case 11: gen_mod11(); break;
+		default: throw cybozu::Exception("bad n") << n;
+		}
+		setFuncInfo(prof_, "_mod", mcl_mod, getCurr());
+	}
 	// [gp0] <- [gp1] * [gp2]
 	void gen_mulPre11()
 	{
