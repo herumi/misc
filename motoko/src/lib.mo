@@ -11,9 +11,12 @@ import Int "mo:base/Int";
 
 module {
   private let p_ : Nat = 65537;
+  public func get_prime() : Nat {
+    p_
+  };
 
   // return (gcd, x, y) such that gcd = a * x + b * y
-  public func ext_gcd(a:Int, b:Int) :(Int, Int, Int) {
+  public func ext_gcd(a:Int, b:Int) : (Int, Int, Int) {
     if (a == 0) return (b, 0, 1);
     let q = b / a;
     let r = b % a;
@@ -35,12 +38,11 @@ module {
   // return rev such that x * rev mod p = 1 if success else 0
   public func inv_mod(x:Nat, p:Nat) : Nat {
     let (gcd, rev, dummy) = ext_gcd(x, p);
-    if (gcd != 1) return 0;
+    assert(gcd == 1);
     var v = rev;
     if (rev < 0) v := rev + p;
-    // use assert?
-    if (0 <= v and v < p) return Int.abs(v);
-    0;
+    assert(0 <= v and v < p);
+    Int.abs(v)
   };
   public func neg_mod(x:Nat, p:Nat) : Nat {
     if (x == 0) return 0;
