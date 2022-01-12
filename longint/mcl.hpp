@@ -109,7 +109,7 @@ struct Code : Xbyak::CodeGenerator {
 	}
 	void init(const char *pStr)
 	{
-		const char *s = getenv("MCL_PROF");
+		const char *s = getenv("MCL_PERF");
 		int profMode = 0;
 		if (s && s[0] && s[1] == '\0') profMode = s[0] - '0';
 		printf("profMode=%d\n", profMode);
