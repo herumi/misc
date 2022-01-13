@@ -85,22 +85,27 @@ struct TFNST {
 		/*
 			I am userB and *this is skB
 		*/
-		void makeGT(GT& e, const G1& mpk, const std::string& idA, const G1& epkA, const std::string& idB, const G1& epkB, const Fr& xB) const
+		void makeGT(GT& e, const G1& mpk, const std::string& idA, const G1& epkA, const std::string& idB, const G1& epkB, const Fr& x, bool IamB) const
 		{
 			const G2& skB(*this);
-			Fr dA, dB, iB;
+			Fr dA, dB, hashedId;
 			local::make_d(dA, epkA, idA, idB);
 			local::make_d(dB, epkB, idA, idB);
 			local::Hash H;
-			H << idB;
-			H.get(iB);
+			H << (IamB ? idB : idA);
+			H.get(hashedId);
 			G1 T;
-			G1::mul(T, P_, iB);
+			G1::mul(T, P_, hashedId);
 			T += mpk;
-			T *= dA;
-			T += epkA; // epkA + dA(mpk + iB P)
-			dB += xB; // ok
-			T *= dB; // (epkA + dA(mpk + iB P))(dB + xB)
+			if (IamB) {
+				T *= dA;
+				T += epkA; // epkA + dA(mpk + hashedId P)
+				T *= dB + x; // (epkA + dA(mpk + hashedId P))(dB + x)
+			} else {
+				T *= dB;
+				T += epkB;
+				T *= dA + x;
+			}
 			pairing(e, T, skB);
 		}
 		void makeSessionKey(uint8_t md[32], const G1& mpk, const std::string& idA, const G1& epkA, const std::string& idB, const G1& epkB, const Fr& xB) const
