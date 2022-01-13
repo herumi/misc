@@ -1,3 +1,14 @@
+#pragma once
+/**
+	@file
+	@brief TFNS
+	@author MITSUNARI Shigeo(@herumi)
+	@license modified new BSD license
+	http://opensource.org/licenses/BSD-3-Clause
+
+	reference : https://doi.org/10.1587/transfun.2020CIP0010
+	Strongly Secure Identity-Based Key Exchange with Single Pairing Operation
+*/
 #ifndef CYBOZU_DONT_USE_OPENSSL
 	#define CYBOZU_DONT_USE_OPENSSL
 #endif
@@ -41,10 +52,14 @@ struct Hash {
 	}
 };
 
+// reorder idA and idB lexicographically.
 inline void make_d(Fr& d, const G1& epk, const std::string& idA, const std::string& idB)
 {
+	const std::string *pA = &idA;
+	const std::string *pB = &idB;
+	if (*pB > *pA) std::swap(pA, pB);
 	Hash H;
-	H << epk << idA << idB;
+	H << epk << *pA << *pB;
 	H.get(d);
 }
 
@@ -81,37 +96,44 @@ struct TFNST {
 			esk.setByCSPRNG();
 			make_x(x, esk);
 			epk *= x;
+			epk.normalize();
 		}
 		/*
 			I am userB and *this is skB
 		*/
-		void makeGT(GT& e, const G1& mpk, const std::string& idA, const G1& epkA, const std::string& idB, const G1& epkB, const Fr& x, bool IamB, const Fr& dA, const Fr& dB) const
+		void makeGT(GT& e, const Fr& xB, const Fr& dB, const std::string& idB, const std::string& idA, const G1& epkA, const G1& mpk) const
 		{
+			//recover dA from epkA, idA, idB
+			Fr dA;
+			local::make_d(dA, epkA, idA, idB);
 			const G2& skB(*this);
 			Fr hashedId;
 			local::Hash H;
-			H << (IamB ? idB : idA);
+			H << idB;
 			H.get(hashedId);
 			G1 T;
 			G1::mul(T, P_, hashedId);
 			T += mpk;
-			if (IamB) {
-				T *= dA;
-				T += epkA; // epkA + dA(mpk + hashedId P)
-				T *= dB + x; // (epkA + dA(mpk + hashedId P))(dB + x)
-			} else {
-				T *= dB;
-				T += epkB;
-				T *= dA + x;
-			}
+			T *= dA;
+			T += epkA; // epkA + dA(mpk + hashedId P)
+			T *= dB + xB; // (epkA + dA(mpk + hashedId P))(dB + xB)
 			pairing(e, T, skB);
 		}
-		void makeSessionKey(uint8_t md[32], const G1& mpk, const std::string& idA, const G1& epkA, const std::string& idB, const G1& epkB, const Fr& xB) const
+		void makeSessionKey(uint8_t md[32], const Fr& xB, const Fr& dB, const std::string& idB, const G1& epkB, const std::string& idA, const G1& epkA, const G1& mpk) const
 		{
 			GT e;
-			makeGT(e, mpk, idA, epkA, idB, epkB, xB);
+			makeGT(e, xB, dB, idB, idA, epkA, mpk);
 			local::Hash H;
-			H << e << idA << idB << epkA << epkB;
+			const std::string *p_idA = &idA;
+			const std::string *p_idB = &idB;
+			const G1 *p_epkA = &epkA;
+			const G1 *p_epkB = &epkB;
+			// sort by idA, idB
+			if (*p_idB > *p_idA) {
+				std::swap(p_idA, p_idB);
+				std::swap(p_epkA, p_epkB);
+			}
+			H << e << *p_idA << *p_idB << *p_epkA << *p_epkB;
 			H.digest(md);
 		}
 	};
@@ -121,6 +143,7 @@ struct TFNST {
 		void getMainPublicKey(G1& mpk) const
 		{
 			G1::mul(mpk, P_, *this);
+			mpk.normalize();
 		}
 		// sec = (1/(H(id) + msk)) Q
 		void getSecretKey(SecretKey& sec, const std::string& id) const
