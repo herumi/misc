@@ -32,6 +32,8 @@ CYBOZU_TEST_AUTO(correctness)
 	msk.getSecretKey(skB, idB);
 
 	// make ephemeral public key and values derived from esk
+	// epkA, dA : public
+	// skA, xA : secret
 	skA.makeEPK(epkA, xA, idB, mpk);
 	skB.makeEPK(epkB, xB, idA, mpk);
 	tfns::local::make_d(dA, epkA, idA, idB);
@@ -46,8 +48,8 @@ CYBOZU_TEST_AUTO(correctness)
 		const auto& Q = tfns::TFNS::Q_;
 		pairing(e, P * (xA + dA) * (xB + dB), Q);
 	}
-	skB.makeGT(e1, mpk, idA, epkA, idB, epkB, xB, true);
-	skA.makeGT(e2, mpk, idA, epkA, idB, epkB, xA, false);
+	skB.makeGT(e1, mpk, idA, epkA, idB, epkB, xB, true, dA, dB);
+	skA.makeGT(e2, mpk, idB, epkB, idA, epkA, xA, true, dB, dA);
 
 	CYBOZU_TEST_ASSERT(e == e1);
 	CYBOZU_TEST_ASSERT(e == e2);

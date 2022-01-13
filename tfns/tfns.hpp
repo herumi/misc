@@ -85,12 +85,10 @@ struct TFNST {
 		/*
 			I am userB and *this is skB
 		*/
-		void makeGT(GT& e, const G1& mpk, const std::string& idA, const G1& epkA, const std::string& idB, const G1& epkB, const Fr& x, bool IamB) const
+		void makeGT(GT& e, const G1& mpk, const std::string& idA, const G1& epkA, const std::string& idB, const G1& epkB, const Fr& x, bool IamB, const Fr& dA, const Fr& dB) const
 		{
 			const G2& skB(*this);
-			Fr dA, dB, hashedId;
-			local::make_d(dA, epkA, idA, idB);
-			local::make_d(dB, epkB, idA, idB);
+			Fr hashedId;
 			local::Hash H;
 			H << (IamB ? idB : idA);
 			H.get(hashedId);
