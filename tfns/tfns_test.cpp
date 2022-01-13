@@ -32,32 +32,24 @@ CYBOZU_TEST_AUTO(correctness)
 	msk.getSecretKey(skB, idB);
 
 	// make ephemeral public key and values derived from esk
-	skA.makeEPK(epkA, xA, idA, mpk);
-	skB.makeEPK(epkB, xB, idB, mpk);
+	skA.makeEPK(epkA, xA, idB, mpk);
+	skB.makeEPK(epkB, xB, idA, mpk);
 
 	using namespace mcl::bn;
-	const auto& P = tfns::TFNS::P_;
-	GT e;
+	GT e, e1, e2;
 	Fr dA, dB;
 	tfns::local::make_d(dA, epkA, idA, idB);
 	tfns::local::make_d(dB, epkB, idA, idB);
-tfns::local::Hash H;
-H << idB;
-Fr iB;
-H.get(iB);
-G1 T1 = P * (msk + iB); // ok1
-PUT(T1);
-#if 0
-G1 T2 = T1 * dA;
-T2 += T1 * xA;
-#else
-T1 *= xA + dA; // ok
-#endif
-T1 *= xB + dB;
-pairing(e, T1, skB);
-	GT e1, e2;
+
+	// expected e
+	{
+		const auto& P = tfns::TFNS::P_;
+		const auto& Q = tfns::TFNS::Q_;
+		pairing(e, P * (xA + dA) * (xB + dB), Q);
+	}
 	skB.makeGT(e1, mpk, idA, epkA, idB, epkB, xB);
-//	skA.makeGT(e2, mpk, idB, epkB, idA, epkA, xA);
+	skA.makeGT(e2, mpk, idA, epkA, idB, epkB, xA);
 
 	CYBOZU_TEST_ASSERT(e == e1);
+	CYBOZU_TEST_ASSERT(e == e2);
 }

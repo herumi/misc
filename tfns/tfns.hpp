@@ -96,8 +96,7 @@ struct TFNST {
 			H.get(iB);
 			G1 T;
 			G1::mul(T, P_, iB);
-			T += mpk; // ok1
-PUT(T);
+			T += mpk;
 			T *= dA;
 			T += epkA; // epkA + dA(mpk + iB P)
 			dB += xB; // ok
