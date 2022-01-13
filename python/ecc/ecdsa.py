@@ -24,7 +24,7 @@ def sign(P, sec, msg, k=None):
 
 def verify(P, sig, pub, msg):
 	(r, s) = sig
-	if s == 0:
+	if r == 0 or s == 0:
 		return False
 	z = msgToFr(msg)
 	w = Fr(1) / s
@@ -58,6 +58,6 @@ def main():
 	sigs = 0xde5d79a2ba44e311d04fdca263639283965780bce9169822be9cc81756e95a24
 	sig = (Fr(sigr), Fr(sigs))
 	assert verify(P, sig, pub, msg), "verify3"
-	
+
 if __name__ == '__main__':
 	main()
