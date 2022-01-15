@@ -266,6 +266,25 @@ void addDblTest(const uint64_t *pp)
 }
 
 template<int N>
+void subDblTest(const uint64_t *pp)
+{
+	uint64_t x1[N * 2], x2[N * 2], y[N * 2];
+	cybozu::XorShift rg;
+	for (int i = 0; i < N * 2; i++) {
+		x1[i] = rg.get64();
+		x2[i] = x1[i];
+		y[i] = rg.get64();
+	}
+
+	for (int i = 0; i < 100; i++) {
+		mcl::fp::DblSub<N>::func(x1, x1, y, pp + 1);
+		mcl_subDbl(x2, x2, y);
+		CYBOZU_TEST_EQUAL_ARRAY(x1, x2, N * 2);
+	}
+	CYBOZU_BENCH_C("mcl_subDbl", C, mcl_subDbl, x1, x1, y);
+}
+
+template<int N>
 void testAll(const char *pStr)
 {
 	printf("test N=%d\n", N);
@@ -282,6 +301,7 @@ void testAll(const char *pStr)
 	subTest<N>(pp);
 	negTest<N>(pp);
 	addDblTest<N>(pp);
+	subDblTest<N>(pp);
 }
 
 CYBOZU_TEST_AUTO(N11)

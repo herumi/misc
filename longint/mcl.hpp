@@ -144,6 +144,9 @@ struct Code : Xbyak::CodeGenerator {
 		mcl_addDbl = getCurr<void3u>();
 		gen_addDbl(N);
 		setFuncInfo(prof_, "_addDbl", mcl_addDbl, getCurr());
+		mcl_subDbl = getCurr<void3u>();
+		gen_subDbl(N);
+		setFuncInfo(prof_, "_subDbl", mcl_subDbl, getCurr());
 	}
 private:
 	Code(const Code&);
@@ -643,6 +646,38 @@ private:
 		jc(exitL);
 		store_mr(pz, t);
 	L(exitL);
+	}
+	void gen_subDbl(size_t n)
+	{
+		StackFrame sf(this, 3, n);
+		const Reg64& pz = sf.p[0];
+		const Reg64& px = sf.p[1];
+		const Reg64& py = sf.p[2];
+		Pack t = sf.t;
+		// pz[0:n] = px[0:n] - py[0:n]
+		for (size_t i = 0; i < n; i++) {
+			mov(rax, ptr[px + i * 8]);
+			if (i == 0) {
+				sub(rax, ptr[py + i * 8]);
+			} else {
+				sbb(rax, ptr[py + i * 8]);
+			}
+			mov(ptr[pz + i * 8], rax);
+		}
+		lea(px, ptr[px + n * 8]);
+		lea(py, ptr[py + n * 8]);
+		lea(pz, ptr[pz + n * 8]);
+		// pz[n:2n] = px[n:2n] - py[n:2n] mod p with CF
+		for (size_t i = 0; i < n; i++) {
+			mov(t[i], ptr[px + i * 8]);
+			sbb(t[i], ptr[py + i * 8]);
+		}
+		Label exitL;
+		jnc(exitL);
+		mov(rax, size_t(p_));
+		add_rm(t, rax);
+	L(exitL);
+		store_mr(pz, t);
 	}
 	/*
 		z[] = x[]
