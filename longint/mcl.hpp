@@ -22,6 +22,9 @@ void2u mcl_neg;
 void3u mcl_addDbl;
 void3u mcl_subDbl;
 
+void3u mcl_addPre;
+void3u mcl_subDblPre;
+
 template<class T>
 void setFuncInfo(Xbyak::util::Profiler& prof, const char *name, const T& begin, const uint8_t* end)
 {
@@ -147,6 +150,13 @@ struct Code : Xbyak::CodeGenerator {
 		mcl_subDbl = getCurr<void3u>();
 		gen_subDbl(N);
 		setFuncInfo(prof_, "_subDbl", mcl_subDbl, getCurr());
+
+		mcl_addPre = getCurr<void3u>();
+		gen_addPre(N);
+		setFuncInfo(prof_, "_addPre", mcl_addPre, getCurr());
+		mcl_subDblPre = getCurr<void3u>();
+		gen_subDblPre(N);
+		setFuncInfo(prof_, "_subDblPre", mcl_subDblPre, getCurr());
 	}
 private:
 	Code(const Code&);
@@ -196,6 +206,38 @@ private:
 		add_rm(t, rax);
 	L(exitL);
 		store_mr(pz, t);
+	}
+	void gen_addPre(size_t n)
+	{
+		StackFrame sf(this, 3);
+		const Reg64& pz = sf.p[0];
+		const Reg64& px = sf.p[1];
+		const Reg64& py = sf.p[2];
+		for (size_t i = 0; i < n; i++) {
+			mov(rax, ptr[px + i * 8]);
+			if (i == 0) {
+				add(rax, ptr[py + i * 8]);
+			} else {
+				adc(rax, ptr[py + i * 8]);
+			}
+			mov(ptr[pz + i * 8], rax);
+		}
+	}
+	void gen_subDblPre(size_t n)
+	{
+		StackFrame sf(this, 3);
+		const Reg64& pz = sf.p[0];
+		const Reg64& px = sf.p[1];
+		const Reg64& py = sf.p[2];
+		for (size_t i = 0; i < n * 2; i++) {
+			mov(rax, ptr[px + i * 8]);
+			if (i == 0) {
+				sub(rax, ptr[py + i * 8]);
+			} else {
+				sbb(rax, ptr[py + i * 8]);
+			}
+			mov(ptr[pz + i * 8], rax);
+		}
 	}
 	void gen_neg(size_t n)
 	{
