@@ -19,6 +19,8 @@ void3u mcl_add;
 void3u mcl_sub;
 void2u mcl_neg;
 
+void3u mcl_addDbl;
+void3u mcl_subDbl;
 
 template<class T>
 void setFuncInfo(Xbyak::util::Profiler& prof, const char *name, const T& begin, const uint8_t* end)
@@ -138,6 +140,10 @@ struct Code : Xbyak::CodeGenerator {
 		mcl_neg = getCurr<void2u>();
 		gen_neg(N);
 		setFuncInfo(prof_, "_neg", mcl_neg, getCurr());
+
+		mcl_addDbl = getCurr<void3u>();
+		gen_addDbl(N);
+		setFuncInfo(prof_, "_addDbl", mcl_addDbl, getCurr());
 	}
 private:
 	Code(const Code&);
@@ -604,6 +610,39 @@ private:
 		if (addCF) adox(tt, CF); // no carry
 		adcx(c[N], tt);
 		if (updateCF) setc(CF.cvt8());
+	}
+	void gen_addDbl(size_t n)
+	{
+		StackFrame sf(this, 3, n);
+		const Reg64& pz = sf.p[0];
+		const Reg64& px = sf.p[1];
+		const Reg64& py = sf.p[2];
+		Pack t = sf.t;
+		// pz[0:n] = px[0:n] + py[0:n]
+		for (size_t i = 0; i < n; i++) {
+			mov(rax, ptr[px + i * 8]);
+			if (i == 0) {
+				add(rax, ptr[py + i * 8]);
+			} else {
+				adc(rax, ptr[py + i * 8]);
+			}
+			mov(ptr[pz + i * 8], rax);
+		}
+		lea(px, ptr[px + n * 8]);
+		lea(py, ptr[py + n * 8]);
+		lea(pz, ptr[pz + n * 8]);
+		// pz[n:2n] = px[n:2n] + py[n:2n] mod p with CF
+		for (size_t i = 0; i < n; i++) {
+			mov(t[i], ptr[px + i * 8]);
+			adc(t[i], ptr[py + i * 8]);
+			mov(ptr[pz + i * 8], t[i]);
+		}
+		mov(rax, size_t(p_));
+		sub_rm(t, rax);
+		Label exitL;
+		jc(exitL);
+		store_mr(pz, t);
+	L(exitL);
 	}
 	/*
 		z[] = x[]
