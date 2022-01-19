@@ -33,7 +33,7 @@ class Fr:
 		return self.v == rhs.v
 
 	def __str__(self):
-		return str(self.v)
+		return hex(self.v)
 
 	def __neg__(self):
 		return Fr(-self.v)
