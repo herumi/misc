@@ -571,7 +571,6 @@ private:
 			mulAdd2(pk, xy + (n + i) * 8, pp, tt, CF, true, i < n - 1, ta);
 		}
 
-#if 1
 		pk = pk.sub(1);
 		movq(tt, tz);
 		store_mr(tt, pk);
@@ -580,15 +579,6 @@ private:
 		jc(exitL);
 		store_mr(tt, pk);
 	L(exitL);
-#else
-		Reg64 pk0 = pk[0];
-		Pack zp = pk.sub(1);
-		Pack keep = Pack(xy, rax, rdx, tt, CF, pk0).sub(0, n);
-		mov_rr(keep, zp);
-		sub_rm(zp, pp); // z -= p
-		cmovc_rr(zp, keep);
-		store_mr(z, zp);
-#endif
 	}
 	void gen_mod9()
 	{
