@@ -42,8 +42,8 @@ void sumVec1(CipherTextG1& r, const CTVec& cv)
 void sumVec2(CipherTextG1& r, const CTVec& cv)
 {
 	r.clear();
-	#pragma omp declare reduction(add:CipherTextG1:add(omp_out, omp_out, omp_in)) initializer(omp_priv = omp_orig)
-	#pragma omp parallel for reduction(add:r)
+	#pragma omp declare reduction(red:CipherTextG1:add(omp_out, omp_out, omp_in)) initializer(omp_priv = omp_orig)
+	#pragma omp parallel for reduction(red:r)
 	for (size_t i = 0; i < cv.size(); i++) {
 		add(r, r, cv[i]);
 	}
