@@ -163,7 +163,7 @@ struct Code : Xbyak::CodeGenerator {
 		gen_addPre(N * 2);
 		setFuncInfo(prof_, "_addDblPre", mcl_addDblPre, getCurr());
 		mcl_subDblPre = getCurr<void3u>();
-		gen_subDblPre(N * 2);
+		gen_subPre(N * 2);
 		setFuncInfo(prof_, "_subDblPre", mcl_subDblPre, getCurr());
 	}
 private:
