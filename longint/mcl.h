@@ -31,9 +31,13 @@ extern void3u mcl_addDbl;
 // z[2n] = (x[2n] - y[2n]) mod (p << n)
 extern void3u mcl_subDbl;
 
-// z[n] = x[n] + y[n]
+// z[n] = x[n] + y[n] ; assume x + y < p
 extern void3u mcl_addPre;
-// z[n] = x[2n] - y[2n]
+// z[n] = x[n] - y[n] ; assume x >= y
+extern void3u mcl_subPre;
+// z[n] = x[2n] + y[2n] ; assume x + y < (p << n)
+extern void3u mcl_addDblPre;
+// z[n] = x[2n] - y[2n] ; assume x >= y
 extern void3u mcl_subDblPre;
 
 #ifdef __cplusplus

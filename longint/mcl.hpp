@@ -23,6 +23,8 @@ void3u mcl_addDbl;
 void3u mcl_subDbl;
 
 void3u mcl_addPre;
+void3u mcl_subPre;
+void3u mcl_addDblPre;
 void3u mcl_subDblPre;
 
 template<class T>
@@ -154,8 +156,14 @@ struct Code : Xbyak::CodeGenerator {
 		mcl_addPre = getCurr<void3u>();
 		gen_addPre(N);
 		setFuncInfo(prof_, "_addPre", mcl_addPre, getCurr());
+		mcl_subPre = getCurr<void3u>();
+		gen_subPre(N);
+		setFuncInfo(prof_, "_subPre", mcl_subPre, getCurr());
+		mcl_addDblPre = getCurr<void3u>();
+		gen_addPre(N * 2);
+		setFuncInfo(prof_, "_addDblPre", mcl_addDblPre, getCurr());
 		mcl_subDblPre = getCurr<void3u>();
-		gen_subDblPre(N);
+		gen_subDblPre(N * 2);
 		setFuncInfo(prof_, "_subDblPre", mcl_subDblPre, getCurr());
 	}
 private:
@@ -223,13 +231,13 @@ private:
 			mov(ptr[pz + i * 8], rax);
 		}
 	}
-	void gen_subDblPre(size_t n)
+	void gen_subPre(size_t n)
 	{
 		StackFrame sf(this, 3);
 		const Reg64& pz = sf.p[0];
 		const Reg64& px = sf.p[1];
 		const Reg64& py = sf.p[2];
-		for (size_t i = 0; i < n * 2; i++) {
+		for (size_t i = 0; i < n; i++) {
 			mov(rax, ptr[px + i * 8]);
 			if (i == 0) {
 				sub(rax, ptr[py + i * 8]);
