@@ -34,6 +34,8 @@ extern void3u mcl_addDbl;
 extern void3u mcl_subDbl;
 // y[2n] = (-x[2n]) mod (p << n)
 extern void2u mcl_negDbl;
+// y[2n] = (x[2n]*2) mod (p << n)
+extern void2u mcl_mul2Dbl;
 
 // z[n] = x[n] + y[n] ; assume x + y < p
 extern void3u mcl_addPre;

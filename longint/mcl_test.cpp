@@ -328,6 +328,23 @@ void negDblTest(const mpz_class& p)
 	}
 }
 
+template<int N>
+void mul2DblTest(const uint64_t *pp)
+{
+	uint64_t x1[N * 2], x2[N * 2];
+	cybozu::XorShift rg;
+	for (int i = 0; i < N * 2; i++) {
+		x1[i] = rg.get64();
+		x2[i] = x1[i];
+	}
+	for (int i = 0; i < 100; i++) {
+		mcl::fp::DblAdd<N>::func(x1, x1, x1, pp + 1);
+		mcl_mul2Dbl(x2, x2);
+		CYBOZU_TEST_EQUAL_ARRAY(x1, x2, N * 2);
+	}
+	CYBOZU_BENCH_C("mcl_mul2Dbl", C, mcl_mul2Dbl, x1, x1);
+}
+
 // pTop = p[N - 1]
 template<int N>
 void addSubPreTest(uint64_t pTop, void3u add, void3u sub, void3u addPre, void3u subPre)
@@ -373,6 +390,7 @@ void testAll(const char *pStr)
 	addDblTest<N>(pp);
 	subDblTest<N>(pp);
 	negDblTest<N>(p);
+	mul2DblTest<N>(pp);
 	addSubPreTest<N>(pp[N], mcl_add, mcl_sub, mcl_addPre, mcl_subPre);
 	addSubPreTest<N*2>(pp[N], mcl_addDbl, mcl_subDbl, mcl_addDblPre, mcl_subDblPre);
 }

@@ -23,6 +23,7 @@ void2u mcl_mul2;
 void3u mcl_addDbl;
 void3u mcl_subDbl;
 void2u mcl_negDbl;
+void2u mcl_mul2Dbl;
 
 void3u mcl_addPre;
 void3u mcl_subPre;
@@ -160,6 +161,9 @@ struct Code : Xbyak::CodeGenerator {
 		mcl_negDbl = getCurr<void2u>();
 		gen_negDbl(N);
 		setFuncInfo(prof_, "_negDbl", mcl_negDbl, getCurr());
+		mcl_mul2Dbl = getCurr<void2u>();
+		gen_mul2Dbl(N);
+		setFuncInfo(prof_, "_mul2Dbl", mcl_mul2Dbl, getCurr());
 
 		mcl_addPre = getCurr<void3u>();
 		gen_addPre(N);
@@ -750,7 +754,7 @@ private:
 	}
 	void gen_negDbl(size_t n)
 	{
-		StackFrame sf(this, 2);//, UseRDX);
+		StackFrame sf(this, 2);
 		const Reg64& py = sf.p[0];
 		const Reg64& px = sf.p[1];
 		Label nonZeroL, exitL;
@@ -789,6 +793,32 @@ private:
 			mov(ptr[py + i * 8], rdx);
 		}
 	L(exitL);
+	}
+	void gen_mul2Dbl(size_t n)
+	{
+		StackFrame sf(this, 2, n);
+		const Reg64& py = sf.p[0];
+		const Reg64& px = sf.p[1];
+		Pack t = sf.t;
+		// py[0:n] = px[0:n]*2
+		for (size_t i = 0; i < n; i++) {
+			mov(rax, ptr[px + i * 8]);
+			if (i == 0) {
+				add(rax, rax);
+			} else {
+				adc(rax, rax);
+			}
+			mov(ptr[py + i * 8], rax);
+		}
+		lea(px, ptr[px + n * 8]);
+		lea(py, ptr[py + n * 8]);
+		// py[n:2n] = px[n:2n]*2 mod p with CF
+		for (size_t i = 0; i < n; i++) {
+			mov(t[i], ptr[px + i * 8]);
+			adc(t[i], t[i]);
+			mov(ptr[py + i * 8], t[i]);
+		}
+		store_modp(py, t);
 	}
 	/*
 		z[] = x[]
