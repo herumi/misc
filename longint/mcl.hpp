@@ -21,6 +21,7 @@ void2u mcl_neg;
 
 void3u mcl_addDbl;
 void3u mcl_subDbl;
+void2u mcl_negDbl;
 
 void3u mcl_addPre;
 void3u mcl_subPre;
@@ -152,6 +153,9 @@ struct Code : Xbyak::CodeGenerator {
 		mcl_subDbl = getCurr<void3u>();
 		gen_subDbl(N);
 		setFuncInfo(prof_, "_subDbl", mcl_subDbl, getCurr());
+		mcl_negDbl = getCurr<void2u>();
+		gen_negDbl(N);
+		setFuncInfo(prof_, "_negDbl", mcl_negDbl, getCurr());
 
 		mcl_addPre = getCurr<void3u>();
 		gen_addPre(N);
@@ -718,6 +722,48 @@ private:
 		add_rm(t, rax);
 	L(exitL);
 		store_mr(pz, t);
+	}
+	void gen_negDbl(size_t n)
+	{
+		StackFrame sf(this, 2);//, UseRDX);
+		const Reg64& py = sf.p[0];
+		const Reg64& px = sf.p[1];
+		Label nonZeroL, exitL;
+		mov(rax, ptr[px]);
+		test(rax, rax);
+		jnz(nonZeroL, T_NEAR); // shortcut
+		for (size_t i = 1; i < n * 2; i++) {
+			or_(rax, ptr[px + i * 8]);
+		}
+		test(rax, rax);
+		jnz(nonZeroL, T_NEAR);
+		// zero clear
+		for (size_t i = 0; i < n * 2; i++) {
+			mov(ptr[py + i * 8], rax);
+		}
+		jmp(exitL, T_NEAR);
+	L(nonZeroL);
+		xor_(rax, rax);
+		// lower : 0 - x
+		for (size_t i = 0; i < n; i++) {
+			mov(rdx, rax);
+			if (i == 0) {
+				sub(rdx, ptr[px + i * 8]);
+			} else {
+				sbb(rdx, ptr[px + i * 8]);
+			}
+			mov(ptr[py + i * 8], rdx);
+		}
+		// higher : p - x
+		mov(rax, size_t(p_));
+		lea(px, ptr[px + n * 8]);
+		lea(py, ptr[py + n * 8]);
+		for (size_t i = 0; i < n; i++) {
+			mov(rdx, ptr[rax + i * 8]);
+			sbb(rdx, ptr[px + i * 8]);
+			mov(ptr[py + i * 8], rdx);
+		}
+	L(exitL);
 	}
 	/*
 		z[] = x[]
