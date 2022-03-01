@@ -248,6 +248,24 @@ void negTest(const uint64_t *pp)
 }
 
 template<int N>
+void mul2Test(const uint64_t *pp)
+{
+	uint64_t x1[N], x2[N];
+	cybozu::XorShift rg;
+	for (int i = 0; i < N; i++) {
+		x1[i] = rg.get64();
+		x2[i] = x1[i];
+	}
+
+	for (int i = 0; i < 100; i++) {
+		mcl::fp::Add<N, false>::func(x1, x1, x1, pp + 1);
+		mcl_mul2(x2, x2);
+		CYBOZU_TEST_EQUAL_ARRAY(x1, x2, N);
+	}
+	CYBOZU_BENCH_C("mcl_mul2", C, mcl_mul2, x1, x1);
+}
+
+template<int N>
 void addDblTest(const uint64_t *pp)
 {
 	uint64_t x1[N * 2], x2[N * 2], y[N * 2];
@@ -351,6 +369,7 @@ void testAll(const char *pStr)
 	addTest<N>(pp);
 	subTest<N>(pp);
 	negTest<N>(pp);
+	mul2Test<N>(pp);
 	addDblTest<N>(pp);
 	subDblTest<N>(pp);
 	negDblTest<N>(p);

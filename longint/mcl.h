@@ -25,6 +25,8 @@ typedef void (*void2u)(uint64_t *y, const uint64_t *x);
 extern void2u mcl_mod;
 // y[n] = (-x[n]) mod p[n]
 extern void2u mcl_neg;
+// y[n] = (x[n] * 2) mod p[n]
+extern void2u mcl_mul2;
 
 // z[2n] = (x[2n] + y[2n]) mod (p << n)
 extern void3u mcl_addDbl;

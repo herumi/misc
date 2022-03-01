@@ -18,6 +18,7 @@ void2u mcl_mod;
 void3u mcl_add;
 void3u mcl_sub;
 void2u mcl_neg;
+void2u mcl_mul2;
 
 void3u mcl_addDbl;
 void3u mcl_subDbl;
@@ -146,6 +147,9 @@ struct Code : Xbyak::CodeGenerator {
 		mcl_neg = getCurr<void2u>();
 		gen_neg(N);
 		setFuncInfo(prof_, "_neg", mcl_neg, getCurr());
+		mcl_mul2 = getCurr<void2u>();
+		gen_mul2(N);
+		setFuncInfo(prof_, "_mul2", mcl_mul2, getCurr());
 
 		mcl_addDbl = getCurr<void3u>();
 		gen_addDbl(N);
@@ -283,6 +287,23 @@ private:
 			mov(ptr[py + i * 8], v);
 		}
 	L(exitL);
+	}
+	void gen_mul2(size_t n)
+	{
+		StackFrame sf(this, 2, n);
+		const Reg64& py = sf.p[0];
+		const Reg64& px = sf.p[1];
+		Pack t = sf.t;
+		for (size_t i = 0; i < n; i++) {
+			mov(t[i], ptr[px + i * 8]);
+			if (i == 0) {
+				add(t[i], t[i]);
+			} else {
+				adc(t[i], t[i]);
+			}
+			mov(ptr[py + i * 8], t[i]);
+		}
+		store_modp(py, t);
 	}
 	void gen_mulPreN(const Reg64& pz, const RegExp& px, const RegExp& py, Pack pk, Reg64 t)
 	{
