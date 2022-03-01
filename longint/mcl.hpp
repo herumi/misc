@@ -178,6 +178,20 @@ private:
 	Code(const Code&);
 	void operator=(const Code&);
 
+	// addr = t if < p else t-p
+	// use rax
+	template<class ADDR>
+	void store_modp(const ADDR& addr, const Pack& t)
+	{
+		Label exitL;
+		mov(rax, size_t(p_));
+		cmp(t[N-1], ptr[rax + (N-1)*8]); // shortcut
+		jb(exitL, T_NEAR);
+		sub_rm(t, rax);
+		jc(exitL);
+		store_mr(addr, t);
+	L(exitL);
+	}
 	void gen_add(size_t n)
 	{
 		StackFrame sf(this, 3, n);
@@ -194,12 +208,7 @@ private:
 			}
 			mov(ptr[pz + i * 8], t[i]);
 		}
-		mov(rax, size_t(p_));
-		sub_rm(t, rax);
-		Label exitL;
-		jc(exitL);
-		store_mr(pz, t);
-	L(exitL);
+		store_modp(pz, t);
 	}
 	void gen_sub(size_t n)
 	{
@@ -705,12 +714,7 @@ private:
 			adc(t[i], ptr[py + i * 8]);
 			mov(ptr[pz + i * 8], t[i]);
 		}
-		mov(rax, size_t(p_));
-		sub_rm(t, rax);
-		Label exitL;
-		jc(exitL);
-		store_mr(pz, t);
-	L(exitL);
+		store_modp(pz, t);
 	}
 	void gen_subDbl(size_t n)
 	{
