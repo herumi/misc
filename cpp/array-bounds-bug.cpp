@@ -1,4 +1,6 @@
 /*
+	https://gcc.gnu.org/bugzilla/show_bug.cgi?id=104603
+
 	g++-10 -O2 -Warray-bounds array-bounds-bug.cpp
 	g++-11.2 shows the same warnings
 
