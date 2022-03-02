@@ -1,4 +1,5 @@
 /*
+	https://gcc.gnu.org/bugzilla/show_bug.cgi?id=84858
 	g++ std_function_gcc_bug.cpp -O2 -std=c++11 && ./a.out
 */
 #include <stdio.h>
