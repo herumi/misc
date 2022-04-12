@@ -7,6 +7,10 @@
 #include <limits>
 #include "log.hpp"
 
+typedef std::vector<float> floatVec;
+
+const float MAX_E = 1e-6f;
+
 const float g_maxe = 1e-6;
 
 float diff(float x, float y)
@@ -152,6 +156,57 @@ CYBOZU_TEST_AUTO(aaa)
 	}
 }
 
+void checkRange(float (*f)(float), void (*g)(float *, const float *, size_t), float begin, float end, float step)
+{
+	floatVec dst, src;
+	float maxe = -1;
+	float maxx = -1;
+	double ave = 0;
+	int aveN = 0;
+	size_t n = size_t((end - begin) / step);
+	src.resize(n);
+	dst.resize(n);
+	{
+		float x = begin;
+		for (size_t i = 0; i < n; i++) {
+			src[i] = x;
+			x += step;
+		}
+	}
+	g(&dst[0], &src[0], n);
+
+	for (size_t i = 0; i < n; i++) {
+		float x = src[i];
+		float y0 = f(x);
+		float y1 = dst[i];
+		float e;
+		e = diff(y0, y1);
+		if (!(e <= MAX_E)) {
+			printf("err x=%e y0=%e y1=%e e=%e\n", x, y0, y1, e);
+		}
+		if (e > maxe) {
+			maxe = e;
+			maxx = x;
+		}
+		ave += e;
+		aveN++;
+	}
+	ave /= aveN;
+	printf("range [%e, %e] step=%f\n", begin, end, step);
+	printf("maxe=%e (x=%e)\n", maxe, maxx);
+	printf("ave=%e\n", ave);
+	CYBOZU_TEST_ASSERT(ave <= MAX_E);
+	CYBOZU_TEST_ASSERT(maxe <= MAX_E);
+}
+
+CYBOZU_TEST_AUTO(err)
+{
+	checkRange(std::log, fmath::logf_v, FLT_MIN, 1, 1e-4);
+	checkRange(std::log, fmath::logf_v, 1 - 1e-5, 1 + 1e-5, 1e-7);
+	checkRange(std::log, fmath::logf_v, 10, 11, 1e-4);
+	checkRange(std::log, fmath::logf_v, 1000, 1000 + 1, 1e-4);
+}
+
 CYBOZU_TEST_AUTO(log)
 {
 	float tbl[] = { FLT_MIN, 0.000151307, 0.1, 0.4, 0.5, 0.6, 1 - 1.0/8, 1 - 1e-4, 1 - 1e-6, 1, 1 + 1e-6, 1 + 1e-4, 1.000333, 1 + 1.0/8, 100, FLT_MAX, INFINITY };
@@ -243,4 +298,3 @@ CYBOZU_TEST_AUTO(bench)
 }
 #endif
 #endif
-
