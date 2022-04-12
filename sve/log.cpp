@@ -15,19 +15,7 @@ float diff(float x, float y)
 	return x == 0 ? d : d / x;
 }
 
-float u2f(uint32_t x)
-{
-	fmath::local::fi fi;
-	fi.i = x;
-	return fi.f;
-}
-
-uint32_t f2u(float x)
-{
-	fmath::local::fi fi;
-	fi.f = x;
-	return fi.i;
-}
+using namespace fmath::local;
 
 void putf(const char *msg, float x)
 {
@@ -39,7 +27,7 @@ float logfC(float x)
 	if (x < 0) return -std::numeric_limits<float>::quiet_NaN();
 	if (x == 0) return -std::numeric_limits<float>::infinity();
 	using namespace fmath;
-	const local::ConstVar& C = *local::Inst<>::code.constVar;
+	const local_log::ConstVar& C = *local_log::Inst<>::code.constVar;
 	local::fi fi;
 	fi.f = x;
 	float e = int(fi.i - (127 << 23)) >> 23;
@@ -76,7 +64,7 @@ float logfC2(float x)
 	if (x < 0) return -std::numeric_limits<float>::quiet_NaN();
 	if (x == 0) return -std::numeric_limits<float>::infinity();
 	using namespace fmath;
-	const local::ConstVar& C = *local::Inst<>::code.constVar;
+	const local_log::ConstVar& C = *local_log::Inst<>::code.constVar;
 	/*
 		a = sqrt(2) x
 		a = b 2^n, (1 <= b < 2)

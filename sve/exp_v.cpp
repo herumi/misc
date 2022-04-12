@@ -56,7 +56,7 @@ inline float split(int *pn, float x)
 inline float expfC(float x)
 {
 	using namespace fmath;
-	const local::ConstVar& C = *local::Inst<>::code.constVar;
+	const local_exp::ConstVar& C = *local_exp::Inst<>::code.constVar;
 
 	float y = x * C.log2_e;
 	int n = (int)floor(y);

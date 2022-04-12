@@ -1,5 +1,5 @@
-//#include "fmath-sve.hpp"
-//#include "log.hpp"
+#include "fmath-sve.hpp"
+#include "log.hpp"
 #include <algorithm>
 #include <math.h>
 #include <stdio.h>

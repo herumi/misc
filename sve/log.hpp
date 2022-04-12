@@ -20,17 +20,33 @@ namespace fmath {
 
 namespace local {
 
+#ifndef FMATH_LOCAL_STRUCT
+#define FMATH_LOCAL_STRUCT
+
 union fi {
 	float f;
 	uint32_t i;
 };
 
-inline float cvt(uint32_t x)
+float u2f(uint32_t x)
 {
-	fi fi;
+	fmath::local::fi fi;
 	fi.i = x;
 	return fi.f;
 }
+
+uint32_t f2u(float x)
+{
+	fmath::local::fi fi;
+	fi.f = x;
+	return fi.i;
+}
+
+#endif
+
+} // fmath::local
+
+namespace local_log {
 
 const bool supportNan = true;
 const bool supportLog1p = true;
@@ -76,7 +92,7 @@ struct ConstVar {
 			logCoeff[i] = logTbl[i];
 		}
 		for (size_t i = 0; i < LN; i++) {
-			fi fi;
+			local::fi fi;
 			fi.i = i127shl23 | (i << (23 - L));
 			tbl1[i] = sqrt2 / fi.f;
 			tbl2[i] = log(tbl1[i]);
@@ -437,12 +453,12 @@ struct Inst {
 template<size_t dummy>
 alignas(32) const Code Inst<dummy>::code;
 
-} // fmath::local
+} // fmath::local_log
 
 #ifndef FMATH_ONLY_CONSTVAR
 inline void logf_v(float *dst, const float *src, size_t n)
 {
-	local::Inst<>::code.logf_v(dst, src, n);
+	local_log::Inst<>::code.logf_v(dst, src, n);
 }
 
 inline float logf(float x)

@@ -12,6 +12,9 @@ namespace fmath {
 
 namespace local {
 
+#ifndef FMATH_LOCAL_STRUCT
+#define FMATH_LOCAL_STRUCT
+
 union fi {
 	float f;
 	uint32_t i;
@@ -23,6 +26,11 @@ inline float cvt(uint32_t x)
 	fi.i = x;
 	return fi.f;
 }
+#endif
+
+} // fmath::local
+
+namespace local_exp {
 
 /*
 f:=x->1+B*x+C*x^2;
@@ -334,16 +342,16 @@ struct Inst {
 template<size_t dummy>
 alignas(32) const Code Inst<dummy>::code;
 
-} // fmath::local
+} // fmath::local_exp
 
 inline void expf_v(float *dst, const float *src, size_t n)
 {
-	local::Inst<>::code.expf_v(dst, src, n);
+	local_exp::Inst<>::code.expf_v(dst, src, n);
 }
 
 inline void tanhf_v(float *dst, const float *src, size_t n)
 {
-	local::Inst<>::code.tanhf_v(dst, src, n);
+	local_exp::Inst<>::code.tanhf_v(dst, src, n);
 }
 
 } // fmath2
