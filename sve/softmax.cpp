@@ -1,3 +1,4 @@
+#define FMATH_USE_LOG_TBL
 #include "fmath-sve.hpp"
 #include "log.hpp"
 #include <algorithm>

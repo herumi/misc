@@ -231,7 +231,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 		align(128);
 	L(tbl1L);
 		for (size_t i = 0; i < ConstVar::LN; i++) {
-			fi fi;
+			local::fi fi;
 			fi.i = (127 << 23) | (i << (23 - ConstVar::L));
 			fi.f = std::sqrt(2) / fi.f;
 			dd(fi.i);
@@ -239,7 +239,7 @@ struct Code : public Xbyak_aarch64::CodeGenerator {
 	L(tbl2L);
 		const float *tbl1Addr = (const float *)tbl1L.getAddress();
 		for (size_t i = 0; i < ConstVar::LN; i++) {
-			fi fi;
+			local::fi fi;
 			fi.f = std::log(tbl1Addr[i]);
 			dd(fi.i);
 		}
@@ -463,10 +463,9 @@ inline void logf_v(float *dst, const float *src, size_t n)
 
 inline float logf(float x)
 {
-	float xs[16];
-	xs[0] = x;
-	logf_v(xs, xs, 1);
-	return xs[0];
+	float ret;
+	logf_v(&ret, &x, 1);
+	return ret;
 }
 #endif
 
