@@ -354,4 +354,11 @@ inline void tanhf_v(float *dst, const float *src, size_t n)
 	local_exp::Inst<>::code.tanhf_v(dst, src, n);
 }
 
+inline float expf(float x)
+{
+	float y;
+	expf_v(&y, &x, 1);
+	return y;
+}
+
 } // fmath2
