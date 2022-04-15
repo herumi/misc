@@ -1,5 +1,6 @@
 #include <thread>
 #include <condition_variable>
+#include <iostream>
 
 using namespace std::literals::chrono_literals;
 
@@ -17,7 +18,7 @@ struct Notification {
 	std::condition_variable cv;
 };
 
-int ipv4proc(Notification& notif, const std::chrono::milliseconds& waitTime)
+void ipv4proc(Notification& notif, const std::chrono::milliseconds& waitTime)
 {
 	puts("request A");
 	std::this_thread::sleep_for(waitTime);
@@ -31,10 +32,9 @@ int ipv4proc(Notification& notif, const std::chrono::milliseconds& waitTime)
 		}
 	}
 	notif.cv.notify_one();
-	return 4;
 }
 
-int ipv6proc(Notification& notif, const std::chrono::milliseconds& waitTime)
+void ipv6proc(Notification& notif, const std::chrono::milliseconds& waitTime)
 {
 	puts("request AAAA");
 	std::this_thread::sleep_for(waitTime);
@@ -48,11 +48,11 @@ int ipv6proc(Notification& notif, const std::chrono::milliseconds& waitTime)
 		}
 	}
 	notif.cv.notify_one();
-	return 6;
 }
 
 void happyEyeball2(const std::chrono::milliseconds waitTime1, const std::chrono::milliseconds waitTime2)
 {
+	std::cout << "test happyEyeball2 time:" << waitTime1.count() << "ms " << waitTime2.count() << "ms" << std::endl;
 	Notification notif;
 	std::thread t1(ipv4proc, std::ref(notif), waitTime1);
 	std::thread t2(ipv6proc, std::ref(notif), waitTime2);
@@ -62,25 +62,24 @@ void happyEyeball2(const std::chrono::milliseconds waitTime1, const std::chrono:
 		notif.cv.wait(lk, [&]{ return notif.status != Status::Start; });
 	}
 	if (notif.status == Status::Waiting) {
-		puts("wait ipv6");
+		const auto waitIpv6Time = 50ms;
+		std::cout << "wait ipv6 " << waitIpv6Time.count() << "ms" << std::endl;
 		{
 			std::unique_lock<std::mutex> lk(notif.m);
-			notif.cv.wait_for(lk, 1000ms, [&]{ return notif.status != Status::Ipv6; });
-		}
-		{
-			std::unique_lock<std::mutex> lk(notif.m);
-			if (notif.status == Status::Waiting) {
+			if (notif.cv.wait_for(lk, waitIpv6Time, [&]{ return notif.status == Status::Ipv6; })) {
+				puts("receive ipv6");
+			} else {
 				puts("timeout");
 				notif.status = Status::Ipv4;
 			}
 		}
 	}
-	printf("ipv%d addr=%d\n", (int)notif.status, notif.addr);
-	if (notif.status == Status::Ipv4) {
-		puts("send ipv4 syn");
-	} else {
-		puts("send ipv6 syn");
+	switch (notif.status) {
+	case Status::Ipv4: puts("ipv4 syn"); break;
+	case Status::Ipv6: puts("ipv6 syn"); break;
+	default: puts("ERR"); break;
 	}
+	printf("addr=%d\n", notif.addr);
 	t1.join();
 	t2.join();
 	puts("------------");
@@ -88,10 +87,10 @@ void happyEyeball2(const std::chrono::milliseconds waitTime1, const std::chrono:
 
 int main()
 {
-	puts("case 1. AAAA is fast");
+	puts("case 1. AAAA is fast so send ipv6 syn");
 	happyEyeball2(2000ms, 1000ms);
-	puts("case 2. A is fast");
+	puts("case 2. A is fast so send ipv4 syn");
 	happyEyeball2(1000ms, 2000ms);
-	puts("case 2. A is a little fast");
-	happyEyeball2(1000ms, 1500ms);
+	puts("case 2. A is a little fast so wait AAAA and send ipv6 syn");
+	happyEyeball2(1000ms, 1010ms);
 }
