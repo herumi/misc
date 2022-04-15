@@ -2,6 +2,7 @@
 #include <thread>
 #include <condition_variable>
 #include <iostream>
+#include <stdio.h>
 
 using namespace std::literals::chrono_literals;
 
