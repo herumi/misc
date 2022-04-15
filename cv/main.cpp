@@ -16,8 +16,8 @@ using namespace std::literals::chrono_literals;
 enum class State {
 	WaitingBoth,
 	WaitingIpv6,
-	Ipv4 = 4,
-	Ipv6 = 6,
+	Ipv4,
+	Ipv6,
 };
 
 struct Notification {
