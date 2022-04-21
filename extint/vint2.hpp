@@ -164,6 +164,15 @@ int compareNM(const T *x, size_t xn, const T *y, size_t yn)
 	}
 	return 0;
 }
+template<class T>
+int cmpN(const T *x, const T *y, size_t n)
+{
+	assert(n > 0);
+	for (int i = (int)n - 1; i >= 0; i--) {
+		if (x[i] != y[i]) return x[i] > y[i] ? 1 : -1;
+	}
+	return 0;
+}
 
 template<class T>
 void clearN(T *x, size_t n)
@@ -529,21 +538,22 @@ size_t getRealSize(const T *x, size_t xn)
 template<class T>
 size_t internalDivN(T *q, size_t qn, T *x, size_t xn, const T *y, size_t yn)
 {
+	assert(xn > 0);
 	assert(yn > 0);
+	assert(x[xn - 1]! = 0);
 	assert((y[yn - 1] >> (sizeof(T) * 8 - 1)) != 0);
-	if (q) {
-		clearN(q, qn);
-	}
+	if (q) clearN(q, qn);
 	T *tt = (T*)CYBOZU_ALLOCA(sizeof(T) * (yn + 1));
 	while (xn > yn) {
 		size_t d = xn - yn;
-		if (compareNM(x + d, xn - d, y, yn) >= 0) {
+		if (cmpN(x + d, y, yn) >= 0) {
 			vint::subN(x + d, x + d, y, yn);
 			if (q) vint::addu1<T>(q + d, qn - d, 1);
 		} else {
 			T xTop = x[xn - 1];
 			if (xTop == 1) {
-				vint::subNM(x + d - 1, x + d - 1, xn - d + 1, y, yn);
+				T ret= vint::subN(x + d - 1, x + d - 1, y, yn);
+				x[xn-1] -= ret;
 			} else {
 				tt[yn] = vint::mulu1(tt, y, yn, xTop);
 				vint::subN(x + d - 1, x + d - 1, tt, yn + 1);
@@ -552,7 +562,7 @@ size_t internalDivN(T *q, size_t qn, T *x, size_t xn, const T *y, size_t yn)
 		}
 		xn = getRealSize(x, xn);
 	}
-	if (xn == yn && compareNM(x, xn, y, yn) >= 0) {
+	if (xn == yn && cmpN(x, y, yn) >= 0) {
 		subN(x, x, y, yn);
 		xn = getRealSize(x, xn);
 		if (q) vint::addu1<T>(q, qn, 1);
