@@ -537,12 +537,11 @@ size_t internalDivN(T *q, size_t qn, T *x, size_t xn, const T *y, size_t yn)
 	T *tt = (T*)CYBOZU_ALLOCA(sizeof(T) * (yn + 1));
 	while (xn > yn) {
 		size_t d = xn - yn;
-		T xTop = x[xn - 1];
-		T yTop = y[yn - 1];
-		if (xTop > yTop || (compareNM(x + d, xn - d, y, yn) >= 0)) {
+		if (compareNM(x + d, xn - d, y, yn) >= 0) {
 			vint::subN(x + d, x + d, y, yn);
 			if (q) vint::addu1<T>(q + d, qn - d, 1);
 		} else {
+			T xTop = x[xn - 1];
 			if (xTop == 1) {
 				vint::subNM(x + d - 1, x + d - 1, xn - d + 1, y, yn);
 			} else {
