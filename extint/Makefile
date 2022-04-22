@@ -12,7 +12,7 @@ CFLAGS=-Wall -Wextra -Ofast -mbmi2 -I ../../mcl/include -fpic -std=c++17
 	$(CXX) -c -o $@ $< $(CFLAGS)
 
 bitint_test.exe: bitint_test.o
-	$(CXX) -o $@ $< $(CFLAGS)
+	$(CXX) -o $@ $< $(CFLAGS) -lgmp -lgmpxx
 
 bitint_test.o: bitint_test.cpp bitint.hpp
 	clang++-12 -c -o $@ $< $(CFLAGS)

@@ -99,5 +99,18 @@ fp::Unit subT(fp::Unit *pz, const fp::Unit *px, const fp::Unit *py)
 	return z.getMSB();
 }
 
+// [ret:z] = x * y
+template<size_t N>
+fp::Unit mulUnitT(fp::Unit *pz, const fp::Unit *px, fp::Unit y)
+{
+	auto x = BitInt<N>::load(px).template cvt<N+1>();
+	BitInt<1> y1;
+	BitInt<N+1> z;
+	y1.v = y;
+	z.v = x.v * y1.template cvt<N+1>().v;
+	z.template cvt<N>().save(pz);
+	return z.getTopUnit();
+}
+
 } } // mcl::vint
 
