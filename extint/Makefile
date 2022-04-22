@@ -3,7 +3,7 @@ TARGET=add256.o mul256.o
 ALL: $(TARGET)
 
 CXX?=clang++
-CFLAGS=-Wall -Wextra -Ofast -mbmi2 -I ../../mcl/include -fpic
+CFLAGS=-Wall -Wextra -Ofast -mbmi2 -I ../../mcl/include -fpic -std=c++17
 
 %.o: %.cpp
 	$(CXX) -c -o $@ $< $(CFLAGS)
