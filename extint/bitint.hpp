@@ -13,6 +13,10 @@ struct BitInt {
 	{
 		return static_cast<fp::Unit>(v >> (bitSize - sizeof(fp::Unit) * 8));
 	}
+	fp::Unit getMSB() const
+	{
+		return getTopUnit() >> (sizeof(fp::Unit) * 8 - 1);
+	}
 	static const BitInt<N>& load(const void *x)
 	{
 		return *(const BitInt<N>*)x;
@@ -81,6 +85,18 @@ fp::Unit addT(fp::Unit *pz, const fp::Unit *px, const fp::Unit *py)
 	z.v = x.v + y.v;
 	z.template cvt<N>().save(pz);
 	return z.getTopUnit();
+}
+
+// z = x - y and return CF(0 or 1)
+template<size_t N>
+fp::Unit subT(fp::Unit *pz, const fp::Unit *px, const fp::Unit *py)
+{
+	auto x = BitInt<N>::load(px).template cvt<N+1>();
+	auto y = BitInt<N>::load(py).template cvt<N+1>();
+	BitInt<N+1> z;
+	z.v = x.v - y.v;
+	z.template cvt<N>().save(pz);
+	return z.getMSB();
 }
 
 } } // mcl::vint

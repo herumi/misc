@@ -1,8 +1,17 @@
 #include "bitint.hpp"
 #include <cybozu/test.hpp>
+#include <cybozu/xorshift.hpp>
 
 using namespace mcl::vint;
 typedef mcl::fp::Unit Unit;
+
+template<class RG>
+void setRand(Unit *x, size_t n, RG& rg)
+{
+	for (size_t i = 0; i < n; i++) {
+		x[i] = (Unit)rg.get64();
+	}
+}
 
 CYBOZU_TEST_AUTO(cmpT)
 {
@@ -51,4 +60,19 @@ CYBOZU_TEST_AUTO(addT)
 	CF = addT<3>(z, x, y);
 	CYBOZU_TEST_EQUAL_ARRAY(z, ok, 3);
 	CYBOZU_TEST_EQUAL(CF, 0);
+}
+
+CYBOZU_TEST_AUTO(subT)
+{
+	const size_t N = 4;
+	Unit x[N], y[N], z[N], x2[N];
+	cybozu::XorShift rg;
+	for (int i = 0; i < 100; i++) {
+		setRand(x, N, rg);
+		setRand(y, N, rg);
+		Unit CF = addT<N>(z, x, y);
+		Unit CF2 = subT<N>(x2, z, y);
+		CYBOZU_TEST_EQUAL_ARRAY(x, x2, N);
+		CYBOZU_TEST_EQUAL(CF, CF2);
+	}
 }
