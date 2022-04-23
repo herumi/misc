@@ -105,3 +105,22 @@ CYBOZU_TEST_AUTO(mulUnitT)
 		CYBOZU_TEST_EQUAL(mx * y, mz + (mpz_class(u) << (sizeof(x) * 8)));
 	}
 }
+
+CYBOZU_TEST_AUTO(mulUnitAddT)
+{
+	const size_t N = 4;
+	Unit x[N], y[N], w[N];
+	cybozu::XorShift rg;
+	mpz_class mx, my, mw;
+	for (int i = 0; i < 100; i++) {
+		Unit z;
+		setRand(x, N, rg);
+		setRand(y, N, rg);
+		setRand(&z, 1, rg);
+		Unit u = mulUnitAddT<N>(w, x, y, z);
+		setArray(mx, x, N);
+		setArray(my, y, N);
+		setArray(mw, w, N);
+		CYBOZU_TEST_EQUAL(mx + my * z, mw + (mpz_class(u) << (sizeof(x) * 8)));
+	}
+}

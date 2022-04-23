@@ -112,5 +112,19 @@ fp::Unit mulUnitT(fp::Unit *pz, const fp::Unit *px, fp::Unit y)
 	return z.getTopUnit();
 }
 
+// [ret:w] = x + y * z
+template<size_t N>
+fp::Unit mulUnitAddT(fp::Unit *pw, const fp::Unit *px, const fp::Unit *py, fp::Unit z)
+{
+	auto x = BitInt<N>::load(px).template cvt<N+1>();
+	auto y = BitInt<N>::load(py).template cvt<N+1>();
+	BitInt<1> z1;
+	BitInt<N+1> w;
+	z1.v = z;
+	w.v = x.v + y.v * z1.template cvt<N+1>().v;
+	w.template cvt<N>().save(pw);
+	return w.getTopUnit();
+}
+
 } } // mcl::vint
 
