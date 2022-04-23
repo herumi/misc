@@ -540,11 +540,14 @@ size_t internalDivN(T *q, size_t qn, T *x, size_t xn, const T *y, size_t yn)
 {
 	assert(xn > 0);
 	assert(yn > 0);
-	assert(x[xn - 1]! = 0);
 	assert((y[yn - 1] >> (sizeof(T) * 8 - 1)) != 0);
 	if (q) clearN(q, qn);
 	T *tt = (T*)CYBOZU_ALLOCA(sizeof(T) * (yn + 1));
 	while (xn > yn) {
+		if (x[xn - 1] == 0) {
+			xn--;
+			continue;
+		}
 		size_t d = xn - yn;
 		if (cmpN(x + d, y, yn) >= 0) {
 			vint::subN(x + d, x + d, y, yn);
@@ -560,13 +563,12 @@ size_t internalDivN(T *q, size_t qn, T *x, size_t xn, const T *y, size_t yn)
 			}
 			if (q) vint::addu1<T>(q + d - 1, qn - d + 1, xTop);
 		}
-		xn = getRealSize(x, xn);
 	}
 	if (xn == yn && cmpN(x, y, yn) >= 0) {
 		subN(x, x, y, yn);
-		xn = getRealSize(x, xn);
 		if (q) vint::addu1<T>(q, qn, 1);
 	}
+	xn = getRealSize(x, xn);
 	return xn;
 }
 
