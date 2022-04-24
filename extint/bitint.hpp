@@ -112,18 +112,27 @@ fp::Unit mulUnitT(fp::Unit *pz, const fp::Unit *px, fp::Unit y)
 	return z.getTopUnit();
 }
 
-// [ret:w] = x + y * z
+// [ret:z] = z[N] + x[N] * y
 template<size_t N>
-fp::Unit mulUnitAddT(fp::Unit *pw, const fp::Unit *px, const fp::Unit *py, fp::Unit z)
+fp::Unit mulUnitAddT(fp::Unit *pz, const fp::Unit *px, fp::Unit y)
 {
 	auto x = BitInt<N>::load(px).template cvt<N+1>();
-	auto y = BitInt<N>::load(py).template cvt<N+1>();
-	BitInt<1> z1;
-	BitInt<N+1> w;
-	z1.v = z;
-	w.v = x.v + y.v * z1.template cvt<N+1>().v;
-	w.template cvt<N>().save(pw);
-	return w.getTopUnit();
+	auto z = BitInt<N>::load(pz).template cvt<N+1>();
+	BitInt<1> y1;
+	y1.v = y;
+	z.v += x.v * y1.template cvt<N+1>().v;
+	z.template cvt<N>().save(pz);
+	return z.getTopUnit();
+}
+
+// z[2N] = x[N] * y[N]
+template<size_t N>
+void mulT(fp::Unit *pz, const fp::Unit *px, const fp::Unit *py)
+{
+	pz[N] = mulUnitT<N>(pz, px, py[0]);
+	for (size_t i = 1; i < N; i++) {
+		pz[N + i] = mulUnitAddT<N>(&pz[i], px, py[i]);
+	}
 }
 
 } } // mcl::vint

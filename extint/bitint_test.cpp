@@ -109,18 +109,35 @@ CYBOZU_TEST_AUTO(mulUnitT)
 CYBOZU_TEST_AUTO(mulUnitAddT)
 {
 	const size_t N = 4;
-	Unit x[N], y[N], w[N];
+	Unit x[N], z[N];
 	cybozu::XorShift rg;
-	mpz_class mx, my, mw;
+	mpz_class mx, mz, mt;
 	for (int i = 0; i < 100; i++) {
-		Unit z;
+		Unit y;
+		setRand(x, N, rg);
+		setRand(z, N, rg);
+		setArray(mx, x, N);
+		setArray(mz, z, N);
+		setRand(&y, 1, rg);
+		Unit u = mulUnitAddT<N>(z, x, y);
+		setArray(mt, z, N);
+		CYBOZU_TEST_EQUAL(mz + mx * y, mt + (mpz_class(u) << (sizeof(x) * 8)));
+	}
+}
+
+CYBOZU_TEST_AUTO(mulT)
+{
+	const size_t N = 4;
+	Unit x[N], y[N], z[N * 2];
+	cybozu::XorShift rg;
+	mpz_class mx, my, mz;
+	for (int i = 0; i < 100; i++) {
 		setRand(x, N, rg);
 		setRand(y, N, rg);
-		setRand(&z, 1, rg);
-		Unit u = mulUnitAddT<N>(w, x, y, z);
+		mulT<N>(z, x, y);
 		setArray(mx, x, N);
 		setArray(my, y, N);
-		setArray(mw, w, N);
-		CYBOZU_TEST_EQUAL(mx + my * z, mw + (mpz_class(u) << (sizeof(x) * 8)));
+		setArray(mz, z, N * 2);
+		CYBOZU_TEST_EQUAL(mx * my, mz);
 	}
 }
