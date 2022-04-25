@@ -179,3 +179,26 @@ CYBOZU_TEST_AUTO(shrT)
 		CYBOZU_TEST_EQUAL(mx >> y, mz);
 	}
 }
+
+CYBOZU_TEST_AUTO(addUnit)
+{
+	const size_t N = 2;
+	const struct {
+		Unit x[N];
+		Unit y;
+	} tbl[] = {
+		{ { 1, 2 }, 3 },
+		{ { 1, Unit(-1) }, 5 },
+		{ { Unit(-1), Unit(-2) }, 7 },
+	};
+	mpz_class mx, mz;
+	for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(tbl); i++) {
+		const Unit *x = tbl[i].x;
+		Unit y = tbl[i].y;
+		Unit z[N];
+		Unit u = addUnit(z, x, N, y);
+		setArray(mx, x, N);
+		setArray(mz, z, N);
+		CYBOZU_TEST_EQUAL(mx + y, mz + (mpz_class(u) << (sizeof(Unit) * N * 8)));
+	}
+}

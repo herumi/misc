@@ -158,5 +158,31 @@ void shrT(fp::Unit *pz, const fp::Unit *px, fp::Unit y)
 	x.template cvt<N>().save(pz);
 }
 
+/*
+	z[] = x[] + y
+*/
+inline fp::Unit addUnit(fp::Unit *z, const fp::Unit *x, size_t n, fp::Unit y)
+{
+	assert(n > 0);
+	fp::Unit t = x[0] + y;
+	z[0] = t;
+	size_t i = 0;
+	if (t >= y) goto EXIT_0;
+	i = 1;
+	for (; i < n; i++) {
+		t = x[i] + 1;
+		z[i] = t;
+		if (t != 0) goto EXIT_0;
+	}
+	return 1;
+EXIT_0:
+	i++;
+	for (; i < n; i++) {
+		z[i] = x[i];
+	}
+	return 0;
+}
+
+
 } } // mcl::vint
 
