@@ -16,6 +16,17 @@ inline void split64(uint32_t *H, uint32_t *L, uint64_t x)
 	*L = uint32_t(x);
 }
 
+// return the real size of x
+// return 1 if x[n] == 0
+inline size_t getRealSize(const fp::Unit *x, size_t n)
+{
+	while (n > 0) {
+		if (x[n - 1]) break;
+		n--;
+	}
+	return n > 0 ? n : 1;
+}
+
 /*
 	[H:L] <= x * y
 	@return L
@@ -246,6 +257,22 @@ EXIT_0:
 	}
 	return 0;
 }
+// x[n] += y
+inline fp::Unit addUnit(fp::Unit *x, size_t n, fp::Unit y)
+{
+	assert(n > 0);
+	fp::Unit t = x[0] + y;
+	x[0] = t;
+	size_t i = 0;
+	if (t >= y) return 0;
+	i = 1;
+	for (; i < n; i++) {
+		t = x[i] + 1;
+		x[i] = t;
+		if (t != 0) return 0;
+	}
+	return 1;
+}
 
 // z[n] = x[n] - y
 inline fp::Unit subUnit(fp::Unit *z, const fp::Unit *x, size_t n, fp::Unit y)
@@ -290,6 +317,54 @@ inline fp::Unit modUnit(const fp::Unit *x, size_t n, fp::Unit y)
 		divUnit(&r, r, x[i], y);
 	}
 	return r;
+}
+
+// x[n] = 0
+inline void clear(fp::Unit *x, size_t n)
+{
+	for (size_t i = 0; i < n; i++) x[i] = 0;
+}
+
+/*
+	y must be sizeof(Unit) * 8 * N bit
+	x[xn] = x[xn] % y[N]
+	q[qn] = x[xn] / y[N] if q != NULL
+	return new xn
+*/
+template<size_t N>
+size_t divFullBitT(fp::Unit *q, size_t qn, fp::Unit *x, size_t xn, const fp::Unit *y)
+{
+	assert(xn > 0);
+	assert((y[N - 1] >> (sizeof(fp::Unit) * 8 - 1)) != 0);
+	if (q) clear(q, qn);
+	fp::Unit *t = (fp::Unit*)CYBOZU_ALLOCA(sizeof(fp::Unit) * (N + 1));
+	while (xn > N) {
+		if (x[xn - 1] == 0) {
+			xn--;
+			continue;
+		}
+		size_t d = xn - N;
+		if (cmpGeT<N>(x + d, y)) {
+			subT<N>(x + d, x + d, y);
+			if (q) addUnit(q + d, qn - d, 1);
+		} else {
+			fp::Unit xTop = x[xn - 1];
+			if (xTop == 1) {
+				fp::Unit ret= subT<N>(x + d - 1, x + d - 1, y);
+				x[xn-1] -= ret;
+			} else {
+				t[N] = mulUnitT<N>(t, y, xTop);
+				subT<N + 1>(x + d - 1, x + d - 1, t);
+			}
+			if (q) addUnit(q + d - 1, qn - d + 1, xTop);
+		}
+	}
+	if (cmpGeT<N>(x, y)) {
+		subT<N>(x, x, y);
+		if (q) addUnit(q, qn, 1);
+	}
+	xn = getRealSize(x, xn);
+	return xn;
 }
 
 } } // mcl::vint

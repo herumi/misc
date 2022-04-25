@@ -520,15 +520,13 @@ void shrN(T *y, const T *x, size_t xn, size_t bit)
 }
 
 template<class T>
-size_t getRealSize(const T *x, size_t xn)
+size_t getRealSize(const T *x, size_t n)
 {
-	int i = (int)xn - 1;
-	for (; i > 0; i--) {
-		if (x[i]) {
-			return i + 1;
-		}
+	while (n > 0) {
+		if (x[n - 1]) break;
+		n--;
 	}
-	return 1;
+	return n > 0 ? n : 1;
 }
 
 /*
