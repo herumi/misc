@@ -5,6 +5,72 @@
 
 namespace mcl { namespace vint {
 
+inline uint64_t make64(uint32_t H, uint32_t L)
+{
+	return ((uint64_t)H << 32) | L;
+}
+
+inline void split64(uint32_t *H, uint32_t *L, uint64_t x)
+{
+	*H = uint32_t(x >> 32);
+	*L = uint32_t(x);
+}
+
+/*
+	[H:L] <= x * y
+	@return L
+*/
+inline uint32_t mulUnit(uint32_t *pH, uint32_t x, uint32_t y)
+{
+	uint64_t t = uint64_t(x) * y;
+	uint32_t L;
+	split64(pH, &L, t);
+	return L;
+}
+
+/*
+	q = [H:L] / y
+	r = [H:L] % y
+	return q
+*/
+inline uint32_t divUnit(uint32_t *pr, uint32_t H, uint32_t L, uint32_t y)
+{
+	assert(y != 0);
+	uint64_t t = make64(H, L);
+	uint32_t q = uint32_t(t / y);
+	*pr = uint32_t(t % y);
+	return q;
+}
+
+#if MCL_SIZEOF_UNIT == 8
+inline uint64_t mulUnit(uint64_t *pH, uint64_t x, uint64_t y)
+{
+#if defined(_WIN64) && !defined(__INTEL_COMPILER)
+	return _umul128(x, y, pH);
+#else
+	typedef __attribute__((mode(TI))) unsigned int uint128;
+	uint128 t = uint128(x) * y;
+	*pH = uint64_t(t >> 64);
+	return uint64_t(t);
+#endif
+}
+
+inline uint64_t divUnit(uint64_t *pr, uint64_t H, uint64_t L, uint64_t y)
+{
+	assert(y != 0);
+#ifdef _MSC_VER
+	return _udiv128(H, L, y, pr);
+#else
+	typedef __attribute__((mode(TI))) unsigned int uint128;
+	uint128 t = (uint128(H) << 64) | L;
+	uint64_t q = uint64_t(t / y);
+	*pr = uint64_t(t % y);
+	return q;
+#endif
+}
+
+#endif // MCL_SIZEOF_UNIT == 8
+
 template<size_t N>
 struct BitInt {
 	static const size_t bitSize = sizeof(fp::Unit) * 8 * N;
@@ -158,9 +224,7 @@ void shrT(fp::Unit *pz, const fp::Unit *px, fp::Unit y)
 	x.template cvt<N>().save(pz);
 }
 
-/*
-	z[n] = x[n] + y
-*/
+// z[n] = x[n] + y
 inline fp::Unit addUnit(fp::Unit *z, const fp::Unit *x, size_t n, fp::Unit y)
 {
 	assert(n > 0);
@@ -183,9 +247,7 @@ EXIT_0:
 	return 0;
 }
 
-/*
-	z[n] = x[n] - y
-*/
+// z[n] = x[n] - y
 inline fp::Unit subUnit(fp::Unit *z, const fp::Unit *x, size_t n, fp::Unit y)
 {
 	assert(n > 0);
@@ -202,5 +264,19 @@ inline fp::Unit subUnit(fp::Unit *z, const fp::Unit *x, size_t n, fp::Unit y)
 	return c;
 }
 
+/*
+	q[] = x[] / y
+	@retval r = x[] % y
+	accept q == x
+*/
+inline fp::Unit divUnit(fp::Unit *q, const fp::Unit *x, size_t n, fp::Unit y)
+{
+	assert(n > 0);
+	fp::Unit r = 0;
+	for (int i = (int)n - 1; i >= 0; i--) {
+		q[i] = divUnit(&r, r, x[i], y);
+	}
+	return r;
+}
 } } // mcl::vint
 

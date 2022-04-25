@@ -207,3 +207,20 @@ CYBOZU_TEST_AUTO(addUnit)
 	}
 }
 
+CYBOZU_TEST_AUTO(divUnitT)
+{
+	const size_t N = 4;
+	Unit x[N], q[N];
+	cybozu::XorShift rg;
+	mpz_class mx, mq;
+	for (int i = 0; i < 100; i++) {
+		Unit y;
+		setRand(x, N, rg);
+		setRand(&y, 1, rg);
+		if (y == 0) y = 1;
+		Unit r = divUnit(q, x, N, y);
+		setArray(mx, x, N);
+		setArray(mq, q, N);
+		CYBOZU_TEST_EQUAL(mx, mq * y + r);
+	}
+}
