@@ -2,6 +2,9 @@
 #include <cybozu/test.hpp>
 #include <cybozu/xorshift.hpp>
 #include <gmpxx.h>
+#include <iostream>
+
+#define PUT(x) std::cout << #x "=" << (x) << std::endl;
 
 using namespace mcl::vint;
 typedef mcl::fp::Unit Unit;
