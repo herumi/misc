@@ -141,3 +141,22 @@ CYBOZU_TEST_AUTO(mulT)
 		CYBOZU_TEST_EQUAL(mx * my, mz);
 	}
 }
+
+CYBOZU_TEST_AUTO(shlT)
+{
+	const size_t N = 4;
+	Unit x[N], z[N];
+	cybozu::XorShift rg;
+	mpz_class mx, mz;
+	for (int i = 0; i < 100; i++) {
+		Unit y;
+		setRand(x, N, rg);
+		setRand(&y, 1, rg);
+		y &= sizeof(Unit) * 8 - 1;
+		if (y == 0) y = 1;
+		Unit u = shlT<N>(z, x, y);
+		setArray(mx, x, N);
+		setArray(mz, z, N);
+		CYBOZU_TEST_EQUAL(mx << y, mz + (mpz_class(u) << (sizeof(x) * 8)));
+	}
+}

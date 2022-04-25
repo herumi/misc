@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mcl/config.hpp>
+#include <assert.h>
 
 namespace mcl { namespace vint {
 
@@ -133,6 +134,18 @@ void mulT(fp::Unit *pz, const fp::Unit *px, const fp::Unit *py)
 	for (size_t i = 1; i < N; i++) {
 		pz[N + i] = mulUnitAddT<N>(&pz[i], px, py[i]);
 	}
+}
+
+// [ret:z] = x[N] << y
+template<size_t N>
+fp::Unit shlT(fp::Unit *pz, const fp::Unit *px, fp::Unit y)
+{
+	assert(0 < y && y < sizeof(fp::Unit) * 8);
+	auto x = BitInt<N>::load(px).template cvt<N+1>();
+	BitInt<N+1> z;
+	z.v = x.v << y;
+	z.template cvt<N>().save(pz);
+	return z.getTopUnit();
 }
 
 } } // mcl::vint
