@@ -278,5 +278,19 @@ inline fp::Unit divUnit(fp::Unit *q, const fp::Unit *x, size_t n, fp::Unit y)
 	}
 	return r;
 }
+/*
+	q[] = x[] / y
+	@retval r = x[] % y
+*/
+inline fp::Unit modUnit(const fp::Unit *x, size_t n, fp::Unit y)
+{
+	assert(n > 0);
+	fp::Unit r = 0;
+	for (int i = (int)n - 1; i >= 0; i--) {
+		divUnit(&r, r, x[i], y);
+	}
+	return r;
+}
+
 } } // mcl::vint
 

@@ -207,7 +207,7 @@ CYBOZU_TEST_AUTO(addUnit)
 	}
 }
 
-CYBOZU_TEST_AUTO(divUnitT)
+CYBOZU_TEST_AUTO(divUnit)
 {
 	const size_t N = 4;
 	Unit x[N], q[N];
@@ -222,5 +222,7 @@ CYBOZU_TEST_AUTO(divUnitT)
 		setArray(mx, x, N);
 		setArray(mq, q, N);
 		CYBOZU_TEST_EQUAL(mx, mq * y + r);
+		Unit r2 = modUnit(x, N, y);
+		CYBOZU_TEST_EQUAL(r, r2);
 	}
 }
