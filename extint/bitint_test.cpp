@@ -226,3 +226,24 @@ CYBOZU_TEST_AUTO(divUnit)
 		CYBOZU_TEST_EQUAL(r, r2);
 	}
 }
+
+CYBOZU_TEST_AUTO(divFullBitT)
+{
+	const size_t xN = 7;
+	const size_t yN = 4;
+	const size_t qN = xN - yN + 1;
+	Unit x[xN], y[yN], q[qN];
+	cybozu::XorShift rg;
+	mpz_class mx, my, mq, mr;
+	for (int i = 0; i < 100; i++) {
+		setRand(x, xN, rg);
+		setRand(y, yN, rg);
+		y[yN - 1] |= Unit(1) << (sizeof(Unit) * 8 - 1); // full bit
+		setArray(mx, x, xN);
+		setArray(my, y, yN);
+		size_t rn = divFullBitT<yN>(q, qN, x, xN, y);
+		setArray(mq, q, qN);
+		setArray(mr, x, rn);
+		CYBOZU_TEST_EQUAL(mq * my + mr, mx);
+	}
+}
