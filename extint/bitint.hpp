@@ -35,7 +35,7 @@ struct BitInt {
 	}
 };
 
-// true if x == y
+// true if x[N] == y[N]
 template<size_t N>
 bool cmpEqT(const fp::Unit *px, const fp::Unit *py)
 {
@@ -44,7 +44,7 @@ bool cmpEqT(const fp::Unit *px, const fp::Unit *py)
 	return x.v == y.v;
 }
 
-// true if x >= y
+// true if x[N] >= y[N]
 template<size_t N>
 bool cmpGeT(const fp::Unit *px, const fp::Unit *py)
 {
@@ -53,7 +53,7 @@ bool cmpGeT(const fp::Unit *px, const fp::Unit *py)
 	return x.v >= y.v;
 }
 
-// true if x > y
+// true if x[N] > y[N]
 template<size_t N>
 bool cmpGtT(const fp::Unit *px, const fp::Unit *py)
 {
@@ -62,21 +62,21 @@ bool cmpGtT(const fp::Unit *px, const fp::Unit *py)
 	return x.v > y.v;
 }
 
-// true if x <= y
+// true if x[N] <= y[N]
 template<size_t N>
 bool cmpLeT(const fp::Unit *px, const fp::Unit *py)
 {
 	return !cmpGtT<N>(px, py);
 }
 
-// true if x < y
+// true if x[N] < y[N]
 template<size_t N>
 bool cmpLtT(const fp::Unit *px, const fp::Unit *py)
 {
 	return !cmpGeT<N>(px, py);
 }
 
-// z = x + y and return CF(0 or 1)
+// z[N] = x[N] + y[N] and return CF(0 or 1)
 template<size_t N>
 fp::Unit addT(fp::Unit *pz, const fp::Unit *px, const fp::Unit *py)
 {
@@ -88,7 +88,7 @@ fp::Unit addT(fp::Unit *pz, const fp::Unit *px, const fp::Unit *py)
 	return z.getTopUnit();
 }
 
-// z = x - y and return CF(0 or 1)
+// z[N] = x[N] - y[N] and return CF(0 or 1)
 template<size_t N>
 fp::Unit subT(fp::Unit *pz, const fp::Unit *px, const fp::Unit *py)
 {
@@ -100,7 +100,7 @@ fp::Unit subT(fp::Unit *pz, const fp::Unit *px, const fp::Unit *py)
 	return z.getMSB();
 }
 
-// [ret:z] = x * y
+// [ret:z[N]] = x[N] * y
 template<size_t N>
 fp::Unit mulUnitT(fp::Unit *pz, const fp::Unit *px, fp::Unit y)
 {
@@ -113,7 +113,7 @@ fp::Unit mulUnitT(fp::Unit *pz, const fp::Unit *px, fp::Unit y)
 	return z.getTopUnit();
 }
 
-// [ret:z] = z[N] + x[N] * y
+// [ret:z[N]] = z[N] + x[N] * y
 template<size_t N>
 fp::Unit mulUnitAddT(fp::Unit *pz, const fp::Unit *px, fp::Unit y)
 {
@@ -136,7 +136,7 @@ void mulT(fp::Unit *pz, const fp::Unit *px, const fp::Unit *py)
 	}
 }
 
-// [ret:z] = x[N] << y
+// [ret:z[N]] = x[N] << y
 template<size_t N>
 fp::Unit shlT(fp::Unit *pz, const fp::Unit *px, fp::Unit y)
 {
@@ -159,7 +159,7 @@ void shrT(fp::Unit *pz, const fp::Unit *px, fp::Unit y)
 }
 
 /*
-	z[] = x[] + y
+	z[n] = x[n] + y
 */
 inline fp::Unit addUnit(fp::Unit *z, const fp::Unit *x, size_t n, fp::Unit y)
 {
