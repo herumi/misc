@@ -148,5 +148,15 @@ fp::Unit shlT(fp::Unit *pz, const fp::Unit *px, fp::Unit y)
 	return z.getTopUnit();
 }
 
+// z[N] = x[N] >> y
+template<size_t N>
+void shrT(fp::Unit *pz, const fp::Unit *px, fp::Unit y)
+{
+	assert(0 < y && y < sizeof(fp::Unit) * 8);
+	auto x = BitInt<N>::load(px);
+	x.v >>= y;
+	x.template cvt<N>().save(pz);
+}
+
 } } // mcl::vint
 
