@@ -183,6 +183,24 @@ EXIT_0:
 	return 0;
 }
 
+/*
+	z[n] = x[n] - y
+*/
+inline fp::Unit subUnit(fp::Unit *z, const fp::Unit *x, size_t n, fp::Unit y)
+{
+	assert(n > 0);
+	fp::Unit c = x[0] < y ? 1 : 0;
+	z[0] = x[0] - y;
+	for (size_t i = 1; i < n; i++) {
+		if (x[i] < c) {
+			z[i] = fp::Unit(-1);
+		} else {
+			z[i] = x[i] - c;
+			c = 0;
+		}
+	}
+	return c;
+}
 
 } } // mcl::vint
 
