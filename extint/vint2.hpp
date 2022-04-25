@@ -690,41 +690,7 @@ void divNM(T *q, size_t qn, T *r, const T *x, size_t xn, const T *y, size_t yn)
 		copyN(xx, x, xn);
 		yy = y;
 	}
-#if 1
 	xn = internalDivN(q, qn, xx, xn, yy, yn);
-#else
-	if (q) {
-		clearN(q, qn);
-	}
-	assert((yy[yn - 1] >> (sizeof(T) * 8 - 1)) != 0);
-	T *tt = (T*)CYBOZU_ALLOCA(sizeof(T) * (yn + 1));
-	while (xn > yn) {
-		size_t d = xn - yn;
-		T xTop = xx[xn - 1];
-		T yTop = yy[yn - 1];
-		if (xTop > yTop || (compareNM(xx + d, xn - d, yy, yn) >= 0)) {
-			vint::subN(xx + d, xx + d, yy, yn);
-			xn = getRealSize(xx, xn);
-			if (q) vint::addu1<T>(q + d, qn - d, 1);
-			continue;
-		}
-		if (xTop == 1) {
-			vint::subNM(xx + d - 1, xx + d - 1, xn - d + 1, yy, yn);
-			xn = getRealSize(xx, xn);
-			if (q) vint::addu1<T>(q + d - 1, qn - d + 1, 1);
-			continue;
-		}
-		tt[yn] = vint::mulu1(tt, yy, yn, xTop);
-		vint::subN(xx + d - 1, xx + d - 1, tt, yn + 1);
-		xn = getRealSize(xx, xn);
-		if (q) vint::addu1<T>(q + d - 1, qn - d + 1, xTop);
-	}
-	if (xn == yn && compareNM(xx, xn, yy, yn) >= 0) {
-		subN(xx, xx, yy, yn);
-		xn = getRealSize(xx, xn);
-		if (q) vint::addu1<T>(q, qn, 1);
-	}
-#endif
 	if (shift) {
 		shrBit(r, xx, xn, shift);
 	} else {
