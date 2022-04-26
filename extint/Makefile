@@ -21,8 +21,8 @@ CFLAGS=-Wall -Wextra -O2 -DNDEUBG -I ../../mcl/include -fpic -std=c++17
 bitint_if.bc: bitint_if.cpp bitint.hpp bitint_if.hpp
 	$(CXX) -c -emit-llvm -o $@ $< $(CFLAGS)
 
-bitint_llvm_test.exe: bitint_llvm_test.o bitint_if.bc
-	$(CXX) -o $@ $< $(CFLAGS) -lgmp -lgmpxx bitint_if.bc
+bitint_llvm_test.exe: bitint_llvm_test.o bitint_if.ll
+	$(CXX) -o $@ $< $(CFLAGS) -lgmp -lgmpxx bitint_if.ll
 
 %.ll: %.bc
 	$(LLVM_DIS) -o $@ $<
