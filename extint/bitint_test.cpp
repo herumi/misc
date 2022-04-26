@@ -254,4 +254,5 @@ CYBOZU_TEST_AUTO(divFullBitT)
 	const int C = 1000;
 	CYBOZU_BENCH_C("gmp", C, mcl::gmp::divmod, mq, mr, mx, my);
 	CYBOZU_BENCH_C("my ", C, divFullBitT<yN>, q, qN, x, xN, y);
+	CYBOZU_BENCH_C("myC", C, divFullBit4, q, qN, x, xN, y);
 }

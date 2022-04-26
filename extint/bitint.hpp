@@ -3,6 +3,8 @@
 #include <mcl/config.hpp>
 #include <assert.h>
 
+extern "C" size_t divFullBit4(uint64_t *q, size_t qn, uint64_t *x, size_t xn, const uint64_t *y);
+
 namespace mcl { namespace vint {
 
 inline uint64_t make64(uint32_t H, uint32_t L)
