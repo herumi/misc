@@ -16,6 +16,9 @@
 #include <mcl/util.hpp>
 #include <mcl/randgen.hpp>
 #include <mcl/conversion.hpp>
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
 
 #if defined(__EMSCRIPTEN__) || defined(__wasm__)
 	#define MCL_VINT_64BIT_PORTABLE

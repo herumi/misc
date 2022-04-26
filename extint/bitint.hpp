@@ -8,6 +8,9 @@
 
 #include <mcl/config.hpp>
 #include <assert.h>
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
 
 namespace mcl { namespace bint {
 
@@ -62,7 +65,7 @@ inline uint32_t divUnit(uint32_t *pr, uint32_t H, uint32_t L, uint32_t y)
 #if MCL_SIZEOF_UNIT == 8
 inline uint64_t mulUnit(uint64_t *pH, uint64_t x, uint64_t y)
 {
-#if defined(_WIN64) && !defined(__INTEL_COMPILER)
+#if defined(_MSC_VER) && !defined(__INTEL_COMPILER) && !defined(__clang__)
 	return _umul128(x, y, pH);
 #else
 	typedef __attribute__((mode(TI))) unsigned int uint128;
@@ -75,7 +78,7 @@ inline uint64_t mulUnit(uint64_t *pH, uint64_t x, uint64_t y)
 inline uint64_t divUnit(uint64_t *pr, uint64_t H, uint64_t L, uint64_t y)
 {
 	assert(y != 0);
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && !defined(__INTEL_COMPILER) && !defined(__clang__)
 	return _udiv128(H, L, y, pr);
 #else
 	typedef __attribute__((mode(TI))) unsigned int uint128;
