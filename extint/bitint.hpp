@@ -1,11 +1,15 @@
 #pragma once
+/*
+	_ExtInt is for only clang-12 or before
+	clang-14 does not support it.
+	so use a generated ll by clang-12.
+	cpp ->(clang -emit-llvm)-> bc ->(llvm-dis) -> ll
+*/
 
 #include <mcl/config.hpp>
 #include <assert.h>
 
-extern "C" size_t divFullBit4(uint64_t *q, size_t qn, uint64_t *x, size_t xn, const uint64_t *y);
-
-namespace mcl { namespace vint {
+namespace mcl { namespace bint {
 
 inline uint64_t make64(uint32_t H, uint32_t L)
 {
@@ -369,5 +373,5 @@ size_t divFullBitT(fp::Unit *q, size_t qn, fp::Unit *x, size_t xn, const fp::Uni
 	return xn;
 }
 
-} } // mcl::vint
+} } // mcl::bint
 

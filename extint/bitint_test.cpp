@@ -3,12 +3,10 @@
 #include <cybozu/xorshift.hpp>
 #include <gmpxx.h>
 #include <iostream>
-#include <cybozu/benchmark.hpp>
-#include <mcl/gmp_util.hpp>
 
 #define PUT(x) std::cout << #x "=" << (x) << std::endl;
 
-using namespace mcl::vint;
+using namespace mcl::bint;
 typedef mcl::fp::Unit Unit;
 
 template<class RG>
@@ -251,8 +249,4 @@ CYBOZU_TEST_AUTO(divFullBitT)
 		setArray(mr, x, rn);
 		CYBOZU_TEST_EQUAL(mq * my + mr, mx);
 	}
-	const int C = 1000;
-	CYBOZU_BENCH_C("gmp", C, mcl::gmp::divmod, mq, mr, mx, my);
-	CYBOZU_BENCH_C("my ", C, divFullBitT<yN>, q, qN, x, xN, y);
-	CYBOZU_BENCH_C("myC", C, divFullBit4, q, qN, x, xN, y);
 }

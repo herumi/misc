@@ -5,7 +5,7 @@ ALL: $(TARGET)
 
 LLVM_VER?=-12
 CXX=clang++$(LLVM_VER)
-LLVM_DIS=llvm-dis$(LLVM_VER)
+LLVM_DIS?=llvm-dis$(LLVM_VER)
 
 CFLAGS=-Wall -Wextra -O2 -DNDEUBG -I ../../mcl/include -fpic -std=c++17
 
@@ -15,22 +15,23 @@ CFLAGS=-Wall -Wextra -O2 -DNDEUBG -I ../../mcl/include -fpic -std=c++17
 %.o: %.ll
 	$(CXX) -c -o $@ $< $(CFLAGS)
 
-bitint.bc: bitint.cpp bitint.hpp
+%.exe: %.o
+	$(CXX) -o $@ $< $(CFLAGS) -lgmp -lgmpxx
+
+bitint_if.bc: bitint_if.cpp bitint.hpp bitint_if.hpp
 	$(CXX) -c -emit-llvm -o $@ $< $(CFLAGS)
+
+bitint_llvm_test.exe: bitint_llvm_test.o bitint_if.bc
+	$(CXX) -o $@ $< $(CFLAGS) -lgmp -lgmpxx bitint_if.bc
 
 %.ll: %.bc
 	$(LLVM_DIS) -o $@ $<
 
-bitint_test.exe: bitint_test.o bitint.ll bitint.o
-	$(CXX) -o $@ $< $(CFLAGS) -lgmp -lgmpxx bitint.o
-
-bitint_test.o: bitint_test.cpp bitint.hpp
-	$(CXX) -c -o $@ $< $(CFLAGS)
-
 bitint_test: bitint_test.exe
-	./bitint_test.exe
+	./$<
 
-
+bitint_llvm_test: bitint_llvm_test.exe
+	./$<
 
 clean:
 	$(RM) -rf *.o *.bc *.exe *.bc bitint.ll
