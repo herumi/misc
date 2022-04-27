@@ -7,7 +7,6 @@
 
 #define PUT(x) std::cout << #x "=" << (x) << std::endl;
 
-using namespace mcl::bint;
 typedef mcl::fp::Unit Unit;
 
 template<class RG>
@@ -37,12 +36,12 @@ CYBOZU_TEST_AUTO(divFullBitT)
 		y[yN - 1] |= Unit(1) << (sizeof(Unit) * 8 - 1); // full bit
 		setArray(mx, x, xN);
 		setArray(my, y, yN);
-		size_t rn = divFullBit256(q, qN, x, xN, y);
+		size_t rn = mclb_divFullBit256(q, qN, x, xN, y);
 		setArray(mq, q, qN);
 		setArray(mr, x, rn);
 		CYBOZU_TEST_EQUAL(mq * my + mr, mx);
 	}
 	const int C = 1000;
 	CYBOZU_BENCH_C("gmp", C, mcl::gmp::divmod, mq, mr, mx, my);
-	CYBOZU_BENCH_C("myC", C, divFullBit256, q, qN, x, xN, y);
+	CYBOZU_BENCH_C("myC", C, mclb_divFullBit256, q, qN, x, xN, y);
 }

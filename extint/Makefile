@@ -11,7 +11,7 @@ LLVM_LLC=llc$(LLVM_VER)
 LLVM_OPT=opt$(LLVM_VER)
 BIT?=64
 
-CFLAGS=-Wall -Wextra -O2 -DNDEUBG -I ../../mcl/include -fpic -std=c++17
+CFLAGS=-Wall -Wextra -O2 -DNDEBUG -I ../../mcl/include -fpic -std=c++17
 
 %.o: %.cpp
 	$(CXX) -c -o $@ $< $(CFLAGS)

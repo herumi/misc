@@ -4,8 +4,9 @@
 */
 #include <mcl/config.hpp>
 
-namespace mcl { namespace bint {
 
-size_t divFullBit256(fp::Unit *q, size_t qn, fp::Unit *x, size_t xn, const fp::Unit *y);
+extern "C" {
 
-} } // mcl::bint
+size_t mclb_divFullBit256(mcl::fp::Unit *q, size_t qn, mcl::fp::Unit *x, size_t xn, const mcl::fp::Unit *y);
+
+} // extern "C"
