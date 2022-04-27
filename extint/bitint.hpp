@@ -3,6 +3,7 @@
 	_ExtInt is for only clang-12 or before
 	clang-14 does not support it.
 	so use a generated ll by clang-12.
+	If gcc and clang supports _BitInt then replace them.
 	cpp ->(clang -emit-llvm)-> bc ->(llvm-dis) -> ll
 */
 
@@ -40,7 +41,7 @@ inline size_t getRealSize(const fp::Unit *x, size_t n)
 	[H:L] <= x * y
 	@return L
 */
-inline uint32_t mulUnit(uint32_t *pH, uint32_t x, uint32_t y)
+inline uint32_t mulUnit1(uint32_t *pH, uint32_t x, uint32_t y)
 {
 	uint64_t t = uint64_t(x) * y;
 	uint32_t L;
@@ -53,7 +54,7 @@ inline uint32_t mulUnit(uint32_t *pH, uint32_t x, uint32_t y)
 	r = [H:L] % y
 	return q
 */
-inline uint32_t divUnit(uint32_t *pr, uint32_t H, uint32_t L, uint32_t y)
+inline uint32_t divUnit1(uint32_t *pr, uint32_t H, uint32_t L, uint32_t y)
 {
 	assert(y != 0);
 	uint64_t t = make64(H, L);
@@ -63,7 +64,7 @@ inline uint32_t divUnit(uint32_t *pr, uint32_t H, uint32_t L, uint32_t y)
 }
 
 #if MCL_SIZEOF_UNIT == 8
-inline uint64_t mulUnit(uint64_t *pH, uint64_t x, uint64_t y)
+inline uint64_t mulUnit1(uint64_t *pH, uint64_t x, uint64_t y)
 {
 #if defined(_MSC_VER) && !defined(__INTEL_COMPILER) && !defined(__clang__)
 	return _umul128(x, y, pH);
@@ -75,7 +76,7 @@ inline uint64_t mulUnit(uint64_t *pH, uint64_t x, uint64_t y)
 #endif
 }
 
-inline uint64_t divUnit(uint64_t *pr, uint64_t H, uint64_t L, uint64_t y)
+inline uint64_t divUnit1(uint64_t *pr, uint64_t H, uint64_t L, uint64_t y)
 {
 	assert(y != 0);
 #if defined(_MSC_VER) && !defined(__INTEL_COMPILER) && !defined(__clang__)
@@ -310,7 +311,7 @@ inline fp::Unit divUnit(fp::Unit *q, const fp::Unit *x, size_t n, fp::Unit y)
 	assert(n > 0);
 	fp::Unit r = 0;
 	for (int i = (int)n - 1; i >= 0; i--) {
-		q[i] = divUnit(&r, r, x[i], y);
+		q[i] = divUnit1(&r, r, x[i], y);
 	}
 	return r;
 }
@@ -323,7 +324,7 @@ inline fp::Unit modUnit(const fp::Unit *x, size_t n, fp::Unit y)
 	assert(n > 0);
 	fp::Unit r = 0;
 	for (int i = (int)n - 1; i >= 0; i--) {
-		divUnit(&r, r, x[i], y);
+		divUnit1(&r, r, x[i], y);
 	}
 	return r;
 }
