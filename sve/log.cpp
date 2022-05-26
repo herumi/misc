@@ -100,13 +100,22 @@ float logfC2(float x)
 		h = 0;
 	}
 	x = n * C.log2 - h;
-	f = y * (1/3.0) + (-0.5);
-	f = f * y + 1;
+	switch (L) {
+	case 4:
+	case 5:
+		// 1 - 1/2 y + 1 / 3 y^2
+//		f = y * (1/3.0) + (-0.5);
+		f = y * C.logCoeff[2] + C.logCoeff[1];
+		f = f * y + 1;
+		break;
+	default:
+		assert(false);
+	}
 	y = y * f + x;
 	return y;
 }
 
-#ifdef __x86_64__
+#ifdef FMATH_X64_EMU
 namespace fmath {
 void logf_v(float *y, const float *x, size_t n)
 {
@@ -229,7 +238,6 @@ CYBOZU_TEST_AUTO(log)
 //		CYBOZU_TEST_ASSERT(e < 1e-5);
 	}
 }
-#if 1
 
 void checkDiff(const float *x, const float *y1, const float *y2, size_t n, bool put = true)
 {
@@ -267,7 +275,6 @@ void putClk(const char *msg, size_t n)
 	printf("%s %.2fnsec\n", msg, cybozu::bench::g_clk.getClock() / double(n));
 }
 
-#if 1//#ifndef __x86_64__
 CYBOZU_TEST_AUTO(bench)
 {
 	Fvec x, y0, y1;
@@ -296,5 +303,3 @@ CYBOZU_TEST_AUTO(bench)
 	putClk("fmath::logf_v", C * (n / 16));
 	checkDiff(&x[0], &y0[0], &y1[0], n);
 }
-#endif
-#endif

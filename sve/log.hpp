@@ -4,11 +4,11 @@
 	@note modified new BSD license
 	http://opensource.org/licenses/BSD-3-Clause
 */
-#ifdef __x86_64__
-	#define FMATH_ONLY_CONSTVAR
+#if defined(__x86_64__) || defined(_MSC_VER)
+	#define FMATH_X64_EMU
 #endif
 
-#ifndef FMATH_ONLY_CONSTVAR
+#ifndef FMATH_X64_EMU
 #include <xbyak_aarch64/xbyak_aarch64.h>
 #include <cmath>
 #include <vector>
@@ -105,7 +105,7 @@ struct ConstVar {
 	}
 };
 
-#ifndef FMATH_ONLY_CONSTVAR
+#ifndef FMATH_X64_EMU
 const int freeTbl[] = {
 	0, 1, 2, 3, 4, 5, 6, 7, 24, 25, 26, 27, 28, 29, 30, 31
 };
@@ -137,7 +137,7 @@ struct UsedReg {
 
 #endif
 
-#ifdef FMATH_ONLY_CONSTVAR
+#ifdef FMATH_X64_EMU
 
 struct Code {
 	static ConstVar s_constVar;
@@ -460,7 +460,7 @@ alignas(32) const Code Inst<dummy>::code;
 
 } // fmath::local_log
 
-#ifndef FMATH_ONLY_CONSTVAR
+#ifndef FMATH_X64_EMU
 inline void logf_v(float *dst, const float *src, size_t n)
 {
 	local_log::Inst<>::code.logf_v(dst, src, n);
