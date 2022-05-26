@@ -7,7 +7,7 @@ struct Code : Xbyak::CodeGenerator {
 		Xbyak::util::StackFrame sf(this, 3);
 		vmovups(zm1, ptr[sf.p[1]]);
 		vmovups(zm2, ptr[sf.p[2]]);
-		vpermd(zm0, zm1, zm2);
+		vpermps(zm0, zm1, zm2);
 		vmovups(ptr[sf.p[0]], zm0);
 	}
 };
