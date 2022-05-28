@@ -69,7 +69,6 @@ float logfC2(float x)
 	if (x == 0) return -std::numeric_limits<float>::infinity();
 	using namespace fmath;
 	const local_log::ConstVar& C = *local_log::Inst<>::code.constVar;
-#if 1
 	/*
 		x = 2^n a (1 <= a < 2)
 		log x = n * log2 + log a
@@ -82,78 +81,28 @@ float logfC2(float x)
 		log a = log(1 + c) - log b
 	*/
 	const uint32_t mask23 = (1 << 23) - 1;
-	const uint32_t L = 4;
+	const uint32_t L = C.L;
 	local::fi fi;
 	fi.f = x;
 	int n = int(fi.i - (127 << 23)) >> 23;
 	uint32_t mantissa = fi.i & mask23;
 	float a = u2f(mantissa | (127 << 23));
 	int d = mantissa >> (23 - L);
-	float b = 1 / u2f((d << (23 - L)) | (127 << 23));
-	float log_b = log(b);
+	float b = C.tbl1[d];
+	float log_b = C.tbl2[d];
 	float c = a * b - 1;
-	if (fabs(x - 1) < 0.01) {
+	if (fabs(x - 1) < 1.0/16) {
 		c = x - 1;
 		log_b = 0;
 		n = 0;
 	}
-	float y = c * (-1.0f/4) + (1.0f / 3);
-	y = y * c + (-1.0f/2);
+//	float y = c * (-1.0f/4) + (1.0f / 3);
+//	y = y * c + (-1.0f/2);
+	float y = c * (-.250831127) + (.333942362961);
+	y = y * c + (-.49999909725);
 	y = y * c + 1;
 	y = y * c - log_b;
-	return n * log(2) + y;
-#else
-
-	/*
-		a = sqrt(2) x
-		a = b 2^n, (1 <= b < 2)
-		c = (1/sqrt(2)) b, (1/sqrt(2) <= c < sqrt(2))
-		L = 5
-		d = (f2u(b) & mask(23)) >> (23 - L)
-		f = T1[d] = 1/c = sqrt(2) / b
-		g = f c - 1, |g| <= 1/2^L
-		log c = log ((1 + g)/f) = log(1+g) - log f
-		h = T2[d] = log f
-		log x = log (c * 2^n)
-	*/
-	const int L = C.L;
-	local::fi fi;
-	fi.f = x * C.sqrt2;
-	int n = int(fi.i - C.i127shl23) >> 23;
-	int d = fi.i & C.x7fffff;
-	fi.i = d | C.i127shl23;
-	d >>= 23 - L;
-	float y = fi.f;
-	y *= C.inv_sqrt2;
-	float f = C.tbl1[d];
-	y = y * f - 1;
-	float h = C.tbl2[d];
-	float x1 = x - 1;
-	bool select = fabs(x1) <= 1.0/32;
-	if (select) {
-		y = x1;
-		h = 0;
-	}
-	x = n * C.log2 - h;
-	switch (L) {
-	case 4:
-		// 1 - 1/2 y + 1/3 y^2 - 1/4 y^3 = 1 + y((-1/2) + y((1/3) + y(-1/4)))
-		f = y * (-1/4.0) + (1/3.0);
-		f = f * y + (-1/2.0);
-		f = f * y + 1;
-		break;
-	case 5:
-		// 1 - 1/2 y + 1 / 3 y^2
-//		f = y * (1/3.0) + (-0.5);
-		f = y * C.logCoeff[2] + C.logCoeff[1];
-		f = f * y + 1;
-		break;
-	default:
-		assert(false);
-	}
-	y = y * f + x;
-	return y;
-#endif
+	return n * C.log2 + y;
 }
 
 #ifdef FMATH_X64_EMU

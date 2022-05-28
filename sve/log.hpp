@@ -98,8 +98,9 @@ struct ConstVar {
 		}
 		for (size_t i = 0; i < LN; i++) {
 			local::fi fi;
-			fi.i = i127shl23 | (i << (23 - L));
-			tbl1[i] = sqrt2 / fi.f;
+			fi.i = i127shl23 | ((i*2+1) << (23 - L - 1)); // better approx
+//			fi.i = i127shl23 | (i << (23 - L));
+			tbl1[i] = 1 / fi.f;
 			tbl2[i] = log(tbl1[i]);
 		}
 	}
