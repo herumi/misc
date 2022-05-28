@@ -69,6 +69,41 @@ float logfC2(float x)
 	if (x == 0) return -std::numeric_limits<float>::infinity();
 	using namespace fmath;
 	const local_log::ConstVar& C = *local_log::Inst<>::code.constVar;
+#if 1
+	/*
+		x = 2^n a (1 <= a < 2)
+		log x = n * log2 + log a
+		L = 4
+		d = (f2u(a) & mask(23)) >> (23 - L)
+		b = T1[d] = approximate of 1/a
+		log b = T2[d]
+		c = ab - 1 is near zero
+		a = (1 + c) / b
+		log a = log(1 + c) - log b
+	*/
+	const uint32_t mask23 = (1 << 23) - 1;
+	const uint32_t L = 4;
+	local::fi fi;
+	fi.f = x;
+	int n = int(fi.i - (127 << 23)) >> 23;
+	uint32_t mantissa = fi.i & mask23;
+	float a = u2f(mantissa | (127 << 23));
+	int d = mantissa >> (23 - L);
+	float b = 1 / u2f((d << (23 - L)) | (127 << 23));
+	float log_b = log(b);
+	float c = a * b - 1;
+	if (fabs(x - 1) < 0.01) {
+		c = x - 1;
+		log_b = 0;
+		n = 0;
+	}
+	float y = c * (-1.0f/4) + (1.0f / 3);
+	y = y * c + (-1.0f/2);
+	y = y * c + 1;
+	y = y * c - log_b;
+	return n * log(2) + y;
+#else
+
 	/*
 		a = sqrt(2) x
 		a = b 2^n, (1 <= b < 2)
@@ -118,6 +153,7 @@ float logfC2(float x)
 	}
 	y = y * f + x;
 	return y;
+#endif
 }
 
 #ifdef FMATH_X64_EMU
