@@ -63,6 +63,8 @@ float logfC(float x)
 	return x;
 }
 
+#define NOT_NEAR
+
 float logfC2(float x)
 {
 	if (x < 0) return -std::numeric_limits<float>::quiet_NaN();
@@ -91,19 +93,47 @@ float logfC2(float x)
 	float b = C.tbl1[d];
 	float log_b = C.tbl2[d];
 	float c = a * b - 1;
-	if (fabs(x - 1) < 1.0/16) {
+	float z = n * C.log2 - log_b;
+	if (0.98 <= x && x <= 1.005) {
 		c = x - 1;
-		log_b = 0;
-		n = 0;
+		z = 0;
 	}
-//	float y = c * (-1.0f/4) + (1.0f / 3);
-//	y = y * c + (-1.0f/2);
 	float y = c * (-.250831127) + (.333942362961);
 	y = y * c + (-.49999909725);
 	y = y * c + 1;
-	y = y * c - log_b;
-	return n * C.log2 + y;
+	y = y * c + z;
+	return y;
 }
+
+float log_near1(float x)
+{
+	float c = x - 1;
+	float z = 0;
+	float y = c * (-.250831127) + (.333942362961);
+	y = y * c + (-.49999909725);
+	y = y * c + 1;
+	y = y * c + z;
+	return y;
+}
+
+#if 0
+CYBOZU_TEST_AUTO(sss)
+{
+	float e = 1e-3;
+	for (float x = 1 - 1e-5 - e * 100; x <= 1 + e * 100; x += 1e-4) {
+		float a = std::log(x);
+		float b = logfC2(x);
+		float c = log_near1(x);
+		float d1 = fabs(a - b);
+		float d2 = fabs(a - c);
+		if (a != 0) { d1 /= fabs(a); d2 /= fabs(a); }
+//		if (d2 < d1) {
+			printf("x=%e log=%e d1=%e d2=%e %e %c\n", x, a, d1, d2, fabs(b-c), d2 < d1 ? 'o' : 'x');
+//		}
+	}
+	exit(1);
+}
+#endif
 
 #ifdef FMATH_X64_EMU
 namespace fmath {
