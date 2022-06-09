@@ -24,7 +24,7 @@ test: $(TARGET)
 	./$(TARGET)
 
 bitint:
-	clang++-12 -S -O2 -Wall -Wextra -S -masm=intel -std=c++17 bitint_x64.cpp -I $(MCL_DIR)
+	clang++-12 -S -O2 -Wall -Wextra -S -masm=intel -std=c++17 -mbmi2 bitint_x64.cpp -I $(MCL_DIR)
 
 clean:
 	$(RM) *.o *.d *.exe *.a
