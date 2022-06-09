@@ -52,23 +52,36 @@ uint64_t mulUnitT(uint64_t *z, const uint64_t *x, uint64_t y, uint8_t c = 0, uns
 	if constexpr (I == 0) {
 		z[0] = _mulx_u64(x[0], y, &L);
 		return mulUnitT<N, I + 1>(z, x, y, c, L);
-	}
-	if constexpr (I < N) {
+	} else if constexpr (I < N) {
 		unsigned long long H;
 		uint64_t t = _mulx_u64(x[I], y, &H);
 		c = _addcarry_u64(c, t, L, (unsigned long long *)&z[I]);
 		return mulUnitT<N, I + 1>(z, x, y, c, H);
+	} else {
+		unsigned long long H;
+		_addcarry_u64(c, 0, L, &H);
+		return H;
 	}
-	unsigned long long H;
-	_addcarry_u64(c, 0, L, &H);
-	return H;
 }
 
-
-#if 0
 // [ret:z[N]] = z[N] + x[N] * y
-template<size_t N>uint64_t mulUnitAddT(uint64_t *z, const uint64_t *x, uint64_t y);
-#endif
+template<size_t N>
+uint64_t mulUnitAddT(uint64_t *z, const uint64_t *x, uint64_t y)
+{
+	assert(z != x);
+	unsigned long long L, H, t;
+	uint8_t c1 = 0, c2 = 0;
+	t = z[0];
+	for (size_t i = 0; i < N; i++) {
+		H = _mulx_u64(x[i], y, &L);
+		c1 = _addcarry_u64(c1, t, L, (unsigned long long*)&z[i]);
+		if (i == N - 1) break;
+		c2 = _addcarry_u64(c2, z[i + 1], H, &t);
+	}
+	c2 = _addcarry_u64(c2, 0, H, &t);
+	_addcarry_u64(c1, 0, t, &t);
+	return t;
+}
 
 } } // mcl::x64
 
