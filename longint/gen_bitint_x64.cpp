@@ -37,14 +37,16 @@ struct Code : Xbyak::CodeGenerator {
 	struct FuncProc {
 		Code *c;
 		const uint8_t *begin;
-		FuncProc(Code *c, const std::string& name, size_t N) : c(c)
+		FuncProc(Code *c, std::string name, size_t N) : c(c)
 		{
-			c->prolog(name, N);
 			begin = c->getCurr();
+			name += cybozu::itoa(N);
+			const char *s = name.c_str();
+			printf("align 16\n");
+			printf("global %s\nglobal _%s\n%s:\n_%s:\n", s, s, s, s);
 		}
 		~FuncProc()
 		{
-			c->epilog();
 			hexdump(begin, c->getCurr());
 		}
 	};
@@ -55,25 +57,12 @@ struct Code : Xbyak::CodeGenerator {
 	{
 		printf("segment .text\n");
 		for (size_t i = 0; i <= maxN; i++) {
+			FuncProc fp(this, "mclb_add", i);
 			gen_add(i);
 		}
 	}
-	~Code()
-	{
-	}
-	void prolog(std::string name, size_t N) const
-	{
-		name += cybozu::itoa(N);
-		const char *s = name.c_str();
-		printf("align 16\n");
-		printf("global %s\nglobal _%s\n%s:\n_%s:\n", s, s, s, s);
-	}
-	void epilog() const
-	{
-	}
 	void gen_add(size_t N)
 	{
-		FuncProc fp(this, "mclb_add", N);
 		StackFrame sf(this, 3);
 		const Reg64& z = sf.p[0];
 		const Reg64& x = sf.p[1];
@@ -84,6 +73,28 @@ struct Code : Xbyak::CodeGenerator {
 				add(rax, ptr[y + i * 8]);
 			} else {
 				adc(rax, ptr[y + i * 8]);
+			}
+			mov(ptr[z + i * 8], rax);
+		}
+		if (N == 0) {
+			xor_(eax, eax);
+		} else {
+			setc(al);
+			movzx(eax, al);
+		}
+	}
+	void gen_sub(size_t N)
+	{
+		StackFrame sf(this, 3);
+		const Reg64& z = sf.p[0];
+		const Reg64& x = sf.p[1];
+		const Reg64& y = sf.p[2];
+		for (size_t i = 0; i < N; i++) {
+			mov(rax, ptr[x + i * 8]);
+			if (i == 0) {
+				sub(rax, ptr[y + i * 8]);
+			} else {
+				sbb(rax, ptr[y + i * 8]);
 			}
 			mov(ptr[z + i * 8], rax);
 		}
