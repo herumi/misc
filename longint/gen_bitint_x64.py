@@ -159,7 +159,7 @@ def genFunc(name, argc):
 def genAllFunc():
 	tbl = {0:['ret'],
 		1:['inc', 'setc'],
-		2:['mov', 'add', 'adc', 'sub', 'sbb', 'adox', 'adcx', 'mul', 'xor_', 'movzx'],
+		2:['mov', 'add', 'adc', 'sub', 'sbb', 'adox', 'adcx', 'mul', 'xor_', 'and_', 'movzx'],
 		3:['mulx'],
 	}
 	for (n, names) in tbl.items():
@@ -167,9 +167,3 @@ def genAllFunc():
 			globals()[name] = genFunc(name, n)
 
 genAllFunc()
-
-print(ret())
-print(inc(rcx))
-print(mov(eax, ptr(ecx)))
-print(mulx(rax, rcx, rdx))
-print(setc(al))
