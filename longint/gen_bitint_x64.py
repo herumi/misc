@@ -80,6 +80,9 @@ class RegExp:
 			s += str(self.offset)
 		return s
 
+def ptr(exp):
+	return '[' + str(exp) + ']'
+
 rax = Reg(RAX, 64)
 rcx = Reg(RCX, 64)
 rdx = Reg(RDX, 64)
@@ -97,3 +100,56 @@ r13 = Reg(R13, 64)
 r14 = Reg(R14, 64)
 r15 = Reg(R15, 64)
 
+eax = Reg(RAX, 32)
+ecx = Reg(RCX, 32)
+edx = Reg(RDX, 32)
+ebx = Reg(RBX, 32)
+esp = Reg(RSP, 32)
+ebp = Reg(RBP, 32)
+esi = Reg(RSI, 32)
+edi = Reg(RDI, 32)
+r8d = Reg(R8, 32)
+r9d = Reg(R9, 32)
+r10d = Reg(R10, 32)
+r11d = Reg(R11, 32)
+r12d = Reg(R12, 32)
+r13d = Reg(R13, 32)
+r14d = Reg(R14, 32)
+r15d = Reg(R15, 32)
+
+def genFunc(name, argc):
+	if argc == 0:
+		def f():
+			return f'{name}'
+		return f
+	if argc == 1:
+		def f(a):
+			return f'{name} {a}'
+		return f
+	elif argc == 2:
+		def f(a, b):
+			return f'{name} {a}, {b}'
+		return f
+	elif argc == 3:
+		def f(a, b, c):
+			return f'{name} {a}, {b}, {c}'
+		return f
+	else:
+		raise Exception(f'bad argc={argc}')
+
+def genAllFunc():
+	tbl = {0:['ret'],
+		1:['inc'],
+		2:['mov', 'add', 'adc', 'sub', 'sbb', 'adox', 'adcx', 'mul'],
+		3:['mulx'],
+	}
+	for (n, names) in tbl.items():
+		for name in names:
+			globals()[name] = genFunc(name, n)
+
+genAllFunc()
+
+print(ret())
+print(inc(rcx))
+print(mov(eax, ptr(ecx)))
+print(mulx(rax, rcx, rdx))
