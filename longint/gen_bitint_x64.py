@@ -24,6 +24,8 @@ class Reg:
 			tbl = ["rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10",  "r11", "r12", "r13", "r14", "r15"]
 		elif self.bit == 32:
 			tbl = ["eax", "ecx", "edx", "ebx", "esp", "ebp", "esi", "edi", "r8d", "r9d", "r10d",  "r11d", "r12d", "r13d", "r14d", "r15d"]
+		elif self.bit == 8:
+			tbl = ["al", "cl", "dl", "bl", "ah", "ch", "dh", "bh", "r8b", "r9b", "r10b",  "r11b", "r12b", "r13b", "r14b", "r15b"]
 		else:
 			raise Exception('bad bit', self.bit)
 		return tbl[self.idx]
@@ -117,6 +119,23 @@ r13d = Reg(R13, 32)
 r14d = Reg(R14, 32)
 r15d = Reg(R15, 32)
 
+al = Reg(RAX, 8)
+cl = Reg(RCX, 8)
+dl = Reg(RDX, 8)
+bl = Reg(RBX, 8)
+ah = Reg(RSP, 8)
+ch = Reg(RBP, 8)
+dh = Reg(RSI, 8)
+bh = Reg(RDI, 8)
+r8d = Reg(R8, 8)
+r9d = Reg(R9, 8)
+r10b = Reg(R10, 8)
+r11b = Reg(R11, 8)
+r12b = Reg(R12, 8)
+r13b = Reg(R13, 8)
+r14b = Reg(R14, 8)
+r15b = Reg(R15, 8)
+
 def genFunc(name, argc):
 	if argc == 0:
 		def f():
@@ -139,8 +158,8 @@ def genFunc(name, argc):
 
 def genAllFunc():
 	tbl = {0:['ret'],
-		1:['inc'],
-		2:['mov', 'add', 'adc', 'sub', 'sbb', 'adox', 'adcx', 'mul'],
+		1:['inc', 'setc'],
+		2:['mov', 'add', 'adc', 'sub', 'sbb', 'adox', 'adcx', 'mul', 'xor_', 'movzx'],
 		3:['mulx'],
 	}
 	for (n, names) in tbl.items():
@@ -153,3 +172,4 @@ print(ret())
 print(inc(rcx))
 print(mov(eax, ptr(ecx)))
 print(mulx(rax, rcx, rdx))
+print(setc(al))
