@@ -27,6 +27,58 @@ class Reg:
 		else:
 			raise Exception('bad bit', self.bit)
 		return tbl[self.idx]
+	def __mul__(self, scale):
+		if type(scale) == int:
+			if scale not in [1, 2, 4, 8]:
+				raise Exception('bad scale', scale)
+			return RegExp(None, self, scale)
+		raise Exception('bad scale type', scale)
+	def __add__(self, rhs):
+		if type(rhs) == Reg:
+			return RegExp(self, rhs)
+		if type(rhs) == int:
+			return RegExp(self, None, 1, rhs)
+		if type(rhs) == RegExp:
+			return RegExp(self, rhs.index, rhs.scale, rhs.offset)
+		raise Exception('bad add type', rhs)
+	def __sub__(self, rhs):
+		if type(rhs) == int:
+			return RegExp(self, None, 1, -rhs)
+		raise Exception('bad sub type', rhs)
+
+class RegExp:
+	def __init__(self, reg, index = None, scale = 1, offset = 0):
+		self.base = reg
+		self.index = index
+		self.scale = scale
+		self.offset = offset
+	def __add__(self, rhs):
+		if type(rhs) == int:
+			return RegExp(self.base, self.index, self.scale, self.offset + rhs)
+		if type(rhs) == Reg:
+			if self.index:
+				raise Exception('already index exists', self.index, rhs)
+			return RegExp(self.base, rhs.base, rhs.scale, self.offset + rhs.offset)
+		raise Exception(f'bad add self={self} rhs={rhs}')
+	def __sub__(self, rhs):
+		if type(rhs) == int:
+			return RegExp(self.base, self.index, self.scale, self.offset - rhs)
+		raise Exception(f'bad sub self={self} rhs={rhs}')
+	def __str__(self):
+		s = ''
+		if self.base:
+			s += str(self.base)
+		if self.index:
+			if s:
+				s += '+'
+			s += str(self.index)
+			if self.scale > 1:
+				s += '*' + str(self.scale)
+		if self.offset:
+			if self.offset > 0:
+				s += '+'
+			s += str(self.offset)
+		return s
 
 rax = Reg(RAX, 64)
 rcx = Reg(RCX, 64)
@@ -45,4 +97,3 @@ r13 = Reg(R13, 64)
 r14 = Reg(R14, 64)
 r15 = Reg(R15, 64)
 
-print(rax)
