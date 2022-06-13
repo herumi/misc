@@ -1,7 +1,11 @@
 from gen_x86asm import *
 
 def gen_add(N):
-	with StackFrame(3, useRDX=True) as sf:
+	align(16)
+	name = f'mclb_add{N}:'
+	print(name)
+	print('_' + name)
+	with StackFrame(3) as sf:
 		if N == 0:
 			xor_(eax, eax)
 			return
@@ -19,5 +23,5 @@ def gen_add(N):
 			setc(al)
 			movzx(eax, al)
 
-setWin64ABI(True)
+#setWin64ABI(True)
 gen_add(4)

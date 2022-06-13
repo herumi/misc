@@ -212,7 +212,7 @@ def genFunc(name, argc):
 
 def genAllFunc():
 	tbl = {0:['ret'],
-		1:['inc', 'setc'],
+		1:['inc', 'setc', 'align'],
 		2:['mov', 'add', 'adc', 'sub', 'sbb', 'adox', 'adcx', 'mul', 'xor_', 'and_', 'movzx'],
 		3:['mulx'],
 	}
