@@ -46,23 +46,57 @@ def gen_mulUnit(N):
 		xor_(eax, eax)
 		ret()
 		return
-	with StackFrame(3, useRDX=True) as sf:
-		z = sf.p[0]
-		x = sf.p[1]
-		y = sf.p[2]
-		if N == 1:
+	if N == 1:
+		with StackFrame(3) as sf:
+			z = sf.p[0]
+			x = sf.p[1]
+			y = sf.p[2]
 			mov(rax, ptr(x))
-			mul(y)
+			mul(y) # [rdx:rax] = x * y
 			mov(ptr(z), rax)
 			mov(rax, rdx)
-
+			return
+	elif N == 2:
+		with StackFrame(3, 1, useRDX=True) as sf:
+			z = sf.p[0]
+			x = sf.p[1]
+			y = sf.p[2]
+			t = sf.t[0]
+			mov(rax, ptr(x));
+			mul(y) # [rdx:rax] = x[0] * y
+			mov(ptr(z), rax)
+			mov(t, rdx)
+			mov(rax, ptr(x + 8))
+			mul(y) # [rdx:rax] = x[1] * y
+			add(rax, t)
+			adc(rdx, 0)
+			mov(ptr(z + 8), rax)
+			mov(rax, rdx)
+			return
+	else:
+		with StackFrame(3, 2, useRDX=True) as sf:
+			z = sf.p[0]
+			x = sf.p[1]
+			y = sf.p[2]
+			t0 = sf.t[0]
+			t1 = sf.t[1]
+			mov(rdx, y);
+			mulx(t1, rax, ptr(x)) # [y:rax] = x * y
+			mov(ptr(z), rax)
+			for i in range(1, N):
+				mulx(t0, rax, ptr(x + i * 8))
+				if i == 1:
+					add(rax, t1)
+				else:
+					adc(rax, t1)
+				mov(ptr(z + i * 8), rax)
+				t0, t1 = t1, t0
+			mulx(rdx, rax, ptr(x + (N - 1) * 8))
+			adc(rax, t1)
+			mov(ptr(z + (N - 1) * 8), rax)
+			adc(rdx, 0)
+			mov(rax, rdx)
 
 #setWin64ABI(True)
-gen_mulUnit(1)
+gen_mulUnit(4)
 
-with StackFrame(4, 4, useRDX=True,useRCX=True) as sf:
-	for e in sf.p:
-		print(e)
-	print('---')
-	for e in sf.t:
-		print(e)
