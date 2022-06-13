@@ -138,7 +138,7 @@ r15b = Reg(R15, 8)
 
 win64ABI = False
 
-def setABI(win64):
+def setWin64ABI(win64):
 	global win64ABI
 	win64ABI = win64
 
@@ -178,13 +178,13 @@ class StackFrame:
 		r = getRegTbl(self.pos)
 		self.pos += 1
 		if self.useRCX:
-			if r == RCX:
+			if r == rcx:
 				return r10
 			if r == r10:
 				r = getRegTbl(self.pos)
 				self.pos += 1
 		if self.useRDX:
-			if r == RDX:
+			if r == rdx:
 				return r11
 			if r == r11:
 				r = getRegTbl(self.pos)
