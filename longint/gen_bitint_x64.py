@@ -103,3 +103,6 @@ N = 9
 for i in range(N):
 	gen_add(i)
 
+for i in range(N):
+	gen_sub(i)
+
