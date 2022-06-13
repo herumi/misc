@@ -83,7 +83,7 @@ def gen_mulUnit(N):
 			mov(rdx, y);
 			mulx(t1, rax, ptr(x)) # [y:rax] = x * y
 			mov(ptr(z), rax)
-			for i in range(1, N):
+			for i in range(1, N-1):
 				mulx(t0, rax, ptr(x + i * 8))
 				if i == 1:
 					add(rax, t1)
@@ -106,3 +106,5 @@ for i in range(N):
 for i in range(N):
 	gen_sub(i)
 
+for i in range(N):
+	gen_mulUnit(i)

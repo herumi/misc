@@ -93,3 +93,33 @@ CYBOZU_TEST_AUTO(sub)
 	testSub<7>();
 	testSub<8>();
 }
+
+template<size_t N>
+void testMulUnit()
+{
+	cybozu::XorShift rg;
+	Unit x[N], y, z[N], ret;
+	mpz_class mx, mz;
+	for (size_t i = 0; i < C; i++) {
+		setRand(x, N, rg);
+		setRand(&y, 1, rg);
+		setArray(mx, x, N);
+		ret = mulUnitT<N>(z, x, y);
+		setArray(mz, z, N);
+std::cout << std::hex;
+		CYBOZU_TEST_EQUAL(mz + (mpz_class(ret) << (N * UnitBitSize)), mx * y);
+	}
+}
+
+CYBOZU_TEST_AUTO(mulUnit)
+{
+	testMulUnit<1>();
+	testMulUnit<2>();
+	testMulUnit<3>();
+	testMulUnit<4>();
+	testMulUnit<5>();
+	testMulUnit<6>();
+	testMulUnit<7>();
+	testMulUnit<8>();
+}
+
