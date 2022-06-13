@@ -59,3 +59,10 @@ def gen_mulUnit(N):
 
 #setWin64ABI(True)
 gen_mulUnit(1)
+
+with StackFrame(4, 4, useRDX=True,useRCX=True) as sf:
+	for e in sf.p:
+		print(e)
+	print('---')
+	for e in sf.t:
+		print(e)

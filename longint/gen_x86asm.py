@@ -145,11 +145,14 @@ def setWin64ABI(win64):
 win64Regs = [rcx, rdx, r8, r9, r10, r11, rdi, rsi, rbx, rbp, r12, r13, r14, r15]
 linuxRegs = [rdi, rsi, rdx, rcx, r8, r9, r10, r11, rbx, rbp, r12, r13, r14, r15]
 
-def getRegTbl(pos):
+def getRegTbl():
 	if win64ABI:
-		return win64Regs[pos]
+		return win64Regs
 	else:
-		return linuxRegs[pos]
+		return linuxRegs
+
+def getReg(pos):
+	return getRegTbl()[pos]
 
 def getRcxPos():
 	return 0 if win64ABI else 3
@@ -157,37 +160,56 @@ def getRcxPos():
 def getRdxPos():
 	return 1 if win64ABI else 2
 
+def getNoSaveNum():
+	return 6 if win64ABI else 8
+
 class StackFrame:
-	def __init__(self, pNum, useRDX=False, useRCX=False):
+	def __init__(self, pNum, tNum = 0, useRDX=False, useRCX=False):
 		self.pos = 0
 		self.useRDX = useRDX
 		self.useRCX = useRCX
 		self.p = []
+		self.t = []
+		allRegNum = pNum + tNum + (1 if useRDX else 0) + (1 if useRCX else 0)
+		noSaveNum = getNoSaveNum()
+		self.saveNum = max(0, allRegNum - noSaveNum)
+		tbl = getRegTbl()[noSaveNum:]
+		for i in range(self.saveNum):
+			push(tbl[i])
 		for i in range(pNum):
 			self.p.append(self.getRegIdx())
+		for i in range(tNum):
+			self.t.append(self.getRegIdx())
 		if self.useRCX and getRcxPos() < pNum:
 			mov(r10, rcx)
 		if self.useRDX and getRdxPos() < pNum:
 			mov(r11, rdx)
+	def close(self, callRet = True):
+		noSaveNum = getNoSaveNum()
+		tbl = getRegTbl()[noSaveNum:]
+		for i in range(self.saveNum-1,-1,-1):
+			pop(tbl[i])
+		if callRet:
+			ret()
 	def __enter__(self):
 		return self
 	def __exit__(self, ex_type, ex_value, trace):
-		ret()
+		self.close()
 
 	def getRegIdx(self):
-		r = getRegTbl(self.pos)
+		r = getReg(self.pos)
 		self.pos += 1
 		if self.useRCX:
 			if r == rcx:
 				return r10
 			if r == r10:
-				r = getRegTbl(self.pos)
+				r = getReg(self.pos)
 				self.pos += 1
 		if self.useRDX:
 			if r == rdx:
 				return r11
 			if r == r11:
-				r = getRegTbl(self.pos)
+				r = getReg(self.pos)
 				self.pos += 1
 				return r
 		return r
@@ -210,7 +232,7 @@ def genFunc(name):
 def genAllFunc():
 	tbl = [
 		'ret',
-		'inc', 'setc', 'align',
+		'inc', 'dec', 'setc', 'push', 'pop', 'align',
 		'mov', 'add', 'adc', 'sub', 'sbb', 'adox', 'adcx', 'mul', 'xor_', 'and_', 'movzx',
 		'mulx',
 	]
