@@ -197,32 +197,25 @@ def proc(name):
 	print(name + ':')
 	print('_' + name + ':')
 
-def genFunc(name, argc):
-	if argc == 0:
-		def f():
-			return print(f'{name}')
-	elif argc == 1:
-		def f(a):
-			return print(f'{name} {a}')
-	elif argc == 2:
-		def f(a, b):
-			return print(f'{name} {a}, {b}')
-	elif argc == 3:
-		def f(a, b, c):
-			return print(f'{name} {a}, {b}, {c}')
-	else:
-		raise Exception(f'bad argc={argc}')
+def genFunc(name):
+	def f(*args):
+		s = ''
+		for arg in args:
+			if s != '':
+				s += ', '
+			s += str(arg)
+		return print(name + ' ' + s)
 	return f
 
 def genAllFunc():
-	tbl = {0:['ret'],
-		1:['inc', 'setc', 'align'],
-		2:['mov', 'add', 'adc', 'sub', 'sbb', 'adox', 'adcx', 'mul', 'xor_', 'and_', 'movzx'],
-		3:['mulx'],
-	}
-	for (n, names) in tbl.items():
-		for name in names:
-			asmName = name.strip('_')
-			globals()[name] = genFunc(asmName, n)
+	tbl = [
+		'ret',
+		'inc', 'setc', 'align',
+		'mov', 'add', 'adc', 'sub', 'sbb', 'adox', 'adcx', 'mul', 'xor_', 'and_', 'movzx',
+		'mulx',
+	]
+	for name in tbl:
+		asmName = name.strip('_')
+		globals()[name] = genFunc(asmName)
 
 genAllFunc()
