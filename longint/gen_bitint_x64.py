@@ -98,5 +98,8 @@ def gen_mulUnit(N):
 			mov(rax, rdx)
 
 #setWin64ABI(True)
-gen_mulUnit(4)
+N = 9
+
+for i in range(N):
+	gen_add(i)
 

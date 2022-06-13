@@ -216,6 +216,8 @@ class StackFrame:
 
 def proc(name):
 	align(16)
+	print('global ' + name)
+	print('global _' + name)
 	print(name + ':')
 	print('_' + name + ':')
 

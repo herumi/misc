@@ -26,8 +26,20 @@ test: $(TARGET)
 bitint:
 	clang++-12 -S -O2 -Wall -Wextra -S -masm=intel -std=c++17 -mbmi2 -madx -DNDEBUG bitint_x64.cpp -I $(MCL_DIR)
 
+bitint.asm: gen_x86asm.py gen_bitint_x64.py
+	python3 gen_bitint_x64.py > bitint.asm
+
+bitint.o: bitint.asm
+	nasm -f elf64 bitint.asm
+
+bitint_test.exe: bitint_test.o bitint.o
+	$(CXX) -o $@ bitint_test.o bitint.o -lgmp -lgmpxx
+
+test_bitint: bitint_test.exe
+	./bitint_test.exe
+
 clean:
-	$(RM) *.o *.d *.exe *.a
+	$(RM) *.o *.d *.exe *.a *.s *.lst
 
 DEPEND_FILE=$(ALL_SRC:.cpp=.d)
 -include $(DEPEND_FILE)
