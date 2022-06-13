@@ -1,10 +1,7 @@
 from gen_x86asm import *
 
 def gen_add(N):
-	align(16)
-	name = f'mclb_add{N}:'
-	print(name)
-	print('_' + name)
+	proc(f'mclb_add{N}')
 	with StackFrame(3) as sf:
 		if N == 0:
 			xor_(eax, eax)

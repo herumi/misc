@@ -192,6 +192,10 @@ class StackFrame:
 				return r
 		return r
 
+def proc(name):
+	align(16)
+	print(name + ':')
+	print('_' + name + ':')
 
 def genFunc(name, argc):
 	if argc == 0:
