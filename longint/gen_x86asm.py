@@ -136,6 +136,63 @@ r13b = Reg(R13, 8)
 r14b = Reg(R14, 8)
 r15b = Reg(R15, 8)
 
+win64ABI = False
+
+def setABI(win64):
+	global win64ABI
+	win64ABI = win64
+
+win64Regs = [rcx, rdx, r8, r9, r10, r11, rdi, rsi, rbx, rbp, r12, r13, r14, r15]
+linuxRegs = [rdi, rsi, rdx, rcx, r8, r9, r10, r11, rbx, rbp, r12, r13, r14, r15]
+
+def getRegTbl(pos):
+	if win64ABI:
+		return win64Regs[pos]
+	else:
+		return linuxRegs[pos]
+
+def getRcxPos():
+	return 0 if win64ABI else 3
+
+def getRdxPos():
+	return 1 if win64ABI else 2
+
+class StackFrame:
+	def __init__(self, pNum, useRDX=False, useRCX=False):
+		self.pos = 0
+		self.useRDX = useRDX
+		self.useRCX = useRCX
+		self.p = []
+		for i in range(pNum):
+			self.p.append(self.getRegIdx())
+		if self.useRCX and getRcxPos() < pNum:
+			mov(r10, rcx)
+		if self.useRDX and getRdxPos() < pNum:
+			mov(r11, rdx)
+	def __enter__(self):
+		return self
+	def __exit__(self, ex_type, ex_value, trace):
+		ret()
+
+	def getRegIdx(self):
+		r = getRegTbl(self.pos)
+		self.pos += 1
+		if self.useRCX:
+			if r == RCX:
+				return r10
+			if r == r10:
+				r = getRegTbl(self.pos)
+				self.pos += 1
+		if self.useRDX:
+			if r == RDX:
+				return r11
+			if r == r11:
+				r = getRegTbl(self.pos)
+				self.pos += 1
+				return r
+		return r
+
+
 def genFunc(name, argc):
 	if argc == 0:
 		def f():
