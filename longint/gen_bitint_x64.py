@@ -91,11 +91,10 @@ def gen_mulUnit(N):
 					adc(rax, t1)
 				mov(ptr(z + i * 8), rax)
 				t0, t1 = t1, t0
-			mulx(rdx, rax, ptr(x + (N - 1) * 8))
-			adc(rax, t1)
-			mov(ptr(z + (N - 1) * 8), rax)
-			adc(rdx, 0)
-			mov(rax, rdx)
+			mulx(rax, rdx, ptr(x + (N - 1) * 8))
+			adc(rdx, t1)
+			mov(ptr(z + (N - 1) * 8), rdx)
+			adc(rax, 0)
 
 #setWin64ABI(True)
 N = 9
