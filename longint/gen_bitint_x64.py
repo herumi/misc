@@ -96,6 +96,35 @@ def gen_mulUnit(N):
 			mov(ptr(z + (N - 1) * 8), rdx)
 			adc(rax, 0)
 
+# [ret:z[N]] = z[N] + x[N] * y
+def gen_mulUnitAdd(N):
+	proc(f'mclb_mulUnitAdd{N}')
+	if N == 0:
+		xor_(eax, eax)
+		ret()
+		return
+	with StackFrame(3, 2, useRDX=True) as sf:
+		z = sf.p[0]
+		x = sf.p[1]
+		y = sf.p[2]
+		t = sf.t[0]
+		L = sf.t[1]
+		mov(rdx, y)
+		xor_(eax, eax)
+		mov(t, ptr(z))
+		for i in range(N):
+			mulx(rax, L, ptr(x + i * 8))
+			adox(t, L)
+			mov(ptr(z + i * 8), t)
+			if i == N-1:
+				break
+			mov(t, ptr(z + (i+1) * 8))
+			adcx(t, rax)
+		mov(t, 0)
+		adcx(rax, t)
+		adox(rax, t)
+
+
 #setWin64ABI(True)
 N = 9
 
@@ -107,3 +136,6 @@ for i in range(N):
 
 for i in range(N):
 	gen_mulUnit(i)
+
+for i in range(N):
+	gen_mulUnitAdd(i)

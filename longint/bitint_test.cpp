@@ -29,7 +29,7 @@ void setArray(mpz_class& z, const Unit *buf, size_t n)
 	mpz_import(z.get_mpz_t(), n, -1, sizeof(*buf), 0, 0, buf);
 }
 
-const size_t C = 10;
+const size_t C = 100;
 
 template<size_t N>
 void testAdd()
@@ -106,7 +106,6 @@ void testMulUnit()
 		setArray(mx, x, N);
 		ret = mulUnitT<N>(z, x, y);
 		setArray(mz, z, N);
-std::cout << std::hex;
 		CYBOZU_TEST_EQUAL(mz + (mpz_class(ret) << (N * UnitBitSize)), mx * y);
 	}
 }
@@ -121,5 +120,35 @@ CYBOZU_TEST_AUTO(mulUnit)
 	testMulUnit<6>();
 	testMulUnit<7>();
 	testMulUnit<8>();
+}
+
+template<size_t N>
+void testMulUnitAdd()
+{
+	cybozu::XorShift rg;
+	Unit x[N], y, z[N], ret;
+	mpz_class mx, mz, mz2;
+	for (size_t i = 0; i < C; i++) {
+		setRand(x, N, rg);
+		setRand(z, N, rg);
+		setRand(&y, 1, rg);
+		setArray(mx, x, N);
+		setArray(mz, z, N);
+		ret = mulUnitAddT<N>(z, x, y);
+		setArray(mz2, z, N);
+		CYBOZU_TEST_EQUAL(mz2 + (mpz_class(ret) << (N * UnitBitSize)), mz + mx * y);
+	}
+}
+
+CYBOZU_TEST_AUTO(mulUnitAdd)
+{
+	testMulUnitAdd<1>();
+	testMulUnitAdd<2>();
+	testMulUnitAdd<3>();
+	testMulUnitAdd<4>();
+	testMulUnitAdd<5>();
+	testMulUnitAdd<6>();
+	testMulUnitAdd<7>();
+	testMulUnitAdd<8>();
 }
 
