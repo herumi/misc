@@ -8,6 +8,7 @@ LIB=libmcl.a
 ALL_SRC=$(LIB_SRC) mcl_test.cpp
 CFLAGS+=-I $(MCL_DIR)/include -I $(MCL_DIR)/src
 LDFLAGS+=-lgmp -lgmpxx
+BITINT_ASM=bitint-amd64.asm
 
 all: $(TARGET)
 
@@ -26,14 +27,14 @@ test: $(TARGET)
 bitint:
 	clang++-12 -S -O2 -Wall -Wextra -S -masm=intel -std=c++17 -mbmi2 -madx -DNDEBUG bitint_x64.cpp -I $(MCL_DIR)
 
-bitint.asm: gen_x86asm.py gen_bitint_x64.py
-	python3 gen_bitint_x64.py > bitint.asm
+bitint-amd64.asm: gen_x86asm.py gen_bitint_x64.py
+	python3 gen_bitint_x64.py | sed -z 's/mov r11, rdx\nmov rdx, r11\n//' > bitint-amd64.asm
 
-bitint.o: bitint.asm
-	nasm -f elf64 bitint.asm
+%.o: %.asm
+	nasm -f elf64 $<
 
-bitint_test.exe: bitint_test.o bitint.o
-	$(CXX) -o $@ bitint_test.o bitint.o -lgmp -lgmpxx
+bitint_test.exe: bitint_test.o $(BITINT_ASM:.asm=.o)
+	$(CXX) -o $@ bitint_test.o $(BITINT_ASM:.asm=.o) -lgmp -lgmpxx
 
 test_bitint: bitint_test.exe
 	./bitint_test.exe
