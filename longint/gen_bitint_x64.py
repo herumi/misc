@@ -1,4 +1,5 @@
 from gen_x86asm import *
+import argparse
 
 def gen_add(N):
 	proc(f'mclb_add{N}')
@@ -125,8 +126,13 @@ def gen_mulUnitAdd(N):
 		adox(rax, t)
 
 
-#setWin64ABI(True)
-N = 9
+parser = argparse.ArgumentParser()
+parser.add_argument("-win", "--win", help="output win64 abi", action="store_true")
+parser.add_argument("-n", "--num", help="max size of Unit", type=int, default=9)
+param = parser.parse_args()
+
+setWin64ABI(param.win)
+N = param.num
 
 for i in range(N):
 	gen_add(i)
