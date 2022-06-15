@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include <cybozu/inttype.hpp>
 typedef uint64_t Unit;
 static const size_t UnitBitSize = sizeof(Unit) * 8;
 #define MCL_SIZEOF_UNIT 8
