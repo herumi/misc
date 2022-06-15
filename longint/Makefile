@@ -28,7 +28,7 @@ bitint:
 	clang++-12 -S -O2 -Wall -Wextra -S -masm=intel -std=c++17 -mbmi2 -madx -DNDEBUG bitint_x64.cpp -I $(MCL_DIR)
 
 $(BITINT_ASM): gen_x86asm.py gen_bitint_x64.py
-	python3 gen_bitint_x64.py | sed -z 's/mov r11, rdx\nmov rdx, r11\n//g' > $(BITINT_ASM)
+	python3 gen_bitint_x64.py > $(BITINT_ASM)
 
 %.o: %.asm
 	nasm -f elf64 $<

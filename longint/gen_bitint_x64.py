@@ -134,7 +134,8 @@ param = parser.parse_args()
 setWin64ABI(param.win)
 N = param.num
 
-print('segment .text')
+initOutput()
+
 for i in range(N):
 	gen_add(i)
 
@@ -146,3 +147,5 @@ for i in range(N):
 
 for i in range(N):
 	gen_mulUnitAdd(i)
+
+termOutput()

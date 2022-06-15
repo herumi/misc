@@ -214,12 +214,33 @@ class StackFrame:
 				return r
 		return r
 
+g_text = []
+def initOutput():
+	global g_text
+	g_text = []
+	output('segment .text')
+
+def output(s):
+	g_text.append(s)
+
+def termOutput():
+	n = len(g_text)
+	i = 0
+	while i < n:
+		s = g_text[i]
+		# remove unnecessary pattern
+		if s == 'mov r11, rdx' and g_text[i+1] == 'mov rdx, r11':
+			i += 2
+		else:
+			print(s)
+			i += 1
+
 def proc(name):
 	align(16)
-	print('global ' + name)
-	print('global _' + name)
-	print(name + ':')
-	print('_' + name + ':')
+	output('global ' + name)
+	output('global _' + name)
+	output(name + ':')
+	output('_' + name + ':')
 
 def genFunc(name):
 	def f(*args):
@@ -228,7 +249,7 @@ def genFunc(name):
 			if s != '':
 				s += ', '
 			s += str(arg)
-		return print(name + ' ' + s)
+		return output(name + ' ' + s)
 	return f
 
 def genAllFunc():
