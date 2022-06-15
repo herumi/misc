@@ -14,6 +14,7 @@ template<size_t N>Unit mulUnitAddT(Unit *z, const Unit *x, Unit y);
 #include <mcl/bitint_asm.hpp>
 #include <cybozu/test.hpp>
 #include <cybozu/xorshift.hpp>
+#include <cybozu/link_mpir.hpp>
 #include <gmpxx.h>
 
 template<class RG>

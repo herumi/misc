@@ -134,6 +134,7 @@ param = parser.parse_args()
 setWin64ABI(param.win)
 N = param.num
 
+print('segment .text')
 for i in range(N):
 	gen_add(i)
 
