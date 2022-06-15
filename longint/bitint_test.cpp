@@ -13,6 +13,7 @@ template<size_t N>Unit mulUnitT(Unit *z, const Unit *x, Unit y);
 // [ret:z[N]] = z[N] + x[N] * y
 template<size_t N>Unit mulUnitAddT(Unit *z, const Unit *x, Unit y);
 #include <mcl/bitint_asm.hpp>
+#define CYBOZU_TEST_DISABLE_AUTO_RUN
 #include <cybozu/test.hpp>
 #include <cybozu/xorshift.hpp>
 #include <cybozu/link_mpir.hpp>
@@ -166,5 +167,13 @@ CYBOZU_TEST_AUTO(mulUnitAdd)
 	testMulUnitAdd<6>();
 	testMulUnitAdd<7>();
 	testMulUnitAdd<8>();
+}
+
+int main(int argc, char *argv[])
+{
+	bool fast = argc == 2;
+	printf("fast=%d\n", fast);
+	if (fast) mclb_enable_fast();
+	return cybozu::test::autoRun.run(argc, argv);
 }
 
