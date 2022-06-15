@@ -16,6 +16,7 @@ template<size_t N>Unit mulUnitAddT(Unit *z, const Unit *x, Unit y);
 #include <cybozu/test.hpp>
 #include <cybozu/xorshift.hpp>
 #include <cybozu/link_mpir.hpp>
+#include <cybozu/benchmark.hpp>
 #include <gmpxx.h>
 
 template<class RG>
@@ -53,6 +54,8 @@ void testAdd()
 		setArray(mz, z, N);
 		CYBOZU_TEST_EQUAL(mz + (to_mpz(CF) << (N * UnitBitSize)), mx + my);
 	}
+	printf("%2zd ", N);
+	CYBOZU_BENCH_C("addT", 1000, addT<N>, z, x, y);
 }
 
 CYBOZU_TEST_AUTO(add)
@@ -87,6 +90,8 @@ void testSub()
 			CYBOZU_TEST_EQUAL(mz, mx - my + (to_mpz(CF) << (N * UnitBitSize)));
 		}
 	}
+	printf("%2zd ", N);
+	CYBOZU_BENCH_C("subT", 1000, subT<N>, z, x, y);
 }
 
 CYBOZU_TEST_AUTO(sub)
@@ -115,6 +120,8 @@ void testMulUnit()
 		setArray(mz, z, N);
 		CYBOZU_TEST_EQUAL(mz + (to_mpz(ret) << (N * UnitBitSize)), mx * to_mpz(y));
 	}
+	printf("%2zd ", N);
+	CYBOZU_BENCH_C("mulUnitT", 1000, mulUnitT<N>, z, x, y);
 }
 
 CYBOZU_TEST_AUTO(mulUnit)
@@ -145,6 +152,8 @@ void testMulUnitAdd()
 		setArray(mz2, z, N);
 		CYBOZU_TEST_EQUAL(mz2 + (to_mpz(ret) << (N * UnitBitSize)), mz + mx * to_mpz(y));
 	}
+	printf("%2zd ", N);
+	CYBOZU_BENCH_C("mulUnitAddT", 1000, mulUnitAddT<N>, z, x, y);
 }
 
 CYBOZU_TEST_AUTO(mulUnitAdd)
