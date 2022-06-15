@@ -31,7 +31,11 @@ $(BITINT_ASM): gen_x86asm.py gen_bitint_x64.py
 	python3 gen_bitint_x64.py > $(BITINT_ASM)
 
 %.o: %.asm
+ifeq ($(OS),mac)
+	nasm -f macho64 $<
+else
 	nasm -f elf64 $<
+endif
 
 bitint_test.exe: bitint_test.o $(BITINT_ASM:.asm=.o)
 	$(CXX) -o $@ bitint_test.o $(BITINT_ASM:.asm=.o) -lgmp -lgmpxx

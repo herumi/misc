@@ -25,6 +25,11 @@ void setRand(Unit *x, size_t n, RG& rg)
 	}
 }
 
+mpz_class to_mpz(Unit x)
+{
+	return mp_limb_t(x);
+}
+
 void setArray(mpz_class& z, const Unit *buf, size_t n)
 {
 	mpz_import(z.get_mpz_t(), n, -1, sizeof(*buf), 0, 0, buf);
@@ -45,7 +50,7 @@ void testAdd()
 		setArray(my, y, N);
 		CF = addT<N>(z, x, y);
 		setArray(mz, z, N);
-		CYBOZU_TEST_EQUAL(mz + (mpz_class(CF) << (N * UnitBitSize)), mx + my);
+		CYBOZU_TEST_EQUAL(mz + (to_mpz(CF) << (N * UnitBitSize)), mx + my);
 	}
 }
 
@@ -78,7 +83,7 @@ void testSub()
 		if (mx >= my) {
 			CYBOZU_TEST_EQUAL(mz, mx - my);
 		} else {
-			CYBOZU_TEST_EQUAL(mz, mx - my + (mpz_class(CF) << (N * UnitBitSize)));
+			CYBOZU_TEST_EQUAL(mz, mx - my + (to_mpz(CF) << (N * UnitBitSize)));
 		}
 	}
 }
@@ -107,7 +112,7 @@ void testMulUnit()
 		setArray(mx, x, N);
 		ret = mulUnitT<N>(z, x, y);
 		setArray(mz, z, N);
-		CYBOZU_TEST_EQUAL(mz + (mpz_class(ret) << (N * UnitBitSize)), mx * y);
+		CYBOZU_TEST_EQUAL(mz + (to_mpz(ret) << (N * UnitBitSize)), mx * to_mpz(y));
 	}
 }
 
@@ -137,7 +142,7 @@ void testMulUnitAdd()
 		setArray(mz, z, N);
 		ret = mulUnitAddT<N>(z, x, y);
 		setArray(mz2, z, N);
-		CYBOZU_TEST_EQUAL(mz2 + (mpz_class(ret) << (N * UnitBitSize)), mz + mx * y);
+		CYBOZU_TEST_EQUAL(mz2 + (to_mpz(ret) << (N * UnitBitSize)), mz + mx * to_mpz(y));
 	}
 }
 
