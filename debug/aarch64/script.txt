@@ -1,0 +1,51 @@
+define flags
+  printf "QQQ %c %c %c %c\n", ($cpsr >> 31) & 1 ? 'N' : '-', ($cpsr >> 30) & 1 ? 'Z' : '-', ($cpsr >> 29) & 1 ? 'C' : '-', ($cpsr >> 28) & 1 ? 'V' : '-'
+end
+
+define step1
+c
+printf "QQQ %08x %08x\n", $w0, $w1
+si
+flags
+end
+
+b func
+set verbose off
+display/i $pc
+r
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+step1
+
