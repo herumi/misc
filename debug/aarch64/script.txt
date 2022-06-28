@@ -13,7 +13,8 @@ end
 b func
 set verbose off
 display/i $pc
-r
+start
+step1
 step1
 step1
 step1
