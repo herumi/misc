@@ -15,7 +15,7 @@ test: test.exe
 	./test.exe
 
 result: test.exe
-	gdb -nx -q -batch -x script.txt ./test.exe | grep QQQ
+	@gdb -nx -q -batch -x script.txt ./test.exe | grep QQQ
 
 clean:
 	$(RM) *.o *.exe

@@ -6,6 +6,7 @@ define step1
 c
 printf "QQQ %08x %08x\n", $w0, $w1
 si
+printf "QQQ %08x\n", $w0
 flags
 end
 
