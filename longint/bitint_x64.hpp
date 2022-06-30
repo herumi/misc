@@ -74,12 +74,12 @@ uint64_t mulUnitAddT(uint64_t *z, const uint64_t *x, uint64_t y)
 	t = z[0];
 	for (size_t i = 0; i < N; i++) {
 		H = _mulx_u64(x[i], y, &L);
-		c1 = _addcarry_u64(c1, t, L, (unsigned long long*)&z[i]);
+		c1 = _addcarryx_u64(c1, t, L, (unsigned long long*)&z[i]);
 		if (i == N - 1) break;
-		c2 = _addcarry_u64(c2, z[i + 1], H, &t);
+		c2 = _addcarryx_u64(c2, z[i + 1], H, &t);
 	}
-	c2 = _addcarry_u64(c2, 0, H, &t);
-	_addcarry_u64(c1, 0, t, &t);
+	c2 = _addcarryx_u64(c2, 0, H, &t);
+	_addcarryx_u64(c1, 0, t, &t);
 	return t;
 }
 
