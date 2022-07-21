@@ -26,6 +26,36 @@ def gen_test1():
 			mov(eax, 1)
 			L(exitL)
 
+def gen_test2():
+	with FuncProc('test2'):
+		with StackFrame(1) as sf:
+			x = sf.p[0]
+			L0 = Label()
+			L1 = Label()
+			L2 = Label()
+			exitL = Label()
+			mov(eax, 100)
+			cmp(x, 0)
+			je(L0)
+			cmp(x, 1)
+			je(L1)
+			cmp(x, 2)
+			je(L2)
+			mov(eax, 123)
+			jmp(exitL)
+			L(L0)
+			mov(eax, 0)
+			jmp(exitL)
+			L(L2)
+			mov(eax, 202)
+			jmp(exitL)
+			L(L1)
+			mov(eax, 101)
+			jmp(exitL)
+			xor_(eax, eax)
+			L(exitL)
+			ret()
+
 parser = argparse.ArgumentParser()
 parser.add_argument('-win', '--win', help='output win64 abi', action='store_true')
 parser.add_argument('-m', '--mode', help='output asm syntax', default='nasm')
@@ -41,5 +71,6 @@ gen_test1()
 gen_sum('sum')
 gen_sum('sum2')
 
+gen_test2()
 
 termOutput()
