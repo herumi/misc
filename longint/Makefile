@@ -43,8 +43,20 @@ bitint_test.exe: bitint_test.o $(BITINT_ASM:.asm=.o)
 test_bitint: bitint_test.exe
 	./bitint_test.exe
 
+gen_sum.asm: gen_sum.py
+	python3 $< -m nasm > $@
+
+gen_sum.o: gen_sum.asm
+	nasm -f elf64 -o $@ $<
+
+sum.exe: sum.cpp gen_sum.o
+	$(CXX) -o $@ sum.cpp gen_sum.o
+
+test_sum: sum.exe
+	./sum.exe
+
 clean:
-	$(RM) *.o *.d *.exe *.a *.s *.lst $(BITINT_ASM)
+	$(RM) *.o *.d *.exe *.a *.s *.lst $(BITINT_ASM) gen_sum.asm
 
 DEPEND_FILE=$(ALL_SRC:.cpp=.d)
 -include $(DEPEND_FILE)
