@@ -125,6 +125,23 @@ graph TD
   - 双方の意志を反映した動的な合意形成
   - その後の履行状況を検証できる
   - 特定のサービスに依存せずにデータ制御や合意形成をする仕組みを取り入れる
+
+## [JSON-LD](https://json-ld.org/)
+- Linked DataをJSONを使って表現する
+- 人間が読み書きしやすい
+- JSONフォーマットなのでコンピュータでも読み書きしやすい
+
+クレデンシャルをJSON-LDで扱う
+
+## [BBS+署名](https://w3c-ccg.github.io/ldp-bbs2020/)
+- [実装1](https://github.com/mattrglobal/bbs-signatures)
+- [実装2](https://github.com/decentralized-identity/bbs-signature)
+- グループ署名の一種
+- 複数のデータを並べたもの(リスト)に署名をつけられる
+- ゼロ知識証明(ZKP)と組み合わせやすい
+  - 署名したデータのリストの一部を隠したまま署名の検証ができる
+  - 特定の要素を隠したまま、それがある条件を満たすことを検証できる(まだ)
+
 ## 参考
 
 - [Internet Infrastructure Review Vol. 43](https://www.iij.ad.jp/dev/report/iir/043.html)
