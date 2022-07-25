@@ -3,6 +3,8 @@ CFLAGS=-O2 -DNDEBUG -fno-stack-protector -fno-exceptions -fno-rtti -fno-threadsa
 CFLAGS+=-Wall -Wextra -Wformat=2 -Wcast-qual -Wcast-align -Wwrite-strings -Wfloat-equal -Wpointer-arith -Wundef
 CFLAGS+=-I ./include -I ./src
 CFLAGS+=-DMCL_MAX_BIT_SIZE=384
+# for dll
+CFLAGS+=-DMCL_NO_AUTOLINK -DMCLBN_NO_AUTOLINK -DMCL_DLL_EXPORT
 
 OBJ_DIR=./obj
 
@@ -21,11 +23,23 @@ sub.obj: sub.cpp
 main.obj: main.cpp
 	$(PRE)$(CXX) -c -o $@ $< $(CFLAGS)
 
-main.exe: $(OBJS)
-	$(PRE)$(CXX) -o $@ $(OBJS)
+dll.dll: sub.obj asm.obj
+	$(PRE)$(LD) -shared -o $@ sub.obj asm.obj
+
+#dll.lib: dll.dll
+#	$(PRE)dlltool -l dll.lib dll.dll
+
+main.exe: dll.dll main.obj
+	$(PRE)$(CXX) -o $@ main.obj dll.dll
+
+test: main.exe
+	wine ./main.exe
+
+#main.exe: $(OBJS)
+#	$(PRE)$(CXX) -o $@ $(OBJS)
 
 clean:
-	$(RM) $(OBJS) asm.asm main.exe
+	$(RM) $(OBJS) asm.asm main.exe *.obj *.lib *.o
 
 #python3 src/gen_bint_x64.py -win -m nasm > $(OBJ_DIR)/bint-x64.asm
 #nasm -f win64 -o $(OBJ_DIR)/bint-x64.obj $(OBJ_DIR)/bint-x64.asm
