@@ -8,7 +8,7 @@ CFLAGS+=-DMCL_NO_AUTOLINK -DMCLBN_NO_AUTOLINK -DMCL_DLL_EXPORT
 
 OBJ_DIR=./obj
 
-OBJS=asm.obj sub.obj main.obj
+OBJS=asm.obj sub.obj
 
 all: main.exe
 
@@ -23,16 +23,16 @@ sub.obj: sub.cpp
 main.obj: main.cpp
 	$(PRE)$(CXX) -c -o $@ $< $(CFLAGS)
 
-suba.lib: sub.obj asm.obj
-	$(PRE)dlltool -e suba -l suba.lib sub.obj asm.obj
+suba.lib: $(OBJS)
+	$(PRE)dlltool -l suba.lib -D suba.dll $(OBJS)
 
 bin/suba.dll: suba.lib
-	$(PRE)$(LD) -shared -o $@ sub.obj asm.obj suba.lib
+	$(PRE)$(LD) -shared -o $@ $(OBJS)
 
-bin/main.exe: bin/suba.dll main.obj
+bin/main.exe: main.obj suba.lib
 	$(PRE)$(CXX) -o $@ main.obj suba.lib
 
-test: bin/main.exe
+test: bin/main.exe bin/suba.dll
 	wine bin/main.exe
 
 clean:
