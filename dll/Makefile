@@ -23,23 +23,20 @@ sub.obj: sub.cpp
 main.obj: main.cpp
 	$(PRE)$(CXX) -c -o $@ $< $(CFLAGS)
 
-dll.dll: sub.obj asm.obj
-	$(PRE)$(LD) -shared -o $@ sub.obj asm.obj
+suba.lib: sub.obj asm.obj
+	$(PRE)dlltool -e suba -l suba.lib sub.obj asm.obj
 
-#dll.lib: dll.dll
-#	$(PRE)dlltool -l dll.lib dll.dll
+bin/suba.dll: suba.lib
+	$(PRE)$(LD) -shared -o $@ sub.obj asm.obj suba.lib
 
-main.exe: dll.dll main.obj
-	$(PRE)$(CXX) -o $@ main.obj dll.dll
+bin/main.exe: bin/suba.dll main.obj
+	$(PRE)$(CXX) -o $@ main.obj suba.lib
 
-test: main.exe
-	wine ./main.exe
-
-#main.exe: $(OBJS)
-#	$(PRE)$(CXX) -o $@ $(OBJS)
+test: bin/main.exe
+	wine bin/main.exe
 
 clean:
-	$(RM) $(OBJS) asm.asm main.exe *.obj *.lib *.o
+	$(RM) $(OBJS) asm.asm *.exe *.obj *.lib *.o *.dll *.exp bin/*.exe bin/*.dll
 
 #python3 src/gen_bint_x64.py -win -m nasm > $(OBJ_DIR)/bint-x64.asm
 #nasm -f win64 -o $(OBJ_DIR)/bint-x64.obj $(OBJ_DIR)/bint-x64.asm
