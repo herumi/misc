@@ -26,14 +26,21 @@ main.obj: main.cpp
 suba.lib: $(OBJS)
 	$(PRE)dlltool -l suba.lib -D suba.dll $(OBJS)
 
+subb.lib: $(OBJS)
+	$(PRE)$(AR) r $@ $(OBJS)
+
 bin/suba.dll: suba.lib
 	$(PRE)$(LD) -shared -o $@ $(OBJS)
 
 bin/main.exe: main.obj suba.lib
 	$(PRE)$(CXX) -o $@ main.obj suba.lib
 
-test: bin/main.exe bin/suba.dll
+bin/mainb.exe: main.obj subb.lib
+	$(PRE)$(CXX) -o $@ main.obj suba.lib
+
+test: bin/main.exe bin/suba.dll bin/mainb.exe
 	wine bin/main.exe
+	wine bin/mainb.exe
 
 clean:
 	$(RM) $(OBJS) asm.asm *.exe *.obj *.lib *.o *.dll *.exp bin/*.exe bin/*.dll

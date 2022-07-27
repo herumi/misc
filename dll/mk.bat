@@ -9,3 +9,7 @@ link /nologo /DLL /OUT:bin\suba.dll asm.obj sub.obj /implib:suba.lib
 dumpbin /exports suba.lib
 cl /O2 main.cpp suba.lib /Fe:bin\main.exe
 bin\main.exe
+
+lib /nologo /OUT:subb.lib /nodefaultlib sub.obj asm.obj
+cl /O2 main.cpp subb.lib /Fe:bin\mainb.exe
+bin\mainb.exe
