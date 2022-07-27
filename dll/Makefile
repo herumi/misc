@@ -38,6 +38,9 @@ test: bin/main.exe
 clean:
 	$(RM) $(OBJS) asm.asm *.exe *.obj *.lib *.o *.dll *.exp bin/*.exe bin/*.dll
 
+install:
+	sudo apt install mingw-w64 binutils-mingw-w64 gcc-mingw-w64 g++-mingw-w64 wine
+
 #python3 src/gen_bint_x64.py -win -m nasm > $(OBJ_DIR)/bint-x64.asm
 #nasm -f win64 -o $(OBJ_DIR)/bint-x64.obj $(OBJ_DIR)/bint-x64.asm
 #$(PRE)$(CXX) -c -o $(OBJ_DIR)/fp.obj src/fp.cpp $(CFLAGS)
