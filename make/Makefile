@@ -13,7 +13,7 @@ all: $(TARGET)
 -include $(DEP)
 
 $(TARGET): $(OBJ)
-	$(CC) -o $@ $? $(LDFLAGS)
+	$(CXX) -o $@ $? $(LDFLAGS)
 
 clean:
 	$(RM) -rf $(OBJ) $(DEP) $(TARGET)
