@@ -123,7 +123,6 @@ public:
 		Fr& s = tt[1];
 		Fr& dom = tt[2];
 		local::calcHash(dom, pub.v, n);
-	PUT(dom);
 		Fr t;
 		local::Hash hash;
 		hash << v << dom;
@@ -138,7 +137,6 @@ public:
 		}
 		G1 B;
 		G1::mulVec(B, &s_Q1, &s, 2); // B = s_Q1 * s + s_Q2 * dom
-	PUT(B);
 		B += s_P1;
 		G1::mulVec(sig.A, s_H, msgVec, n); // A = sum s_H[i] * msgVec[i]
 		B += sig.A;
@@ -156,12 +154,11 @@ inline bool Signature::verify(const PublicKey& pub, const Fr *msgVec, size_t n) 
 		throw cybozu::Exception("too large n") << n;
 	}
 	Fr tt[2];
+	Fr& dom = tt[1];
 	tt[0] = s;
-	local::calcHash(tt[1], pub.v, n);
-PUT(tt[1]);
+	local::calcHash(dom, pub.v, n);
 	G1 B;
-	G1::mulVec(B, &s_Q1, &s, 2); // B = s_Q1 * s + s_Q2 * dom
-PUT(B);
+	G1::mulVec(B, &s_Q1, &tt[0], 2); // B = s_Q1 * s + s_Q2 * dom
 	B += s_P1;
 	G1 T;
 	G1::mulVec(T, s_H, msgVec, n); // T = sum s_H[i] * msgVec[i]

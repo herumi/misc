@@ -21,9 +21,7 @@ CYBOZU_TEST_AUTO(sign_verify)
 	Signature sig;
 	sec.sign(sig, pub, &msg, 1);
 	CYBOZU_TEST_ASSERT(sig.verify(pub, &msg, 1));
-#if 0
 	msg -= 1;
 	CYBOZU_TEST_ASSERT(!sig.verify(pub, &msg, 1));
-#endif
 }
 
