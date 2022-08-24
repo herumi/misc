@@ -55,15 +55,15 @@ void calcDom(Fr& out, const G2& pk, size_t n)
 	hash.get(out);
 }
 
-// B = s_P1 + s_Q1 * s + s_Q2 * dom + sum_i s_H[i] * msgVec[i]
-void calcB(G1& B, const Fr& s, const Fr& dom, const Fr *msgVec, size_t n)
+// B = s_P1 + s_Q1 * s + s_Q2 * dom + sum_i s_H[i] * msgs[i]
+void calcB(G1& B, const Fr& s, const Fr& dom, const Fr *msgs, size_t n)
 {
 	{
 		Fr t[2] = { s, dom };
 		G1::mulVec(B, &s_Q1, t, 2); // B = s_Q1 * s + s_Q2 * dom
 	}
 	G1 T;
-	G1::mulVec(T, s_H, msgVec, n); // T = sum_i s_H[i] * msgVec[i]
+	G1::mulVec(T, s_H, msgs, n); // T = sum_i s_H[i] * msgs[i]
 	B += T;
 	B += s_P1;
 }
@@ -108,7 +108,8 @@ class Signature {
 	Fr e, s;
 	friend class SecretKey;
 public:
-	bool verify(const PublicKey& pub, const Fr *msgVec, size_t n) const;
+	// L : number of msgs
+	bool verify(const PublicKey& pub, const Fr *msgs, size_t L) const;
 };
 
 class SecretKey {
@@ -126,46 +127,49 @@ public:
 	{
 		G2::mul(pub.v, s_P2, v);
 	}
-	void sign(Signature& sig, const PublicKey& pub, const Fr *msgVec, size_t n) const
-	{
-		if (n > s_maxMsgSize) {
-			throw cybozu::Exception("too large n") << n;
-		}
-		Fr dom;
-		local::calcDom(dom, pub.v, n);
-		local::Hash hash;
-		hash << v << dom;
-		for (size_t i = 0; i < n; i++) {
-			hash << msgVec[i];
-		}
-		Fr t;
-		hash.get(t);
-		for (int i = 0; i < 2; i++) {
-			local::Hash hash2;
-			hash2 << t << i;
-			if (i == 0) {
-				hash2.get(sig.e);
-			} else {
-				hash2.get(sig.s);
-			}
-		}
-		G1 B;
-		local::calcB(B, sig.s, dom, msgVec, n);
-		Fr::add(t, v, sig.e);
-		Fr::inv(t, t);
-		G1::mul(sig.A, B, t);
-	}
+	// L : number of msgs
+	void sign(Signature& sig, const PublicKey& pub, const Fr *msgs, size_t L) const;
 };
 
-inline bool Signature::verify(const PublicKey& pub, const Fr *msgVec, size_t n) const
+inline void SecretKey::sign(Signature& sig, const PublicKey& pub, const Fr *msgs, size_t L) const
 {
-	if (n > s_maxMsgSize) {
-		throw cybozu::Exception("too large n") << n;
+	if (L > s_maxMsgSize) {
+		throw cybozu::Exception("too large L") << L;
 	}
 	Fr dom;
-	local::calcDom(dom, pub.v, n);
+	local::calcDom(dom, pub.v, L);
+	local::Hash hash;
+	hash << v << dom;
+	for (size_t i = 0; i < L; i++) {
+		hash << msgs[i];
+	}
+	Fr t;
+	hash.get(t);
+	for (int i = 0; i < 2; i++) {
+		local::Hash hash2;
+		hash2 << t << i;
+		if (i == 0) {
+			hash2.get(sig.e);
+		} else {
+			hash2.get(sig.s);
+		}
+	}
 	G1 B;
-	local::calcB(B, s, dom, msgVec, n);
+	local::calcB(B, sig.s, dom, msgs, L);
+	Fr::add(t, v, sig.e);
+	Fr::inv(t, t);
+	G1::mul(sig.A, B, t);
+}
+
+inline bool Signature::verify(const PublicKey& pub, const Fr *msgs, size_t L) const
+{
+	if (L > s_maxMsgSize) {
+		throw cybozu::Exception("too large L") << L;
+	}
+	Fr dom;
+	local::calcDom(dom, pub.v, L);
+	G1 B;
+	local::calcB(B, s, dom, msgs, L);
 	G1 v1[2] = { A, B };
 	G2 v2[2] = { pub.v + s_P2 * e, - s_P2 };
 	GT out;
