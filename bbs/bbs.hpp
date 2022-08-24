@@ -45,7 +45,7 @@ struct Hash {
 };
 
 // out = hash(pk, n, s_Q1, s_Q2, s_H[0:n])
-void calcHash(Fr& out, const G2& pk, size_t n)
+void calcDom(Fr& out, const G2& pk, size_t n)
 {
 	Hash hash;
 	hash << pk << n << s_Q1 << s_Q2;
@@ -53,6 +53,19 @@ void calcHash(Fr& out, const G2& pk, size_t n)
 		hash << s_H[i];
 	}
 	hash.get(out);
+}
+
+// B = s_P1 + s_Q1 * s + s_Q2 * dom + sum_i s_H[i] * msgVec[i]
+void calcB(G1& B, const Fr& s, const Fr& dom, const Fr *msgVec, size_t n)
+{
+	{
+		Fr t[2] = { s, dom };
+		G1::mulVec(B, &s_Q1, t, 2); // B = s_Q1 * s + s_Q2 * dom
+	}
+	G1 T;
+	G1::mulVec(T, s_H, msgVec, n); // T = sum_i s_H[i] * msgVec[i]
+	B += T;
+	B += s_P1;
 }
 
 } // mcl::bbs::local
@@ -118,33 +131,29 @@ public:
 		if (n > s_maxMsgSize) {
 			throw cybozu::Exception("too large n") << n;
 		}
-		Fr tt[3];
-		Fr& e = tt[0];
-		Fr& s = tt[1];
-		Fr& dom = tt[2];
-		local::calcHash(dom, pub.v, n);
-		Fr t;
+		Fr dom;
+		local::calcDom(dom, pub.v, n);
 		local::Hash hash;
 		hash << v << dom;
 		for (size_t i = 0; i < n; i++) {
 			hash << msgVec[i];
 		}
+		Fr t;
 		hash.get(t);
 		for (int i = 0; i < 2; i++) {
 			local::Hash hash2;
 			hash2 << t << i;
-			hash2.get(tt[i]);
+			if (i == 0) {
+				hash2.get(sig.e);
+			} else {
+				hash2.get(sig.s);
+			}
 		}
 		G1 B;
-		G1::mulVec(B, &s_Q1, &s, 2); // B = s_Q1 * s + s_Q2 * dom
-		B += s_P1;
-		G1::mulVec(sig.A, s_H, msgVec, n); // A = sum s_H[i] * msgVec[i]
-		B += sig.A;
-		Fr::add(t, v, e);
+		local::calcB(B, sig.s, dom, msgVec, n);
+		Fr::add(t, v, sig.e);
 		Fr::inv(t, t);
 		G1::mul(sig.A, B, t);
-		sig.e = e;
-		sig.s = s;
 	}
 };
 
@@ -153,16 +162,10 @@ inline bool Signature::verify(const PublicKey& pub, const Fr *msgVec, size_t n) 
 	if (n > s_maxMsgSize) {
 		throw cybozu::Exception("too large n") << n;
 	}
-	Fr tt[2];
-	Fr& dom = tt[1];
-	tt[0] = s;
-	local::calcHash(dom, pub.v, n);
+	Fr dom;
+	local::calcDom(dom, pub.v, n);
 	G1 B;
-	G1::mulVec(B, &s_Q1, &tt[0], 2); // B = s_Q1 * s + s_Q2 * dom
-	B += s_P1;
-	G1 T;
-	G1::mulVec(T, s_H, msgVec, n); // T = sum s_H[i] * msgVec[i]
-	B += T;
+	local::calcB(B, s, dom, msgVec, n);
 	G1 v1[2] = { A, B };
 	G2 v2[2] = { pub.v + s_P2 * e, - s_P2 };
 	GT out;
