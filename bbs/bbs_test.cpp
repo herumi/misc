@@ -19,7 +19,7 @@ CYBOZU_TEST_AUTO(sign_verify)
 	Fr msg;
 	msg = 0x12345678;
 	Signature sig;
-	sec.sign(sig, pub, &msg, 1);
+	sig.sign(sec, pub, &msg, 1);
 	CYBOZU_TEST_ASSERT(sig.verify(pub, &msg, 1));
 	msg -= 1;
 	CYBOZU_TEST_ASSERT(!sig.verify(pub, &msg, 1));

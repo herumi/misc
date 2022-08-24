@@ -114,15 +114,6 @@ public:
 	const G2& get_v() const { return v; }
 };
 
-class Signature {
-	G1 A;
-	Fr e, s;
-	friend class SecretKey;
-public:
-	// L : number of msgs
-	bool verify(const PublicKey& pub, const Fr *msgs, size_t L) const;
-};
-
 class SecretKey {
 	Fr v;
 public:
@@ -138,11 +129,20 @@ public:
 	{
 		G2::mul(pub.v, s_P2, v);
 	}
-	// L : number of msgs
-	void sign(Signature& sig, const PublicKey& pub, const Fr *msgs, size_t L) const;
+	const Fr& get_v() const { return v; }
 };
 
-inline void SecretKey::sign(Signature& sig, const PublicKey& pub, const Fr *msgs, size_t L) const
+class Signature {
+	G1 A;
+	Fr e, s;
+	friend class SecretKey;
+public:
+	// L : number of msgs
+	void sign(const SecretKey& sec, const PublicKey& pub, const Fr *msgs, size_t L);
+	bool verify(const PublicKey& pub, const Fr *msgs, size_t L) const;
+};
+
+inline void Signature::sign(const SecretKey& sec, const PublicKey& pub, const Fr *msgs, size_t L)
 {
 	if (L > s_maxMsgSize) {
 		throw cybozu::Exception("too large L") << L;
@@ -150,7 +150,7 @@ inline void SecretKey::sign(Signature& sig, const PublicKey& pub, const Fr *msgs
 	Fr dom;
 	local::calcDom(dom, pub.get_v(), L);
 	local::Hash hash;
-	hash << v << dom;
+	hash << sec.get_v() << dom;
 	for (size_t i = 0; i < L; i++) {
 		hash << msgs[i];
 	}
@@ -158,13 +158,13 @@ inline void SecretKey::sign(Signature& sig, const PublicKey& pub, const Fr *msgs
 	hash.get(t);
 	Fr out[2];
 	local::hash_to_scalar(out, t, 2);
-	sig.e = out[0];
-	sig.s = out[1];
+	e = out[0];
+	s = out[1];
 	G1 B;
-	local::calcB(B, sig.s, dom, msgs, L);
-	Fr::add(t, v, sig.e);
+	local::calcB(B, s, dom, msgs, L);
+	Fr::add(t, sec.get_v(), e);
 	Fr::inv(t, t);
-	G1::mul(sig.A, B, t);
+	G1::mul(A, B, t);
 }
 
 inline bool Signature::verify(const PublicKey& pub, const Fr *msgs, size_t L) const
