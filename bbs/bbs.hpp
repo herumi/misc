@@ -68,6 +68,17 @@ void calcB(G1& B, const Fr& s, const Fr& dom, const Fr *msgs, size_t n)
 	B += s_P1;
 }
 
+// write to out[0], ..., out[n-1]
+template<class T>
+void hash_to_scalar(Fr *out, const T& x, size_t n)
+{
+	for (size_t i = 0; i < n; i++) {
+		Hash hash;
+		hash << x << i;
+		hash.get(out[i]);
+	}
+}
+
 } // mcl::bbs::local
 
 void init(size_t maxMsgSize)
@@ -99,8 +110,8 @@ void init(size_t maxMsgSize)
 class PublicKey {
 	G2 v;
 	friend class SecretKey;
-	friend class Signature;
 public:
+	const G2& get_v() const { return v; }
 };
 
 class Signature {
@@ -137,7 +148,7 @@ inline void SecretKey::sign(Signature& sig, const PublicKey& pub, const Fr *msgs
 		throw cybozu::Exception("too large L") << L;
 	}
 	Fr dom;
-	local::calcDom(dom, pub.v, L);
+	local::calcDom(dom, pub.get_v(), L);
 	local::Hash hash;
 	hash << v << dom;
 	for (size_t i = 0; i < L; i++) {
@@ -145,15 +156,10 @@ inline void SecretKey::sign(Signature& sig, const PublicKey& pub, const Fr *msgs
 	}
 	Fr t;
 	hash.get(t);
-	for (int i = 0; i < 2; i++) {
-		local::Hash hash2;
-		hash2 << t << i;
-		if (i == 0) {
-			hash2.get(sig.e);
-		} else {
-			hash2.get(sig.s);
-		}
-	}
+	Fr out[2];
+	local::hash_to_scalar(out, t, 2);
+	sig.e = out[0];
+	sig.s = out[1];
 	G1 B;
 	local::calcB(B, sig.s, dom, msgs, L);
 	Fr::add(t, v, sig.e);
@@ -163,20 +169,53 @@ inline void SecretKey::sign(Signature& sig, const PublicKey& pub, const Fr *msgs
 
 inline bool Signature::verify(const PublicKey& pub, const Fr *msgs, size_t L) const
 {
-	if (L > s_maxMsgSize) {
-		throw cybozu::Exception("too large L") << L;
-	}
+	if (L > s_maxMsgSize) return false;
 	Fr dom;
-	local::calcDom(dom, pub.v, L);
+	local::calcDom(dom, pub.get_v(), L);
 	G1 B;
 	local::calcB(B, s, dom, msgs, L);
 	G1 v1[2] = { A, B };
-	G2 v2[2] = { pub.v + s_P2 * e, - s_P2 };
+	G2 v2[2] = { pub.get_v() + s_P2 * e, - s_P2 };
 	GT out;
 	millerLoopVec(out, v1, v2, 2);
 	finalExp(out, out);
 	return out.isOne();
 }
+
+class Proof {
+	G1 Ap, Abar, D;
+	Fr c, ehat, r2hat, r3hat, shat;
+	Fr *mVec; // mVec must be U array of Fr
+	uint32_t U; // U = msgN - discN
+public:
+};
+
+// true if all discIdxs[i] < L
+bool isValidDisc(size_t L, const uint32_t *discIdxs, size_t R)
+{
+	for (size_t i = 0; i < R; i++) {
+		if (discIdxs[i] >= L) return false;
+	}
+	return true;
+}
+
+#if 0
+/*
+	L : number of all msgs
+	R : number of disclosed msgs
+	msgs[discIdxs[i]] : disclosed messages for i in [0, R)
+*/
+bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t L, const uint32_t *discIdxs, size_t R)
+{
+	if (L > s_maxMsgSize) return false;
+	if (L < R) return false;
+	const size_t U = L - R;
+	if (!isValidDisc(L, discIdxs, R)) return false;
+	Fr dom;
+	local::calcDom(dom, pub.get_v(), L);
+	return true;
+}
+#endif
 
 } } // mcl::bbs
 
