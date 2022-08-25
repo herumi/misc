@@ -92,16 +92,20 @@ bool isValidDiscIdx(size_t L, const uint32_t *discIdxs, size_t R)
 // js[0:U] = [0:L] - discIdxs[0:R]
 void setJs(uint32_t *js, size_t L, const uint32_t *discIdxs, size_t R)
 {
+	assert(R <= L);
+	const size_t U = L - R;
 	size_t v = 0;
 	size_t dPos = 0;
-	uint32_t next = R > 0 ? discIdxs[dPos] : L;
-	for (size_t i = 0; i < L - R; i++) {
+	uint32_t next = dPos < R ? discIdxs[dPos++] : L;
+
+	size_t jPos = 0;
+	while (jPos < U) {
 		if (v < next) {
-			js[i] = v++;
+			js[jPos++] = v;
 		} else {
 			next = dPos < R ? discIdxs[dPos++] : L;
-			v++;
 		}
+		v++;
 	}
 }
 
