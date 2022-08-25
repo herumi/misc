@@ -79,6 +79,32 @@ void hash_to_scalar(Fr *out, const T& x, size_t n)
 	}
 }
 
+// true if all discIdxs[i] < discIdxs[i+1] < L
+bool isValidDiscIdx(size_t L, const uint32_t *discIdxs, size_t R)
+{
+	if (R == 0) return true;
+	for (size_t i = 1; i < R; i++) {
+		if (discIdxs[i] >= L) return false;
+	}
+	return true;
+}
+
+// js[0:U] = [0:L] - discIdxs[0:R]
+void setJs(uint32_t *js, size_t L, const uint32_t *discIdxs, size_t R)
+{
+	size_t v = 0;
+	size_t dPos = 0;
+	uint32_t next = R > 0 ? discIdxs[dPos] : L;
+	for (size_t i = 0; i < L - R; i++) {
+		if (v < next) {
+			js[i] = v++;
+		} else {
+			next = dPos < R ? discIdxs[dPos++] : L;
+			v++;
+		}
+	}
+}
+
 } // mcl::bbs::local
 
 void init(size_t maxMsgSize)
@@ -137,6 +163,9 @@ class Signature {
 	Fr e, s;
 	friend class SecretKey;
 public:
+	const G1& get_A() const { return A; }
+	const Fr& get_e() const { return e; }
+	const Fr& get_s() const { return s; }
 	// L : number of msgs
 	void sign(const SecretKey& sec, const PublicKey& pub, const Fr *msgs, size_t L);
 	bool verify(const PublicKey& pub, const Fr *msgs, size_t L) const;
@@ -182,37 +211,57 @@ inline bool Signature::verify(const PublicKey& pub, const Fr *msgs, size_t L) co
 	return out.isOne();
 }
 
-class Proof {
-	G1 Ap, Abar, D;
-	Fr c, ehat, r2hat, r3hat, shat;
-	Fr *mVec; // mVec must be U array of Fr
-	uint32_t U; // U = msgN - discN
-public:
+struct Proof {
+	G1 A_prime, A_bar, D;
+	Fr c, e_hat, r2_hat, r3_hat, s_hat;
+	Fr *m_tilde; // m_tilde must be U array of Fr
+	uint32_t U; // U = L - R
+	Proof() : U(0) {}
 };
-
-// true if all discIdxs[i] < L
-bool isValidDisc(size_t L, const uint32_t *discIdxs, size_t R)
-{
-	for (size_t i = 0; i < R; i++) {
-		if (discIdxs[i] >= L) return false;
-	}
-	return true;
-}
 
 #if 0
 /*
 	L : number of all msgs
 	R : number of disclosed msgs
+	discIdxs : accending order
 	msgs[discIdxs[i]] : disclosed messages for i in [0, R)
 */
 bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t L, const uint32_t *discIdxs, size_t R)
 {
 	if (L > s_maxMsgSize) return false;
 	if (L < R) return false;
-	const size_t U = L - R;
-	if (!isValidDisc(L, discIdxs, R)) return false;
+	if (prf.U != L - R) return false;
+	if (!local::isValidDiscIdx(discIdxs, R)) return false;
+	Fr *js = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * prf.U);
+	local::setJs(js, L, discIdxs, R);
 	Fr dom;
 	local::calcDom(dom, pub.get_v(), L);
+	Fr out[6];
+	local::hash_to_scalar(out, 0, 6);
+	const Fr& r1 = out[0];
+	const Fr& r2 = out[1];
+	const Fr& e_tilde = out[2];
+	const Fr& r2_tilde = out[3];
+	const Fr& r3_tilde = out[4];
+	const Fr& s_tilde = out[5];
+	local::hash_to_scalar(prf.m_tilde, 0, prf.U);
+	G1 B;
+	local::calcB(B, sig.get_s(), dom, msgs, L);
+	Fr r3;
+	Fr::inv(r3, r1);
+	prf.A_prime = sig.get_A() * r1;
+	prf.A_bar = prf.A_prime * (-sig.get_e()) + B * r1;
+	G1 D = B * r1 + s_Q1 * r2;
+	Fr s_prime;
+	s_prime = r2 * r3 + sig.get_s();
+	G1 C1, C2;
+	C1 = prf.A_prime * e_tilde + s_Q1 * r2_tilde;
+	C2 = D * (-r3_tilde) + s_Q1 * s_tilde;
+#if 0
+	for (uint32_t i = 0; i < U; i++) {
+		C2 += s_H[
+	}
+#endif
 	return true;
 }
 #endif
