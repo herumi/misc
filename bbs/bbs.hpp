@@ -223,13 +223,31 @@ struct Proof {
 	Proof() : U(0) {}
 };
 
+namespace local {
+inline void calc_cv(Fr& cv, const Proof& prf, const G1& C1, const G1& C2, size_t R, const uint32_t *discIdxs, const Fr *msgs, bool isDisclosed, const Fr& dom)
+{
+	local::Hash hash;
+	hash << prf.A_prime << prf.A_bar << prf.D << C1 << C2 << R;
+	for (size_t i = 0; i < R; i++) hash << discIdxs[i];
+	if (isDisclosed) {
+		// disclosed msg
+		for (size_t i = 0; i < R; i++) hash << msgs[i];
+	} else {
+		// select disclosed msg
+		for (size_t i = 0; i < R; i++) hash << msgs[discIdxs[i]];
+	}
+	hash << dom;
+	hash.get(cv);
+}
+
+} // local
 /*
 	L : number of all msgs
 	R : number of disclosed msgs
 	discIdxs : accending order
 	msgs[discIdxs[i]] : disclosed messages for i in [0, R)
 */
-bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t L, const uint32_t *discIdxs, size_t R)
+inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t L, const uint32_t *discIdxs, size_t R)
 {
 	if (L > s_maxMsgSize) return false;
 	if (L < R) return false;
@@ -268,14 +286,7 @@ bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *
 		G1::mulVec(T, H, m_tilde, prf.U);
 		C2 += T;
 	}
-	{
-		local::Hash hash;
-		hash << prf.A_prime << prf.A_bar << prf.D << C1 << C2 << R;
-		for (size_t i = 0; i < R; i++) hash << discIdxs[i];
-		for (size_t i = 0; i < R; i++) hash << msgs[discIdxs[i]];
-		hash << dom;
-		hash.get(prf.c);
-	}
+	local::calc_cv(prf.c, prf, C1, C2, R, discIdxs, msgs, false, dom);
 	prf.e_hat= prf.c * sig.get_e() + e_tilde;
 	prf.r2_hat = prf.c * r2 + r2_tilde;
 	prf.r3_hat = prf.c * r3 + r3_tilde;
@@ -287,6 +298,39 @@ bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *
 		prf.m_hat[i] = prf.c * msgs[js[i]] + m_tilde[i];
 	}
 	return true;
+}
+
+bool proofVerify(const PublicKey& pub, const Proof& prf, size_t L, const Fr *discMsgs, const uint32_t *discIdxs, size_t R)
+{
+	if (L > s_maxMsgSize) return false;
+	if (L < R) return false;
+	if (prf.U != L - R) return false;
+	if (!local::isValidDiscIdx(L, discIdxs, R)) return false;
+	Fr dom;
+	local::calcDom(dom, pub.get_v(), L);
+	G1 C1 = (prf.A_bar - prf.D) * prf.c + prf.A_prime * prf.e_hat + s_Q1 * prf.r2_hat;
+	G1 T;
+	G1::mulVec(T, s_H, discMsgs, R);
+	T += s_P1 + s_Q2 * dom;
+	G1 C2;
+	{
+		G1 *H = (G1*)CYBOZU_ALLOCA(sizeof(G1) * prf.U);
+		for (uint32_t i = 0; i < prf.U; i++) {
+			H[i] = s_H[discIdxs[i]];
+		}
+		G1::mulVec(C2, H, discMsgs, R);
+		C2 += T * prf.c - prf.D * prf.r3_hat + s_Q1 * prf.s_hat;
+	}
+	Fr cv;
+	local::calc_cv(cv, prf, C1, C2, R, discIdxs, discMsgs, true, dom);
+	if (cv != prf.c) return false;
+	if (prf.A_prime.isZero()) return false;
+	G1 v1[2] = { prf.A_prime, prf.A_bar };
+	G2 v2[2] = { pub.get_v(), -s_P2 };
+	GT out;
+	millerLoopVec(out, v1, v2, 2);
+	finalExp(out, out);
+	return out.isOne();
 }
 
 } } // mcl::bbs
