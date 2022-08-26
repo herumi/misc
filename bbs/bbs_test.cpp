@@ -17,13 +17,19 @@ CYBOZU_TEST_AUTO(sign_verify)
 	sec.initForDebug(123);
 	PublicKey pub;
 	sec.getPublicKey(pub);
-	Fr msg;
-	msg = 0x12345678;
-	Signature sig;
-	sig.sign(sec, pub, &msg, 1);
-	CYBOZU_TEST_ASSERT(sig.verify(pub, &msg, 1));
-	msg -= 1;
-	CYBOZU_TEST_ASSERT(!sig.verify(pub, &msg, 1));
+	const size_t N = 10;
+	Fr msg[N];
+	int v = 123;
+	for (size_t i = 0; i < N; i++) msg[i] = v++;
+
+	for (size_t n = 1; n <= N; n++) {
+		Signature sig;
+		sig.sign(sec, pub, msg, n);
+		CYBOZU_TEST_ASSERT(sig.verify(pub, msg, n));
+		CYBOZU_TEST_ASSERT(!sig.verify(pub, msg, n - 1));
+		msg[0] -= 1;
+		CYBOZU_TEST_ASSERT(!sig.verify(pub, msg, n));
+	}
 }
 
 CYBOZU_TEST_AUTO(setJs)
@@ -66,3 +72,40 @@ CYBOZU_TEST_AUTO(setJs)
 	}
 }
 
+CYBOZU_TEST_AUTO(proof)
+{
+	SecretKey sec;
+	sec.initForDebug(123);
+	PublicKey pub;
+	sec.getPublicKey(pub);
+	const size_t L = 10;
+	Fr msg[L];
+	uint32_t discIdxs[L];
+	int v = 123;
+	for (size_t i = 0; i < L; i++) msg[i] = v++;
+	Signature sig;
+	sig.sign(sec, pub, msg, L);
+
+	Fr disc;
+	Proof prf;
+	for (uint32_t i = 0; i < L; i++) discIdxs[i] = i;
+	CYBOZU_TEST_ASSERT(proofGen(prf, pub, sig, msg, L, discIdxs, L));
+	CYBOZU_TEST_ASSERT(proofVerify(pub, prf, L, msg, discIdxs, L));
+return;
+
+	const uint32_t U = 1;
+	const size_t R = L - U;
+	prf.set(&disc, U);
+	uint32_t discIdx;
+	for (size_t i = 0; i < L; i++) {
+		discIdx = i;
+		CYBOZU_TEST_ASSERT(proofGen(prf, pub, sig, msg, L, &discIdx, 1));
+		Fr discMsgs[R];
+		size_t pos = 0;
+		for (size_t j = 0; j < R; j++) {
+			if (pos == discIdx) continue;
+			discMsgs[j] = msg[pos++];
+		}
+		CYBOZU_TEST_ASSERT(proofVerify(pub, prf, L, discMsgs, &discIdx, 1));
+	}
+}

@@ -83,8 +83,9 @@ void hash_to_scalar(Fr *out, const T& x, size_t n)
 bool isValidDiscIdx(size_t L, const uint32_t *discIdxs, size_t R)
 {
 	if (R == 0) return true;
+	if (discIdxs[0] >= L) return false;
 	for (size_t i = 1; i < R; i++) {
-		if (discIdxs[i] >= L) return false;
+		if (!(discIdxs[i - 1] < discIdxs[i]) || discIdxs[i] >= L) return false;
 	}
 	return true;
 }
@@ -220,7 +221,12 @@ struct Proof {
 	Fr c, e_hat, r2_hat, r3_hat, s_hat;
 	Fr *m_hat; // m_hat must be U array of Fr
 	uint32_t U; // U = L - R
-	Proof() : U(0) {}
+	Proof() : m_hat(0), U(0) {}
+	void set(Fr *msg, uint32_t u)
+	{
+		m_hat = msg;
+		U = u;
+	}
 };
 
 namespace local {
