@@ -218,12 +218,11 @@ inline bool Signature::verify(const PublicKey& pub, const Fr *msgs, size_t L) co
 struct Proof {
 	G1 A_prime, A_bar, D;
 	Fr c, e_hat, r2_hat, r3_hat, s_hat;
-	Fr *m_tilde; // m_tilde must be U array of Fr
+	Fr *m_hat; // m_hat must be U array of Fr
 	uint32_t U; // U = L - R
 	Proof() : U(0) {}
 };
 
-#if 0
 /*
 	L : number of all msgs
 	R : number of disclosed msgs
@@ -235,9 +234,7 @@ bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *
 	if (L > s_maxMsgSize) return false;
 	if (L < R) return false;
 	if (prf.U != L - R) return false;
-	if (!local::isValidDiscIdx(discIdxs, R)) return false;
-	Fr *js = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * prf.U);
-	local::setJs(js, L, discIdxs, R);
+	if (!local::isValidDiscIdx(L, discIdxs, R)) return false;
 	Fr dom;
 	local::calcDom(dom, pub.get_v(), L);
 	Fr out[6];
@@ -248,27 +245,49 @@ bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *
 	const Fr& r2_tilde = out[3];
 	const Fr& r3_tilde = out[4];
 	const Fr& s_tilde = out[5];
-	local::hash_to_scalar(prf.m_tilde, 0, prf.U);
+	Fr *m_tilde = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * prf.U);
+	local::hash_to_scalar(m_tilde, "m_tilde", prf.U);
 	G1 B;
 	local::calcB(B, sig.get_s(), dom, msgs, L);
 	Fr r3;
 	Fr::inv(r3, r1);
 	prf.A_prime = sig.get_A() * r1;
 	prf.A_bar = prf.A_prime * (-sig.get_e()) + B * r1;
-	G1 D = B * r1 + s_Q1 * r2;
+	prf.D = B * r1 + s_Q1 * r2;
 	Fr s_prime;
 	s_prime = r2 * r3 + sig.get_s();
 	G1 C1, C2;
 	C1 = prf.A_prime * e_tilde + s_Q1 * r2_tilde;
-	C2 = D * (-r3_tilde) + s_Q1 * s_tilde;
-#if 0
-	for (uint32_t i = 0; i < U; i++) {
-		C2 += s_H[
+	C2 = prf.D * (-r3_tilde) + s_Q1 * s_tilde;
+	G1 *H = (G1*)CYBOZU_ALLOCA(sizeof(G1) * prf.U);
+	for (uint32_t i = 0; i < prf.U; i++) {
+		H[i] = s_H[discIdxs[i]];
 	}
-#endif
+	{
+		G1 T;
+		G1::mulVec(T, H, m_tilde, prf.U);
+		C2 += T;
+	}
+	{
+		local::Hash hash;
+		hash << prf.A_prime << prf.A_bar << prf.D << C1 << C2 << R;
+		for (size_t i = 0; i < R; i++) hash << discIdxs[i];
+		for (size_t i = 0; i < R; i++) hash << msgs[discIdxs[i]];
+		hash << dom;
+		hash.get(prf.c);
+	}
+	prf.e_hat= prf.c * sig.get_e() + e_tilde;
+	prf.r2_hat = prf.c * r2 + r2_tilde;
+	prf.r3_hat = prf.c * r3 + r3_tilde;
+	prf.s_hat = prf.c * s_prime + s_tilde;
+
+	uint32_t *js = (uint32_t*)CYBOZU_ALLOCA(sizeof(uint32_t) * prf.U);
+	local::setJs(js, L, discIdxs, R);
+	for (size_t i = 0; i < prf.U; i++) {
+		prf.m_hat[i] = prf.c * msgs[js[i]] + m_tilde[i];
+	}
 	return true;
 }
-#endif
 
 } } // mcl::bbs
 
