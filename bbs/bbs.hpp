@@ -220,7 +220,7 @@ struct Proof {
 	G1 A_prime, A_bar, D;
 	Fr c, e_hat, r2_hat, r3_hat, s_hat;
 	Fr *m_hat; // m_hat must be U array of Fr
-	uint32_t U; // U = L - R
+	uint32_t U; // U = L - R, all msgs are disclosed if U = 0
 	Proof() : m_hat(0), U(0) {}
 	void set(Fr *msg, uint32_t u)
 	{
@@ -324,7 +324,7 @@ bool proofVerify(const PublicKey& pub, const Proof& prf, size_t L, const Fr *dis
 		for (uint32_t i = 0; i < prf.U; i++) {
 			H[i] = s_H[discIdxs[i]];
 		}
-		G1::mulVec(C2, H, discMsgs, R);
+		G1::mulVec(C2, H, discMsgs, prf.U);
 		C2 += T * prf.c - prf.D * prf.r3_hat + s_Q1 * prf.s_hat;
 	}
 	Fr cv;

@@ -91,7 +91,6 @@ CYBOZU_TEST_AUTO(proof)
 	for (uint32_t i = 0; i < L; i++) discIdxs[i] = i;
 	CYBOZU_TEST_ASSERT(proofGen(prf, pub, sig, msg, L, discIdxs, L));
 	CYBOZU_TEST_ASSERT(proofVerify(pub, prf, L, msg, discIdxs, L));
-return;
 
 	const uint32_t U = 1;
 	const size_t R = L - U;
