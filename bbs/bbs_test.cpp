@@ -14,7 +14,8 @@ CYBOZU_TEST_AUTO(init)
 CYBOZU_TEST_AUTO(sign_verify)
 {
 	SecretKey sec;
-	sec.initForDebug(123);
+//	sec.initForDebug(123);
+	sec.init();
 	PublicKey pub;
 	sec.getPublicKey(pub);
 	const size_t N = 10;
@@ -72,43 +73,64 @@ CYBOZU_TEST_AUTO(setJs)
 	}
 }
 
+void checkProof(const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t L, const uint32_t *discIdxs, size_t R)
+{
+	const uint32_t U = L - R;
+	Fr *discMsgs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * R);
+	for (size_t i = 0; i < R; i++) discMsgs[i] = msgs[discIdxs[i]];
+
+	Proof prf;
+	Fr *m_hat = (Fr *)CYBOZU_ALLOCA(sizeof(Fr) * U);
+	prf.set(m_hat, U);
+	CYBOZU_TEST_ASSERT(proofGen(prf, pub, sig, msgs, L, discIdxs, R));
+	CYBOZU_TEST_ASSERT(proofVerify(pub, prf, L, discMsgs, discIdxs, R));
+}
+
 CYBOZU_TEST_AUTO(proof)
 {
-	SecretKey sec;
-	sec.initForDebug(123);
-	PublicKey pub;
-	sec.getPublicKey(pub);
 	const size_t L = 10;
-	Fr msg[L];
+	Fr msgs[L];
 	uint32_t discIdxs[L];
-	int v = 123;
-	for (size_t i = 0; i < L; i++) msg[i] = v++;
+	{
+		int v = 123;
+		for (size_t i = 0; i < L; i++) msgs[i] = v++;
+	}
+	PublicKey pub;
 	Signature sig;
-	sig.sign(sec, pub, msg, L);
-
-	Fr disc;
-	Proof prf;
-	Fr m_hat[L];
-
-	puts("disclose all");
-	for (uint32_t i = 0; i < L; i++) discIdxs[i] = i;
-	CYBOZU_TEST_ASSERT(proofGen(prf, pub, sig, msg, L, discIdxs, L));
-	CYBOZU_TEST_ASSERT(proofVerify(pub, prf, L, msg, discIdxs, L));
+	// setup public key and signature
+	{
+		SecretKey sec;
+		sec.init();
+		sec.getPublicKey(pub);
+		sig.sign(sec, pub, msgs, L);
+	}
 
 	puts("disclose nothing");
-	prf.set(m_hat, L);
-	CYBOZU_TEST_ASSERT(proofGen(prf, pub, sig, msg, L, 0, 0));
-	CYBOZU_TEST_ASSERT(proofVerify(pub, prf, L, msg, 0, 0));
+	checkProof(pub, sig, msgs, L, 0, 0);
 
 	puts("disclose one");
-	const uint32_t U = 1;
-	const size_t R = L - U;
-	prf.set(m_hat, R);
-	uint32_t discIdx;
-	for (size_t i = 0; i < L; i++) {
-		discIdx = i;
-		CYBOZU_TEST_ASSERT(proofGen(prf, pub, sig, msg, L, &discIdx, 1));
-		Fr discMsg = msg[i];
-		CYBOZU_TEST_ASSERT(proofVerify(pub, prf, L, &discMsg, &discIdx, 1));
+	{
+		const size_t R = 1;
+		for (size_t i = 0; i < L; i++) {
+			discIdxs[0] = i;
+			checkProof(pub, sig, msgs, L, discIdxs, R);
+		}
+	}
+	puts("disclose two");
+	{
+		const size_t R = 2;
+		for (size_t i = 0; i < L; i++) {
+			discIdxs[0] = i;
+			for (size_t j = i + 1; j < L; j++) {
+				discIdxs[1] = j;
+				checkProof(pub, sig, msgs, L, discIdxs, R);
+			}
+		}
+	}
+	puts("disclose all");
+	{
+		const size_t R = L;
+		for (size_t i = 0; i < R; i++) discIdxs[i] = i;
+		checkProof(pub, sig, msgs, L, discIdxs, R);
 	}
 }
