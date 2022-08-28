@@ -254,11 +254,9 @@ inline void calc_cv(Fr& cv, const Proof& prf, const G1& C1, const G1& C2, size_t
 */
 inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t L, const uint32_t *discIdxs, size_t R)
 {
-puts("gen");
 	if (L > s_maxMsgSize) return false;
 	if (L < R) return false;
 	if (prf.U != L - R) return false;
-printf("L=%zd R=%zd prf.U=%d\n", L, R, prf.U);
 	if (!local::isValidDiscIdx(L, discIdxs, R)) return false;
 	Fr dom;
 	local::calcDom(dom, pub.get_v(), L);
@@ -312,7 +310,6 @@ printf("L=%zd R=%zd prf.U=%d\n", L, R, prf.U);
 
 bool proofVerify(const PublicKey& pub, const Proof& prf, size_t L, const Fr *discMsgs, const uint32_t *discIdxs, size_t R)
 {
-puts("prf");
 	if (L > s_maxMsgSize) return false;
 	if (L < R) return false;
 	if (prf.U != L - R) return false;
@@ -320,19 +317,27 @@ puts("prf");
 	Fr dom;
 	local::calcDom(dom, pub.get_v(), L);
 	G1 C1 = (prf.A_bar - prf.D) * prf.c + prf.A_prime * prf.e_hat + s_Q1 * prf.r2_hat;
-	G1 T;
-	G1::mulVec(T, s_H, discMsgs, R);
-	T += s_P1 + s_Q2 * dom;
-	G1 C2;
-	{
+	G1 T = s_P1 + s_Q2 * dom;
+	if (R > 0) {
+		G1 TT;
+		G1 *H = (G1*)CYBOZU_ALLOCA(sizeof(G1) * R);
+		for (size_t i = 0; i < R; i++) {
+			H[i] = s_H[discIdxs[i]];
+		}
+		G1::mulVec(TT, H, discMsgs, R);
+		T += TT;
+	}
+	G1 C2 = T * prf.c - prf.D * prf.r3_hat + s_Q1 * prf.s_hat;
+	if (prf.U > 0) {
 		uint32_t *js = (uint32_t*)CYBOZU_ALLOCA(sizeof(uint32_t) * prf.U);
 		local::setJs(js, prf.U, discIdxs, R);
 		G1 *H = (G1*)CYBOZU_ALLOCA(sizeof(G1) * prf.U);
 		for (uint32_t i = 0; i < prf.U; i++) {
 			H[i] = s_H[js[i]];
 		}
-		G1::mulVec(C2, H, discMsgs, prf.U);
-		C2 += T * prf.c - prf.D * prf.r3_hat + s_Q1 * prf.s_hat;
+		G1 TT;
+		G1::mulVec(TT, H, prf.m_hat, prf.U);
+		C2 += TT;
 	}
 	Fr cv;
 	local::calc_cv(cv, prf, C1, C2, R, discIdxs, discMsgs, true, dom);
