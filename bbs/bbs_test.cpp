@@ -77,6 +77,8 @@ void checkProof(const PublicKey& pub, const Signature& sig, const Fr *msgs, size
 {
 	const uint32_t U = L - R;
 	Fr *discMsgs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * R);
+
+	// select disclosed msgs
 	for (size_t i = 0; i < R; i++) discMsgs[i] = msgs[discIdxs[i]];
 
 	Proof prf;
@@ -124,6 +126,20 @@ CYBOZU_TEST_AUTO(proof)
 			for (size_t j = i + 1; j < L; j++) {
 				discIdxs[1] = j;
 				checkProof(pub, sig, msgs, L, discIdxs, R);
+			}
+		}
+	}
+	puts("disclose three");
+	{
+		const size_t R = 3;
+		for (size_t i = 0; i < L; i++) {
+			discIdxs[0] = i;
+			for (size_t j = i + 1; j < L; j++) {
+				discIdxs[1] = j;
+				for (size_t k = j + 1; k < L; k++) {
+					discIdxs[2] = k;
+					checkProof(pub, sig, msgs, L, discIdxs, R);
+				}
 			}
 		}
 	}
