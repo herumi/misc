@@ -245,6 +245,16 @@ inline void calc_cv(Fr& cv, const Proof& prf, const G1& C1, const G1& C2, size_t
 	hash.get(cv);
 }
 
+// out += sum_{i=0}^U s_H[selectedIx[i]] * v[i]
+inline void addSelectedMulVec(G1& out, const uint32_t *selectedIdx, size_t U, const Fr *v)
+{
+	G1 *H = (G1*)CYBOZU_ALLOCA(sizeof(G1) * U);
+	for (size_t i = 0; i < U; i++) H[i] = s_H[selectedIdx[i]];
+	G1 T;
+	G1::mulVec(T, H, v, U);
+	out += T;
+}
+
 } // local
 /*
 	L : number of all msgs
@@ -286,13 +296,7 @@ inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, con
 	Fr *m_tilde = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * prf.U);
 	local::hash_to_scalar(m_tilde, "m_tilde", prf.U);
 	if (prf.U > 0) {
-		G1 *H = (G1*)CYBOZU_ALLOCA(sizeof(G1) * prf.U);
-		for (uint32_t i = 0; i < prf.U; i++) {
-			H[i] = s_H[js[i]];
-		}
-		G1 T;
-		G1::mulVec(T, H, m_tilde, prf.U);
-		C2 += T;
+		local::addSelectedMulVec(C2, js, prf.U, m_tilde);
 	}
 	local::calc_cv(prf.c, prf, C1, C2, R, discIdxs, msgs, false, dom);
 	prf.e_hat= prf.c * sig.get_e() + e_tilde;
@@ -319,25 +323,13 @@ bool proofVerify(const PublicKey& pub, const Proof& prf, size_t L, const Fr *dis
 	G1 C1 = (prf.A_bar - prf.D) * prf.c + prf.A_prime * prf.e_hat + s_Q1 * prf.r2_hat;
 	G1 T = s_P1 + s_Q2 * dom;
 	if (R > 0) {
-		G1 TT;
-		G1 *H = (G1*)CYBOZU_ALLOCA(sizeof(G1) * R);
-		for (size_t i = 0; i < R; i++) {
-			H[i] = s_H[discIdxs[i]];
-		}
-		G1::mulVec(TT, H, discMsgs, R);
-		T += TT;
+		local::addSelectedMulVec(T, discIdxs, R, discMsgs);
 	}
 	G1 C2 = T * prf.c - prf.D * prf.r3_hat + s_Q1 * prf.s_hat;
 	if (prf.U > 0) {
 		uint32_t *js = (uint32_t*)CYBOZU_ALLOCA(sizeof(uint32_t) * prf.U);
 		local::setJs(js, prf.U, discIdxs, R);
-		G1 *H = (G1*)CYBOZU_ALLOCA(sizeof(G1) * prf.U);
-		for (uint32_t i = 0; i < prf.U; i++) {
-			H[i] = s_H[js[i]];
-		}
-		G1 TT;
-		G1::mulVec(TT, H, prf.m_hat, prf.U);
-		C2 += TT;
+		local::addSelectedMulVec(C2, js, prf.U, prf.m_hat);
 	}
 	Fr cv;
 	local::calc_cv(cv, prf, C1, C2, R, discIdxs, discMsgs, true, dom);
