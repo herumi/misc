@@ -60,7 +60,7 @@ CYBOZU_TEST_AUTO(setJs)
 		for (size_t j = 0; j < L; j++) js[j] = uint32_t(-1);
 		const size_t R = tbl[i].R;
 		const size_t U = L  - R;
-		mcl::bbs::local::setJs(js, L, tbl[i].disc, R);
+		mcl::bbs::local::setJs(js, U, tbl[i].disc, R);
 		IntSet is;
 		for (size_t j = 0; j < R; j++) is.insert(tbl[i].disc[j]);
 		CYBOZU_TEST_EQUAL(is.size(), R);
@@ -88,10 +88,21 @@ CYBOZU_TEST_AUTO(proof)
 
 	Fr disc;
 	Proof prf;
+
+	puts("disclose all");
 	for (uint32_t i = 0; i < L; i++) discIdxs[i] = i;
 	CYBOZU_TEST_ASSERT(proofGen(prf, pub, sig, msg, L, discIdxs, L));
 	CYBOZU_TEST_ASSERT(proofVerify(pub, prf, L, msg, discIdxs, L));
 
+	puts("disclose nothing");
+	{
+		Fr m_hat[L];
+		prf.set(m_hat, L);
+		CYBOZU_TEST_ASSERT(proofGen(prf, pub, sig, msg, L, 0, 0));
+		CYBOZU_TEST_ASSERT(proofVerify(pub, prf, L, msg, 0, 0));
+	}
+
+return;
 	const uint32_t U = 1;
 	const size_t R = L - U;
 	prf.set(&disc, U);

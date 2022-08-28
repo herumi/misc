@@ -91,10 +91,9 @@ bool isValidDiscIdx(size_t L, const uint32_t *discIdxs, size_t R)
 }
 
 // js[0:U] = [0:L] - discIdxs[0:R]
-void setJs(uint32_t *js, size_t L, const uint32_t *discIdxs, size_t R)
+void setJs(uint32_t *js, size_t U, const uint32_t *discIdxs, size_t R)
 {
-	assert(R <= L);
-	const size_t U = L - R;
+	const size_t L = U + R;
 	size_t v = 0;
 	size_t dPos = 0;
 	uint32_t next = dPos < R ? discIdxs[dPos++] : L;
@@ -255,9 +254,11 @@ inline void calc_cv(Fr& cv, const Proof& prf, const G1& C1, const G1& C2, size_t
 */
 inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t L, const uint32_t *discIdxs, size_t R)
 {
+puts("gen");
 	if (L > s_maxMsgSize) return false;
 	if (L < R) return false;
 	if (prf.U != L - R) return false;
+printf("L=%zd R=%zd prf.U=%d\n", L, R, prf.U);
 	if (!local::isValidDiscIdx(L, discIdxs, R)) return false;
 	Fr dom;
 	local::calcDom(dom, pub.get_v(), L);
@@ -269,8 +270,6 @@ inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, con
 	const Fr& r2_tilde = out[3];
 	const Fr& r3_tilde = out[4];
 	const Fr& s_tilde = out[5];
-	Fr *m_tilde = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * prf.U);
-	local::hash_to_scalar(m_tilde, "m_tilde", prf.U);
 	G1 B;
 	local::calcB(B, sig.get_s(), dom, msgs, L);
 	Fr r3;
@@ -283,11 +282,16 @@ inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, con
 	G1 C1, C2;
 	C1 = prf.A_prime * e_tilde + s_Q1 * r2_tilde;
 	C2 = prf.D * (-r3_tilde) + s_Q1 * s_tilde;
-	G1 *H = (G1*)CYBOZU_ALLOCA(sizeof(G1) * prf.U);
-	for (uint32_t i = 0; i < prf.U; i++) {
-		H[i] = s_H[discIdxs[i]];
-	}
-	{
+
+	uint32_t *js = (uint32_t*)CYBOZU_ALLOCA(sizeof(uint32_t) * prf.U);
+	local::setJs(js, prf.U, discIdxs, R);
+	Fr *m_tilde = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * prf.U);
+	local::hash_to_scalar(m_tilde, "m_tilde", prf.U);
+	if (prf.U > 0) {
+		G1 *H = (G1*)CYBOZU_ALLOCA(sizeof(G1) * prf.U);
+		for (uint32_t i = 0; i < prf.U; i++) {
+			H[i] = s_H[js[i]];
+		}
 		G1 T;
 		G1::mulVec(T, H, m_tilde, prf.U);
 		C2 += T;
@@ -298,16 +302,17 @@ inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, con
 	prf.r3_hat = prf.c * r3 + r3_tilde;
 	prf.s_hat = prf.c * s_prime + s_tilde;
 
-	uint32_t *js = (uint32_t*)CYBOZU_ALLOCA(sizeof(uint32_t) * prf.U);
-	local::setJs(js, L, discIdxs, R);
-	for (size_t i = 0; i < prf.U; i++) {
-		prf.m_hat[i] = prf.c * msgs[js[i]] + m_tilde[i];
+	if (prf.U > 0) {
+		for (size_t i = 0; i < prf.U; i++) {
+			prf.m_hat[i] = prf.c * msgs[js[i]] + m_tilde[i];
+		}
 	}
 	return true;
 }
 
 bool proofVerify(const PublicKey& pub, const Proof& prf, size_t L, const Fr *discMsgs, const uint32_t *discIdxs, size_t R)
 {
+puts("prf");
 	if (L > s_maxMsgSize) return false;
 	if (L < R) return false;
 	if (prf.U != L - R) return false;
@@ -320,9 +325,11 @@ bool proofVerify(const PublicKey& pub, const Proof& prf, size_t L, const Fr *dis
 	T += s_P1 + s_Q2 * dom;
 	G1 C2;
 	{
+		uint32_t *js = (uint32_t*)CYBOZU_ALLOCA(sizeof(uint32_t) * prf.U);
+		local::setJs(js, prf.U, discIdxs, R);
 		G1 *H = (G1*)CYBOZU_ALLOCA(sizeof(G1) * prf.U);
 		for (uint32_t i = 0; i < prf.U; i++) {
-			H[i] = s_H[discIdxs[i]];
+			H[i] = s_H[js[i]];
 		}
 		G1::mulVec(C2, H, discMsgs, prf.U);
 		C2 += T * prf.c - prf.D * prf.r3_hat + s_Q1 * prf.s_hat;
