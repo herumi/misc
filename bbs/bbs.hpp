@@ -45,7 +45,7 @@ struct Hash {
 };
 
 // out = hash(pk, n, s_Q1, s_Q2, s_H[0:n])
-void calcDom(Fr& out, const G2& pk, size_t n)
+inline void calcDom(Fr& out, const G2& pk, size_t n)
 {
 	Hash hash;
 	hash << pk << n << s_Q1 << s_Q2;
@@ -56,7 +56,7 @@ void calcDom(Fr& out, const G2& pk, size_t n)
 }
 
 // B = s_P1 + s_Q1 * s + s_Q2 * dom + sum_i s_H[i] * msgs[i]
-void calcB(G1& B, const Fr& s, const Fr& dom, const Fr *msgs, size_t n)
+inline void calcB(G1& B, const Fr& s, const Fr& dom, const Fr *msgs, size_t n)
 {
 	{
 		Fr t[2] = { s, dom };
@@ -80,7 +80,7 @@ void hash_to_scalar(Fr *out, const T& x, size_t n)
 }
 
 // true if all discIdxs[i] < discIdxs[i+1] < L
-bool isValidDiscIdx(size_t L, const uint32_t *discIdxs, size_t R)
+inline bool isValidDiscIdx(size_t L, const uint32_t *discIdxs, size_t R)
 {
 	if (R == 0) return true;
 	if (discIdxs[0] >= L) return false;
@@ -91,7 +91,7 @@ bool isValidDiscIdx(size_t L, const uint32_t *discIdxs, size_t R)
 }
 
 // js[0:U] = [0:L] - discIdxs[0:R]
-void setJs(uint32_t *js, size_t U, const uint32_t *discIdxs, size_t R)
+inline void setJs(uint32_t *js, size_t U, const uint32_t *discIdxs, size_t R)
 {
 	const size_t L = U + R;
 	size_t v = 0;
@@ -107,6 +107,17 @@ void setJs(uint32_t *js, size_t U, const uint32_t *discIdxs, size_t R)
 		}
 		v++;
 	}
+}
+
+// return e(P1, Q) == e(P2, s_P2);
+inline bool verifyMultiPairing(const G1& P1, const G1& P2, const G2& Q)
+{
+	G1 v1[2] = { P1, P2 };
+	G2 v2[2] = { Q, -s_P2 };
+	GT out;
+	millerLoopVec(out, v1, v2, 2);
+	finalExp(out, out);
+	return out.isOne();
 }
 
 } // mcl::bbs::local
@@ -207,12 +218,7 @@ inline bool Signature::verify(const PublicKey& pub, const Fr *msgs, size_t L) co
 	local::calcDom(dom, pub.get_v(), L);
 	G1 B;
 	local::calcB(B, s, dom, msgs, L);
-	G1 v1[2] = { A, B };
-	G2 v2[2] = { pub.get_v() + s_P2 * e, - s_P2 };
-	GT out;
-	millerLoopVec(out, v1, v2, 2);
-	finalExp(out, out);
-	return out.isOne();
+	return local::verifyMultiPairing(A, B, pub.get_v() + s_P2 * e);
 }
 
 struct Proof {
@@ -335,12 +341,7 @@ bool proofVerify(const PublicKey& pub, const Proof& prf, size_t L, const Fr *dis
 	local::calc_cv(cv, prf, C1, C2, R, discIdxs, discMsgs, true, dom);
 	if (cv != prf.c) return false;
 	if (prf.A_prime.isZero()) return false;
-	G1 v1[2] = { prf.A_prime, prf.A_bar };
-	G2 v2[2] = { pub.get_v(), -s_P2 };
-	GT out;
-	millerLoopVec(out, v1, v2, 2);
-	finalExp(out, out);
-	return out.isOne();
+	return local::verifyMultiPairing(prf.A_prime, prf.A_bar, pub.get_v());
 }
 
 } } // mcl::bbs
