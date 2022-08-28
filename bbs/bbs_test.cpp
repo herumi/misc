@@ -88,6 +88,7 @@ CYBOZU_TEST_AUTO(proof)
 
 	Fr disc;
 	Proof prf;
+	Fr m_hat[L];
 
 	puts("disclose all");
 	for (uint32_t i = 0; i < L; i++) discIdxs[i] = i;
@@ -95,27 +96,19 @@ CYBOZU_TEST_AUTO(proof)
 	CYBOZU_TEST_ASSERT(proofVerify(pub, prf, L, msg, discIdxs, L));
 
 	puts("disclose nothing");
-	{
-		Fr m_hat[L];
-		prf.set(m_hat, L);
-		CYBOZU_TEST_ASSERT(proofGen(prf, pub, sig, msg, L, 0, 0));
-		CYBOZU_TEST_ASSERT(proofVerify(pub, prf, L, msg, 0, 0));
-	}
+	prf.set(m_hat, L);
+	CYBOZU_TEST_ASSERT(proofGen(prf, pub, sig, msg, L, 0, 0));
+	CYBOZU_TEST_ASSERT(proofVerify(pub, prf, L, msg, 0, 0));
 
-return;
+	puts("disclose one");
 	const uint32_t U = 1;
 	const size_t R = L - U;
-	prf.set(&disc, U);
+	prf.set(m_hat, R);
 	uint32_t discIdx;
 	for (size_t i = 0; i < L; i++) {
 		discIdx = i;
 		CYBOZU_TEST_ASSERT(proofGen(prf, pub, sig, msg, L, &discIdx, 1));
-		Fr discMsgs[R];
-		size_t pos = 0;
-		for (size_t j = 0; j < R; j++) {
-			if (pos == discIdx) continue;
-			discMsgs[j] = msg[pos++];
-		}
-		CYBOZU_TEST_ASSERT(proofVerify(pub, prf, L, discMsgs, &discIdx, 1));
+		Fr discMsg = msg[i];
+		CYBOZU_TEST_ASSERT(proofVerify(pub, prf, L, &discMsg, &discIdx, 1));
 	}
 }
