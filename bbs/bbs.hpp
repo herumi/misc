@@ -186,6 +186,12 @@ public:
 	bool verify(const PublicKey& pub, const Fr *msgs, size_t L) const;
 };
 
+/*
+	e, s : generated from msgs
+	B = s_P1 + s_Q1 * s + s_Q2 * dom + sum_i s_H[i] * msgs[i]
+	A = (1/(sec + e))B
+	return (A, e, s)
+*/
 inline void Signature::sign(const SecretKey& sec, const PublicKey& pub, const Fr *msgs, size_t L)
 {
 	if (L > s_maxMsgSize) {
@@ -211,6 +217,10 @@ inline void Signature::sign(const SecretKey& sec, const PublicKey& pub, const Fr
 	G1::mul(A, B, t);
 }
 
+/*
+	dom = hash(pk, n, s_Q1, s_Q2, s_H[0:n])
+	e(A, pub + e * s_P2) = e(s_P1 + s_Q1 * s + s_Q2 * dom + sum_i s_H[i] * msgs[i], s_P2)
+*/
 inline bool Signature::verify(const PublicKey& pub, const Fr *msgs, size_t L) const
 {
 	if (L > s_maxMsgSize) return false;
