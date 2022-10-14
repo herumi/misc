@@ -420,7 +420,7 @@ int main() {
 
 ```cpp
 // 実行時に決まる値を返す
-int get_val();
+float get_val();
 cgh.template set_specialization_constant<value_id>(get_val());
 
 // vaを使うラムダ式
