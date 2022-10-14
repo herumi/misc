@@ -413,3 +413,20 @@ int main() {
 ![Ahead-of-time and just-in-time options](img/dpcpp/fig13-2.png)
 
 ![Offload bundler/unbundler](img/dpcpp/fig13-3.png)
+
+## 特殊化定数
+
+実行時に決まる値を定数と見なして実行時にJITコンパイルする機能
+
+```cpp
+// 実行時に決まる値を返す
+int get_val();
+cgh.template set_specialization_constant<value_id>(get_val());
+
+// vaを使うラムダ式
+[]() {
+  // ランタイム時に定数としてJITコンパイル
+  const float val = kh.get_specialization_constant<value_id>();
+  ...
+}
+```
