@@ -90,7 +90,7 @@ DPC++ = C++ + SYCL + SYCLの拡張
 
 ## 参考
 - [SYCL 2020](https://www.isus.jp/wp-content/uploads/pdf/sycl-2020_JA.pdf)
-- [oneAPI GPU](https://www.isus.jp/wp-content/uploads/pdf/oneapi-gpu-optimization-guide_JA.pdf)
+- [oneAPI GPU 最適化ガイド](https://www.isus.jp/wp-content/uploads/pdf/oneapi-gpu-optimization-guide_JA.pdf)
 - [Data Parallel C++](https://link.springer.com/book/10.1007/978-1-4842-5574-2)
 
 サンプル
@@ -416,7 +416,7 @@ int main() {
 
 ## 特殊化定数
 
-実行時に決まる値を定数と見なして実行時にJITコンパイルする機能
+実行時に決まる値を定数と見なして実行時にJITコンパイルする機能[oneAPI GPU 最適化ガイド](https://www.isus.jp/wp-content/uploads/pdf/oneapi-gpu-optimization-guide_JA.pdf)の12.2
 
 ```cpp
 // 実行時に決まる値を返す
