@@ -1,7 +1,9 @@
+import sys
 L=64
+MASK = (1 << L) - 1
 
 def getMontgomeryCoeff(p):
-	pLow = p & ((1 << L) - 1)
+	pLow = p & MASK
 	ret = 0
 	t = 0
 	x = 1
@@ -27,6 +29,21 @@ class Montgomery:
 		print(f'pn={self.pn}')
 		print(f'R={hex(self.R)}')
 #		print(f'RR={hex(self.RR)}')
+	def mod(self, x):
+		y = x
+		for i in range(self.pn):
+			q = ((y & MASK) * self.rp) & MASK
+			y += q * self.p
+			y >>= L
+		if y >= self.p:
+			y -= self.p
+		return y
+	def mul(self, x, y):
+		return self.mod(x * y)
+	def toMont(self, x):
+		return self.mul(x, self.RR)
+	def fromMont(self, x):
+		return self.mul(x, 1)
 
 pTbl = [
 	# BN254 p, r
@@ -40,3 +57,16 @@ pTbl = [
 for p in pTbl:
 	mont = Montgomery(p)
 	mont.put()
+
+for x in range(1, 100, 11):
+#	print(f'x={x} {mont.fromMont(mont.toMont(x))}')
+	for y in range(x, x + 100, 11):
+		xx =mont.toMont(x)
+		yy = mont.toMont(y)
+		zz = mont.mul(xx, yy)
+		z = mont.fromMont(zz)
+		xy = (x * y) % mont.p
+		if xy != z:
+			print(f'ERR x={x} y={y} xy={xy}, z={z}')
+			sys.exit(1)
+	print('ok')
