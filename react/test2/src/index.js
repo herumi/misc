@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import mcl from "mcl-wasm";
+import * as mcl from 'mcl-wasm';
 
 class Layout extends React.Component {
   constructor () {
