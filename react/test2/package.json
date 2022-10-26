@@ -20,6 +20,6 @@
     "webpack-cli": "^4.2.0"
   },
   "dependencies": {
-    "mcl-wasm": "^0.9.0"
+    "mcl-wasm": "^1.0.3"
   }
 }
