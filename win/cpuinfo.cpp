@@ -1,24 +1,32 @@
 #include <windows.h>
 #include <malloc.h>
 #include <stdio.h>
+#include <stdint.h>
 
 struct CpuInfo {
 	int coreNum;
 	enum Type {
-		unified = 0,
-		code = 1,
-		data = 2
+		Unified = 0,
+		Code = 1,
+		Data = 2
 	};
 	int cacheSize[3][3];
 	CpuInfo() : coreNum(0), cacheSize{} {}
+	int getCacheSize(Type type, uint32_t level) const
+	{
+		if (1 <= level && level <= 3) return cacheSize[type][level - 1];
+		return 0;
+	}
+	int getUnifiedCacheSize(int level) const { return getCacheSize(Unified, level); }
+	int getCodeCacheSize(int level) const { return getCacheSize(Code, level); }
+	int getDataCacheSize(int level) const { return getCacheSize(Data, level); }
 	void put() const
 	{
 		printf("coreNum=%d\n", coreNum);
-		for (int level = 0; level < 3; level++) {
-			for (int type = 0; type < 3; type++) {
-				const char *s = (type == 0) ? "unified" : (type == 1) ? "code" : "data";
-				printf("L%d %s size = %d\n", level + 1, s, cacheSize[type][level]);
-			}
+		for (int level = 1; level <= 3; level++) {
+			printf("L%d unified size = %d\n", level, getUnifiedCacheSize(level));
+			printf("L%d code size = %d\n", level, getCodeCacheSize(level));
+			printf("L%d data size = %d\n", level, getDataCacheSize(level));
 		}
 	}
 	void init()
