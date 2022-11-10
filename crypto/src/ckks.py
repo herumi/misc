@@ -4,6 +4,7 @@ from math import *
 
 g_M:int = 0
 g_N:int = 0
+g_halfN:int = 0
 g_xi:np.complex128 = 0
 g_A:list = []
 g_invA:np.ndarray = None
@@ -19,11 +20,10 @@ g_qL:int = 0
 # g_Delta : scale
 # L : max num of mul
 def init(M: int, Delta:int = 64, L:int = 3, p:int = 100, q0:int = 100):
-  global g_M
-  global g_N
-  global g_xi
+  global g_M, g_N, g_halfN, g_xi
   g_M = M
-  g_N = M // 2
+  g_N = M//2
+  g_halfN = g_N//2
   g_xi = np.exp(2 * np.pi * 1j / g_M)
 
   # g_A = (a_ij) = (((g_xi^(2*i + 1))^j)
@@ -57,6 +57,27 @@ def Sigma(p: poly) -> np.array:
 def invSigma(b: np.array) -> poly:
   return poly(np.dot(g_invA, b))
 
+# Projection from C^N -> C^(N/2)
+def Pi(z: np.array) -> np.array:
+  return z[0:g_halfN]
+
+# convert a in C^(N/2) to [a:reverse(conj(a))] in C^N
+def invPi(z: np.array) -> np.array:
+  assert z.shape[0] == g_halfN
+  w = z.conjugate()[::-1]
+  return np.hstack([z, w])
+
+def encode(z: np.array) -> poly:
+  assert z.shape[0] == g_halfN
+  # scale
+  h = invSigma(invPi(z) * g_Delta)
+  # round
+  p = poly(list(map(np.round, h.convert().coef)))
+  return p
+
+def decode(m: poly) -> np.array:
+  return Pi(Sigma(m / g_Delta))
+
 def main():
   init(8)
 
@@ -76,12 +97,11 @@ def main():
   print(a)
 
   print('===')
-  m = poly(np.array([10,4*sqrt(2),10,2*sqrt(2)])/4)
-  print(m)
-  # scaling and round
-  m_scale = poly(list(map(round,(m*g_Delta).convert().coef)))
-  print(Sigma(m))
-  print(Sigma(m_scale)/g_Delta)
+  z = np.array([3+4j, 2-1j])
+  print(f'{z=}')
+  m = encode(z)
+  print(f'enc={m}')
+  print(f'dec={decode(m)}')
 
 if __name__ == '__main__':
   main()
