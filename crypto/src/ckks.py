@@ -2,16 +2,13 @@ import numpy as np
 from numpy.polynomial import Polynomial as poly
 from math import *
 import secrets
+import random
 
-FIX_RAND = False
-sss = 12345
+random.seed(123)
 
 def getRand(n):
-  if FIX_RAND:
-    global sss
-    sss = (123456789 * sss + 9876543) % 0xffffffff
-    return sss % n
-  return secrets.randbelow(n)
+  return random.randint(0, n-1)
+#  return secrets.randbelow(n)
 
 class Param:
   def __init__(self):
@@ -22,7 +19,7 @@ class Param:
     self.xi = 0
     self.A = []
     self.invA = None
-    self.polyMod = None
+    self.cycloPoly = None
     self.Delta = 0
     self.L = 0
     self.p = 0
@@ -35,7 +32,7 @@ g_ = None
 # g_M : power of two
 # g_Delta : scale
 # L : max num of mul
-def init(M: int, Delta:int = 64, L:int = 3, p:int = 100, q0:int = 100, P:int = 100):
+def init(M: int, Delta:int = 1000, L:int = 3, p:int = 100, q0:int = 100, P:int = 1000):
   global g_
   g_ = Param()
   g_.M = M
@@ -52,7 +49,8 @@ def init(M: int, Delta:int = 64, L:int = 3, p:int = 100, q0:int = 100, P:int = 1
     g_.A.append(row)
   g_.invA = np.linalg.inv(g_.A)
 
-  g_.polyMod = poly([1] + [0] * (g_.N-1) + [1])
+  # M-th cyclotomic poly : phi_M(X) = X^N + 1
+  g_.cycloPoly = poly([1] + [0] * (g_.N-1) + [1])
 
   g_.Delta = Delta
   g_.L = L
@@ -60,6 +58,9 @@ def init(M: int, Delta:int = 64, L:int = 3, p:int = 100, q0:int = 100, P:int = 1
   g_.q0 = q0
   g_.qL = (p ** L) * q0
   g_.P = P
+
+def get_ql(l:int) -> int:
+  return g_.p ** l * g_.q0
 
 # Sigma(p) = (p(g_.xi^(2*i+1)))
 def Sigma(p: poly) -> np.array:
@@ -81,14 +82,33 @@ def invPi(z: np.array) -> np.array:
   w = z.conjugate()[::-1]
   return np.hstack([z, w])
 
+def getRealPoly(p: poly) -> poly:
+  def f(x):
+    if x.imag != 0:
+      raise('not zero')
+    return x.real
+  return poly(list(map(f, p.convert().coef)))
+
 # Round up coefficients of a polynomial
-def roundPoly(p: poly) -> poly:
-  return poly(list(map(np.round, p.convert().coef)))
+def roundCoeff(p: poly) -> poly:
+  p = poly(list(map(np.round, p.convert().coef)))
+  p = getRealPoly(p)
+  return p
+
+def signMod(x, n):
+  t = x % n
+  if x >= 0:
+    return t
+  return t - n
 
 # modulo coefficients of a polynomial
-def modPoly(p: poly, mod) -> poly:
+def modCoeff(p: poly, m) -> poly:
   def f(x):
-    return x # % mod
+    a = signMod(x.real, m)
+    b = signMod(x.imag, m)
+    if b == 0:
+      return a
+    return a + b * 1j
   return poly(list(map(f, p.convert().coef)))
 
 def Encode(z: np.array) -> poly:
@@ -96,13 +116,21 @@ def Encode(z: np.array) -> poly:
   # scale
   h = invSigma(invPi(z) * g_.Delta)
   # round
-  return roundPoly(h)
+  p = roundCoeff(h)
+  # get real part
+  p = getRealPoly(p)
+  return p
 
 def Decode(m: poly) -> np.array:
   return Pi(Sigma(m / g_.Delta))
 
+def randZERO():
+  return poly([0] * g_.N)
+
 # QQQ : consider Hamming weight h
+# reutrn {-1, 0, 1}^N
 def randHWT() -> poly:
+  return randZERO()
   a = []
   for i in range(g_.N):
     v = getRand(3) - 1
@@ -111,6 +139,7 @@ def randHWT() -> poly:
 
 # rho = 0.5 (Pr(+1)=Pr(-1)=1/4, Pr(0)=1/2)
 def randZO() -> poly:
+  return randZERO()
   a = []
   for i in range(g_.N):
     v = getRand(4)
@@ -132,11 +161,16 @@ def randPoly(w):
 
 # QQQ : consider variance
 def randDG() -> poly:
+  return randZERO()
   return randPoly(3)
 
 # R_{qL}
 def randRQL() -> poly:
+  return randZERO()
   return randPoly(6)
+
+def modPoly(p: poly) -> poly:
+  return p % g_.cycloPoly
 
 def KeyGen():
   # secret
@@ -146,9 +180,11 @@ def KeyGen():
   e = randDG()
   b = -a * s + e
   # evalutate
-  ap = randPoly(g_.P * g_.qL)
+  n = g_.P * g_.qL
+  ap = randDG() # randPoly(n)?
   ep = randDG()
-  bp = (-ap * s + ep + g_.P * s * s) % g_.polyMod
+  bp = modPoly(-ap * s + ep + g_.P * s * s)
+  bp = modCoeff(bp, n)
   return (s, (b, a), (bp, ap))
 
 def randPlainText(rand=True):
@@ -163,13 +199,22 @@ def randPlainText(rand=True):
 
 def Enc(pub, m):
   v = randZO()
-  e0 = randDG()
-  e1 = randDG()
-  return ((v * pub[0] + m + e0) % g_.polyMod, (v * pub[1] + e1) % g_.polyMod)
+  e0 = randZO() # randDG()
+  e1 = randZO() # randDG()
+  t0 = modPoly(v * pub[0] + m + e0)
+  t1 = modPoly(v * pub[1] + e1)
+  t0 = modCoeff(t0, g_.qL)
+  t1 = modCoeff(t1, g_.qL)
+  t0 = getRealPoly(t0)
+  t1 = getRealPoly(t1)
+  return (t0, t1)
 
 def Dec(sec, c):
   b, a = c
-  return (b + a * sec) % g_.polyMod
+  t = modPoly(b + a * sec)
+  ql = get_ql(3)
+#  t = modCoeff(t, ql)
+  return t
 
 def Add(c1, c2):
   b1, a1 = c1
@@ -179,15 +224,17 @@ def Add(c1, c2):
 def Mul(c1, c2, evk=None):
   b1, a1 = c1
   b2, a2 = c2
-  m = g_.p * g_.q0
-  d0 = modPoly((b1 * b2) % g_.polyMod, m)
-  d1 = modPoly((a1 * b2 + a2 * b1) % g_.polyMod, m)
-  d2 = modPoly((a1 * a2) % g_.polyMod, m)
-  if evk == None:
-    return (d0, d1, d2)
-  t0 = modPoly(roundPoly(d2 * evk[0] / g_.P) % g_.polyMod, m)
-  t1 = modPoly(roundPoly(d2 * evk[1] / g_.P) % g_.polyMod, m)
-  return (d0 + t0, d1 + t1)
+  ql = get_ql(1)
+  d0 = modPoly(b1 * b2)
+  d1 = modPoly(a1 * b2 + a2 * b1)
+  d2 = modPoly(a1 * a2)
+  t0 = d2 * evk[0] / g_.P
+  t1 = d2 * evk[1] / g_.P
+  t0 = d0 + roundCoeff(t0)
+  t1 = d1 + roundCoeff(t1)
+  t0 = modCoeff(t0, ql)
+  t1 = modCoeff(t1, ql)
+  return (t0, t1)
 
 def PUT(msg, x):
   if type(x) == tuple:
@@ -217,8 +264,9 @@ def main():
 
   print('\n\nEncrypt / Decrypt')
   sec, pub, evk = KeyGen()
-  print('sec=', sec)
+  PUT('sec', sec)
   PUT('pub', pub)
+  PUT('evk', evk)
 
   PUT('z  ', Decode(m))
   PUT('msg', m)
@@ -237,20 +285,26 @@ def main():
   m2 = Encode(z2)
   PUT('m1', m1)
   PUT('m2', m2)
-  PUT('org1', Decode(m1))
-  PUT('org2', Decode(m2))
+  org1 = Decode(m1)
+  org2 = Decode(m2)
+  PUT('org1', org1)
+  PUT('org2', org2)
   c1 = Enc(pub, m1)
   c2 = Enc(pub, m2)
   PUT('c1', c1)
   PUT('c2', c2)
   c = Add(c1, c2)
   PUT('add', c)
-  PUT('dec', Dec(sec, c))
-  PUT('dcd', Decode(Dec(sec, c)))
+  d = Dec(sec, c)
+  PUT('dec', d)
+  PUT('dcd', Decode(d))
+  PUT('org', org1 + org2)
   c = Mul(c1, c2, evk)
   PUT('mul', c)
-  PUT('dec(c)', Dec(sec, c))
-  PUT('dcd(dec(c))', Decode(Dec(sec, c)))
+  d = Dec(sec, c)
+  PUT('dec', d)
+  PUT('dcd', Decode(d))
+  PUT('org', org1 * org2)
 
 
 if __name__ == '__main__':
