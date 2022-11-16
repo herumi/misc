@@ -1,36 +1,69 @@
-# [CKKS](https://blog.openmined.org/ckks-explained-part-1-simple-encoding-and-decoding/)
+# [CKKS (Cheon-Kim-Kim-Song)](https://eprint.iacr.org/2016/421)
 
-## [CKKS (Cheon-Kim-Kim-Song)](https://eprint.iacr.org/2016/421)
+## 概要
+- 完全準同型暗号
+- LWE仮定
+- 平文が整数係数の多項式
+- 復号したら誤差を伴う暗号方式
+- 乗算するときに評価鍵を用いて暗号文サイズを減らす
 
-全体の流れ
-- $m \in  C^{N/2}$ : 平文空間
-- $p(X) \in R := Z[X]/(X^N+1)$ : $m$のエンコード
-- $c=(c_0(X), c_1(X)) \in (Z_q[X]/(X^N+1))^2$ : 暗号化
-- $c'=f(c) \in R^2$ : 評価
-- $p'=f(p) \in R$ : 復号
-- $m'=f(m) \in C^{N/2}$ : デコード
+## 数学の準備
 
-## 準備
-- $N$は2ベキ
-- $M=2N$
-- $\Phi_M(X)=X^N+1$ : 円分体多項式
-  - e.g. $\Phi_8(X)=X^4+1$
-- $\xi_M = e^{2 i \pi / M}$ : 1の$M$乗根($X^N+1=\prod_{i=1}^N (X-\xi^{2i-1})$)
-- $\xi$ : 1$の原始$M$乗根($\xi^N+1=0$, $\xi^M=1$)
-- $\sigma  : C[X]/(X^N+1) \rightarrow C^n$ : 正準埋め込み
-  - $m(X) \in C[X]/(X^N+1)$に対して$\sigma(m) := \sigma(m(X))=(m(\xi), m(\xi^3), \dots, m(\xi^{2N-1}))\in C^N$
-  - $\sigma(X^N+1)=((\xi^{2i-1})^N+1)=((\xi^N)^{2i-1}+1)=((-1)^{2i-1}+1)=(0)$なのでwell-defined.
+### 記号の定義
 
-これは全単射
-- 逆写像
-  - $z=(z_1, \dots, z_N) \in C^N$, $m(X)=\sum_{j=0}^{N-1} m_j X^j \in C[X]/(X^N+1)$について$\sigma(m(X))=z$とする
-  - $\sum_{j=0}^{N-1}m_j(\xi^{2i-1})^j = z_i$ for $i=1, \dots, N$.
-  - $A=((\xi^{2i-1})^j)$とすると$A$はVandermonde行列で$A m= z$より$m = A^{-1} z$
+- $M$ : 2のべき乗
+- $N = M/2$
+- $ξ = ξ_M = e^{2 i π / M}$ : 1の$M$乗根
+  - $ξ^M = 1$
+  - $ξ^N = -1$
+  - $N$個の$ξ, ξ^3, ξ^5, ..., ξ^{2N-1}$は全て互いに異なる
+  - $X^N + 1 = \prod_{j=1}^N (X - ξ^{2j-1})$ ($N$次多項式は$N$個の解を持つ / 最高次の係数が両辺共に1)
+- $C$ : 複素数全体
+- $C[X]$ : 複素数係数の多項式全体
+  - $C[ X] / (X^N+1)$ : $C[X]$を$X^N+1$で割った余りの多項式全体
 
-性質
-- 和 : $m(X)$, $m'(X)$に対して$\sigma(m+m')=\sigma(m)+\sigma(m')$は自明.
-- 積 : $m(X)m'(X)=(\sum_i m_i X^i)(\sum_j m'_j X^j)=\sum_i (\sum_{j=0}^i m_j m'_{i-j})X^i$.
-- $\sigma(m)\sigma(m')=(m(\xi^{2i-1})m'(\xi^{2i-1}))$
+### 写像の定義
+- $σ: C[ X]→ C^N$を$σ(f) = (f(ξ), f(ξ^3), ..., f(ξ^{2N-1})$とする
+  - 多項式$f$, $g$に対して
+    - $(f + g)(x) = f(x) + g(x)$, $(fg)(x) = f(x)g(x)$とする
+  - $σ(f + g) = σ(f) + σ(g)$
+  - $σ(fg) = σ(f)σ(g)$
+
+σは全射($C^N$の全ての値になる多項式がある)
+- $f(X) = \sum_{i=0}^{N-1} a_i X^i$とする
+- $σ(f) = (\sum_{i=0}^{N-1} a_i (ξ^{2j-1})^i)_{i=0, ..., N-1, j=1, ..., N}$
+- $a = (a_0, a_1, ..., a_{N-1})$, $b = σ(f)$, $A=(ξ^{(2j-1)i})_{i=0, ..., N-1, j=1, ..., N}$とすると$b = Aa$
+- $A$はVandermonde行列で$ξ^{(2j-1)}$は全て異なるので逆行列がある
+- 任意の$b$に対して$b = Aa$となる$a$がある
+
+Ker(σ)
+- σの行き先が0になる多項式全体を考える
+- f ∈ Ker(σ) ⇔ σ(f) = $(f(ξ), f(ξ^3), ..., f(ξ^{2N-1})=0$ ⇔ $f(ξ^{2j-1})=$ for j = 1, ..., N
+  - fは$X - ξ^{2j-1}$ for j = 1, ..., Nで割り切れる ⇔ fは$X^N+1$で割り切れる
+
+σ : $C[ X] / (X^N+1) → C^N$は全単射(同型写像)
+
+対称性
+- $ξ^{2j-1}$についてconj($ξ^{2j-1}$)=$ξ^{M-2j+1}$ for j = 1, ..., $N/2$
+  - そのような$C^N$の部分空間をHとする
+- よって$f$が実数係数多項式なら$σ(f)$は前半分の情報で十分
+
+- $π:  C^N → C^{N/2}$を$π(x_1,...,x_N)=(x_1,...,x_{N/2})$とする
+- $π^{-1}: C^{N/2} → H ⊂  C^N$をπ^{-1}(y_1,...,y_{N/2})=(y_1,...,y_{N/2}, conj(y_{N/2}), .., conj(y_1))$とする
+
+### 平文空間とencode, decode
+- $z ∈ C^{N/2}$ : 元のデータ
+- $π^{-1}(z)∈H$を整数係数に丸める
+  - $t = round(π^{-1}(z) Δ)$
+  - 丸めるときに誤差を減らすためにΔ倍する
+- tを$σ^{-1}$でRにもっていく
+- $R = Z[ X]/(X^N+1)$ : 整数係数多項式を$X^N+1$で割った余り全体
+- Rが平文空間でzをRに移す操作をencodeという
+
+decode
+- $m∈R$に対して$π(σ(m) / Δ)$が元のデータ(の近似値)となる
+
+---
 
 # LWE (Learning with Error)
 - $s \in {Z_q}^n$ : 秘密鍵
@@ -88,4 +121,6 @@ CRT (Chinese remainder theorem)を使う
 
 - $p_1, \dots, p_L$, $q_0$ : 互いに異なり$p_i \approx \Delta$, $q_0 \ge \Delta$なものをとる。
 - $q_L=\prod_{i=1}^L p_i q_0$
-- $RS_{i \rightarrow i-1}(c)=round(p_i^{-1} c)(mod q_{i-1})$
+- $RS_{i → i-1}(c)=round(p_i^{-1} c)(mod q_{i-1})$
+
+[CKKS](https://blog.openmined.org/ckks-explained-part-1-simple-encoding-and-decoding/)

@@ -114,7 +114,7 @@ def Encode(z: np.array) -> poly:
   return p
 
 def Decode(m: poly) -> np.array:
-  return Pi(Sigma(m / g_.Delta))
+  return Pi(Sigma(m) / g_.Delta)
 
 def randZERO():
   return poly([0] * g_.N)
