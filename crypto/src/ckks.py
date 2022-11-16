@@ -4,7 +4,7 @@ from math import *
 import secrets
 import random
 
-random.seed(123)
+random.seed(1234)
 
 def getRand(n):
   return random.randint(0, n-1)
@@ -20,19 +20,18 @@ class Param:
     self.A = []
     self.invA = None
     self.cycloPoly = None
-    self.Delta = 0
-    self.L = 0
-    self.p = 0
-    self.q0 = 0
-    self.qL = 0
-    self.P = 0
-
-g_ = None
+    self.Delta = 100
+    self.l = 2
+    self.L = 3
+    self.p = 100
+    self.q0 = 10000
+    self.P = 1000
+    self.qL = (self.p ** self.L) * self.q0
 
 # g_M : power of two
 # g_Delta : scale
 # L : max num of mul
-def init(M: int, Delta:int = 1000, L:int = 3, p:int = 100, q0:int = 100, P:int = 1000):
+def init(M: int):
   global g_
   g_ = Param()
   g_.M = M
@@ -51,13 +50,6 @@ def init(M: int, Delta:int = 1000, L:int = 3, p:int = 100, q0:int = 100, P:int =
 
   # M-th cyclotomic poly : phi_M(X) = X^N + 1
   g_.cycloPoly = poly([1] + [0] * (g_.N-1) + [1])
-
-  g_.Delta = Delta
-  g_.L = L
-  g_.p = p
-  g_.q0 = q0
-  g_.qL = (p ** L) * q0
-  g_.P = P
 
 def get_ql(l:int) -> int:
   return g_.p ** l * g_.q0
@@ -130,7 +122,6 @@ def randZERO():
 # QQQ : consider Hamming weight h
 # reutrn {-1, 0, 1}^N
 def randHWT() -> poly:
-  return randZERO()
   a = []
   for i in range(g_.N):
     v = getRand(3) - 1
@@ -139,7 +130,6 @@ def randHWT() -> poly:
 
 # rho = 0.5 (Pr(+1)=Pr(-1)=1/4, Pr(0)=1/2)
 def randZO() -> poly:
-  return randZERO()
   a = []
   for i in range(g_.N):
     v = getRand(4)
@@ -161,13 +151,11 @@ def randPoly(w):
 
 # QQQ : consider variance
 def randDG() -> poly:
-  return randZERO()
   return randPoly(3)
 
 # R_{qL}
 def randRQL() -> poly:
-  return randZERO()
-  return randPoly(6)
+  return randPoly(2)
 
 def modPoly(p: poly) -> poly:
   return p % g_.cycloPoly
@@ -199,8 +187,8 @@ def randPlainText(rand=True):
 
 def Enc(pub, m):
   v = randZO()
-  e0 = randZO() # randDG()
-  e1 = randZO() # randDG()
+  e0 = randDG()
+  e1 = randDG()
   t0 = modPoly(v * pub[0] + m + e0)
   t1 = modPoly(v * pub[1] + e1)
   t0 = modCoeff(t0, g_.qL)
@@ -212,8 +200,8 @@ def Enc(pub, m):
 def Dec(sec, c):
   b, a = c
   t = modPoly(b + a * sec)
-  ql = get_ql(3)
-#  t = modCoeff(t, ql)
+  ql = get_ql(g_.l)
+  t = modCoeff(t, ql)
   return t
 
 def Add(c1, c2):
@@ -224,12 +212,12 @@ def Add(c1, c2):
 def Mul(c1, c2, evk=None):
   b1, a1 = c1
   b2, a2 = c2
-  ql = get_ql(1)
+  ql = get_ql(g_.l)
   d0 = modPoly(b1 * b2)
   d1 = modPoly(a1 * b2 + a2 * b1)
   d2 = modPoly(a1 * a2)
-  t0 = d2 * evk[0] / g_.P
-  t1 = d2 * evk[1] / g_.P
+  t0 = modPoly(d2 * evk[0]) / g_.P
+  t1 = modPoly(d2 * evk[1]) / g_.P
   t0 = d0 + roundCoeff(t0)
   t1 = d1 + roundCoeff(t1)
   t0 = modCoeff(t0, ql)
@@ -279,6 +267,9 @@ def main():
   print('\n\nAdd / Mul')
   z1 = randPlainText()
   z2 = randPlainText()
+#  if M == 8:
+#    z1 = np.array([1 + 2j, 3 + 4j])
+#    z2 = np.array([-2 + 4j, -5 + 1j])
   PUT('z1', z1)
   PUT('z2', z2)
   m1 = Encode(z1)
@@ -293,6 +284,8 @@ def main():
   c2 = Enc(pub, m2)
   PUT('c1', c1)
   PUT('c2', c2)
+  PUT('dec c1', Dec(sec, c1))
+  PUT('dec c2', Dec(sec, c2))
   c = Add(c1, c2)
   PUT('add', c)
   d = Dec(sec, c)
@@ -303,7 +296,7 @@ def main():
   PUT('mul', c)
   d = Dec(sec, c)
   PUT('dec', d)
-  PUT('dcd', Decode(d))
+  PUT('dcd', Decode(d) / g_.Delta)
   PUT('org', org1 * org2)
 
 
