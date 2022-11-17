@@ -112,7 +112,7 @@ decode
 - $Dec(sk, (d'_0, d'_1))=d'_0+d'_1 s=d_0 + d_1 s + round((1/P) d_2 (-a' s + e'' + P s^2)) + round((1/P) d_2 a') s^2$
   - $=(d_0 + d_1 s + d_2 s^2) + (round((1/P) -d_2 a' s + e'') + round((1/P d_2 a') s^2)$
   - 第2項は大体 $a^3| < P$ としておけば小さいノイズ
-  - よって$Dec(sk, mul(c, c')) \approx mm'$
+  - よって $Dec(sk, mul(c, c')) \approx mm'$
 
 ### 再スケーリング (rescaling)
 - 精度を保つために元のデータ $z$ に対してスケール Δ を掛けている
