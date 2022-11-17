@@ -63,64 +63,66 @@ Ker(σ)
 decode
 - $m∈R$ に対して $π(σ(m) / Δ)$ が元のデータ(の近似値)となる
 
----
-
-# LWE (Learning with Error)
+## LWE (Learning with Error)
+- $Z_q = \{0, 1, ... q-1\}$ : qで割った余りの整数の集合
 - $s \in {Z_q}^n$ : 秘密鍵
 - $a_i \in {Z_q}^n$ : 一様ランダム
 - $e_i \in {Z_q}$ : 小さいノイズ
-$(a_i, b_i)=(a_i, a_i \cdot s+e_i)$とランダムな${Z_q}^n \times Z_q$の元が区別つかない
-行列$A \in {Z_q}^{n\times n}$を使って$(A, As + e)$とかける
 
-$p=(-As + e, A)$が公開鍵
+### LWE仮定
 
-- $Enc(\mu)$ : $\mu$は平文
-  - $c = (c_0,c_1) = Enc(\mu) = (\mu,0)+p=(\mu-As+e,A)$
-- $s$で$Dec(c)$を求める
-  - $\tilde{\mu}=c_0+c_1 s=\mu-As+e+As=\mu+e \approx \mu$.
+- $(a_i, b_i)=(a_i, a_i \cdot s+e_i)$ とランダムな ${Z_q}^n \times Z_q$ の元が区別つかない
+- 行列 $A \in {Z_q}^{n\times n}$ とベクトル $e \in {Z_q}^n$ を使って $(A, As + e)$ とするとこれから $s$ を求められない
 
-# Ring LWE
-- ${Z_q}^n$の代わりに$R_q=Z_q[X]/(X^N+1)$を使う
-  - 鍵サイズは$O(n)$
-  - 多項式の乗算は離散FFTを使うことで$O(n^2)$ではなく$O(n \log(n))$
+### Ring LWE
+- ${Z_q}^N$ の代わりに $R_q=Z_q[X]/(X^N+1)$ を使う
+  - 鍵サイズは $O(N)$
+  - 離散FFTを使うことで多項式の乗算コストは $O(N^2)$ から $O(N \log(N))$ に減る
 
-- $s$ : 秘密鍵
-- $p = (b,a)=(-as + e, a) \in {R_q}^2$ : 公開鍵
-- $\mu$の暗号化$c=Enc(\mu,p)=(\mu+b,a)$
-- $c=(c_0,c_1)$の復号$Dec(c,s)=c_0+c_1s=(\mu+b)+as=\mu+e\approx \mu$
+### 暗号化と復号のキーアイデア
+- 鍵生成
+  - $sk = s$ : 秘密鍵(N次元の{0,±1}の乱数)
+  - a を一様ランダム, e を小さいノイズとして $pk = (b,a)=(-as + e, a) \in {R_q}^2$ : 公開鍵
+- $m$ の暗号化
+  - $c=Enc(pk, m)=(m + b + e_1, a + e_2)$, $e_i$ は小さいノイズ
+- $c=(c_0,c_1)$ の復号
+  - $Dec(sk, c)=c_0+c_1s=(m + (-as + e) + e_1) + (a + e_2)s = m + e + e_1 + e_2s = m + \tilde{e}~ \approx m$
 
-### 準同型性
-- $Enc(\mu)=(c_0,c_1)$, $Enc(\mu')=(c'_0,c'_1)$
-加算
-- $cadd(c,c')=c+c'=(c_0+c'_0,c_1+c'_1)$. $Dec(c+c')=(c_0+c'_0)+(c_1+c'_1)s=\mu+\mu'+(e+e') \approx \mu+\mu'$
+## 準同型性
+- $Enc(m)=(c_0,c_1)$, $Enc(m')=(c'_0,c'_1)$
 
-### 乗算
-- $cmul(c,c')=(d_0,d_1,d_2)=(c_0 c'_0, c_0 c'_1 + c'_0 c_1, c_1 c'_1)$
-- $decmul(c,s)=d_0+d_1 s + d_2 s^2$
-  - $decmul(c,s)=(c_0 c'_0)+(c_0 c'_1 + c'_0 c_1)s + (c_1 c'_1)s^2=(c_0+c_1s)(c'_0+c'_1s)=(\mu+e)(\mu'+e')=\mu \mu' + \mu e' + \mu' e + e + e' \approx \mu \mu'$
+### 加算
+- $add(c, c') = c+c'=(c_0+c'_0,c_1+c'_1)$
+- $Dec(c+c')=(c_0+c'_0)+(c_1+c'_1)s= (m + \tilde{e}) + (m' + \tilde{e}') \approx \mu+\mu' = Dec(c) + Dec(c')$
+
+### 乗算は?
+- $(c_0 + c_1 s)(c'_0 + c'_1 s) = (c_0 c'_0) + (c_0 c'_1 + c_1 c'_0)s + (c_1 c'_1)s^2 = d_0 + d_1 s + d_2 s^2$
+- 左辺(LHS)は $=(m + \tilde{e})(m' + \tilde{e}') = mm' + (m \tilde{e}' + m' \tilde{e} + \tilde{e}\tilde{e}')$
+  - もし2項目が $mm'$ より小さければ $LHS \approx mm'$ と期待するものになる
+- 右辺(RHS)は $mul(c, c') = (d_0, d_1, d_2)$, $Dec(sk, mul(c, c')) = d_0 + d_1 s + d_2 s^2$ とすればOK
+  - ただし乗算した暗号文のサイズが大きくなる
 
 ### 再線型化 (relinearization)
-- $q$を大きな整数とする。
-- 評価鍵 : $e_{vk}=(-a_0s+e_0+p s^2, a_0) mod (pq)$
-- $Relin((d_0,d_1,d_2),e_{vk})=(d'_0,d'_1)=(d_0,d_1)+round((1/p)d_2 e_{vk})$
-- $Dec((d'_0,d'_1),s)=d'_0+d'_1 s=d_0 + d_1 s + round((1/p)d_2(-a_0 s + e_0 + p s^2 + a_0 s))=(d_0+d_1 s + d_2 s^2)+round(e_0 d_2 / p) \approx d_0 + d_1 s + d_2 s^2 \approx \mu \mu'$
+- 乗算暗号文を元のサイズに小さくする
+- そのために評価鍵を導入する(乗算に必要な公開鍵の一種)
+- 新たなパラメータ P を比較的大きな整数とする
+- 評価鍵 : $a' ~ a$) をランダム, $e''$ をノイズとして $vk=(-a' s+e'' +P s^2, a')$ とする
+  - vkから s は求まらない
+- 暗号文 $(d_0, d_1, d_2)$の代わりに $(d_0,d_1)+round((1/P)d_2 vk)$ を$mul(c, c')$ とする
+- $Dec(sk, (d'_0, d'_1))=d'_0+d'_1 s=d_0 + d_1 s + round((1/P) d_2 (-a' s + e'' + P s^2)) + round((1/P) d_2 a') s^2$
+  - $=(d_0 + d_1 s + d_2 s^2) + (round((1/P) -d_2 a' s + e'') + round((1/P d_2 a') s^2)$
+  - 第2項は大体 $a^3| < P$ としておけば小さいノイズ
+  - よって$Dec(sk, mul(c, c')) \approx mm'$
 
-### rescaling
-[Microsoft Private AI Bootcamp](https://www.youtube.com/watch?v=SEBdYXxijSo)
-
-- 精度を保つために$z$に対してスケール$\Delta$を掛けておく。$z \Delta$
-- 2個の暗号文$c$, $c'$をかけると結果は$ z z' \Delta^2$
+### 再スケーリング (rescaling)
+- 精度を保つために元のデータ $z$ に対してスケール Δ を掛けている
+- 2個の暗号文 $c$, $c'$ をかけると結果は $ z z' Δ^2$ となる
 - このスケールを元に戻す必要がある
-- $L$を乗算回数, $q=\Delta^L q_0 (q_0 \ge \Delta)$とする
-  - たとえば10進数部分に30ビット,  整数が10ビットの精度とすると$\Delta=2^{30}$, $q_0=2^{40}$
-- $RS(c)=round((q_{l-1}/q_l c)(mod q_{l-1})=round(\Delta^{-1} c)(mod q_{l-1})$
-- $L=10$なら$q_L=2^{340}$
-  - 大きすぎる
 
-CRT (Chinese remainder theorem)を使う
+### 実際には
+- 多項式の乗算は離散FFTを使う
+- modの計算はCRT (Chinese remainder theorem)を使う
 
-- $p_1, \dots, p_L$, $q_0$ : 互いに異なり$p_i \approx \Delta$, $q_0 \ge \Delta$なものをとる。
-- $q_L=\prod_{i=1}^L p_i q_0$
-- $RS_{i → i-1}(c)=round(p_i^{-1} c)(mod q_{i-1})$
-
-[CKKS](https://blog.openmined.org/ckks-explained-part-1-simple-encoding-and-decoding/)
+参考
+- [Microsoft Private AI Bootcamp](https://www.youtube.com/watch?v=SEBdYXxijSo)
+- [CKKS](https://blog.openmined.org/ckks-explained-part-1-simple-encoding-and-decoding/)

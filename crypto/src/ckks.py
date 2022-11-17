@@ -20,12 +20,12 @@ class Param:
     self.A = []
     self.invA = None
     self.cycloPoly = None
-    self.Delta = 100
+    self.Delta = 1000
     self.l = 2
     self.L = 3
-    self.p = 100
+    self.p = 1000
     self.q0 = 10000
-    self.P = 1000
+    self.P = 10000
     self.qL = (self.p ** self.L) * self.q0
 
 # g_M : power of two
@@ -155,25 +155,10 @@ def randDG() -> poly:
 
 # R_{qL}
 def randRQL() -> poly:
-  return randPoly(2)
+  return randPoly(100)
 
 def modPoly(p: poly) -> poly:
   return p % g_.cycloPoly
-
-def KeyGen():
-  # secret
-  s = randHWT()
-  # public
-  a = randRQL()
-  e = randDG()
-  b = -a * s + e
-  # evalutate
-  n = g_.P * g_.qL
-  ap = randDG() # randPoly(n)?
-  ep = randDG()
-  bp = modPoly(-ap * s + ep + g_.P * s * s)
-  bp = modCoeff(bp, n)
-  return (s, (b, a), (bp, ap))
 
 def randPlainText(rand=True):
   z = []
@@ -185,21 +170,36 @@ def randPlainText(rand=True):
     z.append(v)
   return np.array(z)
 
-def Enc(pub, m):
+def KeyGen():
+  # secret
+  s = randHWT()
+  # public
+  a = randRQL()
+  e = randDG()
+  b = modPoly(-a * s + e)
+  # evalutate
+  n = g_.P * g_.qL
+  ap = randRQL()
+  ep = randDG()
+  bp = modPoly(-ap * s + ep + g_.P * s * s)
+  bp = modCoeff(bp, n)
+  return (s, (b, a), (bp, ap))
+
+def Enc(pk, m):
   v = randZO()
   e0 = randDG()
   e1 = randDG()
-  t0 = modPoly(v * pub[0] + m + e0)
-  t1 = modPoly(v * pub[1] + e1)
+  t0 = modPoly(v * pk[0] + m + e0)
+  t1 = modPoly(v * pk[1] + e1)
   t0 = modCoeff(t0, g_.qL)
   t1 = modCoeff(t1, g_.qL)
   t0 = getRealPoly(t0)
   t1 = getRealPoly(t1)
   return (t0, t1)
 
-def Dec(sec, c):
+def Dec(sk, c):
   b, a = c
-  t = modPoly(b + a * sec)
+  t = modPoly(b + a * sk)
   ql = get_ql(g_.l)
   t = modCoeff(t, ql)
   return t
@@ -209,15 +209,15 @@ def Add(c1, c2):
   b2, a2 = c2
   return (b1 + b2, a1 + a2)
 
-def Mul(c1, c2, evk=None):
+def Mul(c1, c2, ek=None):
   b1, a1 = c1
   b2, a2 = c2
   ql = get_ql(g_.l)
   d0 = modPoly(b1 * b2)
   d1 = modPoly(a1 * b2 + a2 * b1)
   d2 = modPoly(a1 * a2)
-  t0 = modPoly(d2 * evk[0])
-  t1 = modPoly(d2 * evk[1])
+  t0 = modPoly(d2 * ek[0])
+  t1 = modPoly(d2 * ek[1])
   t0 = roundCoeff(t0 / g_.P)
   t1 = roundCoeff(t1 / g_.P)
   t0 = d0 + roundCoeff(t0)
@@ -253,16 +253,16 @@ def main():
     print(randHWT())
 
   print('\n\nEncrypt / Decrypt')
-  sec, pub, evk = KeyGen()
-  PUT('sec', sec)
-  PUT('pub', pub)
-  PUT('evk', evk)
+  sk, pk, ek = KeyGen()
+  PUT('sk', sk)
+  PUT('pk', pk)
+  PUT('ek', ek)
 
   PUT('z  ', Decode(m))
   PUT('msg', m)
-  c = Enc(pub, m)
+  c = Enc(pk, m)
   PUT('enc', c)
-  d = Dec(sec, c)
+  d = Dec(sk, c)
   PUT('dec', d)
   PUT('dcd', Decode(d))
 
@@ -282,21 +282,21 @@ def main():
   org2 = Decode(m2)
   PUT('org1', org1)
   PUT('org2', org2)
-  c1 = Enc(pub, m1)
-  c2 = Enc(pub, m2)
+  c1 = Enc(pk, m1)
+  c2 = Enc(pk, m2)
   PUT('c1', c1)
   PUT('c2', c2)
-  PUT('dec c1', Dec(sec, c1))
-  PUT('dec c2', Dec(sec, c2))
+  PUT('dec c1', Dec(sk, c1))
+  PUT('dec c2', Dec(sk, c2))
   c = Add(c1, c2)
   PUT('add', c)
-  d = Dec(sec, c)
+  d = Dec(sk, c)
   PUT('dec', d)
   PUT('dcd', Decode(d))
   PUT('org', org1 + org2)
-  c = Mul(c1, c2, evk)
+  c = Mul(c1, c2, ek)
   PUT('mul', c)
-  d = Dec(sec, c)
+  d = Dec(sk, c)
   PUT('dec', d)
   PUT('dcd', Decode(d) / g_.Delta)
   PUT('org', org1 * org2)
