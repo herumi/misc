@@ -110,7 +110,7 @@ decode
   - vkから s は求まらない
 - 暗号文 $(d_0, d_1, d_2)$の代わりに $(d_0,d_1)+round((1/P)d_2 vk)$ を $mul(c, c')$ とする
 - $Dec(sk, (d'_0, d'_1))=d'_0+d'_1 s=d_0 + d_1 s + round((1/P) d_2 (-a' s + e'' + P s^2)) + round((1/P) d_2 a') s^2$
-  - $=(d_0 + d_1 s + d_2 s^2) + (round((1/P) -d_2 a' s + e'') + round((1/P d_2 a') s^2)$
+  - $=(d_0 + d_1 s + d_2 s^2) + (round((1/P)(-d_2 a' s + e'')) + round((1/P d_2 a') s^2)$
   - 第2項は大体 $a^3 < P$ としておけば小さいノイズ
   - よって $Dec(sk, mul(c, c')) \approx mm'$
 
