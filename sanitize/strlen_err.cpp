@@ -16,5 +16,6 @@ Exiting
 
 int main()
 {
-	printf("len=%zd\n", strlen(std::string("abc").c_str()));
+	std::string s = "abc";
+	printf("len=%zd\n", strlen(s.c_str()));
 }

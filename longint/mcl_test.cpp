@@ -1,4 +1,5 @@
 #include "mcl.h"
+#define MCL_BINT_ASM_X64 0
 #include <cybozu/benchmark.hpp>
 #include <cybozu/xorshift.hpp>
 #include <cybozu/test.hpp>
@@ -14,8 +15,10 @@ void gmp_mulPre(uint64_t *z, const uint64_t *x, const uint64_t *y)
 	mpn_mul_n((mp_limb_t*)z, (const mp_limb_t*)x, (const mp_limb_t*)y, N);
 }
 
+#define AAA
+
 struct Montgomery {
-	typedef mcl::fp::Unit Unit;
+	typedef mcl::Unit Unit;
 	mpz_class p_;
 	mpz_class R_; // (1 << (pn_ * 64)) % p
 	mpz_class RR_; // (R * R) % p
@@ -25,7 +28,7 @@ struct Montgomery {
 	explicit Montgomery(const mpz_class& p)
 	{
 		p_ = p;
-		rp_ = mcl::fp::getMontgomeryCoeff(mcl::gmp::getUnit(p, 0));
+		rp_ = mcl::bint::getMontgomeryCoeff(mcl::gmp::getUnit(p, 0));
 		pn_ = mcl::gmp::getUnitSize(p);
 		R_ = 1;
 		R_ = (R_ << (pn_ * 64)) % p_;
@@ -132,18 +135,24 @@ void montTest(const uint64_t *pp, const Montgomery& mont)
 	mcl_mont(xy2a, xa, ya);
 	CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
 
-	mcl::fp::Mont<N, false>::func(xy1a, xa, ya, pp + 1);
+#ifndef AAA
+	mcl::fp::mulMontNFT<N>(xy1a, xa, ya, pp + 1);
 	CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
+#endif
 
 	for (int i = 0; i < 100; i++) {
 		xa[0]++;
-		mcl::fp::Mont<N, false>::func(xy1a, xa, ya, pp + 1);
 		mcl_mont(xy2a, xa, ya);
+#ifndef AAA
+		mcl::fp::mulMontNFT<N>(xy1a, xa, ya, pp + 1);
 		CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
+#endif
 
-		mcl::fp::Mont<N, false>::func(xy1a, xa, xa, pp + 1);
 		mcl_mont(xy2a, xa, xa);
+#ifndef AAA
+		mcl::fp::mulMontNFT<N>(xy1a, xa, xa, pp + 1);
 		CYBOZU_TEST_EQUAL_ARRAY(xy1a, xy2a, N);
+#endif
 	}
 	CYBOZU_TEST_EQUAL(xy2a[N], dummy);
 
@@ -174,14 +183,18 @@ void modTest(const mpz_class& p, const uint64_t *pp, const Montgomery& mont)
 	mcl_mod(z2a, xya);
 	CYBOZU_TEST_EQUAL_ARRAY(z1a, z2a, N);
 
-	mcl::fp::MontRed<N, false>::func(z1a, xya, pp + 1);
+#ifndef AAA
+	mcl::fp::modRedNFT<N>(z1a, xya, pp + 1);
 	CYBOZU_TEST_EQUAL_ARRAY(z1a, z2a, N);
+#endif
 
 	for (int i = 0; i < 100; i++) {
 		xya[0]++;
-		mcl::fp::MontRed<N, false>::func(z1a, xya, pp + 1);
 		mcl_mod(z2a, xya);
+#ifndef AAA
+		mcl::fp::modRedNFT<N>(z1a, xya, pp + 1);
 		CYBOZU_TEST_EQUAL_ARRAY(z1a, z2a, N);
+#endif
 	}
 	CYBOZU_TEST_EQUAL(z2a[N], dummy);
 
@@ -201,9 +214,11 @@ void addTest(const uint64_t *pp)
 	}
 
 	for (int i = 0; i < 100; i++) {
-		mcl::fp::Add<N, false>::func(x1, x1, y, pp + 1);
 		mcl_add(x2, x2, y);
+#ifndef AAA
+		mcl::fp::addModNFT<N>(x1, x1, y, pp + 1);
 		CYBOZU_TEST_EQUAL_ARRAY(x1, x2, N);
+#endif
 	}
 	CYBOZU_BENCH_C("mcl_add", C, mcl_add, x1, x1, y);
 }
@@ -220,9 +235,11 @@ void subTest(const uint64_t *pp)
 	}
 
 	for (int i = 0; i < 100; i++) {
-		mcl::fp::Sub<N, false>::func(x1, x1, y, pp + 1);
 		mcl_sub(x2, x2, y);
+#ifndef AAA
+		mcl::fp::subModNFT<N>(x1, x1, y, pp + 1);
 		CYBOZU_TEST_EQUAL_ARRAY(x1, x2, N);
+#endif
 	}
 	CYBOZU_BENCH_C("mcl_sub", C, mcl_sub, x1, x1, y);
 }
@@ -237,9 +254,11 @@ void negTest(const uint64_t *pp)
 		for (int i = 0; i < N; i++) {
 			x[i] = rg.get64();
 		}
-		mcl::fp::Neg<N>::func(y1, x, pp + 1);
 		mcl_neg(y2, x);
+#ifndef AAA
+		mcl::fp::negT<N>(y1, x, pp + 1);
 		CYBOZU_TEST_EQUAL_ARRAY(y1, y2, N);
+#endif
 	}
 	CYBOZU_BENCH_C("mcl_neg", C, mcl_neg, y2, y2);
 	memset(x, 0, sizeof(x));
@@ -258,9 +277,11 @@ void mul2Test(const uint64_t *pp)
 	}
 
 	for (int i = 0; i < 100; i++) {
-		mcl::fp::Add<N, false>::func(x1, x1, x1, pp + 1);
 		mcl_mul2(x2, x2);
+#ifndef AAA
+		mcl::fp::addModNFT<N>(x1, x1, x1, pp + 1);
 		CYBOZU_TEST_EQUAL_ARRAY(x1, x2, N);
+#endif
 	}
 	CYBOZU_BENCH_C("mcl_mul2", C, mcl_mul2, x1, x1);
 }
@@ -276,9 +297,11 @@ void addDblTest(const uint64_t *pp)
 		y[i] = rg.get64();
 	}
 	for (int i = 0; i < 100; i++) {
-		mcl::fp::DblAdd<N>::func(x1, x1, y, pp + 1);
 		mcl_addDbl(x2, x2, y);
+#ifndef AAA
+		mcl::fp::fpDblAddModT<N>(x1, x1, y, pp + 1);
 		CYBOZU_TEST_EQUAL_ARRAY(x1, x2, N * 2);
+#endif
 	}
 	CYBOZU_BENCH_C("mcl_addDbl", C, mcl_addDbl, x1, x1, y);
 }
@@ -295,9 +318,11 @@ void subDblTest(const uint64_t *pp)
 	}
 
 	for (int i = 0; i < 100; i++) {
-		mcl::fp::DblSub<N>::func(x1, x1, y, pp + 1);
 		mcl_subDbl(x2, x2, y);
+#ifndef AAA
+		mcl::fp::fpDblSubModT<N>(x1, x1, y, pp + 1);
 		CYBOZU_TEST_EQUAL_ARRAY(x1, x2, N * 2);
+#endif
 	}
 	CYBOZU_BENCH_C("mcl_subDbl", C, mcl_subDbl, x1, x1, y);
 }
@@ -338,9 +363,11 @@ void mul2DblTest(const uint64_t *pp)
 		x2[i] = x1[i];
 	}
 	for (int i = 0; i < 100; i++) {
-		mcl::fp::DblAdd<N>::func(x1, x1, x1, pp + 1);
 		mcl_mul2Dbl(x2, x2);
+#ifndef AAA
+		mcl::fp::addModNFT<N>(x1, x1, x1, pp + 1);
 		CYBOZU_TEST_EQUAL_ARRAY(x1, x2, N * 2);
+#endif
 	}
 	CYBOZU_BENCH_C("mcl_mul2Dbl", C, mcl_mul2Dbl, x1, x1);
 }
