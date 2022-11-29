@@ -1,0 +1,2 @@
+fun:*_M_clear*
+fun:__interceptor_strlen
