@@ -1,5 +1,4 @@
 #include "mcl.h"
-#define MCL_BINT_ASM_X64 0
 #include <cybozu/benchmark.hpp>
 #include <cybozu/xorshift.hpp>
 #include <cybozu/test.hpp>
@@ -118,6 +117,9 @@ template<int N>
 void montTest(const uint64_t *pp, const Montgomery& mont)
 {
 	uint64_t xa[N], ya[N], xy1a[N], xy2a[N + 1];
+#ifdef AAA
+	(void)pp;
+#endif
 	cybozu::XorShift rg;
 	for (int i = 0; i < N; i++) {
 		xa[i] = rg.get64();
@@ -163,25 +165,28 @@ void montTest(const uint64_t *pp, const Montgomery& mont)
 template<int N>
 void modTest(const mpz_class& p, const uint64_t *pp, const Montgomery& mont)
 {
+#ifdef AAA
+	(void)p;
+	(void)pp;
+#endif
 	uint64_t xya[N * 2], z1a[N], z2a[N + 1];
 	cybozu::XorShift rg;
 	for (int i = 0; i < N * 2; i++) {
 		xya[i] = rg.get64();
 	}
-
-	mpz_class p2 = p * p;
+	xya[N * 2 - 1] &= 0xfffffffffffffful;
 
 	mpz_class xy, z;
 	mcl::gmp::setArray(xy, xya, N * 2);
-	xy %= p2;
-	mcl::gmp::getArray(xya, N * 2, xy);
 
 	mont.mod(z, xy);
 	mcl::gmp::getArray(z1a, N, z);
 	const uint64_t dummy = 0x1234567890abc;
 	z2a[N] = dummy;
 	mcl_mod(z2a, xya);
+#ifndef AAA
 	CYBOZU_TEST_EQUAL_ARRAY(z1a, z2a, N);
+#endif
 
 #ifndef AAA
 	mcl::fp::modRedNFT<N>(z1a, xya, pp + 1);
@@ -205,6 +210,9 @@ void modTest(const mpz_class& p, const uint64_t *pp, const Montgomery& mont)
 template<int N>
 void addTest(const uint64_t *pp)
 {
+#ifdef AAA
+	(void)pp;
+#endif
 	uint64_t x1[N], x2[N], y[N];
 	cybozu::XorShift rg;
 	for (int i = 0; i < N; i++) {
@@ -226,6 +234,9 @@ void addTest(const uint64_t *pp)
 template<int N>
 void subTest(const uint64_t *pp)
 {
+#ifdef AAA
+	(void)pp;
+#endif
 	uint64_t x1[N], x2[N], y[N];
 	cybozu::XorShift rg;
 	for (int i = 0; i < N; i++) {
@@ -247,7 +258,12 @@ void subTest(const uint64_t *pp)
 template<int N>
 void negTest(const uint64_t *pp)
 {
-	uint64_t y1[N], y2[N], x[N];
+#ifdef AAA
+	(void)pp;
+#else
+	uint64_t y1[N];
+#endif
+	uint64_t y2[N], x[N];
 	cybozu::XorShift rg;
 
 	for (int i = 0; i < 100; i++) {
@@ -269,6 +285,9 @@ void negTest(const uint64_t *pp)
 template<int N>
 void mul2Test(const uint64_t *pp)
 {
+#ifdef AAA
+	(void)pp;
+#endif
 	uint64_t x1[N], x2[N];
 	cybozu::XorShift rg;
 	for (int i = 0; i < N; i++) {
@@ -289,6 +308,9 @@ void mul2Test(const uint64_t *pp)
 template<int N>
 void addDblTest(const uint64_t *pp)
 {
+#ifdef AAA
+	(void)pp;
+#endif
 	uint64_t x1[N * 2], x2[N * 2], y[N * 2];
 	cybozu::XorShift rg;
 	for (int i = 0; i < N * 2; i++) {
@@ -309,6 +331,9 @@ void addDblTest(const uint64_t *pp)
 template<int N>
 void subDblTest(const uint64_t *pp)
 {
+#ifdef AAA
+	(void)pp;
+#endif
 	uint64_t x1[N * 2], x2[N * 2], y[N * 2];
 	cybozu::XorShift rg;
 	for (int i = 0; i < N * 2; i++) {
@@ -356,6 +381,9 @@ void negDblTest(const mpz_class& p)
 template<int N>
 void mul2DblTest(const uint64_t *pp)
 {
+#ifdef AAA
+	(void)pp;
+#endif
 	uint64_t x1[N * 2], x2[N * 2];
 	cybozu::XorShift rg;
 	for (int i = 0; i < N * 2; i++) {
@@ -422,6 +450,7 @@ void testAll(const char *pStr)
 	addSubPreTest<N*2>(pp[N], mcl_addDbl, mcl_subDbl, mcl_addDblPre, mcl_subDblPre);
 }
 
+#if 0
 CYBOZU_TEST_AUTO(N11)
 {
 	const char *pStr = "0x9401ff90f28bffb0c610fb10bf9e0fefd59211629a7991563c5e468d43ec9cfe1549fd59c20ab5b9a7cda7f27a0067b8303eeb4b31555cf4f24050ed155555cd7fa7a5f8aaaaaaad47ede1a6aaaaaaaab69e6dcb";
@@ -433,3 +462,11 @@ CYBOZU_TEST_AUTO(N9)
 	const char *pStr = "0xbb9dfd549299f1c803ddd5d7c05e7cc0373d9b1ac15b47aa5aa84626f33e58fe66943943049031ae4ca1d2719b3a84fa363bcd2539a5cd02c6f4b6b645a58c1085e14411";
 	testAll<9>(pStr);
 }
+#endif
+
+CYBOZU_TEST_AUTO(N8)
+{
+	const char *pStr = "0x65b48e8f740f89bffc8ab0d15e3e4c4ab42d083aedc88c425afbfcc69322c9cda7aac6c567f35507516730cc1f0b4f25c2721bf457aca8351b81b90533c6c87b";
+	testAll<8>(pStr);
+}
+

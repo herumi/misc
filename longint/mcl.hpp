@@ -131,7 +131,7 @@ struct Code : Xbyak::CodeGenerator {
 		bitSize = mcl::gmp::getBitSize(p);
 		N = (bitSize + 63) / 64;
 		if (N > MAX_N) throw cybozu::Exception("too large pStr") << N;
-		if (N != 9 && N != 11) throw cybozu::Exception("not support N") << N;
+		if (!(N == 8 || N == 9 || N == 11)) throw cybozu::Exception("not support N") << N;
 		mcl::gmp::getArray(p_, N, p);
 		rp_ = getMontgomeryCoeff(p_[0]);
 		printf("bitSize=%d rp_=%016llx\n", bitSize, (long long)rp_);
@@ -338,6 +338,7 @@ private:
 		align(16);
 		mcl_mulPre = getCurr<void3u>();
 		switch (n) {
+		case 8: gen_mulPre8(); break;
 		case 9: gen_mulPre9(); break;
 		case 11: gen_mulPre11(); break;
 		default: throw cybozu::Exception("bad n") << n;
@@ -349,6 +350,7 @@ private:
 		align(16);
 		mcl_mont = getCurr<void3u>();
 		switch (n) {
+		case 8: gen_montMul8(); break;
 		case 9: gen_montMul9(); break;
 		case 11: gen_montMul11(); break;
 		default: throw cybozu::Exception("bad n") << n;
@@ -360,6 +362,7 @@ private:
 		align(16);
 		mcl_mod = getCurr<void2u>();
 		switch (n) {
+		case 8: gen_mod8(); break;
 		case 9: gen_mod9(); break;
 		case 11: gen_mod11(); break;
 		default: throw cybozu::Exception("bad n") << n;
@@ -517,6 +520,17 @@ private:
 		mulAdd(c, xp, t, xt, false);
 	}
 	// [gp0] <- [gp1] * [gp2]
+	void gen_mulPre8()
+	{
+		StackFrame sf(this, 3, 10 | UseRDX);
+		const Reg64& pz = sf.p[0];
+		const Reg64& px = sf.p[1];
+		const Reg64& py = sf.p[2];
+
+		Pack pk = sf.t.sub(0, N);
+
+		gen_mulPreN(pz, px, py, pk, sf.t[N]);
+	}
 	void gen_mulPre9()
 	{
 		StackFrame sf(this, 3, 10 | UseRDX);
@@ -527,6 +541,46 @@ private:
 		Pack pk = sf.t.sub(0, N);
 
 		gen_mulPreN(pz, px, py, pk, sf.t[N]);
+	}
+	void montgomery8_1(const Pack& c, const Reg64& px, const Reg64& pp, const Reg64& t1, const Xmm& xt, bool isFirst)
+	{
+		const Reg64& d = rdx;
+		if (isFirst) {
+			// c[n..0] = px[n-1..0] * rdx
+			mulPack1(c, px, t1);
+		} else {
+			// c[n..0] = c[n-1..0] + px[n-1..0] * rdx because of not fuill bit
+			mulAdd(c, px, t1, xt, true);
+		}
+		mov(d, rp_);
+		imul(d, c[0]); // d = q = uint64_t(d * c[0])
+		// c[n..0] += p * q because of not fuill bit
+		mulAdd(c, pp, t1, xt, false);
+	}
+	void gen_montMul8()
+	{
+		StackFrame sf(this, 3, 10 | UseRDX);
+		const Reg64& pz = sf.p[0];
+		const Reg64& px = sf.p[1];
+		const Reg64& py = sf.p[2];
+		Pack pk = sf.t.sub(0, N + 1);
+
+		Label exitL;
+		mov(rax, size_t(p_));
+		movq(xm1, pz);
+		for (int i = 0; i < N; i++) {
+			mov(rdx, ptr [py + i * 8]);
+			montgomery8_1(pk, px, rax, pz, xm0, i == 0);
+			if (i < N - 1) pk = rotatePack(pk);
+		}
+		pk = pk.sub(1);
+
+		movq(pz, xm1);
+		store_mr(pz, pk);
+		sub_rm(pk, rax); // z - p
+		jc(exitL);
+		store_mr(pz, pk);
+	L(exitL);
 	}
 	void gen_montMul9()
 	{
@@ -625,6 +679,22 @@ private:
 		jc(exitL);
 		store_mr(tt, pk);
 	L(exitL);
+	}
+	void gen_mod8()
+	{
+		StackFrame sf(this, 3, 10 | UseRDX, 8 * N * 2);
+		const Reg64& z = sf.p[0];
+		const Reg64& pxy = sf.p[1];
+		const Reg64& pp = sf.p[2];
+		Pack pk = sf.t.sub(0, N + 1);
+		movq(xm0, z);
+		mov(pp, size_t(p_));
+		// copy pxy to stack
+		for (int i = 0; i < N * 2; i++) {
+			mov(rax, ptr[pxy + 8 * i]);
+			mov(ptr[rsp + 8 * i], rax);
+		}
+		gen_fpDbl_modNF(pk, pxy/*CF*/, z, pp, xm0, rsp, N);
 	}
 	void gen_mod9()
 	{

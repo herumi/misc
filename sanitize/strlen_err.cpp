@@ -9,6 +9,8 @@ Uninitialized bytes in __interceptor_strlen at offset 3 inside [0x7ffe5e364c80, 
 
 SUMMARY: MemorySanitizer: use-of-uninitialized-value (/home/shigeo/Program/misc/sanitize/a.out+0xa74f1) (BuildId: 0e82596b93e05105f23ff5278d7ca0799515bf3e) in main
 Exiting
+
+cf. https://github.com/google/sanitizers/issues/541
 */
 #include <string>
 #include <stdio.h>

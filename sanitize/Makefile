@@ -16,5 +16,20 @@ test: $(EXE)
 	./strlen_err.exe
 	./substr_err.exe
 
+clone_LLVM:
+	git clone --depth=1 https://github.com/llvm/llvm-project
+	cd llvm-project
+	mkdir build
+libc: build
+	# configure cmake
+	cd build ; cmake -GNinja ../llvm \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DLLVM_ENABLE_PROJECTS="libcxx;libcxxabi" \
+	-DCMAKE_C_COMPILER=clang \
+	-DCMAKE_CXX_COMPILER=clang++ \
+	-DLLVM_USE_SANITIZER=MemoryWithOrigins
+	# build the libraries
+	cd build ; cmake --build . -- cxx cxxabi
+
 clean:
 	rm -f $(EXE)

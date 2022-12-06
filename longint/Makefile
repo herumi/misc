@@ -3,7 +3,7 @@ include $(MCL_DIR)/common.mk
 TARGET=mcl_test.exe
 
 LIB_SRC=mcl.cpp
-LIB_OBJ=$(LIB_SRC:.cpp=.o) bint-x64-amd64.o
+LIB_OBJ=$(LIB_SRC:.cpp=.o) $(MCL_DIR)/obj/bint64.o
 LIB=libmcl.a
 ALL_SRC=$(LIB_SRC) mcl_test.cpp
 CFLAGS+=-I $(MCL_DIR)/include -I $(MCL_DIR)/src
@@ -15,8 +15,8 @@ all: $(TARGET)
 %.o: %.cpp
 	$(PRE)$(CXX) $(CFLAGS) -c $< -o $@ -MMD -MP -MF $(@:.o=.d)
 
-bint-x64-amd64.o: ../../mcl/src/asm/bint-x64-amd64.s
-	$(AS) -o $@ $<
+$(MCL_DIR)/obj/bint64.o:
+	make -C $(MCL_DIR) obj/bint64.o
 
 mcl_test.exe: mcl_test.o $(LIB)
 	$(PRE)$(CXX) $< -o $@ $(LDFLAGS) $(LIB)
