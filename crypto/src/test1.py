@@ -23,7 +23,7 @@ def getText(pos):
   z = []
   for i in range(n):
 #    v = 30000j if i == pos else 0
-    v = i# * 1j
+    v = i * 1j
     z.append(v)
   return np.array(z)
 
