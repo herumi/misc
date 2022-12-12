@@ -11,7 +11,7 @@ def getRand(n):
 #  return secrets.randbelow(n)
 
 class Param:
-  def __init__(self):
+  def __init__(self, Delta = 1000):
     self.a = 0
     self.M = 0
     self.N = 0
@@ -20,7 +20,7 @@ class Param:
     self.A = []
     self.invA = None
     self.cycloPoly = None
-    self.Delta = 1000
+    self.Delta = Delta
     self.l = 2
     self.L = 3
     self.p = 1000
@@ -31,9 +31,9 @@ class Param:
 # g_M : power of two
 # g_Delta : scale
 # L : max num of mul
-def init(M: int):
+def init(M: int, Delta = 10000):
   global g_
-  g_ = Param()
+  g_ = Param(Delta)
   g_.M = M
   g_.N = M//2
   g_.halfN = g_.N//2
@@ -50,6 +50,7 @@ def init(M: int):
 
   # M-th cyclotomic poly : phi_M(X) = X^N + 1
   g_.cycloPoly = poly([1] + [0] * (g_.N-1) + [1])
+  return g_
 
 def get_ql(l:int) -> int:
   return g_.p ** l * g_.q0
@@ -225,6 +226,15 @@ def Mul(c1, c2, ek=None):
   t0 = modCoeff(t0, ql)
   t1 = modCoeff(t1, ql)
   return (t0, t1)
+
+# X -> X^k
+def Permutate(f, k):
+  co = f.convert().coef
+  g = [co[0]]
+  for i in range(1, len(co)):
+    g.extend([0] * (k-1))
+    g.append(co[i])
+  return modPoly(g)
 
 def PUT(msg, x):
   if type(x) == tuple:
