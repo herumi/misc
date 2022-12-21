@@ -16,7 +16,7 @@ def getMaxE(z):
     v = math.fabs(z[i].imag - d[i].imag)
     if v > max:
       max = v
-  return v
+  return max
 
 def getText(pos):
   n = g_.M // 4
