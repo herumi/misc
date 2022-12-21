@@ -54,6 +54,7 @@ for i in range(2, 12):
   v = getMaxE(z)
   print(f'v={v}')
 
+"""
 for i in range(7, 8):
   M = 2 ** i
   print('M=', M)
@@ -71,4 +72,4 @@ for i in range(7, 8):
         m = v
         print(f'a={a} b={b} v={v}')
   print(f'max={m} a={ma} b={mb}')
-  
+"""  
