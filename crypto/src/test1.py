@@ -53,6 +53,7 @@ for i in range(2, 12):
   z = getText3(a, b)
   v = getMaxE(z)
   print(f'v={v}')
+  print(f'z[0]={z[0]} dec(enc)={Decode(Encode(z))[0]}')
 
 """
 for i in range(7, 8):
