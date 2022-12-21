@@ -39,9 +39,36 @@ def getText2():
   print(f'p={p}')
   return p
 
+def getText3(a, b):
+  n = g_.M // 4
+  z = [a + b * 1j] + [0] * (n-1)
+  return np.array(z)
+
 for i in range(2, 12):
   M = 2 ** i
   print('M=', M)
   g_ = init(M, Delta = 1)
-  z = getText()
-  print('max', getMaxE(z))
+  a = -M//8
+  b = 0
+  z = getText3(a, b)
+  v = getMaxE(z)
+  print(f'v={v}')
+
+for i in range(7, 8):
+  M = 2 ** i
+  print('M=', M)
+  g_ = init(M, Delta = 1)
+  m = 0
+  ma = 0
+  mb = 0
+  for a in range(-M,M+1):
+    for b in range(0,1):
+      z = getText3(a, b)
+      v = getMaxE(z)
+      if v > m:
+        ma = a
+        mb = b
+        m = v
+        print(f'a={a} b={b} v={v}')
+  print(f'max={m} a={ma} b={mb}')
+  
