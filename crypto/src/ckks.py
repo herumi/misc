@@ -80,12 +80,15 @@ def getRealPoly(p: poly) -> poly:
     if x.imag != 0:
       raise('not zero')
     return x.real
-  return poly(list(map(f, p.convert().coef)))
+  if type(p) == poly:
+    p = p.convert().coef
+  return poly(list(map(f, p)))
 
 # Round up coefficients of a polynomial
 def roundCoeff(p: poly) -> poly:
-  p = poly(list(map(np.round, p.convert().coef)))
-  p = getRealPoly(p)
+  if type(p) == poly:
+    p = p.convert().coef
+  p = poly(list(map(np.round, p)))
   return p
 
 def signMod(x, n):

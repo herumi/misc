@@ -2,7 +2,7 @@ from ckks import *
 from numpy.polynomial import Polynomial as poly
 import math
 
-M = 2048
+M = 512 # 2048
 g_ = init(M, Delta = 1)
 
 def getMaxE(z):
@@ -18,16 +18,30 @@ def getMaxE(z):
       max = v
   return max
 
-def getText(pos):
+def getText():
   n = g_.M // 4
   z = []
   for i in range(n):
-#    v = 30000j if i == pos else 0
-    v = i * 1j
+#    v = i * 1j
+    v = +(n // 4) + (n // 2) * 1j if i == 0 else 0
     z.append(v)
   return np.array(z)
 
+def getText2():
+  a = []
+  for i in range(g_.N):
+    a.append(0.5 + 0.5j)
+  p = poly(a)
+  p = Sigma(p)
+  p = Pi(p)
+  p = roundCoeff(p)
+  p = np.array(p.convert().coef)
+  print(f'p={p}')
+  return p
 
-for pos in range(100):
-  z = getText(pos)
+for i in range(2, 12):
+  M = 2 ** i
+  print('M=', M)
+  g_ = init(M, Delta = 1)
+  z = getText()
   print('max', getMaxE(z))
