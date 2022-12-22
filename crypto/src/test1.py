@@ -44,33 +44,59 @@ def getText3(a, b):
   z = [a + b * 1j] + [0] * (n-1)
   return np.array(z)
 
-for i in range(2, 12):
-  M = 2 ** i
-  print('M=', M)
-  g_ = init(M, Delta = 1)
-  a = -M//8
-  b = 0
-  z = getText3(a, b)
-  v = getMaxE(z)
-  print(f'v={v}')
-  print(f'z[0]={z[0]} dec(enc)={Decode(Encode(z))[0]}')
+def test1():
+  global g_
+  for i in range(2, 12):
+    M = 2 ** i
+    print('M=', M)
+    g_ = init(M, Delta = 1)
+    a = -M//8
+    b = 0
+    z = getText3(a, b)
+    v = getMaxE(z)
+    print(f'v={v}')
+    print(f'z[0]={z[0]} dec(enc)={Decode(Encode(z))[0]}')
 
-"""
-for i in range(7, 8):
-  M = 2 ** i
-  print('M=', M)
+def test2():
+  global g_
+  for i in range(7, 8):
+    M = 2 ** i
+    print('M=', M)
+    g_ = init(M, Delta = 1)
+    m = 0
+    ma = 0
+    mb = 0
+    for a in range(-M,M+1):
+      for b in range(0,1):
+        z = getText3(a, b)
+        v = getMaxE(z)
+        if v > m:
+          ma = a
+          mb = b
+          m = v
+          print(f'a={a} b={b} v={v}')
+    print(f'max={m} a={ma} b={mb}')
+
+def test3():
+  global g_
+  M = 32
   g_ = init(M, Delta = 1)
-  m = 0
-  ma = 0
-  mb = 0
-  for a in range(-M,M+1):
-    for b in range(0,1):
-      z = getText3(a, b)
-      v = getMaxE(z)
-      if v > m:
-        ma = a
-        mb = b
-        m = v
-        print(f'a={a} b={b} v={v}')
-  print(f'max={m} a={ma} b={mb}')
-"""  
+  print('invA')
+  putMatrix(g_.invA)
+  print('A')
+  putMatrix(g_.A)
+  z = getText3(-M//8, 0)
+  PUT('z', z)
+  PUT('invPi(z)', invPi(z))
+  PUT('h', invSigma(invPi(z)))
+  print('enc')
+  print(Encode(z))
+  print('dec')
+  print(Decode(Encode(z)))
+
+def main():
+  #test1()
+  #test2()
+  test3()
+
+main()

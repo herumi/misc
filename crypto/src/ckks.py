@@ -52,6 +52,15 @@ def init(M: int, Delta = 10000):
   g_.cycloPoly = poly([1] + [0] * (g_.N-1) + [1])
   return g_
 
+def putVector(v):
+  for x in v:
+    print(f'{x: 5.2f}', end=' ')
+  print()
+
+def putMatrix(a):
+  for v in a:
+    putVector(v)
+
 def get_ql(l:int) -> int:
   return g_.p ** l * g_.q0
 
