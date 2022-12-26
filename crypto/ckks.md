@@ -90,9 +90,9 @@ decode
   - $sk = s$ : 秘密鍵(N次元の{0,±1}の乱数)
   - a を一様ランダム, e を小さいノイズとして $pk = (b,a)=(-as + e, a) \in {R_q}^2$ : 公開鍵
 - $m$ の暗号化
-  - $c=Enc(pk, m)=(m + b + e_1, a + e_2)$, $e_i$ は小さいノイズ
+  - $c=Enc(pk, m)=v pk + (m + e_1, e_2) = (m + v(-as+e) + e_1, va + e_2)$, $v$ は{0,±1}の乱数ベクトル, $e_i$ は小さいノイズ
 - $c=(c_0,c_1)$ の復号
-  - $Dec(sk, c)=c_0+c_1s=(m + (-as + e) + e_1) + (a + e_2)s = m + e + e_1 + e_2s = m + \tilde{e}~ \approx m$
+  - $Dec(sk, c)=c_0+c_1s=(m + v(-as + e) + e_1) + (va + e_2)s = m + ve + e_1 + e_2s = m + \tilde{e}~ \approx m$
 
 ## 準同型性
 - $Enc(m)=(c_0,c_1)$, $Enc(m')=(c'_0,c'_1)$
