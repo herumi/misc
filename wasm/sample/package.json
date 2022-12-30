@@ -1,0 +1,25 @@
+{
+  "name": "sample",
+  "version": "1.0.0",
+  "description": "sample",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "npm run build:test_c.js && npm run build:dist",
+    "build:test_c.js": "make",
+    "build:dist": "tsc",
+    "test": "tsc && node test/test.js"
+  },
+  "types": "dist/index.d.ts",
+  "engines": {
+    "node": ">=8.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^15.14.9",
+    "ts-loader": "^9.2.6",
+    "ts-standard": "^10.0.0",
+    "typescript": "^4.9.4"
+  },
+  "ts-standard": {
+    "project": "./tsconfig.json"
+  }
+}
