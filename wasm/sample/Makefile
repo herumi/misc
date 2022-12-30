@@ -12,7 +12,7 @@ all: $(MCL_JS)
 $(MCL_JS): ./src/sample.cpp
 	emcc -o $@ src/sample.cpp $(EMCC_OPT) -fno-exceptions -fno-rtti
 	# disable require fs, path
-	perl -i -pe 's@(.* = require\(.*)@//\1@' $@
+	#perl -i -pe 's@(.* = require\(.*)@//\1@' $@
 
 clean:
 	rm -rf $(MCL_JS)
