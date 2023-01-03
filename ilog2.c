@@ -46,5 +46,6 @@ int main()
 		check(x);
 		check(x + 1);
 	}
+	check(0xffffffffffffffff);
 }
 
