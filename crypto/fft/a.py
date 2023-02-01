@@ -33,56 +33,67 @@ def isPrime(n, tryNum = 32):
       return False
   return True
 
-#p = 1019, q = 32p+1=32609 are prime
+#q, p = N * q+1 are prime
 def find(N, start):
-  for p in range(start, start+100):
-    if isPrime(p):
-      q = p * N + 1
-      if isPrime(q):
-        return (p, q)
+  for q in range(start, start+100):
+    if isPrime(q):
+      p = q * N + 1
+      if isPrime(p):
+        return (q, p)
 
 N=16
-(p, q) = find(N, 40)
-print(f'p={p}({isPrime(p)}), q={q}({isPrime(q)}), N={N}')
+(q, p) = find(N, 100)
+print(f'q={q}({isPrime(q)}), p={p}({isPrime(p)}), N={N}')
 
 # sum [g^i : i = 0, ..., N-1]
-def sumPowSeq(g, N, show=False):
+def sumPowSeq(g, p, show=False):
   s = 0
   x = 1
   v = []
   for i in range(N):
     s += x
     v.append(x)
-    x = (x * g) % q
+    x = (x * g) % p
   if show:
     print(v)
-  return s % q
+  return s % p
 
-def findGenerator(N, q):
-  for g in range(1,q):
+def inv(x, p):
+  for i in range(p):
+    if (i * x)%p == 1:
+      return i
+
+def findGenerator(n, p):
+  for g in range(3,100):
     x = 1
     s={x}
-    for j in range(N):
+    for j in range(n):
       s.add(x)
-      x = (x * g) % q
-    if x == 1 and len(s) == N:
-      if sumPowSeq((g*g)%q, N) == 0:
-        return g
+      x = (x * g) % p
+    if x == 1 and len(s) == n:
+      return g
   else:
     raise Exception('not found')
 
-g = findGenerator(N, q)
+invN = inv(N, p)
+print('invN=', invN)
+g = findGenerator(q, p)
 print('g=', g)
-print('g^N=', pow(g,N,q))
-print('sumPowSeq=', sumPowSeq(g, N, True))
+print('g^q=', pow(g,q,p))
+w = findGenerator(N, p)
+print('w=', w)
+print('w^N=', pow(w,N,p))
+for i in range(1, N):
+  if sumPowSeq(pow(w,i,p), p) != 0:
+    raise Exception('bad sum', i)
 
 def FFT(xs):
   ys = []
   for i in range(N):
     v = 0
     for j in range(N):
-      v += xs[j] * pow(g,i*j,q)
-    ys.append(v%q)
+      v += xs[j] * pow(w,i*j,p)
+    ys.append(v%p)
   return ys
 
 def iFFT(xs):
@@ -90,16 +101,25 @@ def iFFT(xs):
   for i in range(N):
     v = 0
     for j in range(N):
-      v += xs[j] * pow(g,(N-0-i)*j,q)
-    ys.append((v%q)//N)
+      v += xs[j] * pow(w,-i*j,p)
+    ys.append((v*invN)%p)
   return ys
-
 
 xs = []
 for i in range(N):
-  xs.append((i*i+3*i+1)%N)
+  v = (i+1)*12345
+  xs.append(v%p)
 
 print('xs', xs)
 ys = FFT(xs)
 print('ys', ys)
-print('iFFT(FFT(xs)) == xs?', xs == iFFT(ys))
+zs = iFFT(ys)
+print('zs', zs)
+print('iFFT(FFT(xs)) == xs?', xs == zs)
+
+zs = []
+for i in range(N):
+  zs.append((ys[i] * pow(w,-i,p))%p)
+
+print('iFFT(zs)', iFFT(zs))
+
