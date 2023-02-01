@@ -67,12 +67,14 @@ def findGenerator(N, q):
       x = (x * g) % q
     if x == 1 and len(s) == N:
       if sumPowSeq((g*g)%q, N) == 0:
-        print(sorted(s))
         return g
   else:
     raise Exception('not found')
 
 g = findGenerator(N, q)
+print('g=', g)
+print('g^N=', pow(g,N,q))
+print('sumPowSeq=', sumPowSeq(g, N, True))
 
 def FFT(xs):
   ys = []
@@ -92,25 +94,12 @@ def iFFT(xs):
     ys.append((v%q)//N)
   return ys
 
-v = 1
-tbl = []
-for i in range(N):
-  tbl.append(v)
-  v = (v * g) % q
-
-print('tbl', tbl)
-
-
-print('sum(tbl)=', sum(tbl) % q)
-print('sumPowSeq=', sumPowSeq(g, N))
-print('g^N=', pow(g,N,q))
 
 xs = []
 for i in range(N):
   xs.append((i*i+3*i+1)%N)
 
-
-print(xs)
+print('xs', xs)
 ys = FFT(xs)
-print(ys)
-print(iFFT(ys))
+print('ys', ys)
+print('iFFT(FFT(xs)) == xs?', xs == iFFT(ys))
