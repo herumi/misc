@@ -1,3 +1,7 @@
+#ifdef _WIN32
+	// for my env. remove this if initPairing shows an error
+	#define MCL_MAX_BIT_SIZE 384
+#endif
 #include <mcl/bls12_381.hpp>
 
 using namespace mcl;
@@ -26,6 +30,7 @@ struct NTT {
 	Fr q;
 	Fr w;
 	Fr invN;
+	Fr invW;
 	NTT(int log2N)
 		: log2N(log2N)
 		, N(1 << log2N)
@@ -41,19 +46,20 @@ struct NTT {
 		uint32_t root = 5;
 		Fr::pow(g, root, N);
 		Fr::pow(w, root, q);
+		Fr::inv(invW, w);
 		put("invN", invN);
 		put("g", g);
 		put("w", w);
 	}
 	template<class T>
-	void fft(std::vector<T>& out, const std::vector<T>& in) const
+	void _fft(std::vector<T>& out, const std::vector<T>& in, const Fr& g) const
 	{
 		out.resize(in.size());
 		for (int i = 0; i < N; i++) {
 			T& v = out[i];
 			v.clear();
 			Fr t0;
-			Fr::pow(t0, w, i);
+			Fr::pow(t0, g, i);
 			Fr t = 1;
 			for (int j = 0; j < N; j++) {
 				v += in[j] * t;
@@ -62,21 +68,16 @@ struct NTT {
 		}
 	}
 	template<class T>
+	void fft(std::vector<T>& out, const std::vector<T>& in) const
+	{
+		_fft(out, in, w);
+	}
+	template<class T>
 	void ifft(std::vector<T>& out, const std::vector<T>& in) const
 	{
-		out.resize(in.size());
+		_fft(out, in, invW);
 		for (int i = 0; i < N; i++) {
-			T& v = out[i];
-			v.clear();
-			Fr t0;
-			Fr::pow(t0, w, i);
-			Fr::inv(t0, t0);
-			Fr t = 1;
-			for (int j = 0; j < N; j++) {
-				v += in[j] * t;
-				t *= t0;
-			}
-			v *= invN;
+			out[i] *= invN;
 		}
 	}
 };
