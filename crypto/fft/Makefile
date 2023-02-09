@@ -1,7 +1,7 @@
 MCL_DIR?=../../../mcl
-ntt.exe: ntt.cpp
-	g++ -Wall -Wextra -o ntt.exe ntt.cpp -lmcl -L$(MCL_DIR)/lib -I$(MCL_DIR)/include
+ntt_naieve.exe: ntt_naieve.cpp
+	g++ -Wall -Wextra -o $@ $< -lmcl -L$(MCL_DIR)/lib -I$(MCL_DIR)/include
 
-test: ntt.exe
-	./ntt.exe
+test: ntt_naieve.exe
+	./ntt_naieve.exe
 
