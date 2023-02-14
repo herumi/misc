@@ -743,9 +743,8 @@ private:
 	template<class ADDR>
 	void mulAdd2(const Pack& c, const RegExp& pxy, const ADDR& pp, const Reg64& tt, const Reg64& CF, bool addCF, bool updateCF = true, const Xmm *ta = 0)
 	{
-		assert(!isFullBit_);
 		const Reg64& a = rax;
-		assert(ta && CF == rax);
+//		assert(ta && CF == rax);
 		if (ta) movq(*ta, CF);
 		xor_(a, a);
 		for (int i = 0; i < N; i++) {

@@ -14,6 +14,8 @@ void gmp_mulPre(uint64_t *z, const uint64_t *x, const uint64_t *y)
 	mpn_mul_n((mp_limb_t*)z, (const mp_limb_t*)x, (const mp_limb_t*)y, N);
 }
 
+extern "C" void mclb_fp_add4(uint64_t *z, const uint64_t *x, const uint64_t *y, const uint64_t *p);
+
 #define AAA
 
 struct Montgomery {
@@ -470,3 +472,30 @@ CYBOZU_TEST_AUTO(N8)
 	testAll<8>(pStr);
 }
 
+CYBOZU_TEST_AUTO(N4)
+{
+	const size_t N = 4;
+	const char *pStr = "0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001";
+	mpz_class mp(pStr);
+	uint64_t pp[N + 1];
+	uint64_t *p = pp + 1;
+	Montgomery mont(mp);
+	mcl::gmp::getArray(p, N, mp);
+	pp[0] = mont.rp_;
+	uint64_t x1[N], x2[N], y[N];
+	cybozu::XorShift rg;
+	for (size_t i = 0; i < N; i++) {
+		x1[i] = rg.get64();
+		if (i == N - 1) x1[i] &= (uint64_t(1) << 62) - 1;
+		x2[i] = x1[i];
+		y[i] = rg.get64();
+		if (i == N - 1) y[i] &= (uint64_t(1) << 62) - 1;
+	}
+
+	for (int i = 0; i < 100; i++) {
+		mclb_fp_add4(x2, x2, y, p);
+		mcl::fp::addModNFT<N>(x1, x1, y, p);
+		CYBOZU_TEST_EQUAL_ARRAY(x1, x2, N);
+	}
+	CYBOZU_BENCH_C("mclb_fp_add4", C, mclb_fp_add4, x1, x1, y, p);
+}

@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import * as mcl from 'mcl-wasm';
+import * as mcl from './mcl-wasm';
 
 class Layout extends React.Component {
   constructor () {
@@ -8,7 +8,7 @@ class Layout extends React.Component {
     this.state = { msg:"initializing..." }
     mcl.init().then(() => {
       const x = new mcl.Fr()
-      x.setStr('1234567')
+      x.setStr('12345678')
       const y = new mcl.Fr()
       y.setByCSPRNG()
       this.setState({

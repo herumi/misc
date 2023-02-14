@@ -18,8 +18,8 @@ all: $(TARGET)
 $(MCL_DIR)/obj/bint64.o:
 	make -C $(MCL_DIR) obj/bint64.o
 
-mcl_test.exe: mcl_test.o $(LIB)
-	$(PRE)$(CXX) $< -o $@ $(LDFLAGS) $(LIB)
+mcl_test.exe: mcl_test.o $(LIB) addfp.o
+	$(PRE)$(CXX) $< -o $@ $(LDFLAGS) $(LIB) addfp.o
 
 $(LIB): $(LIB_OBJ)
 	$(AR) $(ARFLAGS) $@ $(LIB_OBJ)
@@ -54,6 +54,12 @@ gen_sum.o: gen_sum.asm
 
 sum.exe: sum.cpp gen_sum.o
 	$(CXX) -o $@ sum.cpp gen_sum.o
+
+addfp.o: addfp.nasm
+	nasm -f elf64 -o $@ $<
+
+addfp.nasm: gen_add.py
+	python3 $< -m nasm > $@
 
 test_sum: sum.exe
 	./sum.exe
