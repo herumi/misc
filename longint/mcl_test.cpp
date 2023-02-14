@@ -14,7 +14,7 @@ void gmp_mulPre(uint64_t *z, const uint64_t *x, const uint64_t *y)
 	mpn_mul_n((mp_limb_t*)z, (const mp_limb_t*)x, (const mp_limb_t*)y, N);
 }
 
-extern "C" void mclb_fp_add4(uint64_t *z, const uint64_t *x, const uint64_t *y, const uint64_t *p);
+extern "C" void mclb_fp_add8(uint64_t *z, const uint64_t *x, const uint64_t *y, const uint64_t *p);
 
 #define AAA
 
@@ -472,10 +472,10 @@ CYBOZU_TEST_AUTO(N8)
 	testAll<8>(pStr);
 }
 
-CYBOZU_TEST_AUTO(N4)
+CYBOZU_TEST_AUTO(special)
 {
-	const size_t N = 4;
-	const char *pStr = "0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001";
+	const size_t N = 8;
+	const char *pStr = "0x65b48e8f740f89bffc8ab0d15e3e4c4ab42d083aedc88c425afbfcc69322c9cda7aac6c567f35507516730cc1f0b4f25c2721bf457aca8351b81b90533c6c87b";
 	mpz_class mp(pStr);
 	uint64_t pp[N + 1];
 	uint64_t *p = pp + 1;
@@ -493,9 +493,9 @@ CYBOZU_TEST_AUTO(N4)
 	}
 
 	for (int i = 0; i < 100; i++) {
-		mclb_fp_add4(x2, x2, y, p);
+		mclb_fp_add8(x2, x2, y, p);
 		mcl::fp::addModNFT<N>(x1, x1, y, p);
 		CYBOZU_TEST_EQUAL_ARRAY(x1, x2, N);
 	}
-	CYBOZU_BENCH_C("mclb_fp_add4", C, mclb_fp_add4, x1, x1, y, p);
+	CYBOZU_BENCH_C("mclb_fp_add8", C, mclb_fp_add8, x1, x1, y, p);
 }
