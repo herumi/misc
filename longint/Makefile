@@ -18,8 +18,8 @@ all: $(TARGET)
 $(MCL_DIR)/obj/bint64.o:
 	make -C $(MCL_DIR) obj/bint64.o
 
-mcl_test.exe: mcl_test.o $(LIB) addfp.o
-	$(PRE)$(CXX) $< -o $@ $(LDFLAGS) $(LIB) addfp.o
+$(TARGET): mcl_test.o $(LIB) addfp.o
+	$(PRE)$(CXX) $< -o $@ $(LDFLAGS) $(LIB) addfp.o $(MCL_DIR)/lib/libmcl.a
 
 $(LIB): $(LIB_OBJ)
 	$(AR) $(ARFLAGS) $@ $(LIB_OBJ)

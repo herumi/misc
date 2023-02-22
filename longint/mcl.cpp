@@ -1,6 +1,5 @@
 #include <mcl/gmp_util.hpp>
 #include "mcl.hpp"
-#include "../../mcl/src/bint_impl.hpp"
 
 #ifdef _MSC_VER
 	#pragma warning(disable : 4127)

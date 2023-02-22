@@ -67,7 +67,7 @@ def store(addr, x):
 def gen_fp_add(N):
   align(16)
   with FuncProc(f'mclb_fp_add{N}'):
-    n = min(N*2-2,10)
+    n = min(N*2-3,10)
     with StackFrame(4, n) as sf:
       pz = sf.p[0]
       px = sf.p[1]
@@ -78,13 +78,30 @@ def gen_fp_add(N):
       add_rmm(X, px, py) # X = px[] + py[]
       T.append(px)
       T.append(py)
-      vec_n(mov, (T, pz), X, N)
-      sub_rm(X, pp)      # X -= pp[]
+      T.append(rax)
+      for i in range(N):
+        mov(getAt((T, pz), i), X[i])
+        op = sub if i == 0 else sbb
+        op(X[i], ptr(pp + 8 * i))
       for i in range(N):
         cmovc(X[i], getAt((T, pz), i))
         mov(ptr(pz + 8 * i), X[i])
-#      vec_n(cmovc, X, (T, pz), N)
-#      store(pz, X)
+      """
+      vec_n(mov, (T, pz), X, N)
+      sub_rm(X, pp)      # X -= pp[]
+      vec_n(cmovc, X, (T, pz), N)
+      store(pz, X)
+      """
+      """ # 27clk(a little slower)
+      for i in range(N):
+        mov(rax, X[i])
+        op = sub if i == 0 else sbb
+        op(rax, ptr(pp + 8 * i))
+      lea(rax, rip('zeroD'))
+      cmovnc(rax, pp)
+      sub_rm(X, rax)
+      store(pz, X)
+      """
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-win', '--win', help='output win64 abi', action='store_true')
@@ -93,6 +110,13 @@ param = parser.parse_args()
 
 setWin64ABI(param.win)
 init(param.mode)
+
+"""
+segment('data')
+makeLabel('zeroD')
+for i in range(16):
+  dq_(0)
+"""
 
 segment('text')
 gen_fp_add(8)

@@ -5,8 +5,11 @@
 #include <mcl/gmp_util.hpp>
 #include <gmp.h>
 #include <low_func.hpp>
+#include <mcl/fp.hpp>
 
 const int C = 1000000;
+
+typedef mcl::FpT<> Fp;
 
 template<int N>
 void gmp_mulPre(uint64_t *z, const uint64_t *x, const uint64_t *y)
@@ -230,7 +233,7 @@ void addTest(const uint64_t *pp)
 		CYBOZU_TEST_EQUAL_ARRAY(x1, x2, N);
 #endif
 	}
-	CYBOZU_BENCH_C("mcl_add", C, mcl_add, x1, x1, y);
+	CYBOZU_BENCH_C("mcl_add", C, mcl_add, x1, x1, x1);
 }
 
 template<int N>
@@ -476,6 +479,8 @@ CYBOZU_TEST_AUTO(special)
 {
 	const size_t N = 8;
 	const char *pStr = "0x65b48e8f740f89bffc8ab0d15e3e4c4ab42d083aedc88c425afbfcc69322c9cda7aac6c567f35507516730cc1f0b4f25c2721bf457aca8351b81b90533c6c87b";
+	Fp::init(pStr);
+	Fp xx, yy;
 	mpz_class mp(pStr);
 	uint64_t pp[N + 1];
 	uint64_t *p = pp + 1;
@@ -497,5 +502,7 @@ CYBOZU_TEST_AUTO(special)
 		mcl::fp::addModNFT<N>(x1, x1, y, p);
 		CYBOZU_TEST_EQUAL_ARRAY(x1, x2, N);
 	}
-	CYBOZU_BENCH_C("mclb_fp_add8", C, mclb_fp_add8, x1, x1, y, p);
+	xx.setArray(x1, N);
+	CYBOZU_BENCH_C("mclb_fp_add8", C, mclb_fp_add8, x1, x1, x1, p);
+	CYBOZU_BENCH_C("Fp::add", C, Fp::add,xx, xx, xx);
 }
