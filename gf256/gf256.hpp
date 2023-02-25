@@ -52,9 +52,11 @@ inline uint8_t gf256_mul(uint8_t x, uint8_t y)
 		0x67, 0x4a, 0xed, 0xde, 0xc5, 0x31, 0xfe, 0x18, 0x0d, 0x63, 0x8c, 0x80, 0xc0, 0xf7, 0x70, 0x07,
 	};
 	if (x == 0 || y == 0) return 0;
+	// x y = exp(logX) exp(logY) = exp(logX + logY)
 	uint8_t logX = logTbl[x - 1];
 	uint8_t logY = logTbl[y - 1];
 	uint32_t z = logX + logY;
+	// mod 255
 	if (z >= 255) z -= 255;
 	assert(z < 255);
 	return expTbl[z];

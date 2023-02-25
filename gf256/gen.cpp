@@ -20,12 +20,12 @@ void gen_inv()
 void gen_exp_log()
 {
 	uint8_t logTbl[256] = {};
-	uint8_t g = 3;
+	uint8_t g = 3; // generator of K-{0}
 	uint8_t x = 1;
 	puts("static const uint8_t expTbl[] = {");
 	for (int i = 0; i < 255; i++) {
-		printf("0x%02x, ", x);
-		logTbl[x] = i;
+		printf("0x%02x, ", x); // expTbl[i] = g^i
+		logTbl[x] = i; // logTbl[expTbl[i]] = i
 		x = mul(x, g);
 		if ((i % 16) == 15) putchar('\n');
 	}
