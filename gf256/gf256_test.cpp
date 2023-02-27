@@ -22,3 +22,14 @@ CYBOZU_TEST_AUTO(mul)
 		}
 	}
 }
+
+CYBOZU_TEST_AUTO(div)
+{
+	for (uint32_t x = 0; x < 256; x++) {
+		for (uint32_t y = 1; y < 256; y++) {
+			uint8_t z1 = mul(x, gf256_inv(y));
+			uint8_t z2 = gf256_div(x, y);
+			CYBOZU_TEST_EQUAL(z1, z2);
+		}
+	}
+}
