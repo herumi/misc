@@ -18,21 +18,28 @@ def getMontgomeryCoeff(p):
 class Montgomery:
 	def __init__(self, p):
 		self.p = p
-		self.rp = getMontgomeryCoeff(p)
+		self.ip = getMontgomeryCoeff(p)
 		self.pn = (len(bin(p)) - 2 + L - 1) // L
+		self.M = 2**L
+		self.iM = (self.p * self.ip + 1) // self.M
+		self.Z = pow(self.iM, self.pn, self.p)
 		R = 1
 		self.R = (1 << (self.pn * L)) % p
 		self.RR = (self.R * self.R) % p
 	def put(self):
 		print(f'p={hex(self.p)}')
-		print(f'rp={hex(self.rp)}')
+		print(f'ip={hex(self.ip)}')
+		print(f'M={hex(self.M)}')
+		print(f'iM={hex(self.iM)}')
+		print(f'M iM - p ip = {self.M * self.iM - self.p * self.ip}')
+		print(f'Z={hex(self.Z)}')
 		print(f'pn={self.pn}')
 		print(f'R={hex(self.R)}')
-#		print(f'RR={hex(self.RR)}')
+		print(f'RR={hex(self.RR)}')
 	def mod(self, x):
 		y = x
 		for i in range(self.pn):
-			q = ((y & MASK) * self.rp) & MASK
+			q = ((y & MASK) * self.ip) & MASK
 			y += q * self.p
 			y >>= L
 		if y >= self.p:
@@ -44,6 +51,8 @@ class Montgomery:
 		return self.mul(x, self.RR)
 	def fromMont(self, x):
 		return self.mul(x, 1)
+	def mul_explicit(self, x, y):
+		return (x * y * self.Z) % self.p
 
 pTbl = [
 	# BN254 p, r
@@ -64,6 +73,9 @@ for x in range(1, 100, 11):
 		xx =mont.toMont(x)
 		yy = mont.toMont(y)
 		zz = mont.mul(xx, yy)
+		zz2 = mont.mul_explicit(xx, yy)
+		if zz != zz2:
+			print(f'ERR2 zz={zz} zz2={zz2}')
 		z = mont.fromMont(zz)
 		xy = (x * y) % mont.p
 		if xy != z:
