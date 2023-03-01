@@ -49,7 +49,11 @@ class Montgomery:
 			y -= self.p
 		return y
 	def mul(self, x, y):
-#		return self.mod(x * y)
+		"""
+		if t <= 2p-1, then
+		t <= (2p-1) + (p-1)(M-1) + (M-1)p = 2p-1+pM-p-M+1+pM-p=2pM-M
+		t/M <= 2p-1
+		"""
 		t = 0
 		for i in range(self.pn):
 			t += x * ((y >> (L * i)) & MASK)
