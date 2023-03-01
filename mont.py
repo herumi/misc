@@ -4,15 +4,23 @@ MASK = (1 << L) - 1
 
 def getMontgomeryCoeff(p):
 	pLow = p & MASK
-	ret = 0
-	t = 0
-	x = 1
-	for i in range(L):
-		if t % 2 == 0:
-			t += pLow
-			ret += x
-		t >>= 1
-		x <<= 1
+	if False:
+		ret = 0
+		t = 0
+		x = 1
+		for i in range(L):
+			if t % 2 == 0:
+				t += pLow
+				ret += x
+			t >>= 1
+			x <<= 1
+	else:
+		ret = 0
+		t = 0
+		for i in range(L):
+			if (t & (2**i)) == 0:
+				t += pLow << i
+				ret += 1 << i
 	return ret
 
 class Montgomery:
