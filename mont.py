@@ -76,7 +76,7 @@ class Montgomery:
 	def fromMont(self, x):
 		return self.mont(x, 1)
 
-	def mul_explicit(self, x, y):
+	def mont_explicit(self, x, y):
 		return (x * y * self.iZ) % self.p
 	def toMont_explicit(self, x):
 		return (x * self.Z) % self.p
@@ -110,7 +110,7 @@ for x in range(1, 100, 11):
 			print(f'ERR xx={xx} xx2={xx2}')
 		yy = mont.toMont(y)
 		zz = mont.mont(xx, yy)
-		zz2 = mont.mul_explicit(xx, yy)
+		zz2 = mont.mont_explicit(xx, yy)
 		if zz != zz2:
 			print(f'ERR2 zz={zz} zz2={zz2}')
 		z = mont.fromMont(zz)
