@@ -56,7 +56,7 @@ class Montgomery:
 		if y >= self.p:
 			y -= self.p
 		return y
-	def mul(self, x, y):
+	def mont(self, x, y):
 		"""
 		if t <= 2p-1, then
 		t <= (2p-1) + (p-1)(M-1) + (M-1)p = 2p-1+pM-p-M+1+pM-p=2pM-M
@@ -72,9 +72,9 @@ class Montgomery:
 			t -= self.p
 		return t
 	def toMont(self, x):
-		return self.mul(x, self.Z2)
+		return self.mont(x, self.Z2)
 	def fromMont(self, x):
-		return self.mul(x, 1)
+		return self.mont(x, 1)
 
 	def mul_explicit(self, x, y):
 		return (x * y * self.iZ) % self.p
@@ -109,7 +109,7 @@ for x in range(1, 100, 11):
 		if xx != xx2:
 			print(f'ERR xx={xx} xx2={xx2}')
 		yy = mont.toMont(y)
-		zz = mont.mul(xx, yy)
+		zz = mont.mont(xx, yy)
 		zz2 = mont.mul_explicit(xx, yy)
 		if zz != zz2:
 			print(f'ERR2 zz={zz} zz2={zz2}')
