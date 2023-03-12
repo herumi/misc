@@ -3,6 +3,13 @@ INT_TYPE = 1
 IMM_TYPE = 2
 INT_PTR_TYPE = 3
 
+UNIT = 64
+
+def setUnit(unit):
+  global UNIT
+  UNIT = unit
+
+
 eq = 1
 neq = 2
 ugt = 3
@@ -126,11 +133,12 @@ def resetGlobalIdx():
   g_globalIdx = 0
 
 class Operand:
-  def __init__(self, t, bit, imm = 0):
+  def __init__(self, t, bit, imm=0):
     self.t = t
     self.bit = bit
     self.imm = imm
-    self.idx = getGlobalIdx()
+    if t != IMM_TYPE:
+      self.idx = getGlobalIdx()
 
   def getFullName(self, isAlias=True):
     return f'{self.getType()} {self.getName()}'
@@ -177,34 +185,86 @@ def term():
     print(s)
     i += 1
 
-def opRXX(name, r, x1, x2):
-  output(f'{r.getName()} = {name} {x1.getFullName()}, {x2.getName()}')
+# r = op x, v
 
-def opX(name, x1):
-  output(f'{name} {x1.getFullName()}')
+def genOp_r_x_v(name):
+  def f(x, v):
+    if type(v) == int:
+      v = Imm(v)
+    r = Int(x.bit)
+    output(f'{r.getName()} = {name} {x.getFullName()}, {v.getName()}')
+    return r
+  return f
 
-def add(x, y):
-  r = Operand(INT_TYPE, x.bit)
-  opRXX('add', r, x, y)
-  return r
+tbl = ['lshr', 'ashr', 'shl', 'add', 'sub', 'and_', 'or_']
+for name in tbl:
+  llvmName = name.strip('_')
+  globals()[name] = genOp_r_x_v(llvmName)
 
+# r = op x to y
 def zext(x, bit):
   r = Int(bit)
-  output(f'{r.getName()} = zext {x1.getFullName()} to i{bit}')
+  output(f'{r.getName()} = zext {x.getFullName()} to {r.getType()}')
   return r
 
-def ret(x):
-  opX('ret', x)
+def trunc(x, bit):
+  r = Int(bit)
+  output(f'{r.getName()} = trunc {x.getFullName()} to {r.getType()}')
+  return r
 
+def bitcast(x, bit):
+  r = IntPtr(bit)
+  output(f'{r.getName()} = bitcast {x.getFullName()} to {r.getType()}')
+  return r
+
+
+
+# op x
+def ret(x):
+  output(f'ret {x.getFullName()}')
+
+# op x, v
+def store(x, v):
+  output(f'store {x.getFullName()}, {v.getFullName()}')
+
+# r = op x
 def load(x):
   r = Int(x.bit)
-  output(f'{r.getName()} = load i{x.bit}, {x.getFullName()}')
+  output(f'{r.getName()} = load {r.getType()}, {x.getFullName()}')
   return r
 
-def getelementptr(x, offset):
-  r = Int(x.bit)
-  if type(offset) == int:
-    offset = Imm(offset)
-  output(f'{r.getName()} = getelementptr i{x.bit}, {x.getFullName()}, {offset.getFullName()}')
+def getelementptr(x, v):
+  if type(v) == int:
+    v = Imm(v)
+  r = IntPtr(x.bit)
+  output(f'{r.getName()} = getelementptr i{x.bit}, {x.getFullName()}, {v.getFullName()}')
   return r
+
+####
+
+def loadN(p, n, offset=0):
+  if offset != 0:
+    p = getelementptr(p, offset)
+  v = load(p)
+  for i in range(1, n):
+    v = zext(v, v.bit + UNIT)
+    t = load(getelementptr(p, i))
+    t = zext(t, v.bit)
+    t = shl(t, UNIT * i)
+    v = or_(v, t)
+  return v
+
+def storeN(r, p, offset=0):
+  if offset != 0:
+    p = getelementptr(p, offset)
+  if r.bit == UNIT:
+    store(r, p)
+    return
+  n = r.bit // UNIT
+  for i in range(n):
+    pp = getelementptr(p, i)
+    t = trunc(r, UNIT)
+    store(t, pp)
+    if i < n-1:
+      r = lshr(r, UNIT)
 

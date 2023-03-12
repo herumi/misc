@@ -17,23 +17,23 @@ def func1(N):
 def gen_addPre(N):
   bit = unit * N
   resetGlobalIdx()
+  Int(unit)
   pz = IntPtr(unit)
   px = IntPtr(unit)
   py = IntPtr(unit)
   name = f'mcl_fp_addPre{N}'
   with Function(name, Void, pz, px, py):
-    px2 = getelementptr(px, 5)
-    x = load(px)
-#    x = zext(loadN(px, N), bit + unit)
-#    y = zext(loadN(py, N), bit + unit)
-#    z = add(x, y)
-#    storeN(trunc(z, bit), pz)
-#    r = trunc(lshr(z, bit), unit)
+    x = zext(loadN(px, N), bit + unit)
+    y = zext(loadN(py, N), bit + unit)
+    z = add(x, y)
+    storeN(trunc(z, bit), pz)
+    r = trunc(lshr(z, bit), unit)
     ret(Void)
 
 def main():
+  setUnit(unit)
   func1(4)
-  gen_addPre(4)
+  gen_addPre(3)
   term()
 
 if __name__ == '__main__':
