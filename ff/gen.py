@@ -31,7 +31,6 @@ def gen_addPre(N):
     ret(Void)
 
 def main():
-  setUnit(unit)
   func1(4)
   gen_addPre(3)
   term()

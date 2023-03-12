@@ -3,13 +3,6 @@ INT_TYPE = 1
 IMM_TYPE = 2
 INT_PTR_TYPE = 3
 
-UNIT = 64
-
-def setUnit(unit):
-  global UNIT
-  UNIT = unit
-
-
 eq = 1
 neq = 2
 ugt = 3
@@ -246,25 +239,27 @@ def loadN(p, n, offset=0):
   if offset != 0:
     p = getelementptr(p, offset)
   v = load(p)
+  unit = v.bit
   for i in range(1, n):
-    v = zext(v, v.bit + UNIT)
+    v = zext(v, v.bit + unit)
     t = load(getelementptr(p, i))
     t = zext(t, v.bit)
-    t = shl(t, UNIT * i)
+    t = shl(t, unit * i)
     v = or_(v, t)
   return v
 
 def storeN(r, p, offset=0):
   if offset != 0:
     p = getelementptr(p, offset)
-  if r.bit == UNIT:
+  unit = p.bit
+  if r.bit == unit:
     store(r, p)
     return
-  n = r.bit // UNIT
+  n = r.bit // unit
   for i in range(n):
     pp = getelementptr(p, i)
-    t = trunc(r, UNIT)
+    t = trunc(r, unit)
     store(t, pp)
     if i < n-1:
-      r = lshr(r, UNIT)
+      r = lshr(r, unit)
 
