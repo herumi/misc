@@ -126,17 +126,17 @@ def resetGlobalIdx():
   g_globalIdx = 0
 
 class Operand:
-  def __init__(self, t, bit):
+  def __init__(self, t, bit, imm = 0):
     self.t = t
     self.bit = bit
-    self.imm = 0
+    self.imm = imm
     self.idx = getGlobalIdx()
 
   def getFullName(self, isAlias=True):
     return f'{self.getType()} {self.getName()}'
 
   def getType(self):
-    if self.t == INT_TYPE:
+    if self.t == INT_TYPE or self.t == IMM_TYPE:
       return f'i{self.bit}'
     if self.t == INT_PTR_TYPE:
       return f'i{self.bit}*'
@@ -158,6 +158,14 @@ class Int(Operand):
 class IntPtr(Operand):
   def __init__(self, bit):
     self = Operand.__init__(self, INT_PTR_TYPE, bit)
+
+class Imm(Operand):
+  def __init__(self, imm):
+    bit = int(imm).bit_length()
+    bit = ((bit + 31) // 32) * 32
+    if bit == 0:
+      bit = 32
+    self = Operand.__init__(self, IMM_TYPE, bit, imm)
 
 Void = Operand(VOID_TYPE, 0)
 
@@ -187,3 +195,16 @@ def zext(x, bit):
 
 def ret(x):
   opX('ret', x)
+
+def load(x):
+  r = Int(x.bit)
+  output(f'{r.getName()} = load i{x.bit}, {x.getFullName()}')
+  return r
+
+def getelementptr(x, offset):
+  r = Int(x.bit)
+  if type(offset) == int:
+    offset = Imm(offset)
+  output(f'{r.getName()} = getelementptr i{x.bit}, {x.getFullName()}, {offset.getFullName()}')
+  return r
+

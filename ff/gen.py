@@ -22,6 +22,8 @@ def gen_addPre(N):
   py = IntPtr(unit)
   name = f'mcl_fp_addPre{N}'
   with Function(name, Void, pz, px, py):
+    px2 = getelementptr(px, 5)
+    x = load(px)
 #    x = zext(loadN(px, N), bit + unit)
 #    y = zext(loadN(py, N), bit + unit)
 #    z = add(x, y)
