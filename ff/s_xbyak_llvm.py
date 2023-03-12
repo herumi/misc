@@ -1,6 +1,7 @@
-Int = 1
-Imm = 2
-IntPtr = 3
+VOID_TYPE = 0
+INT_TYPE = 1
+IMM_TYPE = 2
+INT_PTR_TYPE = 3
 
 eq = 1
 neq = 2
@@ -132,25 +133,33 @@ class Operand:
     self.idx = getGlobalIdx()
 
   def getFullName(self, isAlias=True):
-    if self.t == Int or self.t == IntPtr:
-      return f'{self.getType()} {self.getName()}'
-    raise Exception('no fullName')
+    return f'{self.getType()} {self.getName()}'
 
   def getType(self):
-    if self.t == Int:
+    if self.t == INT_TYPE:
       return f'i{self.bit}'
-    if self.t == IntPtr:
+    if self.t == INT_PTR_TYPE:
       return f'i{self.bit}*'
-    if self.t == Void:
+    if self.t == VOID_TYPE:
       return 'void'
     raise Exception('no type')
    
   def getName(self):
-    if self.t == Int or self.t == IntPtr:
+    if self.t == INT_TYPE or self.t == INT_PTR_TYPE:
       return f'%r{self.idx}'
-    if self.t == Imm:
+    if self.t == IMM_TYPE:
       return str(self.imm)
-    raise Exception('no name')
+    return ''
+
+class Int(Operand):
+  def __init__(self, bit):
+    self = Operand.__init__(self, INT_TYPE, bit)
+
+class IntPtr(Operand):
+  def __init__(self, bit):
+    self = Operand.__init__(self, INT_PTR_TYPE, bit)
+
+Void = Operand(VOID_TYPE, 0)
 
 def term():
   n = len(g_text)
@@ -161,14 +170,19 @@ def term():
     i += 1
 
 def opRXX(name, r, x1, x2):
-  output(f'{r.getName()} = {name} i{x1.bit} {x1.getName()}, {x2.getName()}')
+  output(f'{r.getName()} = {name} {x1.getFullName()}, {x2.getName()}')
 
 def opX(name, x1):
-  output(f'{name} i{x1.bit} {x1.getName()}')
+  output(f'{name} {x1.getFullName()}')
 
 def add(x, y):
-  r = Operand(Int, x.bit)
+  r = Operand(INT_TYPE, x.bit)
   opRXX('add', r, x, y)
+  return r
+
+def zext(x, bit):
+  r = Int(bit)
+  output(f'{r.getName()} = zext {x1.getFullName()} to i{bit}')
   return r
 
 def ret(x):
