@@ -70,11 +70,12 @@ def L(label):
   output(f'{getDefLabel(label.n)}:')
 
 class Function:
-  def __init__(self, name, ret, *args, private=False):
+  def __init__(self, name, ret, *args, private=False, noalias=True):
     self.name = name
     self.ret = ret
     self.args = args
     self.private = private
+    self.noalias = noalias
     s = 'define '
     if private:
       s += 'private '
@@ -82,7 +83,7 @@ class Function:
     for i in range(len(args)):
       if i > 0:
         s += ', '
-      s += args[i].getFullName()
+      s += args[i].getFullName(noalias)
     s += ')'
     output(s)
     output('{')
@@ -140,14 +141,17 @@ class Operand:
     if t != IMM_TYPE:
       self.idx = getGlobalIdx()
 
-  def getFullName(self, isAlias=True):
-    return f'{self.getType()} {self.getName()}'
+  def getFullName(self, noalias=False):
+    return f'{self.getType(noalias)} {self.getName()}'
 
-  def getType(self):
+  def getType(self, noalias=False):
     if self.t == INT_TYPE or self.t == IMM_TYPE:
       return f'i{self.bit}'
     if self.t == INT_PTR_TYPE:
-      return f'i{self.bit}*'
+      if noalias:
+        return f'i{self.bit}* noalias'
+      else:
+        return f'i{self.bit}*'
     if self.t == VOID_TYPE:
       return 'void'
     raise Exception('no type')

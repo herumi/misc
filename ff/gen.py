@@ -112,7 +112,7 @@ def main():
   setGlobalParam(opt.u)
 
   gen_once()
-  gen_mcl_fp_add(3)
+  gen_mcl_fp_add(3, isFullBit=False)
   term()
 
 if __name__ == '__main__':
