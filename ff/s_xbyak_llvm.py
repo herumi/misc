@@ -189,7 +189,7 @@ def genOp_r_x_v(name):
     return r
   return f
 
-tbl = ['lshr', 'ashr', 'shl', 'add', 'sub', 'and_', 'or_']
+tbl = ['lshr', 'ashr', 'shl', 'add', 'sub', 'mul', 'and_', 'or_']
 for name in tbl:
   llvmName = name.strip('_')
   globals()[name] = genOp_r_x_v(llvmName)
@@ -229,6 +229,7 @@ def load(x):
 def getelementptr(x, v):
   if type(v) == int:
     v = Imm(v)
+  getGlobalIdx() # to get same id (QQQ : will be removed later)
   r = IntPtr(x.bit)
   output(f'{r.getName()} = getelementptr i{x.bit}, {x.getFullName()}, {v.getFullName()}')
   return r
