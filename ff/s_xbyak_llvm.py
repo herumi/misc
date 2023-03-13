@@ -71,6 +71,10 @@ def L(label):
 
 class Function:
   def __init__(self, name, ret, *args, private=False):
+    self.name = name
+    self.ret = ret
+    self.args = args
+    self.private = private
     s = 'define '
     if private:
       s += 'private '
@@ -82,6 +86,9 @@ class Function:
     s += ')'
     output(s)
     output('{')
+
+  def getName(self):
+    return f'{self.ret.getType()} @{self.name}'
 
   def close(self):
     output('}')
@@ -194,6 +201,11 @@ for name in tbl:
   llvmName = name.strip('_')
   globals()[name] = genOp_r_x_v(llvmName)
 
+def select(cond, x, y):
+  r = Int(x.bit)
+  output(f'{r.getName()} = select {cond.getFullName()}, {x.getFullName()}, {y.getFullName()}')
+  return r
+
 # r = op x to y
 def zext(x, bit):
   r = Int(bit)
@@ -229,10 +241,24 @@ def load(x):
 def getelementptr(x, v):
   if type(v) == int:
     v = Imm(v)
-  getGlobalIdx() # to get same id (QQQ : will be removed later)
   r = IntPtr(x.bit)
   output(f'{r.getName()} = getelementptr i{x.bit}, {x.getFullName()}, {v.getFullName()}')
   return r
+
+def call(func, *args):
+  s = ''
+  if func.ret.t != VOID_TYPE:
+    r = Operand(func.ret.t, func.ret.bit)
+    s = f'{r.getName()} = '
+  s += f'call {func.getName()}('
+  for i in range(len(args)):
+    if i > 0:
+      s += ', '
+    s += args[i].getFullName()
+  s += ')'
+  output(s)
+  if func.ret.t != VOID_TYPE:
+    return r
 
 ####
 

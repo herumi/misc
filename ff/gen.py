@@ -9,17 +9,6 @@ def setGlobalParam(u):
   unit = u
   unit2 = u * 2
 
-def func1(N):
-  bit = unit * N
-  resetGlobalIdx()
-  z = Int(unit)
-  x = Int(unit)
-  y = Int(unit)
-  name = f'func1{N}'
-  with Function(name, z, x, y):
-    z = add(x, y)
-    ret(z)
-
 def gen_add(N):
   bit = unit * N
   resetGlobalIdx()
@@ -42,14 +31,73 @@ def gen_mulUU():
   x = Int(unit)
   y = Int(unit)
   name = f'mul{unit}x{unit}L'
-  with Function(name, z, x, y, private=True):
+  with Function(name, z, x, y, private=True) as f:
     x = zext(x, unit2)
     y = zext(y, unit2)
     z = mul(x, y)
     ret(z)
+  return f
+
+def gen_extractHigh():
+  resetGlobalIdx()
+  z = Int(unit)
+  x = Int(unit2)
+  name = f'extractHigh{unit}'
+  with Function(name, z, x, private=True):
+    x = lshr(x, unit)
+    z = trunc(x, unit)
+    ret(z)
+
+def gen_mulPos(mulUU):
+  resetGlobalIdx()
+  xy = Int(unit2)
+  px = IntPtr(unit)
+  y = Int(unit)
+  i = Int(unit)
+  name = f'mulPos{unit}x{unit}'
+  with Function(name, xy, px, y, i, private=True):
+    x = load(getelementptr(px, i))
+    xy = call(mulUU, x, y)
+    ret(xy)
 
 def gen_once():
-  gen_mulUU()
+  mulUU = gen_mulUU()
+  gen_extractHigh()
+  gen_mulPos(mulUU)
+
+def gen_mcl_fp_add(N, isFullBit=True):
+  bit = unit * N
+  resetGlobalIdx();
+  pz = IntPtr(unit)
+  px = IntPtr(unit)
+  py = IntPtr(unit)
+  pp = IntPtr(unit)
+  name = 'mcl_fp_add'
+  if not isFullBit:
+    name += 'NF'
+  name += f'{N}L'
+  with Function(name, Void, pz, px, py, pp):
+    x = loadN(px, N)
+    y = loadN(py, N)
+    if isFullBit:
+      x = zext(x, bit + unit)
+      y = zext(y, bit + unit)
+      x = add(x, y)
+      p = loadN(pp, N)
+      p = zext(p, bit + unit)
+      y = sub(x, p)
+      c = trunc(lshr(y, bit), 1)
+      x = select(c, x, y)
+      x = trunc(x, bit)
+      storeN(x, pz)
+    else:
+      x = add(x, y)
+      p = loadN(pp, N)
+      y = sub(x, p)
+      c = trunc(lshr(y, bit - 1), 1)
+      x = select(c, x, y)
+      storeN(x, pz)
+    ret(Void)
 
 def main():
   parser = argparse.ArgumentParser(description='gen bint')
@@ -64,8 +112,7 @@ def main():
   setGlobalParam(opt.u)
 
   gen_once()
-  func1(4)
-  gen_add(3)
+  gen_mcl_fp_add(3)
   term()
 
 if __name__ == '__main__':
