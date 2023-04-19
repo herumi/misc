@@ -1,7 +1,10 @@
-test: ./mie_string_test.exe
-	./mie_string_test.exe
+test:
 	make test1 FILE=gen_ff_x64
 	make test1 FILE=gen_bint_x64
+	make clean
+	make mie_string_test
+	make clean
+	make mie_string_test MODE=gas
 test1:
 	python3 $(FILE).py -m gas > a.txt
 	diff -urN $(FILE)_gas.txt a.txt
@@ -33,10 +36,14 @@ ifeq ($(MODE),gas)
 endif
 	$(CXX) -o $@ mie_string_test.o string.o $(CFLAGS)
 
+mie_string_test: ./mie_string_test.exe
+	echo $(MODE)
+	./mie_string_test.exe
+
 clean:
 	rm -f a.txt b.txt *.o *.S *.exe *.d
 
-.PHONY: clean
+.PHONY: clean test
 
 # don't remove these files automatically
 .SECONDARY: $(addprefix $(OBJ_DIR)/, $(ALL_SRC:.cpp=.o))

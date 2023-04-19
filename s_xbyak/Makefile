@@ -1,4 +1,7 @@
 test:
 	make -C test test
 
-.PHONY: test
+clean:
+	make -C test clean
+
+.PHONY: test clean

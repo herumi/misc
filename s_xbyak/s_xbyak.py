@@ -368,12 +368,12 @@ def segment(mode):
 
 def db_(s):
   if g_gas:
-    output(f'.byte ${s}')
+    output(f'.byte {s}')
   else:
     output(f'db {s}')
 def dd_(s):
   if g_gas:
-    output(f'.long ${s}')
+    output(f'.long {s}')
   else:
     output(f'dd {s}')
 def dq_(s):
