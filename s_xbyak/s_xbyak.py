@@ -71,11 +71,17 @@ class Xmm(Reg):
       p = 'y'
     elif self.bit == 512:
       p = 'z'
-    return f'{p}mm{self.idx}'
+    if g_gas:
+      return f'%{p}mm{self.idx}'
+    else:
+      return f'{p}mm{self.idx}'
 
 class MaskReg(Reg):
   def __str__(self):
-    return f'k{self.idx}'
+    if g_gas:
+      return f'%k{self.idx}'
+    else:
+      return f'k{self.idx}'
 
 class RegExp:
   def __init__(self, reg, index = None, scale = 1, offset = 0):
@@ -398,7 +404,10 @@ def align(n):
     output(f'align {n}')
 
 def getDefLabel(n):
-  return f'@L{n}'
+  if g_gas:
+    return f'.L{n}'
+  else:
+    return f'@L{n}'
 
 def getUndefLabel(n):
   return f'@L{n}_undef'
