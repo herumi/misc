@@ -203,6 +203,7 @@ r15b = Reg(R15, 8)
 for (p, bit, n) in [('x', 128, 16), ('y', 256, 16), ('z', 512, 32)]:
   for i in range(n):
     globals()[f'{p}mm{i}'] = Xmm(i, bit)
+    globals()[f'{p}m{i}'] = Xmm(i, bit)
 # define mask registers
 for i in range(n):
   globals()[f'k{i}'] = MaskReg(i, 64)
@@ -235,10 +236,11 @@ def getNoSaveNum():
   return 6 if win64ABI else 8
 
 class StackFrame:
-  def __init__(self, pNum, tNum = 0, useRDX=False, useRCX=False, stackSizeByte=0):
+  def __init__(self, pNum, tNum = 0, useRDX=False, useRCX=False, stackSizeByte=0, callRet=True):
     self.pos = 0
     self.useRDX = useRDX
     self.useRCX = useRCX
+    self.callRet = callRet
     self.p = []
     self.t = []
     allRegNum = pNum + tNum + (1 if useRDX else 0) + (1 if useRCX else 0)
@@ -262,7 +264,7 @@ class StackFrame:
       mov(r10, rcx)
     if self.useRDX and getRdxPos() < pNum:
       mov(r11, rdx)
-  def close(self, callRet = True):
+  def close(self, callRet=True):
     if self.P > 0:
       add(rsp, self.P)
     noSaveNum = getNoSaveNum()
@@ -274,7 +276,7 @@ class StackFrame:
   def __enter__(self):
     return self
   def __exit__(self, ex_type, ex_value, trace):
-    self.close()
+    self.close(self.callRet)
 
   def getRegIdx(self):
     r = getReg(self.pos)
@@ -539,7 +541,7 @@ def genFunc(name):
 
 def genAllFunc():
   tbl = [
-    'push', 'mov', 'pop', 'jmp',
+    'push', 'mov', 'pop', 'jmp', 'test',
     'aaa','aad','aadd','aam','aand','aas','adc','adcx',
     'add','addpd','addps','addsd','addss','addsubpd','addsubps','adox',
     'aesdec','aesdeclast','aesenc','aesenclast','aesimc','aeskeygenassist','and_','andn',
