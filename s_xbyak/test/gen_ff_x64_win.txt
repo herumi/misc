@@ -1,0 +1,429 @@
+; for nasm
+%imacro _global 1
+  %ifdef ADD_UNDERSCORE
+    global _%1
+    %1:
+    _%1:
+  %else
+    global %1
+    %1:
+  %endif
+%endmacro
+
+segment .data
+p:
+dq 13402431016077863595, 2210141511517208575, 7435674573564081700, 7239337960414712511, 5412103778470702295, 1873798617647539866
+zero:
+dq 0, 0, 0, 0, 0, 0
+ip:
+dq 9940570264628428797
+segment .text
+align 16
+export mcl_fp_add
+_global mcl_fp_add
+push rdi
+push rsi
+push rbx
+push rbp
+push r12
+push r13
+push r14
+mov r9, [rdx]
+add r9, [r8]
+mov r10, [rdx+8]
+adc r10, [r8+8]
+mov r11, [rdx+16]
+adc r11, [r8+16]
+mov rdi, [rdx+24]
+adc rdi, [r8+24]
+mov rsi, [rdx+32]
+adc rsi, [r8+32]
+mov rbx, [rdx+40]
+adc rbx, [r8+40]
+mov rbp, r9
+mov rax, 13402431016077863595
+sub rbp, rax
+mov r12, r10
+mov rax, 2210141511517208575
+sbb r12, rax
+mov r13, r11
+mov rax, 7435674573564081700
+sbb r13, rax
+mov r14, rdi
+mov rax, 7239337960414712511
+sbb r14, rax
+mov rdx, rsi
+mov rax, 5412103778470702295
+sbb rdx, rax
+mov r8, rbx
+mov rax, 1873798617647539866
+sbb r8, rax
+cmovc rbp, r9
+mov [rcx], rbp
+cmovc r12, r10
+mov [rcx+8], r12
+cmovc r13, r11
+mov [rcx+16], r13
+cmovc r14, rdi
+mov [rcx+24], r14
+cmovc rdx, rsi
+mov [rcx+32], rdx
+cmovc r8, rbx
+mov [rcx+40], r8
+pop r14
+pop r13
+pop r12
+pop rbp
+pop rbx
+pop rsi
+pop rdi
+ret
+align 16
+export mcl_fp_sub
+_global mcl_fp_sub
+push rdi
+push rsi
+push rbx
+push rbp
+push r12
+push r13
+push r14
+mov r9, [rdx]
+sub r9, [r8]
+mov r10, [rdx+8]
+sbb r10, [r8+8]
+mov r11, [rdx+16]
+sbb r11, [r8+16]
+mov rdi, [rdx+24]
+sbb rdi, [r8+24]
+mov rsi, [rdx+32]
+sbb rsi, [r8+32]
+mov rbx, [rdx+40]
+sbb rbx, [r8+40]
+sbb rax, rax
+mov rbp, 13402431016077863595
+and rbp, rax
+mov r12, 2210141511517208575
+and r12, rax
+mov r13, 7435674573564081700
+and r13, rax
+mov r14, 7239337960414712511
+and r14, rax
+mov rdx, 5412103778470702295
+and rdx, rax
+mov r8, 1873798617647539866
+and r8, rax
+add r9, rbp
+mov [rcx], r9
+adc r10, r12
+mov [rcx+8], r10
+adc r11, r13
+mov [rcx+16], r11
+adc rdi, r14
+mov [rcx+24], rdi
+adc rsi, rdx
+mov [rcx+32], rsi
+adc rbx, r8
+mov [rcx+40], rbx
+pop r14
+pop r13
+pop r12
+pop rbp
+pop rbx
+pop rsi
+pop rdi
+ret
+align 16
+export mcl_fp_mul
+_global mcl_fp_mul
+push rdi
+push rsi
+push rbx
+push rbp
+push r12
+push r13
+push r14
+mov r11, rdx
+lea rax, [rel PRE(p)]
+mov rdx, [r8]
+mulx r10, r9, [r11]
+mulx rdi, r13, [r11+8]
+add r10, r13
+mulx rsi, r13, [r11+16]
+adc rdi, r13
+mulx rbx, r13, [r11+24]
+adc rsi, r13
+mulx rbp, r13, [r11+32]
+adc rbx, r13
+mulx r12, r13, [r11+40]
+adc rbp, r13
+adc r12, 0
+mov rdx, 9940570264628428797
+imul rdx, r9
+xor r13, r13
+mulx r13, r14, [rax]
+adox r9, r14
+adcx r10, r13
+mulx r13, r14, [rax+8]
+adox r10, r14
+adcx rdi, r13
+mulx r13, r14, [rax+16]
+adox rdi, r14
+adcx rsi, r13
+mulx r13, r14, [rax+24]
+adox rsi, r14
+adcx rbx, r13
+mulx r13, r14, [rax+32]
+adox rbx, r14
+adcx rbp, r13
+mulx r13, r14, [rax+40]
+adox rbp, r14
+adox r12, r13
+adc r12, 0
+mov rdx, [r8+8]
+xor r9, r9
+mulx r13, r14, [r11]
+adox r10, r14
+adcx rdi, r13
+mulx r13, r14, [r11+8]
+adox rdi, r14
+adcx rsi, r13
+mulx r13, r14, [r11+16]
+adox rsi, r14
+adcx rbx, r13
+mulx r13, r14, [r11+24]
+adox rbx, r14
+adcx rbp, r13
+mulx r13, r14, [r11+32]
+adox rbp, r14
+adcx r12, r13
+mulx r13, r14, [r11+40]
+adox r12, r14
+adox r9, r13
+adc r9, 0
+mov rdx, 9940570264628428797
+imul rdx, r10
+xor r13, r13
+mulx r13, r14, [rax]
+adox r10, r14
+adcx rdi, r13
+mulx r13, r14, [rax+8]
+adox rdi, r14
+adcx rsi, r13
+mulx r13, r14, [rax+16]
+adox rsi, r14
+adcx rbx, r13
+mulx r13, r14, [rax+24]
+adox rbx, r14
+adcx rbp, r13
+mulx r13, r14, [rax+32]
+adox rbp, r14
+adcx r12, r13
+mulx r13, r14, [rax+40]
+adox r12, r14
+adox r9, r13
+adc r9, 0
+mov rdx, [r8+16]
+xor r10, r10
+mulx r13, r14, [r11]
+adox rdi, r14
+adcx rsi, r13
+mulx r13, r14, [r11+8]
+adox rsi, r14
+adcx rbx, r13
+mulx r13, r14, [r11+16]
+adox rbx, r14
+adcx rbp, r13
+mulx r13, r14, [r11+24]
+adox rbp, r14
+adcx r12, r13
+mulx r13, r14, [r11+32]
+adox r12, r14
+adcx r9, r13
+mulx r13, r14, [r11+40]
+adox r9, r14
+adox r10, r13
+adc r10, 0
+mov rdx, 9940570264628428797
+imul rdx, rdi
+xor r13, r13
+mulx r13, r14, [rax]
+adox rdi, r14
+adcx rsi, r13
+mulx r13, r14, [rax+8]
+adox rsi, r14
+adcx rbx, r13
+mulx r13, r14, [rax+16]
+adox rbx, r14
+adcx rbp, r13
+mulx r13, r14, [rax+24]
+adox rbp, r14
+adcx r12, r13
+mulx r13, r14, [rax+32]
+adox r12, r14
+adcx r9, r13
+mulx r13, r14, [rax+40]
+adox r9, r14
+adox r10, r13
+adc r10, 0
+mov rdx, [r8+24]
+xor rdi, rdi
+mulx r13, r14, [r11]
+adox rsi, r14
+adcx rbx, r13
+mulx r13, r14, [r11+8]
+adox rbx, r14
+adcx rbp, r13
+mulx r13, r14, [r11+16]
+adox rbp, r14
+adcx r12, r13
+mulx r13, r14, [r11+24]
+adox r12, r14
+adcx r9, r13
+mulx r13, r14, [r11+32]
+adox r9, r14
+adcx r10, r13
+mulx r13, r14, [r11+40]
+adox r10, r14
+adox rdi, r13
+adc rdi, 0
+mov rdx, 9940570264628428797
+imul rdx, rsi
+xor r13, r13
+mulx r13, r14, [rax]
+adox rsi, r14
+adcx rbx, r13
+mulx r13, r14, [rax+8]
+adox rbx, r14
+adcx rbp, r13
+mulx r13, r14, [rax+16]
+adox rbp, r14
+adcx r12, r13
+mulx r13, r14, [rax+24]
+adox r12, r14
+adcx r9, r13
+mulx r13, r14, [rax+32]
+adox r9, r14
+adcx r10, r13
+mulx r13, r14, [rax+40]
+adox r10, r14
+adox rdi, r13
+adc rdi, 0
+mov rdx, [r8+32]
+xor rsi, rsi
+mulx r13, r14, [r11]
+adox rbx, r14
+adcx rbp, r13
+mulx r13, r14, [r11+8]
+adox rbp, r14
+adcx r12, r13
+mulx r13, r14, [r11+16]
+adox r12, r14
+adcx r9, r13
+mulx r13, r14, [r11+24]
+adox r9, r14
+adcx r10, r13
+mulx r13, r14, [r11+32]
+adox r10, r14
+adcx rdi, r13
+mulx r13, r14, [r11+40]
+adox rdi, r14
+adox rsi, r13
+adc rsi, 0
+mov rdx, 9940570264628428797
+imul rdx, rbx
+xor r13, r13
+mulx r13, r14, [rax]
+adox rbx, r14
+adcx rbp, r13
+mulx r13, r14, [rax+8]
+adox rbp, r14
+adcx r12, r13
+mulx r13, r14, [rax+16]
+adox r12, r14
+adcx r9, r13
+mulx r13, r14, [rax+24]
+adox r9, r14
+adcx r10, r13
+mulx r13, r14, [rax+32]
+adox r10, r14
+adcx rdi, r13
+mulx r13, r14, [rax+40]
+adox rdi, r14
+adox rsi, r13
+adc rsi, 0
+mov rdx, [r8+40]
+xor rbx, rbx
+mulx r13, r14, [r11]
+adox rbp, r14
+adcx r12, r13
+mulx r13, r14, [r11+8]
+adox r12, r14
+adcx r9, r13
+mulx r13, r14, [r11+16]
+adox r9, r14
+adcx r10, r13
+mulx r13, r14, [r11+24]
+adox r10, r14
+adcx rdi, r13
+mulx r13, r14, [r11+32]
+adox rdi, r14
+adcx rsi, r13
+mulx r13, r14, [r11+40]
+adox rsi, r14
+adox rbx, r13
+adc rbx, 0
+mov rdx, 9940570264628428797
+imul rdx, rbp
+xor r13, r13
+mulx r13, r14, [rax]
+adox rbp, r14
+adcx r12, r13
+mulx r13, r14, [rax+8]
+adox r12, r14
+adcx r9, r13
+mulx r13, r14, [rax+16]
+adox r9, r14
+adcx r10, r13
+mulx r13, r14, [rax+24]
+adox r10, r14
+adcx rdi, r13
+mulx r13, r14, [rax+32]
+adox rdi, r14
+adcx rsi, r13
+mulx r13, r14, [rax+40]
+adox rsi, r14
+adox rbx, r13
+adc rbx, 0
+mov rbp, r12
+mov r11, r9
+mov r8, r10
+mov rdx, rdi
+mov r13, rsi
+mov r14, rbx
+sub r12, [rax]
+sbb r9, [rax+8]
+sbb r10, [rax+16]
+sbb rdi, [rax+24]
+sbb rsi, [rax+32]
+sbb rbx, [rax+40]
+cmovc r12, rbp
+cmovc r9, r11
+cmovc r10, r8
+cmovc rdi, rdx
+cmovc rsi, r13
+cmovc rbx, r14
+mov [rcx], r12
+mov [rcx+8], r9
+mov [rcx+16], r10
+mov [rcx+24], rdi
+mov [rcx+32], rsi
+mov [rcx+40], rbx
+pop r14
+pop r13
+pop r12
+pop rbp
+pop rbx
+pop rsi
+pop rdi
+ret
