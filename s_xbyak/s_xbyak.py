@@ -533,16 +533,23 @@ def genFunc(name):
       return
     if not args:
       return output(name)
+
+    regSize = 0
+    for arg in args:
+      if isinstance(arg, Reg):
+        regSize = max(regSize, arg.bit)
+
     s = ''
     param = reversed(args) if g_gas else args
     for arg in param:
       if s != '':
         s += ', '
-      if g_gas:
-        if type(arg) == int:
-          s += '$' + str(arg)
-        else:
-          s += str(arg)
+      if g_gas and isinstance(arg, int):
+        s += '$' + str(arg)
+      elif g_masm and isinstance(arg, Address) and regSize > 64:
+        tbl = { 128 : 'x', 256 : 'y', 512 : 'z' }
+        attr = f'{tbl[regSize]}mmword ptr '
+        s += attr + str(arg)
       else:
         s += str(arg)
     return output(name + ' ' + s)
