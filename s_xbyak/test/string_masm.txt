@@ -1,0 +1,136 @@
+; for masm (ml64.exe)
+_data segment
+shiftPtn:
+db 0
+db 1
+db 2
+db 3
+db 4
+db 5
+db 6
+db 7
+db 8
+db 9
+db 10
+db 11
+db 12
+db 13
+db 14
+db 15
+db 128
+db 128
+db 128
+db 128
+db 128
+db 128
+db 128
+db 128
+db 128
+db 128
+db 128
+db 128
+db 128
+db 128
+db 128
+db 128
+_text segment
+mie_findCharAnyAVX proc export
+mov r10, rcx
+mov r11, rdx
+vmovdqu xmm1, xmmword ptr [r8]
+mov rax, r9
+mov rdx, r11
+cmp rdx, 16
+jb @L2
+and rdx, -16
+@L1:
+vpcmpestri xmm1, xmmword ptr [r10], 0
+jna @L5
+add r10, 16
+sub rdx, 16
+jnz @L1
+mov rdx, r11
+and edx, 15
+@L2:
+test edx, edx
+je @L7
+mov rcx, r10
+and ecx, 4095
+cmp ecx, 4080
+jbe @L3
+add ecx, edx
+cmp ecx, 4096
+ja @L3
+mov rcx, r10
+and rcx, -16
+vmovdqa xmm0, xmmword ptr [rcx]
+mov rcx, r10
+and ecx, 15
+lea r11, offset shiftPtn
+vmovdqu xmm2, xmmword ptr [r11+rcx]
+vpshufb xmm0, xmm0, xmm2
+jmp @L4
+@L3:
+vmovdqu xmm0, xmmword ptr [r10]
+@L4:
+vpcmpestri xmm1, xmm0, 0
+@L5:
+jnc @L7
+@L6:
+lea rax, [r10+rcx]
+ret
+@L7:
+xor eax, eax
+ret
+mie_findCharAnyAVX endp
+mie_findCharRangeAVX proc export
+mov r10, rcx
+mov r11, rdx
+vmovdqu xmm1, xmmword ptr [r8]
+mov rax, r9
+mov rdx, r11
+cmp rdx, 16
+jb @L9
+and rdx, -16
+@L8:
+vpcmpestri xmm1, xmmword ptr [r10], 4
+jna @L12
+add r10, 16
+sub rdx, 16
+jnz @L8
+mov rdx, r11
+and edx, 15
+@L9:
+test edx, edx
+je @L14
+mov rcx, r10
+and ecx, 4095
+cmp ecx, 4080
+jbe @L10
+add ecx, edx
+cmp ecx, 4096
+ja @L10
+mov rcx, r10
+and rcx, -16
+vmovdqa xmm0, xmmword ptr [rcx]
+mov rcx, r10
+and ecx, 15
+lea r11, offset shiftPtn
+vmovdqu xmm2, xmmword ptr [r11+rcx]
+vpshufb xmm0, xmm0, xmm2
+jmp @L11
+@L10:
+vmovdqu xmm0, xmmword ptr [r10]
+@L11:
+vpcmpestri xmm1, xmm0, 4
+@L12:
+jnc @L14
+@L13:
+lea rax, [r10+rcx]
+ret
+@L14:
+xor eax, eax
+ret
+mie_findCharRangeAVX endp
+_text ends
+end

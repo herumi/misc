@@ -6,8 +6,10 @@ test:
 test1:
 	python3 $(FILE).py -m gas > a.txt
 	diff -urN $(FILE)_gas.txt a.txt
-	python3 $(FILE).py -win > b.txt
-	diff -urN $(FILE)_win.txt b.txt
+	python3 $(FILE).py -win > a.txt
+	diff -urN $(FILE)_win.txt a.txt
+	python3 $(FILE).py -win -m masm > a.txt
+	diff -urN $(FILE)_masm.txt a.txt
 
 test_string_run:
 	make clean
@@ -45,7 +47,7 @@ mie_string_test: ./mie_string_test.exe
 	./mie_string_test.exe
 
 clean:
-	rm -f a.txt b.txt *.o *.S *.exe *.d
+	rm -f a.txt *.o *.S *.exe *.d
 
 .PHONY: clean test
 
