@@ -1,15 +1,19 @@
 test:
 	make test1 FILE=gen_ff_x64
 	make test1 FILE=gen_bint_x64
-	make clean
-	make mie_string_test
-	make clean
-	make mie_string_test MODE=gas
+	make test1 FILE=string
+
 test1:
 	python3 $(FILE).py -m gas > a.txt
 	diff -urN $(FILE)_gas.txt a.txt
 	python3 $(FILE).py -win > b.txt
 	diff -urN $(FILE)_win.txt b.txt
+
+test_string_run:
+	make clean
+	make mie_string_test
+	make clean
+	make mie_string_test MODE=gas
 
 SRC=mie_string_test.cpp
 

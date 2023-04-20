@@ -1,0 +1,151 @@
+# for gas
+#ifdef __linux__
+  #define PRE(x) x
+  #define TYPE(x) .type x, @function
+  #define SIZE(x) .size x, .-x
+#else
+  #ifdef _WIN32
+    #define PRE(x) x
+  #else
+    #define PRE(x) _ ## x
+  #endif
+  #define TYPE(x)
+  #define SIZE(x)
+#endif
+.data
+PRE(shiftPtn):
+.byte 0
+.byte 1
+.byte 2
+.byte 3
+.byte 4
+.byte 5
+.byte 6
+.byte 7
+.byte 8
+.byte 9
+.byte 10
+.byte 11
+.byte 12
+.byte 13
+.byte 14
+.byte 15
+.byte 128
+.byte 128
+.byte 128
+.byte 128
+.byte 128
+.byte 128
+.byte 128
+.byte 128
+.byte 128
+.byte 128
+.byte 128
+.byte 128
+.byte 128
+.byte 128
+.byte 128
+.byte 128
+.text
+.global PRE(mie_findCharAnyAVX)
+PRE(mie_findCharAnyAVX):
+TYPE(mie_findCharAnyAVX)
+mov %rcx, %r10
+mov %rdx, %r11
+vmovdqu (%r11), %xmm1
+mov %r10, %rax
+mov %rsi, %rdx
+cmp $16, %rdx
+jb .L2
+and $-16, %rdx
+.L1:
+vpcmpestri $0, (%rdi), %xmm1
+jna .L5
+add $16, %rdi
+sub $16, %rdx
+jnz .L1
+mov %rsi, %rdx
+and $15, %edx
+.L2:
+test %edx, %edx
+je .L7
+mov %rdi, %rcx
+and $4095, %ecx
+cmp $4080, %ecx
+jbe .L3
+add %edx, %ecx
+cmp $4096, %ecx
+ja .L3
+mov %rdi, %rcx
+and $-16, %rcx
+vmovdqa (%rcx), %xmm0
+mov %rdi, %rcx
+and $15, %ecx
+lea shiftPtn(%rip), %rsi
+vmovdqu (%rsi,%rcx,1), %xmm2
+vpshufb %xmm2, %xmm0, %xmm0
+jmp .L4
+.L3:
+vmovdqu (%rdi), %xmm0
+.L4:
+vpcmpestri $0, %xmm0, %xmm1
+.L5:
+jnc .L7
+.L6:
+lea (%rdi,%rcx,1), %rax
+ret
+.L7:
+xor %eax, %eax
+ret
+SIZE(mie_findCharAnyAVX)
+.global PRE(mie_findCharRangeAVX)
+PRE(mie_findCharRangeAVX):
+TYPE(mie_findCharRangeAVX)
+mov %rcx, %r10
+mov %rdx, %r11
+vmovdqu (%r11), %xmm1
+mov %r10, %rax
+mov %rsi, %rdx
+cmp $16, %rdx
+jb .L9
+and $-16, %rdx
+.L8:
+vpcmpestri $4, (%rdi), %xmm1
+jna .L12
+add $16, %rdi
+sub $16, %rdx
+jnz .L8
+mov %rsi, %rdx
+and $15, %edx
+.L9:
+test %edx, %edx
+je .L14
+mov %rdi, %rcx
+and $4095, %ecx
+cmp $4080, %ecx
+jbe .L10
+add %edx, %ecx
+cmp $4096, %ecx
+ja .L10
+mov %rdi, %rcx
+and $-16, %rcx
+vmovdqa (%rcx), %xmm0
+mov %rdi, %rcx
+and $15, %ecx
+lea shiftPtn(%rip), %rsi
+vmovdqu (%rsi,%rcx,1), %xmm2
+vpshufb %xmm2, %xmm0, %xmm0
+jmp .L11
+.L10:
+vmovdqu (%rdi), %xmm0
+.L11:
+vpcmpestri $4, %xmm0, %xmm1
+.L12:
+jnc .L14
+.L13:
+lea (%rdi,%rcx,1), %rax
+ret
+.L14:
+xor %eax, %eax
+ret
+SIZE(mie_findCharRangeAVX)
