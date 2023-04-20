@@ -528,7 +528,7 @@ def makeVar(name, bit, v, const=False, static=False):
 def genFunc(name):
   def f(*args):
     # special case (mov label, reg)
-    if g_gas and name == 'mov' and type(args[1]) == str:
+    if g_gas and name == 'mov' and isinstance(args[1], str):
       output(f'movabs ${args[1]}, {args[0]}')
       return
     if not args:
