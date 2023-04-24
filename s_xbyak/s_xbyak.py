@@ -28,28 +28,62 @@ g_undefLabelN = 1
 def getLine():
   return len(g_text)
 
+T_REG = 0
+T_XMM = 1 # contains ymm, zmm
+T_MASK = (1<<5)
+
 class Reg:
-  def __init__(self, idx, bit):
+  def __init__(self, idx=0, bit=0, kind=T_REG):
     self.idx = idx
     self.bit = bit
+    self.kind = kind
+  def copy(self):
+    r = Reg()
+    r.idx = self.idx
+    r.bit = self.bit
+    r.kind = self.kind
+    return r
+
   def __str__(self):
-    if self.bit == 64:
-      tbl = ['rax', 'rcx', 'rdx', 'rbx', 'rsp', 'rbp', 'rsi', 'rdi', 'r8', 'r9', 'r10',  'r11', 'r12', 'r13', 'r14', 'r15']
-    elif self.bit == 32:
-      tbl = ['eax', 'ecx', 'edx', 'ebx', 'esp', 'ebp', 'esi', 'edi', 'r8d', 'r9d', 'r10d',  'r11d', 'r12d', 'r13d', 'r14d', 'r15d']
-    elif self.bit == 8:
-      tbl = ['al', 'cl', 'dl', 'bl', 'ah', 'ch', 'dh', 'bh', 'r8b', 'r9b', 'r10b',  'r11b', 'r12b', 'r13b', 'r14b', 'r15b']
+    if self.kind == T_REG:
+      if self.bit == 64:
+        tbl = ['rax', 'rcx', 'rdx', 'rbx', 'rsp', 'rbp', 'rsi', 'rdi', 'r8', 'r9', 'r10',  'r11', 'r12', 'r13', 'r14', 'r15']
+      elif self.bit == 32:
+        tbl = ['eax', 'ecx', 'edx', 'ebx', 'esp', 'ebp', 'esi', 'edi', 'r8d', 'r9d', 'r10d',  'r11d', 'r12d', 'r13d', 'r14d', 'r15d']
+      elif self.bit == 8:
+        tbl = ['al', 'cl', 'dl', 'bl', 'ah', 'ch', 'dh', 'bh', 'r8b', 'r9b', 'r10b',  'r11b', 'r12b', 'r13b', 'r14b', 'r15b']
+      else:
+        raise Exception('bad bit', self.bit)
+      s = '%' if g_gas else ''
+      s += tbl[self.idx]
+      return s
+
+    # xmm4|k3, k1|k2
+    if self.kind == T_XMM:
+      s = '%' if g_gas else ''
+      if self.bit == 128:
+        s += 'x'
+      elif self.bit == 256:
+        s += 'y'
+      elif self.bit == 512:
+        s += 'z'
+      s += f'mm{self.idx}'
+    elif self.kind == T_MASK:
+      s = '%' if g_gas else ''
+      s += f'k{self.idx}'
     else:
-      raise Exception('bad bit', self.bit)
-    if g_gas:
-      return '%' + tbl[self.idx]
-    return tbl[self.idx]
+      raise Exception('bad kind', self.kind)
+    if hasattr(self, 'k') and self.k.idx > 0:
+      s += f'{{{self.k}}}'
+    return s
+
   def __mul__(self, scale):
     if type(scale) == int:
       if scale not in [1, 2, 4, 8]:
         raise Exception('bad scale', scale)
       return RegExp(None, self, scale)
     raise Exception('bad scale type', scale)
+
   def __add__(self, rhs):
     if type(rhs) == Reg:
       return RegExp(self, rhs)
@@ -58,39 +92,28 @@ class Reg:
     if type(rhs) == RegExp:
       return RegExp(self, rhs.index, rhs.scale, rhs.offset)
     raise Exception('bad add type', rhs)
+
   def __sub__(self, rhs):
     if type(rhs) == int:
       return RegExp(self, None, 1, -rhs)
     raise Exception('bad sub type', rhs)
 
-class Xmm(Reg):
-  def __str__(self):
-    if self.bit == 128:
-      p = 'x'
-    elif self.bit == 256:
-      p = 'y'
-    elif self.bit == 512:
-      p = 'z'
-    s = ''
-    if g_gas:
-      s = '%'
-    s += f'{p}mm{self.idx}'
-    if hasattr(self, 'k') and self.k.idx > 0:
-      s += f'|{{{self.k}}}'
-    return s
   def __or__(self, k):
     if isinstance(k, MaskReg):
-      self.k = k
-      return self
+      r = self.copy()
+      r.k = k
+      return r
     else:
       raise Exception('not MaskReg', k)
 
+class Xmm(Reg):
+  def __init__(self, idx, bit):
+    super().__init__(idx, bit, T_XMM)
+
+
 class MaskReg(Reg):
-  def __str__(self):
-    if g_gas:
-      return f'%k{self.idx}'
-    else:
-      return f'k{self.idx}'
+  def __init__(self, idx):
+    super().__init__(idx, 64, T_MASK)
 
 class RegExp:
   def __init__(self, reg, index = None, scale = 1, offset = 0):
@@ -216,13 +239,13 @@ r15b = Reg(R15, 8)
 
 # define xmm, ymm, zmm registers
 for (p, bit, n) in [('x', 128, 16), ('y', 256, 16), ('z', 512, 32)]:
-  for i in range(n):
-    globals()[f'{p}mm{i}'] = Xmm(i, bit)
-    globals()[f'{p}m{i}'] = Xmm(i, bit)
+  for idx in range(n):
+    globals()[f'{p}mm{idx}'] = Xmm(idx, bit)
+    globals()[f'{p}m{idx}'] = Xmm(idx, bit)
 
 # define mask registers k0, ..., k7
 for i in range(8):
-  globals()[f'k{i}'] = MaskReg(i, 64)
+  globals()[f'k{i}'] = MaskReg(i)
 
 win64ABI = False
 

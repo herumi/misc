@@ -3,8 +3,20 @@ sys.path.append('../')
 from s_xbyak import *
 import argparse
 
+def assertEq(x, y):
+  if x != y:
+    raise Exception('not equal', x, y)
+
 def maskTest():
-  print(xmm1|k2)
+  assertEq(str(rax), 'rax')
+  assertEq(str(al), 'al')
+  assertEq(str(xmm1), 'xmm1')
+  assertEq(str(ymm2), 'ymm2')
+  assertEq(str(zmm3), 'zmm3')
+  assertEq(str(xmm1|k2), 'xmm1{k2}')
+  assertEq(str(xmm1|k0), 'xmm1')
+  assertEq(str(k1|k2), 'k1{k2}')
+  assertEq(str(k2|k1), 'k2{k1}')
 
 def main():
   parser = argparse.ArgumentParser()
