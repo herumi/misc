@@ -3,6 +3,9 @@ test:
 	make test1 FILE=gen_bint_x64
 	make test1 FILE=string
 
+test_misc:
+	python3 misc.py
+
 test1:
 	python3 $(FILE).py -m gas > a.txt
 	diff -urN $(FILE)_gas.txt a.txt

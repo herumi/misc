@@ -71,10 +71,19 @@ class Xmm(Reg):
       p = 'y'
     elif self.bit == 512:
       p = 'z'
+    s = ''
     if g_gas:
-      return f'%{p}mm{self.idx}'
+      s = '%'
+    s += f'{p}mm{self.idx}'
+    if hasattr(self, 'k') and self.k.idx > 0:
+      s += f'|{{{self.k}}}'
+    return s
+  def __or__(self, k):
+    if isinstance(k, MaskReg):
+      self.k = k
+      return self
     else:
-      return f'{p}mm{self.idx}'
+      raise Exception('not MaskReg', k)
 
 class MaskReg(Reg):
   def __str__(self):
@@ -210,8 +219,9 @@ for (p, bit, n) in [('x', 128, 16), ('y', 256, 16), ('z', 512, 32)]:
   for i in range(n):
     globals()[f'{p}mm{i}'] = Xmm(i, bit)
     globals()[f'{p}m{i}'] = Xmm(i, bit)
-# define mask registers
-for i in range(n):
+
+# define mask registers k0, ..., k7
+for i in range(8):
   globals()[f'k{i}'] = MaskReg(i, 64)
 
 win64ABI = False
