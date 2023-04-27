@@ -10,6 +10,9 @@ def assertEq(x, y):
 def maskTest():
   assertEq(str(rax), 'rax')
   assertEq(str(al), 'al')
+  assertEq(str(ecx+eax*4+123), 'ecx+eax*4+123')
+  assertEq(str(ecx+eax*8-123), 'ecx+eax*8-123')
+  assertEq(str(ecx), 'ecx')
   assertEq(str(xmm1), 'xmm1')
   assertEq(str(ymm2), 'ymm2')
   assertEq(str(zmm3), 'zmm3')
@@ -17,6 +20,9 @@ def maskTest():
   assertEq(str(xmm1|k0), 'xmm1')
   assertEq(str(k1|k2), 'k1{k2}')
   assertEq(str(k2|k1), 'k2{k1}')
+  assertEq(str(k1|T_z), 'k1{z}')
+  assertEq(str(k2|k1|T_z), 'k2{k1}{z}')
+  assertEq(str(xmm1|k2|T_z), 'xmm1{k2}{z}')
 
 def main():
   parser = argparse.ArgumentParser()

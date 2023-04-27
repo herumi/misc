@@ -29,22 +29,41 @@ def getLine():
   return len(g_text)
 
 T_REG = 0
-T_XMM = 1 # contains ymm, zmm
-T_MASK = (1<<5)
+T_FPU = 1
+T_XMM = 2 # contains ymm, zmm
+T_MASK = 3 # k1, k2, ...
+T_ATTR = 4
 
-class Reg:
-  def __init__(self, idx=0, bit=0, kind=T_REG):
+T_ZERO = 8
+T_SAE = 16+1
+T_RN =  16+2
+T_RD =  16+3
+T_RU =  16+4
+T_RZ =  16+5
+
+class Operand:
+  def __init__(self, idx=0, bit=0, kind=T_REG, attr=0):
     self.idx = idx
     self.bit = bit
     self.kind = kind
+    self.attr = attr
   def copy(self):
-    r = Reg()
+    r = Operand()
     r.idx = self.idx
     r.bit = self.bit
     r.kind = self.kind
+    r.attr = self.attr
+    if hasattr(self, 'k'):
+      r.k = self.k
     return r
 
   def __str__(self):
+    name = self.getName()
+    if g_gas:
+      return '%' + name
+    else:
+      return name
+  def getName(self):
     if self.kind == T_REG:
       if self.bit == 64:
         tbl = ['rax', 'rcx', 'rdx', 'rbx', 'rsp', 'rbp', 'rsi', 'rdi', 'r8', 'r9', 'r10',  'r11', 'r12', 'r13', 'r14', 'r15']
@@ -54,66 +73,95 @@ class Reg:
         tbl = ['al', 'cl', 'dl', 'bl', 'ah', 'ch', 'dh', 'bh', 'r8b', 'r9b', 'r10b',  'r11b', 'r12b', 'r13b', 'r14b', 'r15b']
       else:
         raise Exception('bad bit', self.bit)
-      s = '%' if g_gas else ''
-      s += tbl[self.idx]
-      return s
+      return tbl[self.idx]
 
     # xmm4|k3, k1|k2
     if self.kind == T_XMM:
-      s = '%' if g_gas else ''
       if self.bit == 128:
-        s += 'x'
+        s = 'x'
       elif self.bit == 256:
-        s += 'y'
+        s = 'y'
       elif self.bit == 512:
-        s += 'z'
+        s = 'z'
       s += f'mm{self.idx}'
     elif self.kind == T_MASK:
-      s = '%' if g_gas else ''
-      s += f'k{self.idx}'
+      s = f'k{self.idx}'
+    elif self.kind == T_ATTR:
+      tbl = {
+        T_ZERO : 'z',
+        T_SAE : 'sae',
+        T_RN : 'rn_sae',
+        T_RD : 'rd_sae',
+        T_RU : 'ru_sae',
+        T_RZ : 'rz_sae',
+      }
+      return '{' + tbl[self.attr] + '}'
     else:
       raise Exception('bad kind', self.kind)
     if hasattr(self, 'k') and self.k.idx > 0:
       s += f'{{{self.k}}}'
+    if (self.attr & T_ZERO) != 0:
+      s += '{z}'
     return s
 
   def __mul__(self, scale):
-    if type(scale) == int:
-      if scale not in [1, 2, 4, 8]:
-        raise Exception('bad scale', scale)
+    if isinstance(scale, int) and scale in [1, 2, 4, 8]:
       return RegExp(None, self, scale)
-    raise Exception('bad scale type', scale)
+    raise Exception('bad scale', scale)
 
   def __add__(self, rhs):
-    if type(rhs) == Reg:
-      return RegExp(self, rhs)
-    if type(rhs) == int:
+    if isinstance(rhs, int):
       return RegExp(self, None, 1, rhs)
-    if type(rhs) == RegExp:
+    if isinstance(rhs, RegExp):
       return RegExp(self, rhs.index, rhs.scale, rhs.offset)
+    if rhs.kind == T_REG:
+      return RegExp(self, rhs)
     raise Exception('bad add type', rhs)
 
   def __sub__(self, rhs):
-    if type(rhs) == int:
-      return RegExp(self, None, 1, -rhs)
-    raise Exception('bad sub type', rhs)
+    if not isinstance(rhs, int):
+      raise Exception('bad sub type', rhs)
+    return RegExp(self, None, 1, -rhs)
 
-  def __or__(self, k):
-    if isinstance(k, MaskReg):
+  def __or__(self, rhs):
+    if rhs.kind == T_MASK:
       r = self.copy()
-      r.k = k
+      r.k = rhs
+      return r
+    elif rhs.kind == T_ATTR:
+      r = self.copy()
+      r.attr |= rhs.attr
+      if hasattr(rhs, 'k'):
+        r.k = rhs.k
       return r
     else:
-      raise Exception('not MaskReg', k)
+      raise Exception('bad arg', k)
+
+class Reg(Operand):
+  def __init__(self, idx, bit):
+    super().__init__(idx, bit, T_REG)
 
 class Xmm(Reg):
   def __init__(self, idx, bit):
-    super().__init__(idx, bit, T_XMM)
-
+    super().__init__(idx, bit)
+    self.kind = T_XMM
 
 class MaskReg(Reg):
   def __init__(self, idx):
-    super().__init__(idx, 64, T_MASK)
+    super().__init__(idx, 64)
+    self.kind = T_MASK
+
+class Attribute(Operand):
+  def __init__(self, attr):
+    super().__init__(0, 0, T_ATTR, attr)
+
+T_z = Attribute(T_ZERO)
+T_sae = Attribute(T_SAE)
+T_rn_sae = Attribute(T_RN)
+T_rd_sae = Attribute(T_RD)
+T_ru_sae = Attribute(T_RU)
+T_rz_sae = Attribute(T_RZ)
+
 
 class RegExp:
   def __init__(self, reg, index = None, scale = 1, offset = 0):

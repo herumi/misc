@@ -1,17 +1,20 @@
+PYTHON?=python3
+
 test:
 	make test1 FILE=gen_ff_x64
 	make test1 FILE=gen_bint_x64
 	make test1 FILE=string
+	$(PYTHON) misc.py
 
 test_misc:
-	python3 misc.py
+	$(PYTHON) misc.py
 
 test1:
-	python3 $(FILE).py -m gas > a.txt
+	$(PYTHON) $(FILE).py -m gas > a.txt
 	diff -urN $(FILE)_gas.txt a.txt
-	python3 $(FILE).py -win > a.txt
+	$(PYTHON) $(FILE).py -win > a.txt
 	diff -urN $(FILE)_win.txt a.txt
-	python3 $(FILE).py -win -m masm > a.txt
+	$(PYTHON) $(FILE).py -win -m masm > a.txt
 	diff -urN $(FILE)_masm.txt a.txt
 
 test_string_run:
@@ -36,11 +39,11 @@ DEPEND_FILE=$(addsuffix .d,$(SRC))
 MODE?=nasm
 mie_string_test.exe: string.py mie_string_test.o
 ifeq ($(MODE),nasm)
-	python3 string.py -m nasm > string.asm
+	$(PYTHON) string.py -m nasm > string.asm
 	nasm -f elf64 string.asm
 endif
 ifeq ($(MODE),gas)
-	python3 string.py -m gas > string.S
+	$(PYTHON) string.py -m gas > string.S
 	$(CXX) -c string.S
 endif
 	$(CXX) -o $@ mie_string_test.o string.o $(CFLAGS)
