@@ -34,12 +34,19 @@ T_XMM = 2 # contains ymm, zmm
 T_MASK = 3 # k1, k2, ...
 T_ATTR = 4
 
-T_ZERO = 8
-T_SAE = 16+1
-T_RN =  16+2
-T_RD =  16+3
-T_RU =  16+4
-T_RZ =  16+5
+# attr
+# one of (sae, rn, rd, ru, rz) or zero
+T_ZERO = 1
+T_SAE = (1<<1)
+T_RN =  (2<<1)
+T_RD =  (3<<1)
+T_RU =  (4<<1)
+T_RZ =  (5<<1)
+
+def mergeAttr(attr1, attr2):
+  if (attr1>>1) and (attr2>>1):
+    raise Exception("can't merge attr", attr1, attr2)
+  return attr1 | attr2
 
 class Operand:
   def __init__(self, idx=0, bit=0, kind=T_REG, attr=0):
@@ -130,7 +137,7 @@ class Operand:
       return r
     elif rhs.kind == T_ATTR:
       r = self.copy()
-      r.attr |= rhs.attr
+      r.attr = mergeAttr(r.attr, rhs.attr)
       if hasattr(rhs, 'k'):
         r.k = rhs.k
       return r
@@ -623,12 +630,20 @@ def genFunc(name):
       return output(name)
 
     regSize = 0
+    sae = 0
     for arg in args:
-      if isinstance(arg, Reg):
+      if isinstance(arg, Operand):
         regSize = max(regSize, arg.bit)
+        if arg.attr > 1:
+          sae = arg.attr
+
+    param = list(args)
+    if sae > 0 and isinstance(args[-1], Operand) and args[-1].kind != T_ATTR:
+      param.append(Attribute(sae))
 
     s = ''
-    param = reversed(args) if g_gas else args
+    if g_gas:
+      param.reverse()
     for arg in param:
       if s != '':
         s += ', '
