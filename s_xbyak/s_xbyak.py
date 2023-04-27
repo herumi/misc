@@ -218,7 +218,7 @@ class Address:
     self.ripLabel = None
   def setRip(self, label):
     self.ripLabel = label
-  def __str__(self):
+  def __str__(self, bit=0):
     if self.ripLabel:
       if g_gas:
         return f'{self.ripLabel}(%rip)'
@@ -229,7 +229,11 @@ class Address:
       if type(self.exp) == Reg:
         return '(' + str(self.exp) + ')'
       return str(self.exp)
-    return '[' + str(self.exp) + ']'
+    s = ''
+    if g_masm and bit > 64:
+      tbl = { 128 : 'x', 256 : 'y', 512 : 'z' }
+      s = f'{tbl[bit]}mmword ptr '
+    return s + '[' + str(self.exp) + ']'
 
 def ptr(exp):
   return Address(exp)
@@ -627,15 +631,17 @@ def genFunc(name):
     if not args:
       return output(name)
 
-    regSize = 0
+    bitSize = 0
     sae = 0
     for arg in args:
       if isinstance(arg, Operand):
-        regSize = max(regSize, arg.bit)
+        bitSize = max(bitSize, arg.bit)
         if arg.attr > 1:
           sae = arg.attr
 
     param = list(args)
+    # insert sae at the end of arguments.
+    # if the last argument is immediate, insert sae at the front of it.
     if sae > 0:
       if isinstance(args[-1], Operand) and args[-1].kind != T_ATTR:
         param.append(Attribute(sae))
@@ -650,10 +656,8 @@ def genFunc(name):
         s += ', '
       if g_gas and isinstance(arg, int):
         s += '$' + str(arg)
-      elif g_masm and isinstance(arg, Address) and regSize > 64:
-        tbl = { 128 : 'x', 256 : 'y', 512 : 'z' }
-        attr = f'{tbl[regSize]}mmword ptr '
-        s += attr + str(arg)
+      elif isinstance(arg, Address):
+        s += arg.__str__(bitSize)
       else:
         s += str(arg)
     return output(name + ' ' + s)
