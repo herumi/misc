@@ -8,6 +8,7 @@ def assertEq(x, y):
     raise Exception('not equal', x, y)
 
 def maskTest():
+  # for nasm/masm
   assertEq(str(rax), 'rax')
   assertEq(str(al), 'al')
   assertEq(str(ecx+eax*4+123), 'ecx+eax*4+123')
@@ -24,7 +25,24 @@ def maskTest():
   assertEq(str(k2|k1|T_z), 'k2{k1}{z}')
   assertEq(str(xmm1|k2|T_z), 'xmm1{k2}{z}')
 
+def miscTest():
+  vaddpd(zmm2, zmm5, zmm30)
+  vaddpd(xmm30, xmm20, ptr(rax))
+  vaddps(xmm30, xmm20, ptr(rax))
+  vaddpd(zmm2 | k5, zmm4, zmm2)
+  vaddpd(zmm2 | k5 | T_z, zmm4, zmm2)
+  vaddpd(zmm2 | k5 | T_z, zmm4, zmm2 | T_rd_sae)
+  vaddpd(zmm2 | k5 | T_z | T_rd_sae, zmm4, zmm2)
+  vcmppd(k4 | k3, zmm1, zmm2 | T_sae, 5)
+  vcmpnltpd(k4|k3,zmm1,zmm2|T_sae)
+#  vmovups(xm2|k1|T_z, ptr(rax))
+#  vcvttsh2usi(r9, xmm1|T_sae)
+#  vcvttph2qq(zmm1|k5|T_z, xmm3|T_sae)
+
 def main():
+  # before calling init()
+  maskTest()
+
   parser = getDefaultParser()
   global param
   param = parser.parse_args()
@@ -32,10 +50,7 @@ def main():
   init(param)
   segment('text')
 
-  vmovups(xm2|k1|T_z, ptr(rax))
-  vcvttsh2usi(r9, xmm1|T_sae)
-  vcvttph2qq(zmm1|k5|T_z, xmm3|T_sae)
-#  maskTest()
+  miscTest()
 
   term()
 

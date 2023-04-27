@@ -91,15 +91,15 @@ class Operand:
       s += f'k{self.idx}'
     elif self.kind == T_ATTR:
       tbl = {
-        T_ZERO : 'z',
         T_SAE : 'sae',
-        T_RN : 'rn_sae',
-        T_RD : 'rd_sae',
-        T_RU : 'ru_sae',
-        T_RZ : 'rz_sae',
+        T_RN : 'rn-sae',
+        T_RD : 'rd-sae',
+        T_RU : 'ru-sae',
+        T_RZ : 'rz-sae',
       }
       # no % even if g_gas
-      s = '{' + tbl[self.attr] + '}'
+      # ignore T_z
+      s = '{' + tbl[self.attr & ~1] + '}'
       return s
     else:
       raise Exception('bad kind', self.kind)
@@ -291,8 +291,8 @@ r14b = Reg(R14, 8)
 r15b = Reg(R15, 8)
 
 # define xmm, ymm, zmm registers
-for (p, bit, n) in [('x', 128, 16), ('y', 256, 16), ('z', 512, 32)]:
-  for idx in range(n):
+for (p, bit) in [('x', 128), ('y', 256), ('z', 512)]:
+  for idx in range(32):
     globals()[f'{p}mm{idx}'] = Xmm(idx, bit)
     globals()[f'{p}m{idx}'] = Xmm(idx, bit)
 
@@ -636,8 +636,11 @@ def genFunc(name):
           sae = arg.attr
 
     param = list(args)
-    if sae > 0 and isinstance(args[-1], Operand) and args[-1].kind != T_ATTR:
-      param.append(Attribute(sae))
+    if sae > 0:
+      if isinstance(args[-1], Operand) and args[-1].kind != T_ATTR:
+        param.append(Attribute(sae))
+      elif isinstance(args[-1], int):
+        param.insert(-1, Attribute(sae))
 
     s = ''
     if g_gas:
