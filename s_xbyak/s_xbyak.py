@@ -383,7 +383,14 @@ class StackFrame:
         return r
     return r
 
-def init(mode):
+def init(param):
+  """
+    initialize s_xbyak
+    param.win : use Win64 ABI
+    param.mode : asm mode (nasm|masm|gas)
+  """
+  mode = param.mode
+  setWin64ABI(param.win)
   global g_nasm, g_gas, g_masm, g_text
   g_nasm = mode == 'nasm'
   g_gas = mode == 'gas'
@@ -852,3 +859,10 @@ def genAllFunc():
     globals()[name] = genFunc(asmName)
 
 genAllFunc()
+
+import argparse
+def getDefaultParser(description='s_xbyak'):
+  parser = argparse.ArgumentParser(description=description)
+  parser.add_argument('-win', '--win', help='Win64 ABI(default:Amd64 ABI)', action='store_true')
+  parser.add_argument('-m', '--mode', help='asm mode(nasm|masm|gas)', default='nasm')
+  return parser

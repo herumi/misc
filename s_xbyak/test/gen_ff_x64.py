@@ -226,17 +226,13 @@ def gen_mul(name, mont):
       store_mp(pz, pk)
 
 def main():
-  parser = argparse.ArgumentParser(description='gen bint')
+  parser = getDefaultParser('gen bint')
   parser.add_argument('-p', type=str, default='', help='characteristic of a finite field')
   parser.add_argument('-type', type=str, default='BLS12-381-p', help='elliptic curve type')
   parser.add_argument('-pre', type=str, default='mcl_fp_', help='prefix of a function name')
-  parser.add_argument('-win', '--win', help='output win64 abi', action='store_true')
-  parser.add_argument('-gas', '--gas', help='output gas syntax', default=False, action='store_true')
-  parser.add_argument('-m', '--mode', help='output asm syntax', default='nasm')
   opt = parser.parse_args()
 
-  setWin64ABI(opt.win)
-  init(opt.mode)
+  init(opt)
   opt.u = 64
   opt.proto = False
   if opt.p == '':
