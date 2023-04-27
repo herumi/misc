@@ -65,12 +65,6 @@ class Operand:
     return r
 
   def __str__(self):
-    name = self.getName()
-    if g_gas:
-      return '%' + name
-    else:
-      return name
-  def getName(self):
     if self.kind == T_REG:
       if self.bit == 64:
         tbl = ['rax', 'rcx', 'rdx', 'rbx', 'rsp', 'rbp', 'rsi', 'rdi', 'r8', 'r9', 'r10',  'r11', 'r12', 'r13', 'r14', 'r15']
@@ -80,19 +74,21 @@ class Operand:
         tbl = ['al', 'cl', 'dl', 'bl', 'ah', 'ch', 'dh', 'bh', 'r8b', 'r9b', 'r10b',  'r11b', 'r12b', 'r13b', 'r14b', 'r15b']
       else:
         raise Exception('bad bit', self.bit)
-      return tbl[self.idx]
+      s = '%' if g_gas else ''
+      return s + tbl[self.idx]
 
     # xmm4|k3, k1|k2
+    s = '%' if g_gas else ''
     if self.kind == T_XMM:
       if self.bit == 128:
-        s = 'x'
+        s += 'x'
       elif self.bit == 256:
-        s = 'y'
+        s += 'y'
       elif self.bit == 512:
-        s = 'z'
+        s += 'z'
       s += f'mm{self.idx}'
     elif self.kind == T_MASK:
-      s = f'k{self.idx}'
+      s += f'k{self.idx}'
     elif self.kind == T_ATTR:
       tbl = {
         T_ZERO : 'z',
@@ -102,7 +98,9 @@ class Operand:
         T_RU : 'ru_sae',
         T_RZ : 'rz_sae',
       }
-      return '{' + tbl[self.attr] + '}'
+      # no % even if g_gas
+      s = '{' + tbl[self.attr] + '}'
+      return s
     else:
       raise Exception('bad kind', self.kind)
     if hasattr(self, 'k') and self.k.idx > 0:

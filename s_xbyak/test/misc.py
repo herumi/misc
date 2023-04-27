@@ -32,7 +32,10 @@ def main():
   init(param)
   segment('text')
 
-  maskTest()
+  vmovups(xm2|k1|T_z, ptr(rax))
+  vcvttsh2usi(r9, xmm1|T_sae)
+  vcvttph2qq(zmm1|k5|T_z, xmm3|T_sae)
+#  maskTest()
 
   term()
 
