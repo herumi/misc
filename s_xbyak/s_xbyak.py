@@ -223,6 +223,7 @@ class Address:
   def setBroadcastRage(self, name, bitSize):
     if name in avx512broadcastTbl:
       self.broadcastRate = bitSize // avx512broadcastTbl[name]
+      self.bit = bitSize // self.broadcastRate
   def getBroadcastStr(self):
     if self.broadcast and self.broadcastRate > 0:
       return f'{{1to{self.broadcastRate}}}'
@@ -242,7 +243,7 @@ class Address:
       s += self.getBroadcastStr()
       return s
     s = ''
-    if g_masm and self.bit > 64:
+    if g_masm and (self.bit > 64 or self.broadcast):
       tbl = { 32 : 'd', 64 : 'q', 128 : 'xmm', 256 : 'ymm', 512 : 'zmm' }
       s = f'{tbl[self.bit]}word ptr '
     return s + '[' + str(self.exp) + ']' + self.getBroadcastStr()
