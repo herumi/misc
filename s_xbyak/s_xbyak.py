@@ -212,12 +212,21 @@ class RegExp:
     return s
 
 class Address:
-  def __init__(self, exp=None, bit=0):
+  def __init__(self, exp=None, bit=0, broadcast=False):
     self.exp = exp
     self.bit = bit
     self.ripLabel = None
+    self.broadcast = broadcast
+    self.broadcastRate = 0
   def setRip(self, label):
     self.ripLabel = label
+  def setBroadcastRage(self, name, bitSize):
+    if name in avx512broadcastTbl:
+      self.broadcastRate = bitSize // avx512broadcastTbl[name]
+  def getBroadcastStr(self):
+    if self.broadcast and self.broadcastRate > 0:
+      return f'{{1to{self.broadcastRate}}}'
+    return ''
   def __str__(self):
     if self.ripLabel:
       if g_gas:
@@ -227,16 +236,22 @@ class Address:
       return f'[rel {self.ripLabel}]'
     if g_gas:
       if type(self.exp) == Reg:
-        return '(' + str(self.exp) + ')'
-      return str(self.exp)
+        s = '(' + str(self.exp) + ')'
+      else:
+        s = str(self.exp)
+      s += self.getBroadcastStr()
+      return s
     s = ''
     if g_masm and self.bit > 64:
-      tbl = { 128 : 'x', 256 : 'y', 512 : 'z' }
-      s = f'{tbl[self.bit]}mmword ptr '
-    return s + '[' + str(self.exp) + ']'
+      tbl = { 32 : 'd', 64 : 'q', 128 : 'xmm', 256 : 'ymm', 512 : 'zmm' }
+      s = f'{tbl[self.bit]}word ptr '
+    return s + '[' + str(self.exp) + ']' + self.getBroadcastStr()
 
 def ptr(exp):
   return Address(exp)
+
+def ptr_b(exp):
+  return Address(exp, broadcast=True)
 
 def rip(label):
   addr = Address()
@@ -645,8 +660,11 @@ def genFunc(name):
       if isinstance(arg, Address):
         if arg.bit == 0:
           arg.bit = bitSize
+        if arg.broadcast:
+          arg.setBroadcastRage(name, bitSize)
 
     param = list(args)
+
     # insert sae at the end of arguments.
     # if the last argument is immediate, insert sae at the front of it.
     if sae > 0:
@@ -884,6 +902,314 @@ def genAllFunc():
     globals()[name] = genFunc(asmName)
 
 genAllFunc()
+
+# used in Address.setBroadcastRage()
+T_B16 = 16
+T_B32 = 32
+T_B64 = 64
+avx512broadcastTbl = {
+  'vaddpd' : T_B64,
+  'vaddps' : T_B32,
+  'vandnpd' : T_B64,
+  'vandnps' : T_B32,
+  'vandpd' : T_B64,
+  'vandps' : T_B32,
+  'vbcstnebf162ps' : T_B16,
+  'vbcstnesh2ps' : T_B16,
+  'vcvtdq2pd' : T_B32,
+  'vcvtdq2ps' : T_B32,
+  'vcvtneps2bf16' : T_B32,
+  'vcvtpd2dq' : T_B64,
+  'vcvtpd2ps' : T_B64,
+  'vcvtps2dq' : T_B32,
+  'vcvtps2pd' : T_B32,
+  'vcvttpd2dq' : T_B64,
+  'vcvttps2dq' : T_B32,
+  'vdivpd' : T_B64,
+  'vdivps' : T_B32,
+  'vfmadd132pd' : T_B64,
+  'vfmadd132ps' : T_B32,
+  'vfmadd213pd' : T_B64,
+  'vfmadd213ps' : T_B32,
+  'vfmadd231pd' : T_B64,
+  'vfmadd231ps' : T_B32,
+  'vfmaddsub132pd' : T_B64,
+  'vfmaddsub132ps' : T_B32,
+  'vfmaddsub213pd' : T_B64,
+  'vfmaddsub213ps' : T_B32,
+  'vfmaddsub231pd' : T_B64,
+  'vfmaddsub231ps' : T_B32,
+  'vfmsub132pd' : T_B64,
+  'vfmsub132ps' : T_B32,
+  'vfmsub213pd' : T_B64,
+  'vfmsub213ps' : T_B32,
+  'vfmsub231pd' : T_B64,
+  'vfmsub231ps' : T_B32,
+  'vfmsubadd132pd' : T_B64,
+  'vfmsubadd132ps' : T_B32,
+  'vfmsubadd213pd' : T_B64,
+  'vfmsubadd213ps' : T_B32,
+  'vfmsubadd231pd' : T_B64,
+  'vfmsubadd231ps' : T_B32,
+  'vfnmadd132pd' : T_B64,
+  'vfnmadd132ps' : T_B32,
+  'vfnmadd213pd' : T_B64,
+  'vfnmadd213ps' : T_B32,
+  'vfnmadd231pd' : T_B64,
+  'vfnmadd231ps' : T_B32,
+  'vfnmsub132pd' : T_B64,
+  'vfnmsub132ps' : T_B32,
+  'vfnmsub213pd' : T_B64,
+  'vfnmsub213ps' : T_B32,
+  'vfnmsub231pd' : T_B64,
+  'vfnmsub231ps' : T_B32,
+  'vgf2p8affineinvqb' : T_B64,
+  'vgf2p8affineqb' : T_B64,
+  'vmaxpd' : T_B64,
+  'vmaxps' : T_B32,
+  'vminpd' : T_B64,
+  'vminps' : T_B32,
+  'vmulpd' : T_B64,
+  'vmulps' : T_B32,
+  'vorpd' : T_B64,
+  'vorps' : T_B32,
+  'vpabsd' : T_B32,
+  'vpackssdw' : T_B32,
+  'vpackusdw' : T_B32,
+  'vpaddd' : T_B32,
+  'vpaddq' : T_B64,
+  'vpdpbusd' : T_B32,
+  'vpdpbusds' : T_B32,
+  'vpdpwssd' : T_B32,
+  'vpdpwssds' : T_B32,
+  'vpermd' : T_B32,
+  'vpermilpd' : T_B64,
+  'vpermilpd' : T_B64,
+  'vpermilps' : T_B32,
+  'vpermilps' : T_B32,
+  'vpermpd' : T_B64,
+  'vpermpd' : T_B64,
+  'vpermps' : T_B32,
+  'vpermq' : T_B64,
+  'vpermq' : T_B64,
+  'vpmadd52huq' : T_B64,
+  'vpmadd52luq' : T_B64,
+  'vpmaxsd' : T_B32,
+  'vpmaxud' : T_B32,
+  'vpminsd' : T_B32,
+  'vpminud' : T_B32,
+  'vpmuldq' : T_B64,
+  'vpmulld' : T_B32,
+  'vpmuludq' : T_B64,
+  'vpshufd' : T_B32,
+  'vpslld' : T_B32,
+  'vpsllq' : T_B64,
+  'vpsllvd' : T_B32,
+  'vpsllvq' : T_B64,
+  'vpsrad' : T_B32,
+  'vpsravd' : T_B32,
+  'vpsrld' : T_B32,
+  'vpsrlq' : T_B64,
+  'vpsrlvd' : T_B32,
+  'vpsrlvq' : T_B64,
+  'vpsubd' : T_B32,
+  'vpsubq' : T_B64,
+  'vpunpckhdq' : T_B32,
+  'vpunpckhqdq' : T_B64,
+  'vpunpckldq' : T_B32,
+  'vpunpcklqdq' : T_B64,
+  'vshufpd' : T_B64,
+  'vshufps' : T_B32,
+  'vsqrtpd' : T_B64,
+  'vsqrtps' : T_B32,
+  'vsubpd' : T_B64,
+  'vsubps' : T_B32,
+  'vunpckhpd' : T_B64,
+  'vunpckhps' : T_B32,
+  'vunpcklpd' : T_B64,
+  'vunpcklps' : T_B32,
+  'vxorpd' : T_B64,
+  'vxorps' : T_B32,
+  'vaddph' : T_B16,
+  'vblendmpd' : T_B64,
+  'vblendmps' : T_B32,
+  'vcmppd' : T_B64,
+  'vcmpph' : T_B16,
+  'vcmpps' : T_B32,
+  'vcvtdq2ph' : T_B32,
+  'vcvtne2ps2bf16' : T_B32,
+  'vcvtpd2ph' : T_B64,
+  'vcvtpd2qq' : T_B64,
+  'vcvtpd2udq' : T_B64,
+  'vcvtpd2uqq' : T_B64,
+  'vcvtph2dq' : T_B16,
+  'vcvtph2pd' : T_B16,
+  'vcvtph2psx' : T_B16,
+  'vcvtph2qq' : T_B16,
+  'vcvtph2udq' : T_B16,
+  'vcvtph2uqq' : T_B16,
+  'vcvtph2uw' : T_B16,
+  'vcvtph2w' : T_B16,
+  'vcvtps2phx' : T_B32,
+  'vcvtps2qq' : T_B32,
+  'vcvtps2udq' : T_B32,
+  'vcvtps2uqq' : T_B32,
+  'vcvtqq2pd' : T_B64,
+  'vcvtqq2ph' : T_B64,
+  'vcvtqq2ps' : T_B64,
+  'vcvttpd2qq' : T_B64,
+  'vcvttpd2udq' : T_B64,
+  'vcvttpd2uqq' : T_B64,
+  'vcvttph2dq' : T_B16,
+  'vcvttph2qq' : T_B16,
+  'vcvttph2udq' : T_B16,
+  'vcvttph2uqq' : T_B16,
+  'vcvttph2uw' : T_B16,
+  'vcvttph2w' : T_B16,
+  'vcvttps2qq' : T_B32,
+  'vcvttps2udq' : T_B32,
+  'vcvttps2uqq' : T_B32,
+  'vcvtudq2pd' : T_B32,
+  'vcvtudq2ph' : T_B32,
+  'vcvtudq2ps' : T_B32,
+  'vcvtuqq2pd' : T_B64,
+  'vcvtuqq2ph' : T_B64,
+  'vcvtuqq2ps' : T_B64,
+  'vcvtuw2ph' : T_B16,
+  'vcvtw2ph' : T_B16,
+  'vdivph' : T_B16,
+  'vdpbf16ps' : T_B32,
+  'vexp2pd' : T_B64,
+  'vexp2ps' : T_B32,
+  'vfcmaddcph' : T_B32,
+  'vfcmulcph' : T_B32,
+  'vfixupimmpd' : T_B64,
+  'vfixupimmps' : T_B32,
+  'vfmadd132ph' : T_B16,
+  'vfmadd213ph' : T_B16,
+  'vfmadd231ph' : T_B16,
+  'vfmaddcph' : T_B32,
+  'vfmaddsub132ph' : T_B16,
+  'vfmaddsub213ph' : T_B16,
+  'vfmaddsub231ph' : T_B16,
+  'vfmsub132ph' : T_B16,
+  'vfmsub213ph' : T_B16,
+  'vfmsub231ph' : T_B16,
+  'vfmsubadd132ph' : T_B16,
+  'vfmsubadd213ph' : T_B16,
+  'vfmsubadd231ph' : T_B16,
+  'vfmulcph' : T_B32,
+  'vfnmadd132ph' : T_B16,
+  'vfnmadd213ph' : T_B16,
+  'vfnmadd231ph' : T_B16,
+  'vfnmsub132ph' : T_B16,
+  'vfnmsub213ph' : T_B16,
+  'vfnmsub231ph' : T_B16,
+  'vfpclasspd' : T_B64,
+  'vfpclassph' : T_B16,
+  'vfpclassps' : T_B32,
+  'vgetexppd' : T_B64,
+  'vgetexpph' : T_B16,
+  'vgetexpps' : T_B32,
+  'vgetmantpd' : T_B64,
+  'vgetmantph' : T_B16,
+  'vgetmantps' : T_B32,
+  'vmaxph' : T_B16,
+  'vminph' : T_B16,
+  'vmulph' : T_B16,
+  'vp2intersectd' : T_B32,
+  'vp2intersectq' : T_B64,
+  'vpabsq' : T_B64,
+  'vpandd' : T_B32,
+  'vpandnd' : T_B32,
+  'vpandnq' : T_B64,
+  'vpandq' : T_B64,
+  'vpblendmd' : T_B32,
+  'vpblendmq' : T_B64,
+  'vpcmpd' : T_B32,
+  'vpcmpeqd' : T_B32,
+  'vpcmpeqq' : T_B64,
+  'vpcmpgtd' : T_B32,
+  'vpcmpgtq' : T_B64,
+  'vpcmpq' : T_B64,
+  'vpcmpud' : T_B32,
+  'vpcmpuq' : T_B64,
+  'vpconflictd' : T_B32,
+  'vpconflictq' : T_B64,
+  'vpermi2d' : T_B32,
+  'vpermi2pd' : T_B64,
+  'vpermi2ps' : T_B32,
+  'vpermi2q' : T_B64,
+  'vpermt2d' : T_B32,
+  'vpermt2pd' : T_B64,
+  'vpermt2ps' : T_B32,
+  'vpermt2q' : T_B64,
+  'vplzcntd' : T_B32,
+  'vplzcntq' : T_B64,
+  'vpmaxsq' : T_B64,
+  'vpmaxuq' : T_B64,
+  'vpminsq' : T_B64,
+  'vpminuq' : T_B64,
+  'vpmullq' : T_B64,
+  'vpmultishiftqb' : T_B64,
+  'vpopcntd' : T_B32,
+  'vpopcntq' : T_B64,
+  'vpord' : T_B32,
+  'vporq' : T_B64,
+  'vprold' : T_B32,
+  'vprolq' : T_B64,
+  'vprolvd' : T_B32,
+  'vprolvq' : T_B64,
+  'vprord' : T_B32,
+  'vprorq' : T_B64,
+  'vprorvd' : T_B32,
+  'vprorvq' : T_B64,
+  'vpshldd' : T_B32,
+  'vpshldq' : T_B64,
+  'vpshldvd' : T_B32,
+  'vpshldvq' : T_B64,
+  'vpshrdd' : T_B32,
+  'vpshrdq' : T_B64,
+  'vpshrdvd' : T_B32,
+  'vpshrdvq' : T_B64,
+  'vpsraq' : T_B64,
+  'vpsravq' : T_B64,
+  'vpternlogd' : T_B32,
+  'vpternlogq' : T_B64,
+  'vptestmd' : T_B32,
+  'vptestmq' : T_B64,
+  'vptestnmd' : T_B32,
+  'vptestnmq' : T_B64,
+  'vpxord' : T_B32,
+  'vpxorq' : T_B64,
+  'vrangepd' : T_B64,
+  'vrangeps' : T_B32,
+  'vrcp14pd' : T_B64,
+  'vrcp14ps' : T_B32,
+  'vrcp28pd' : T_B64,
+  'vrcp28ps' : T_B32,
+  'vrcpph' : T_B16,
+  'vreducepd' : T_B64,
+  'vreduceph' : T_B16,
+  'vreduceps' : T_B32,
+  'vrndscalepd' : T_B64,
+  'vrndscaleph' : T_B16,
+  'vrndscaleps' : T_B32,
+  'vrsqrt14pd' : T_B64,
+  'vrsqrt14ps' : T_B32,
+  'vrsqrt28pd' : T_B64,
+  'vrsqrt28ps' : T_B32,
+  'vrsqrtph' : T_B16,
+  'vscalefpd' : T_B64,
+  'vscalefph' : T_B16,
+  'vscalefps' : T_B32,
+  'vshuff32x4' : T_B32,
+  'vshuff64x2' : T_B64,
+  'vshufi32x4' : T_B32,
+  'vshufi64x2' : T_B64,
+  'vsqrtph' : T_B16,
+  'vsubph' : T_B16,
+}
 
 import argparse
 def getDefaultParser(description='s_xbyak'):
