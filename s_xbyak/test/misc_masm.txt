@@ -13,9 +13,9 @@ vmovups xmm2{k1}{z}, xmmword ptr [rax]
 vcvttsh2usi r9, xmm1, {sae}
 vcvttph2qq zmm1{k5}{z}, xmm3, {sae}
 vaddpd xmm1, xmm2, xmmword ptr [rax+256]
-vaddpd xmm1, xmm2, qword ptr [rax+256]{1to2}
-vaddpd ymm1, ymm2, qword ptr [rax+256]{1to4}
-vaddpd zmm1, zmm2, qword ptr [rax+256]{1to8}
-vaddps zmm1, zmm2, dword ptr [rax+rcx*8+8]{1to16}
+vaddpd xmm1, xmm2, qword bcst [rax+256]
+vaddpd ymm1, ymm2, qword bcst [rax+256]
+vaddpd zmm1, zmm2, qword bcst [rax+256]
+vaddps zmm1, zmm2, dword bcst [rax+rcx*8+8]
 _text ends
 end

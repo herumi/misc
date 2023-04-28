@@ -242,11 +242,21 @@ class Address:
         s = str(self.exp)
       s += self.getBroadcastStr()
       return s
-    s = ''
-    if g_masm and (self.bit > 64 or self.broadcast):
-      tbl = { 32 : 'd', 64 : 'q', 128 : 'xmm', 256 : 'ymm', 512 : 'zmm' }
-      s = f'{tbl[self.bit]}word ptr '
-    return s + '[' + str(self.exp) + ']' + self.getBroadcastStr()
+    s = '[' + str(self.exp) + ']'
+    if g_nasm:
+      return s + self.getBroadcastStr()
+    # g_masm
+    tbl = { 32 : 'd', 64 : 'q', 128 : 'xmm', 256 : 'ymm', 512 : 'zmm' }
+    if self.broadcast:
+      return f'{tbl[self.bit]}word bcst ' + s
+    else:
+      if self.bit > 64:
+        s = f'{tbl[self.bit]}word ptr ' + s
+      return s
+#    if g_masm and (self.bit > 64 or self.broadcast):
+#      tbl = { 32 : 'd', 64 : 'q', 128 : 'xmm', 256 : 'ymm', 512 : 'zmm' }
+#      s = f'{tbl[self.bit]}word ptr '
+#    return s + '[' + str(self.exp) + ']' + self.getBroadcastStr()
 
 def ptr(exp):
   return Address(exp)
