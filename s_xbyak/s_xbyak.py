@@ -218,7 +218,7 @@ class Address:
     self.ripLabel = None
   def setRip(self, label):
     self.ripLabel = label
-  def __str__(self, bit=0):
+  def __str__(self):
     if self.ripLabel:
       if g_gas:
         return f'{self.ripLabel}(%rip)'
@@ -230,9 +230,9 @@ class Address:
         return '(' + str(self.exp) + ')'
       return str(self.exp)
     s = ''
-    if g_masm and bit > 64:
+    if g_masm and self.bit > 64:
       tbl = { 128 : 'x', 256 : 'y', 512 : 'z' }
-      s = f'{tbl[bit]}mmword ptr '
+      s = f'{tbl[self.bit]}mmword ptr '
     return s + '[' + str(self.exp) + ']'
 
 def ptr(exp):
@@ -631,6 +631,7 @@ def genFunc(name):
     if not args:
       return output(name)
 
+    # check max bit size of regs and attributes
     bitSize = 0
     sae = 0
     for arg in args:
@@ -638,6 +639,12 @@ def genFunc(name):
         bitSize = max(bitSize, arg.bit)
         if arg.attr > 1:
           sae = arg.attr
+
+    # set bit size to Address
+    for arg in args:
+      if isinstance(arg, Address):
+        if arg.bit == 0:
+          arg.bit = bitSize
 
     param = list(args)
     # insert sae at the end of arguments.
@@ -656,8 +663,6 @@ def genFunc(name):
         s += ', '
       if g_gas and isinstance(arg, int):
         s += '$' + str(arg)
-      elif isinstance(arg, Address):
-        s += arg.__str__(bitSize)
       else:
         s += str(arg)
     return output(name + ' ' + s)
