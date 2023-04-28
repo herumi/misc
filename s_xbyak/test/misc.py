@@ -39,6 +39,15 @@ def miscTest():
   vcvttsh2usi(r9, xmm1|T_sae)
   vcvttph2qq(zmm1|k5|T_z, xmm3|T_sae)
 
+  vaddpd(xmm1, xmm2, ptr (rax+256))
+  vaddpd(xmm1, xmm2, ptr_b (rax+256))
+  vaddpd(ymm1, ymm2, ptr_b (rax+256))
+  vaddpd(zmm1, zmm2, ptr_b (rax+256))
+  vaddps(zmm1, zmm2, ptr_b (rax+rcx*8+8))
+
+def runTest():
+  pass
+
 def main():
   # before calling init()
   maskTest()
@@ -49,6 +58,8 @@ def main():
 
   init(param)
   segment('text')
+
+  runTest()
 
   miscTest()
 

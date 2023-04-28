@@ -1,5 +1,6 @@
 PYTHON?=python3
 DIFF_OPT=-urN
+#DIFF_OPT=-urNw # ignore all blank
 
 test:
 	make test1 FILE=gen_ff_x64

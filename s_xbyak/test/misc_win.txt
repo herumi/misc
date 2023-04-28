@@ -23,3 +23,8 @@ vcmpnltpd k4{k3}, zmm1, zmm2, {sae}
 vmovups xmm2{k1}{z}, [rax]
 vcvttsh2usi r9, xmm1, {sae}
 vcvttph2qq zmm1{k5}{z}, xmm3, {sae}
+vaddpd xmm1, xmm2, [rax+256]
+vaddpd xmm1, xmm2, [rax+256]{1to2}
+vaddpd ymm1, ymm2, [rax+256]{1to4}
+vaddpd zmm1, zmm2, [rax+256]{1to8}
+vaddps zmm1, zmm2, [rax+rcx*8+8]{1to16}
