@@ -1,0 +1,27 @@
+# for gas
+#ifdef __linux__
+  #define PRE(x) x
+  #define TYPE(x) .type x, @function
+  #define SIZE(x) .size x, .-x
+#else
+  #ifdef _WIN32
+    #define PRE(x) x
+  #else
+    #define PRE(x) _ ## x
+  #endif
+  #define TYPE(x)
+  #define SIZE(x)
+#endif
+.text
+vaddpd %zmm30, %zmm5, %zmm2
+vaddpd (%rax), %xmm20, %xmm30
+vaddps (%rax), %xmm20, %xmm30
+vaddpd %zmm2, %zmm4, %zmm2{%k5}
+vaddpd %zmm2, %zmm4, %zmm2{%k5}{z}
+vaddpd {rd-sae}, %zmm2, %zmm4, %zmm2{%k5}{z}
+vaddpd {rd-sae}, %zmm2, %zmm4, %zmm2{%k5}{z}
+vcmppd $5, {sae}, %zmm2, %zmm1, %k4{%k3}
+vcmpnltpd {sae}, %zmm2, %zmm1, %k4{%k3}
+vmovups (%rax), %xmm2{%k1}{z}
+vcvttsh2usi {sae}, %xmm1, %r9
+vcvttph2qq {sae}, %xmm3, %zmm1{%k5}{z}

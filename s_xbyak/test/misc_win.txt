@@ -1,0 +1,25 @@
+; for nasm
+%imacro _global 1
+  %ifdef ADD_UNDERSCORE
+    global _%1
+    %1:
+    _%1:
+  %else
+    global %1
+    %1:
+  %endif
+%endmacro
+
+segment .text
+vaddpd zmm2, zmm5, zmm30
+vaddpd xmm30, xmm20, [rax]
+vaddps xmm30, xmm20, [rax]
+vaddpd zmm2{k5}, zmm4, zmm2
+vaddpd zmm2{k5}{z}, zmm4, zmm2
+vaddpd zmm2{k5}{z}, zmm4, zmm2, {rd-sae}
+vaddpd zmm2{k5}{z}, zmm4, zmm2, {rd-sae}
+vcmppd k4{k3}, zmm1, zmm2, {sae}, 5
+vcmpnltpd k4{k3}, zmm1, zmm2, {sae}
+vmovups xmm2{k1}{z}, [rax]
+vcvttsh2usi r9, xmm1, {sae}
+vcvttph2qq zmm1{k5}{z}, xmm3, {sae}

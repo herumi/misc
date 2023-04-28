@@ -1,0 +1,16 @@
+; for masm (ml64.exe)
+_text segment
+vaddpd zmm2, zmm5, zmm30
+vaddpd xmm30, xmm20, xmmword ptr [rax]
+vaddps xmm30, xmm20, xmmword ptr [rax]
+vaddpd zmm2{k5}, zmm4, zmm2
+vaddpd zmm2{k5}{z}, zmm4, zmm2
+vaddpd zmm2{k5}{z}, zmm4, zmm2, {rd-sae}
+vaddpd zmm2{k5}{z}, zmm4, zmm2, {rd-sae}
+vcmppd k4{k3}, zmm1, zmm2, {sae}, 5
+vcmpnltpd k4{k3}, zmm1, zmm2, {sae}
+vmovups xmm2{k1}{z}, xmmword ptr [rax]
+vcvttsh2usi r9, xmm1, {sae}
+vcvttph2qq zmm1{k5}{z}, xmm3, {sae}
+_text ends
+end

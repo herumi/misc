@@ -35,9 +35,9 @@ def miscTest():
   vaddpd(zmm2 | k5 | T_z | T_rd_sae, zmm4, zmm2)
   vcmppd(k4 | k3, zmm1, zmm2 | T_sae, 5)
   vcmpnltpd(k4|k3,zmm1,zmm2|T_sae)
-#  vmovups(xm2|k1|T_z, ptr(rax))
-#  vcvttsh2usi(r9, xmm1|T_sae)
-#  vcvttph2qq(zmm1|k5|T_z, xmm3|T_sae)
+  vmovups(xm2|k1|T_z, ptr(rax))
+  vcvttsh2usi(r9, xmm1|T_sae)
+  vcvttph2qq(zmm1|k5|T_z, xmm3|T_sae)
 
 def main():
   # before calling init()
