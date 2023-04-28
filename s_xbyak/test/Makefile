@@ -1,21 +1,23 @@
 PYTHON?=python3
+DIFF_OPT=-urN
 
 test:
 	make test1 FILE=gen_ff_x64
 	make test1 FILE=gen_bint_x64
 	make test1 FILE=string
-	$(PYTHON) misc.py
+	make test1 FILE=misc
+#	$(PYTHON) misc.py
 
 test_misc:
 	$(PYTHON) misc.py
 
 test1:
 	$(PYTHON) $(FILE).py -m gas > a.txt
-	diff -urN $(FILE)_gas.txt a.txt
+	diff $(DIFF_OPT) $(FILE)_gas.txt a.txt
 	$(PYTHON) $(FILE).py -win > a.txt
-	diff -urN $(FILE)_win.txt a.txt
+	diff $(DIFF_OPT) $(FILE)_win.txt a.txt
 	$(PYTHON) $(FILE).py -win -m masm > a.txt
-	diff -urN $(FILE)_masm.txt a.txt
+	diff $(DIFF_OPT) $(FILE)_masm.txt a.txt
 
 test_string_run:
 	make clean
