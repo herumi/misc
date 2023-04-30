@@ -5,13 +5,13 @@ vaddpd xmm30, xmm20, xmmword ptr [rax]
 vaddps xmm30, xmm20, xmmword ptr [rax]
 vaddpd zmm2{k5}, zmm4, zmm2
 vaddpd zmm2{k5}{z}, zmm4, zmm2
-vaddpd zmm2{k5}{z}, zmm4, zmm2, {rd-sae}
-vaddpd zmm2{k5}{z}, zmm4, zmm2, {rd-sae}
-vcmppd k4{k3}, zmm1, zmm2, {sae}, 5
-vcmpnltpd k4{k3}, zmm1, zmm2, {sae}
+vaddpd zmm2{k5}{z}, zmm4, zmm2{rd-sae}
+vaddpd zmm2{k5}{z}, zmm4, zmm2{rd-sae}
+vcmppd k4{k3}, zmm1, zmm2, 5{sae}
+vcmpnltpd k4{k3}, zmm1, zmm2{sae}
 vmovups xmm2{k1}{z}, xmmword ptr [rax]
-vcvttsh2usi r9, xmm1, {sae}
-vcvttph2qq zmm1{k5}{z}, xmm3, {sae}
+vcvttsh2usi r9, xmm1{sae}
+vcvttph2qq zmm1{k5}{z}, xmm3{sae}
 vaddpd xmm1, xmm2, xmmword ptr [rax+256]
 vaddpd xmm1, xmm2, qword bcst [rax+256]
 vaddpd ymm1, ymm2, qword bcst [rax+256]

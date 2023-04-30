@@ -678,7 +678,8 @@ def genFunc(name):
 
     # insert sae at the end of arguments.
     # if the last argument is immediate, insert sae at the front of it.
-    if sae > 0:
+    # masm requires sae at the end of arguments without a comma.
+    if not g_masm and sae > 0:
       if isinstance(args[-1], Operand) and args[-1].kind != T_ATTR:
         param.append(Attribute(sae))
       elif isinstance(args[-1], int):
@@ -694,6 +695,8 @@ def genFunc(name):
         s += '$' + str(arg)
       else:
         s += str(arg)
+    if g_masm and sae > 0:
+      s += str(Attribute(sae))
     return output(name + ' ' + s)
   return f
 
