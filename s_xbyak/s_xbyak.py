@@ -244,6 +244,9 @@ class Address:
       return s
     s = '[' + str(self.exp) + ']'
     if g_nasm:
+      tbl = { 128 : 'oword', 256 : 'yword', 512 : 'zword' }
+      if self.bit > 64:
+        s = tbl[self.bit] + ' ' + s
       return s + self.getBroadcastStr()
     # g_masm
     tbl = { 32 : 'd', 64 : 'q', 128 : 'xmm', 256 : 'ymm', 512 : 'zmm' }
@@ -261,8 +264,26 @@ class Address:
 def ptr(exp):
   return Address(exp)
 
+def xword(exp):
+  return Address(exp, bit=128)
+
+def yword(exp):
+  return Address(exp, bit=256)
+
+def zword(exp):
+  return Address(exp, bit=512)
+
 def ptr_b(exp):
   return Address(exp, broadcast=True)
+
+def xword_b(exp):
+  return Address(exp, bit=128, broadcast=True)
+
+def yword_b(exp):
+  return Address(exp, bit=256, broadcast=True)
+
+def zword_b(exp):
+  return Address(exp, bit=512, broadcast=True)
 
 def rip(label):
   addr = Address()
