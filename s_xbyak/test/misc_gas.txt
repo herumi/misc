@@ -30,3 +30,8 @@ vaddpd 256(%rax){1to2}, %xmm2, %xmm1
 vaddpd 256(%rax){1to4}, %ymm2, %ymm1
 vaddpd 256(%rax){1to8}, %zmm2, %zmm1
 vaddps 8(%rax,%rcx,8){1to16}, %zmm2, %zmm1
+vcvtpd2dqx 33(%eax), %xmm16
+vcvtpd2dqx 33(%eax), %xmm16
+vcvtpd2dq 32(%eax){1to2}, %xmm21
+vcvtpd2dqy 33(%eax), %xmm0
+vcvtpd2dq 32(%eax){1to4}, %xmm19

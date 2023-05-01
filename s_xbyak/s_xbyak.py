@@ -698,18 +698,17 @@ def genFunc(name):
       if isinstance(arg, Address):
         bitSize = max(bitSize, arg.bit)
 
-    # special suffix for gas
-    bitForSuffix = 0
+    # mnemonic requiring size for Address
+    bitFroAddress = 0
     specialNameTbl = ['vcvtpd2dq', 'vcvtpd2ps', 'vcvttpd2dq', 'vcvtqq2ps', 'vcvtuqq2ps', 'vcvtpd2udq', 'vcvttpd2udq', 'vfpclasspd', 'vfpclassps']
 
     # set bit size to Address
     for arg in args:
       if isinstance(arg, Address):
-        if g_gas and not arg.broadcast and name in specialNameTbl:
+        if (g_gas or g_nasm) and not arg.broadcast and name in specialNameTbl:
           if arg.bit == 0:
-            bitForSuffix = 128 # default size
-          else:
-            bitForSuffix = arg.bit
+            arg.bit = 128 # default size
+          bitFroAddress = arg.bit
         if g_masm and arg.bit == 0:
           arg.bit = bitSize
         if arg.broadcast:
@@ -740,8 +739,8 @@ def genFunc(name):
       s += str(Attribute(sae))
 
     suffix = ''
-    if g_gas and bitForSuffix > 0:
-      suffix = getNameSuffix(bitForSuffix)
+    if g_gas and bitFroAddress > 0:
+      suffix = getNameSuffix(bitFroAddress)
     return output(name + suffix + ' ' + s)
   return f
 

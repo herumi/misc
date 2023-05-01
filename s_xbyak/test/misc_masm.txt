@@ -17,5 +17,10 @@ vaddpd xmm1, xmm2, qword bcst [rax+256]
 vaddpd ymm1, ymm2, qword bcst [rax+256]
 vaddpd zmm1, zmm2, qword bcst [rax+256]
 vaddps zmm1, zmm2, dword bcst [rax+rcx*8+8]
+vcvtpd2dq xmm16, xmmword ptr [eax+33]
+vcvtpd2dq xmm16, xmmword ptr [eax+33]
+vcvtpd2dq xmm21, qword bcst [eax+32]
+vcvtpd2dq xmm0, ymmword ptr [eax+33]
+vcvtpd2dq xmm19, qword bcst [eax+32]
 _text ends
 end

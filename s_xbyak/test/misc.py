@@ -45,7 +45,14 @@ def miscTest():
   vaddpd(zmm1, zmm2, ptr_b (rax+256))
   vaddps(zmm1, zmm2, ptr_b (rax+rcx*8+8))
 
+  vcvtpd2dq(xmm16, xword (eax+33))
+  vcvtpd2dq(xmm16, ptr (eax+33))
+  vcvtpd2dq(xmm21, ptr_b (eax+32))
+  vcvtpd2dq(xmm0, yword (eax+33))
+  vcvtpd2dq(xmm19, yword_b (eax+32))
+
 def runTest():
+  vcvtpd2dq(xmm16, ptr (eax+33))
   pass
 
 def main():
@@ -59,7 +66,7 @@ def main():
   init(param)
   segment('text')
 
-  runTest()
+#  runTest()
 
   miscTest()
 

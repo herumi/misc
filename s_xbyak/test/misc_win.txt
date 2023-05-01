@@ -28,3 +28,8 @@ vaddpd xmm1, xmm2, [rax+256]{1to2}
 vaddpd ymm1, ymm2, [rax+256]{1to4}
 vaddpd zmm1, zmm2, [rax+256]{1to8}
 vaddps zmm1, zmm2, [rax+rcx*8+8]{1to16}
+vcvtpd2dq xmm16, oword [eax+33]
+vcvtpd2dq xmm16, oword [eax+33]
+vcvtpd2dq xmm21, [eax+32]{1to2}
+vcvtpd2dq xmm0, yword [eax+33]
+vcvtpd2dq xmm19, [eax+32]{1to4}
