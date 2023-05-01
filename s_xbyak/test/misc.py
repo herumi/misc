@@ -52,7 +52,7 @@ def miscTest():
   vcvtpd2dq(xmm19, yword_b (eax+32))
 
 def runTest():
-  vcvtpd2dq(xmm16, ptr (eax+33))
+  vcvtpd2dq(xmm19, yword_b (eax+32))
   pass
 
 def main():

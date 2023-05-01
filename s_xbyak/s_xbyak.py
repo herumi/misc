@@ -251,15 +251,13 @@ class Address:
     # g_masm
     tbl = { 32 : 'd', 64 : 'q', 128 : 'xmm', 256 : 'ymm', 512 : 'zmm' }
     if self.broadcast:
+      if hasattr(self, 'bitForAddress'):
+        s = f'{tbl[self.bitForAddress]}word ptr ' + s
       return f'{tbl[self.bit]}word bcst ' + s
     else:
       if self.bit > 64:
         s = f'{tbl[self.bit]}word ptr ' + s
       return s
-#    if g_masm and (self.bit > 64 or self.broadcast):
-#      tbl = { 32 : 'd', 64 : 'q', 128 : 'xmm', 256 : 'ymm', 512 : 'zmm' }
-#      s = f'{tbl[self.bit]}word ptr '
-#    return s + '[' + str(self.exp) + ']' + self.getBroadcastStr()
 
 def ptr(exp):
   return Address(exp)
@@ -699,20 +697,22 @@ def genFunc(name):
         bitSize = max(bitSize, arg.bit)
 
     # mnemonic requiring size for Address
-    bitFroAddress = 0
+    bitForAddress = 0
     specialNameTbl = ['vcvtpd2dq', 'vcvtpd2ps', 'vcvttpd2dq', 'vcvtqq2ps', 'vcvtuqq2ps', 'vcvtpd2udq', 'vcvttpd2udq', 'vfpclasspd', 'vfpclassps']
 
     # set bit size to Address
     for arg in args:
       if isinstance(arg, Address):
-        if (g_gas or g_nasm) and not arg.broadcast and name in specialNameTbl:
+        if arg.broadcast:
+          if g_masm and arg.bit > 128:
+            arg.bitForAddress = arg.bit
+          arg.setBroadcastRage(name, bitSize)
+        elif name in specialNameTbl:
           if arg.bit == 0:
             arg.bit = 128 # default size
-          bitFroAddress = arg.bit
+          bitForAddress = arg.bit
         if g_masm and arg.bit == 0:
           arg.bit = bitSize
-        if arg.broadcast:
-          arg.setBroadcastRage(name, bitSize)
 
     param = list(args)
 
@@ -739,8 +739,8 @@ def genFunc(name):
       s += str(Attribute(sae))
 
     suffix = ''
-    if g_gas and bitFroAddress > 0:
-      suffix = getNameSuffix(bitFroAddress)
+    if g_gas and bitForAddress > 0:
+      suffix = getNameSuffix(bitForAddress)
     return output(name + suffix + ' ' + s)
   return f
 
