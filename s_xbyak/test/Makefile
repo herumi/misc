@@ -15,10 +15,10 @@ test_misc:
 test1:
 	$(PYTHON) $(FILE).py -m gas > a.txt
 	diff $(DIFF_OPT) $(FILE)_gas.txt a.txt
-	$(PYTHON) $(FILE).py -win > a.txt
-	diff $(DIFF_OPT) $(FILE)_win.txt a.txt
-	$(PYTHON) $(FILE).py -win -m masm > a.txt
-	diff $(DIFF_OPT) $(FILE)_masm.txt a.txt
+	$(PYTHON) $(FILE).py -win > b.txt
+	diff $(DIFF_OPT) $(FILE)_win.txt b.txt
+	$(PYTHON) $(FILE).py -win -m masm > c.txt
+	diff $(DIFF_OPT) $(FILE)_masm.txt c.txt
 
 test_string_run:
 	make clean
@@ -56,7 +56,7 @@ mie_string_test: ./mie_string_test.exe
 	./mie_string_test.exe
 
 clean:
-	rm -f a.txt *.o *.S *.exe *.d
+	rm -f a.txt b.txt c.txt *.o *.S *.exe *.d
 
 .PHONY: clean test
 
