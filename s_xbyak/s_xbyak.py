@@ -220,6 +220,8 @@ class Address:
     self.broadcastRate = 0
   def setRip(self, label):
     self.ripLabel = label
+
+  # compute X of {1toX} by bitSize and T_B64, T_B32.
   def setBroadcastRage(self, name, bitSize):
     if name in avx512broadcastTbl:
       self.broadcastRate = bitSize // avx512broadcastTbl[name]
@@ -251,6 +253,8 @@ class Address:
     # g_masm
     tbl = { 32 : 'd', 64 : 'q', 128 : 'xmm', 256 : 'ymm', 512 : 'zmm' }
     if self.broadcast:
+      # To distinguish vcvtpd2dq(xmm0, ptr_b(rax)) and vcvtpd2dq(xmm0, yword_b(rax)) on masm, but that doesn't seem to affect NASM (bug?).
+      # https://developercommunity.visualstudio.com/t/ml64exe-cant-deal-with-vcvtpd2dq-xmm0/10352105
       if hasattr(self, 'bitForAddress'):
         s = f'{tbl[self.bitForAddress]}word ptr ' + s
       return f'{tbl[self.bit]}word bcst ' + s
@@ -697,6 +701,7 @@ def genFunc(name):
         bitSize = max(bitSize, arg.bit)
 
     # mnemonic requiring size for Address
+    # bitForAddress is used to detect a suffix of a mnemonic in specialNameTbl for gas and masm
     bitForAddress = 0
     specialNameTbl = ['vcvtpd2dq', 'vcvtpd2ps', 'vcvttpd2dq', 'vcvtqq2ps', 'vcvtuqq2ps', 'vcvtpd2udq', 'vcvttpd2udq', 'vfpclasspd', 'vfpclassps']
 
