@@ -12,13 +12,22 @@ test:
 test_misc:
 	$(PYTHON) misc.py
 
-test1:
+test1_gas:
 	$(PYTHON) $(FILE).py -m gas > a.txt
 	diff $(DIFF_OPT) $(FILE)_gas.txt a.txt
+
+test1_win:
 	$(PYTHON) $(FILE).py -win > b.txt
 	diff $(DIFF_OPT) $(FILE)_win.txt b.txt
+
+test1_masm:
 	$(PYTHON) $(FILE).py -win -m masm > c.txt
 	diff $(DIFF_OPT) $(FILE)_masm.txt c.txt
+
+test1:
+	$(MAKE) test1_gas
+	$(MAKE) test1_win
+	$(MAKE) test1_masm
 
 test_string_run:
 	make clean
