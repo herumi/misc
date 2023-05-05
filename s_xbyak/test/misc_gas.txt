@@ -35,3 +35,6 @@ vcvtpd2dqx 33(%eax), %xmm16
 vcvtpd2dq 32(%eax){1to2}, %xmm21
 vcvtpd2dqy 33(%eax), %xmm0
 vcvtpd2dq 32(%eax){1to4}, %xmm19
+vfpclasspsz $5, 64(%rax), %k5{%k3}
+vfpclasspd $5, 64(%rax){1to2}, %k5{%k3}
+vfpclassps $5, 64(%rax){1to8}, %k5{%k3}

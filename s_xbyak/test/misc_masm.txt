@@ -22,5 +22,8 @@ vcvtpd2dq xmm16, xmmword ptr [eax+33]
 vcvtpd2dq xmm21, qword bcst [eax+32]
 vcvtpd2dq xmm0, ymmword ptr [eax+33]
 vcvtpd2dq xmm19, qword bcst ymmword ptr [eax+32]
+vfpclassps k5{k3}, zmmword ptr [rax+64], 5
+vfpclasspd k5{k3}, qword bcst [rax+64], 5
+vfpclassps k5{k3}, dword bcst ymmword ptr [rax+64], 5
 _text ends
 end

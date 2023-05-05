@@ -51,8 +51,11 @@ def miscTest():
   vcvtpd2dq(xmm0, yword (eax+33))
   vcvtpd2dq(xmm19, yword_b (eax+32))
 
+  vfpclassps(k5|k3, zword (rax+64), 5)
+  vfpclasspd(k5|k3, xword_b (rax+64), 5)
+  vfpclassps(k5|k3, yword_b (rax+64), 5)
+
 def runTest():
-  vcvtpd2dq(xmm19, yword_b (eax+32))
   pass
 
 def main():
