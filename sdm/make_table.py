@@ -1,0 +1,59 @@
+import re
+import pprint
+from collections import defaultdict
+
+FILE='avx.txt'
+
+text = open(FILE).read().split('\n')
+
+# op reg, [m]
+RegMemTbl = {}
+# op [m], reg, ...
+MemRegTbl = {}
+
+#RE_ARGS = re.compile(r'(xmm|ymm|zmm|m128|m256|m512|m32bcst|m64bcst|m64|m32|imm)')
+RE_MEM = re.compile(r'(m32|m64|m128|m256|m512)')
+RE_XMM = re.compile(r'(xmm|ymm|zmm)')
+X = 'xmm'
+Y = 'ymm'
+Z = 'zmm'
+M64 = 'm64'
+MX = 'm128'
+MY = 'm256'
+MZ = 'm512'
+M32b = 'm32bcst'
+M64b = 'm64bcst'
+
+def parse(arg):
+  r = []
+  m = RE_MEM.search(arg)
+  if m:
+    return m.group(1)
+  m = RE_XMM.search(arg)
+  if m:
+    return m.group(1)
+  arg = arg.strip()
+  if '01234567'.find(arg) >= 0:
+    return 'imm8'
+  return arg
+
+for line in text:
+  if line == '':
+    break
+  op = line.split(' ')[0]
+  v = line[len(op):].split(',')
+  args = []
+  for p in v:
+    args.append(parse(p))
+
+  tbl = None
+  if args[0][0] == 'm':
+    tbl = MemRegTbl
+  else:
+    tbl = RegMemTbl
+  tbl.setdefault(op, set()).add(tuple(args))
+
+print('MemRegTbl=')
+pprint.pprint(MemRegTbl)
+print('RegMemTbl=')
+pprint.pprint(RegMemTbl)
