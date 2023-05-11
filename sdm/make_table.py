@@ -53,7 +53,7 @@ for line in text:
     tbl = RegMemTbl
   tbl.setdefault(op, set()).add(tuple(args))
 
-print('MemRegTbl=')
+print('MemRegTbl=',end='')
 pprint.pprint(MemRegTbl)
-print('RegMemTbl=')
+print('RegMemTbl=',end='')
 pprint.pprint(RegMemTbl)
