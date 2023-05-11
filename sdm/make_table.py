@@ -35,7 +35,7 @@ def parse(arg):
   arg = arg.strip()
   if '01234567'.find(arg) >= 0:
     return 'imm8'
-  return arg
+  return None
 
 for line in text:
   if line == '':
@@ -44,7 +44,12 @@ for line in text:
   v = line[len(op):].split(',')
   args = []
   for p in v:
-    args.append(parse(p))
+    x = parse(p)
+    if not x:
+      break
+    args.append(x)
+  if len(args) < len(v):
+    continue
 
   tbl = None
   if args[0][0] == 'm':
