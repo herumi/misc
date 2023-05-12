@@ -25,7 +25,6 @@ M32b = 'm32bcst'
 M64b = 'm64bcst'
 
 def parse(arg):
-  r = []
   m = RE_MEM.search(arg)
   if m:
     return m.group(1)
@@ -33,8 +32,8 @@ def parse(arg):
   if m:
     return m.group(1)
   arg = arg.strip()
-  if '01234567'.find(arg) >= 0:
-    return 'imm8'
+  if arg == 'imm8' or '01234567'.find(arg) >= 0:
+    return 'imm'
   return None
 
 for line in text:
