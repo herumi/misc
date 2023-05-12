@@ -11,8 +11,10 @@ ARGS_TBL=['<XMM0-2>', '<XMM0-6>', '<XMM0>',
   'imm',
   'k1', 'k2',
   'm8', 'm16', 'm32', 'm64', 'm128', 'm256', 'm512',
+  'mm',
   'r8', 'r16', 'r32', 'r64',
-  'reg[^i]',
+  'reg',
+  'r/m32', 'r/m64',
   'xmm', 'ymm', 'zmm',
   'vm32', 'vm64',
   '{k1}', '{sae}', '{er}',
@@ -55,7 +57,7 @@ ALNUM = re.compile('[A-Z][A-Z0-9]+$')
 def matchOp(op):
   if not ALNUM.match(op):
     return False
-  if op in ['XMM', 'YMM', 'ZMM', 'IF', 'THEN', 'INPUT']:
+  if op in ['XMM', 'YMM', 'ZMM', 'IF', 'THEN', 'INPUT', 'S1']:
     return False
   return True
 
@@ -79,5 +81,5 @@ for i in range(len(text)):
 #  for v in args:
 #    print(v)
   s = op + ' ' + ','.join(args)
-  print(s)
+  print(s.lower())
 
