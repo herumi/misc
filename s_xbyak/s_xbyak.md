@@ -108,7 +108,7 @@ $\,\,\,\,\,\,\,\,=1 + a(C_1 + a(C_2 + a(C_3 + a(C_4 + a C_5))))$
     - $2^{-M}RoundToInt(x*2^M, roundCtl)$
     - ここで $M$ と roundCtlは`imm`から決まる。
     - `imm = 0`なら$M=0$, roundCtl=nearest even integer
-- $a = n - y$
+- $a = y - n$
 
 ```python
 # v0 = x
@@ -203,8 +203,8 @@ def genUnrollFunc(n):
 ```python
 un = genUnrollFunc(n)
 un(vmulps)(v0, v0, self.log2_e)
-vrndscaleps(v1, v0, 0) # n = round(x)
-vsubps(v0, v0, v1) # a = x - n
+un(vrndscaleps)(v1, v0, 0) # n = round(x)
+un(vsubps)(v0, v0, v1) # a = x - n
 
 un(vmovaps)(v2, self.expCoeff[5])
 for i in range(4, -1, -1):
@@ -216,12 +216,13 @@ un(vscalefps)(v0, v2, v0) # v2 * 2^v1
 
 -|1|2|3|4|5|6|7|8
 -|-|-|-|-|-|-|-|-
-unroll|10.18 | 9.0 | 8.0 | 7.6 | 7.1 | 7.2 | 7.0 | 7.2
+unroll|10.2 | 9.0 | 8.0 | 7.6 | 7.1 | 7.2 | 7.0 | 7.2
 
 - unroll=7あたりが一番速い
 
 # 各種命令の速さ
 
+SkyLake
 命令|ポート|レイテンシ|スループットの逆数
 -|-|-|-
 vaddps|p05|4|0.5-1
@@ -251,5 +252,5 @@ un(vsubps)(v0, v0, v1) # n = x - a = round(x)
 
 -|1|2|3|4|5|6|7|8
 -|-|-|-|-|-|-|-|-
-改善前|10.18| 9.0 | 8.0 | 7.6 | 7.1 | 7.2 | 7.0 | 7.2
-改善後| 8.9 | 7.98| 7.13| 6.9 | 6.79| 6.56| 6.5 | 6.71
+改善前|10.2 | 9.0 | 8.0 | 7.6 | 7.1 | 7.2 | 7.0 | 7.2
+改善後| 8.9 | 8.0 | 7.1 | 6.9 | 6.8 | 6.6 | 6.5 | 6.7
