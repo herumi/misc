@@ -1,7 +1,7 @@
 from s_xbyak import *
 
-def gen_fma(n):
-  with FuncProc(f'fma{n}'):
+def gen_func(n):
+  with FuncProc(f'func{n}'):
     with StackFrame(1, vNum=n, vType=T_ZMM) as sf:
       c = sf.p[0]
       lp = Label()
@@ -17,11 +17,11 @@ def gen_fma(n):
 def gen_header(n):
   print('extern "C" {')
   for i in range(1, n+1):
-    print(f'void fma{i}(int n);')
+    print(f'void func{i}(int n);')
   print('}')
-  print('template<int N>void fmaN(int n);')
+  print('template<int N>void funcN(int n);')
   for i in range(1, n+1):
-    print(f'template<>void fmaN<{i}>(int n) {{ fma{i}(n); }}')
+    print(f'template<>void funcN<{i}>(int n) {{ func{i}(n); }}')
 
 
 def main():
@@ -39,7 +39,7 @@ def main():
   segment('text')
 
   for i in range(1, N+1):
-    gen_fma(i)
+    gen_func(i)
 
   term()
 

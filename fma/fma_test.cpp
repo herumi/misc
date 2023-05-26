@@ -1,6 +1,6 @@
 #include <cybozu/benchmark.hpp>
 
-#include "fma.h"
+#include "func.h"
 
 const int N = 5*7*8*9*1000;
 
@@ -8,7 +8,7 @@ template<int n>
 void bench()
 {
 	int C = 100;
-	CYBOZU_BENCH_C("", 100, fmaN<n>, N);
+	CYBOZU_BENCH_C("", 100, funcN<n>, N);
     printf("n=%d %f\n", n, cybozu::bench::g_clk.getClock()/double(N)/C);
 }
 int main()
