@@ -1,4 +1,5 @@
 test: fma_test.exe
+	@echo OP=$(OP)
 	./fma_test.exe
 
 fma_test.exe: fma_test.o fma.o
@@ -13,8 +14,9 @@ func.h: gen.py
 fma.o: fma.S
 	$(CXX) -c -o $@ $<
 
+OP?=fma
 fma.S: gen.py
-	python3 gen.py -m gas > $@
+	python3 gen.py -m gas -op $(OP) > $@
 
 clean:
 	rm -f *.S *.o *.exe
