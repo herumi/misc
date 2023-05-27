@@ -23,6 +23,8 @@ int main()
 	bench<8>();
 	bench<9>();
 	bench<10>();
+	bench<11>();
+	bench<12>();
 }
 
 
