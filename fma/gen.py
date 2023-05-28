@@ -29,6 +29,10 @@ def gen_func(op, n):
           vrsqrt14ps(Zmm(i), Zmm(i))
         elif op == 'and':
           vandps(Zmm(i), Zmm(i), Zmm(i))
+        elif op == 'red':
+          vreduceps(Zmm(i), Zmm(i), 0)
+        elif op == 'rnd':
+          vrndscaleps(Zmm(i), Zmm(i), 0)
         else:
           raise Exception('bad op', op)
       sub(c, 1)
