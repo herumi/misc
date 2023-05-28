@@ -50,7 +50,7 @@ def main():
   parser.add_argument('-op', '--op', help='operand', type=str, default='fma')
   param = parser.parse_args()
 
-  N=12
+  N=16
 
   if param.header:
     gen_header(N)
