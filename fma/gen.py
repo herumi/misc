@@ -46,7 +46,12 @@ def gen_header(n):
   print('template<int N>void funcN(int n);')
   for i in range(1, n+1):
     print(f'template<>void funcN<{i}>(int n) {{ func{i}(n); }}')
-
+  print('template<int n>void bench();')
+  print('''void benchAll(int n)
+{''')
+  for i in range(1, n+1):
+    print(f'\t\tif (n == 0 || n == {i}) bench<{i}>();')
+  print('}')
 
 def main():
   parser = getDefaultParser()
