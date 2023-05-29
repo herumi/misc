@@ -4,16 +4,19 @@ DATA='data'
 
 def gen_func(op, n):
   with FuncProc(f'func{n}'):
-    with StackFrame(1, vNum=n, vType=T_ZMM) as sf:
+    with StackFrame(1, vNum=n+1, vType=T_ZMM) as sf:
       c = sf.p[0]
       lp = Label()
-      lea(rax, ptr(rip+DATA))
       for i in range(n):
         vxorps(Zmm(i), Zmm(i), Zmm(i))
       xor_(eax, eax)
       kmovd(k1, eax)
+      lea(rax, ptr(rip+DATA))
       align(32)
       L(lp)
+      if op == 'imm-bcst':
+        mov(rax, 0x123)
+        vpbroadcastd(Zmm(n), eax)
       for i in range(n):
         if op == 'none':
           pass
@@ -21,6 +24,8 @@ def gen_func(op, n):
           vfmadd231ps(Zmm(i), Zmm(i), Zmm(i))
         elif op == 'mem':
           vfmadd231ps(Zmm(i), Zmm(i), ptr_b(rax+i*4))
+        elif op == 'imm-bcst':
+          vfmadd231ps(Zmm(i), Zmm(i), Zmm(n))
         elif op == 'add':
           vaddps(Zmm(i), Zmm(i), Zmm(i))
         elif op == 'mul':
