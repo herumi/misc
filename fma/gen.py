@@ -10,6 +10,8 @@ def gen_func(op, n):
       lea(rax, ptr(rip+DATA))
       for i in range(n):
         vxorps(Zmm(i), Zmm(i), Zmm(i))
+      xor_(eax, eax)
+      kmovd(k1, eax)
       align(32)
       L(lp)
       for i in range(n):
@@ -33,6 +35,8 @@ def gen_func(op, n):
           vreduceps(Zmm(i), Zmm(i), 0)
         elif op == 'rnd':
           vrndscaleps(Zmm(i), Zmm(i), 0)
+        elif op == 'gather':
+          vpgatherdd(Zmm(i+1)|k1, ptr(rax+Zmm(i)*4))
         else:
           raise Exception('bad op', op)
       sub(c, 1)
@@ -68,7 +72,7 @@ def main():
   init(param)
   segment('data')
   makeLabel(DATA)
-  for i in range(16):
+  for i in range(32):
     dd_(i)
   segment('text')
 
