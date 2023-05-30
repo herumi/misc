@@ -1,7 +1,19 @@
+import sys
+sys.path.append('../../s_xbyak')
 from s_xbyak import *
 
-def gen():
-  with FuncProc(f'func'):
+def gen_mov():
+  align(32)
+  with FuncProc(f'gen_mov'):
+    with StackFrame(2, vNum=1, vType=T_ZMM) as sf:
+      px = sf.p[0]
+      py = sf.p[1]
+      vpbroadcastd(zm0, ptr_b(py))
+      vmovups(ptr(px), zm0)
+
+def gen_fma():
+  align(32)
+  with FuncProc(f'gen_fma'):
     with StackFrame(3, vNum=3, vType=T_XMM) as sf:
       px = sf.p[0]
       py = sf.p[1]
@@ -18,7 +30,8 @@ def main():
 
   init(param)
   segment('text')
-  gen()
+  gen_fma()
+  gen_mov()
 
   term()
 
