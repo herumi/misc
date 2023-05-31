@@ -59,6 +59,22 @@ for line in text:
     tbl = RegMemTbl
   tbl.setdefault(op, set()).add(tuple(args))
 
+cmpTbl = ['eq', 'lt', 'le', 'unord', 'neq', 'nlt', 'nle', 'ord',
+  'eq_uq', 'nge', 'ngt', 'false', 'neq_oq', 'ge', 'gt', 'true',
+  'eq_os', 'lt_oq', 'le_oq', 'unord_s', 'neq_us', 'nlt_uq', 'nle_uq', 'ord_s',
+  'eq_us', 'nge_uq', 'ngt_uq', 'false_os', 'neq_os', 'ge_oq', 'gt_oq', 'true_us'
+]
+cmpArgSet = {('k', 'xmm', 'm128'),
+            ('k', 'ymm', 'm256)'),
+            ('k', 'zmm', 'm512'),
+            ('xmm', 'xmm', 'm128'),
+            ('ymm', 'ymm', 'm256')}
+
+for suf in ['pd', 'ps']:
+  for pred in cmpTbl:
+    op = f'vcmp{pred}{suf}'
+    t = RegMemTbl.setdefault(op, cmpArgSet)
+
 print('MemRegTbl=',end='')
 pprint.pprint(MemRegTbl)
 print('RegMemTbl=',end='')
