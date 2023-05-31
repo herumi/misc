@@ -4,6 +4,7 @@ reCMOV=re.compile(r'CMOV[A-Z]*$')
 XMM=re.compile(r'[xyz]mm')
 
 FILE='325383-sdm-vol-2abcd.txt'
+#FILE='aaa.txt'
 
 ARGS_TBL=['<XMM0-2>', '<XMM0-6>', '<XMM0>',
   'AL', 'CL', 'AX', 'DX', 'EAX', 'ECX', 'EDX', 'RAX', 'RDX',
@@ -13,7 +14,6 @@ ARGS_TBL=['<XMM0-2>', '<XMM0-6>', '<XMM0>',
   'm8', 'm16', 'm32', 'm64', 'm128', 'm256', 'm512',
   'mm',
   'r8', 'r16', 'r32', 'r64',
-  'reg',
   'r/m32', 'r/m64',
   'xmm', 'ymm', 'zmm',
   'vm32', 'vm64',
