@@ -18,6 +18,7 @@ ARGS_TBL=['<XMM0-2>', '<XMM0-6>', '<XMM0>',
   'xmm', 'ymm', 'zmm',
   'vm32', 'vm64',
   '{k1}', '{sae}', '{er}',
+  '{k2}',
   '.m256', # miss of SDM (VPAND ymm1, ymm2, ymm3/.m256)
 ]
 
