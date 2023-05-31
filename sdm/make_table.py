@@ -34,6 +34,8 @@ def parse(arg):
   arg = arg.strip()
   if arg == 'imm8' or '01234567'.find(arg) >= 0:
     return 'imm'
+  if arg.startswith('k1'):
+    return 'k'
   return None
 
 for line in text:
