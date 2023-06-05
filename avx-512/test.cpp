@@ -57,6 +57,13 @@ int getBaseExp(int mode, int exp, uint32_t mant)
 	}
 }
 
+/*
+	f = 2^n a, n : integer, 1 <= a < 2
+	mode = 0 : return a;
+	mode = 1 : return n is even ? a/2 : a;
+	mode = 2 : return a/2;
+	mode = 3 : return (1.5 <= a) ? a/2 : a;
+*/
 float getmant_emu(float f, int mode)
 {
 	uint32_t u = f2u(f);
