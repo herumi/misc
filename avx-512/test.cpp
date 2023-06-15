@@ -8,6 +8,12 @@ void getmant0(float *, const float *x);
 void getmant1(float *, const float *x);
 void getmant2(float *, const float *x);
 void getmant3(float *, const float *x);
+
+/*
+out[0] = vrndscaleps(x)
+out[1] = vreduceps(x)
+*/
+void vreduceps(float out[2], const float *x);
 }
 
 uint32_t f2u(float f)
@@ -44,6 +50,16 @@ uint32_t mask(uint32_t n)
 void putBin(const char *msg, float f)
 {
 	printf("%s %s %e\n", msg, f2s(f).c_str(), f);
+}
+
+void assertEqual(float x, float y)
+{
+	uint32_t ux = f2u(x);
+	uint32_t uy = f2u(y);
+	if (ux != uy) {
+		printf("err x=%f y=%f\n", x, y);
+		exit(1);
+	}
 }
 
 int getBaseExp(int mode, int exp, uint32_t mant)
@@ -94,26 +110,50 @@ void getmant_test()
 	};
 	for (int e = -3; e < 3; e++) {
 		for (uint32_t m : mantTbl) {
-			printf("e=%d m=%08x\n", e, m);
+//			printf("e=%d m=%08x\n", e, m);
 			float fi;
 			fi = u2f(((e + 127) << 23) | m);
-			putBin("inp", fi);
+//			putBin("inp", fi);
 			for (int mode = 0; mode < 4; mode++) {
 				const pf f = fTbl[mode];
 				float fo;
 				f(&fo, &fi);
-				putBin("out", fo);
+//				putBin("out", fo);
 				float emu = getmant_emu(fi, mode);
-				if (emu != fo) {
-					printf("ERR %f %f\n", emu, fo);
-				}
+				assertEqual(emu, fo);
 			}
+		}
+	}
+}
+
+void vreduce_test_one(uint32_t e, uint32_t mant)
+{
+	uint32_t u = (e << 23) | mant;
+	float f = u2f(u);
+	float out[2];
+	vreduceps(out, &f);
+//	printf("f=%e(%d) out[0]=%e out[1]=%e\n", f, e, out[0], out[1]);
+	assertEqual(out[0] + out[1], f);
+	assertEqual(f - out[0], out[1]);
+	assertEqual(f - out[1], out[0]);
+}
+
+void vreduce_test()
+{
+	puts("vreduce_test");
+	uint32_t mTbl[] = { 0, 1, mask(23) };
+	for (size_t i = 0; i < sizeof(mTbl)/sizeof(mTbl[0]); i++) {
+		uint32_t mant = mTbl[i];
+		for (int e = 0; e < 255; e++) {
+			vreduce_test_one(e, mant);
 		}
 	}
 }
 
 int main()
 {
+	vreduce_test();
 	getmant_test();
+	puts("ok");
 }
 
