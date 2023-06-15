@@ -52,12 +52,14 @@ void putBin(const char *msg, float f)
 	printf("%s %s %e\n", msg, f2s(f).c_str(), f);
 }
 
-void assertEqual(float x, float y)
+void assertEqual(float x, float y, bool acceptMinusZero = false)
 {
 	uint32_t ux = f2u(x);
 	uint32_t uy = f2u(y);
+	// accept 0 == -0
+	if (acceptMinusZero && (ux&0x7fffffff) == 0 && (uy&0x7fffffff) == 0) return;
 	if (ux != uy) {
-		printf("err x=%f y=%f\n", x, y);
+		printf("err x=%f(%08x) y=%f(%08x)\n", x, ux, y, uy);
 		exit(1);
 	}
 }
@@ -110,7 +112,7 @@ void getmant_test()
 	};
 	for (int e = -3; e < 3; e++) {
 		for (uint32_t m : mantTbl) {
-//			printf("e=%d m=%08x\n", e, m);
+//			printf("e=%d m=0x%08x\n", e, m);
 			float fi;
 			fi = u2f(((e + 127) << 23) | m);
 //			putBin("inp", fi);
@@ -126,16 +128,17 @@ void getmant_test()
 	}
 }
 
-void vreduce_test_one(uint32_t e, uint32_t mant)
+void vreduce_test_one(uint32_t s, uint32_t e, uint32_t m)
 {
-	uint32_t u = (e << 23) | mant;
+	uint32_t u = (s << 31) | (e << 23) | m;
 	float f = u2f(u);
 	float out[2];
 	vreduceps(out, &f);
-//	printf("f=%e(%d) out[0]=%e out[1]=%e\n", f, e, out[0], out[1]);
-	assertEqual(out[0] + out[1], f);
-	assertEqual(f - out[0], out[1]);
-	assertEqual(f - out[1], out[0]);
+//	printf("s=%d e=%d m=0x%08x\n", s, e, m);
+//	printf("s=%d e=%d f=%e out[0]=%e out[1]=%e\n", s, e, f, out[0], out[1]);
+	assertEqual(out[0] + out[1], f, true);
+	assertEqual(f - out[0], out[1], true);
+	assertEqual(f - out[1], out[0], true);
 }
 
 void vreduce_test()
@@ -143,9 +146,11 @@ void vreduce_test()
 	puts("vreduce_test");
 	uint32_t mTbl[] = { 0, 1, mask(23) };
 	for (size_t i = 0; i < sizeof(mTbl)/sizeof(mTbl[0]); i++) {
-		uint32_t mant = mTbl[i];
+		uint32_t m = mTbl[i];
+		// skip NaN(e=255)
 		for (int e = 0; e < 255; e++) {
-			vreduce_test_one(e, mant);
+			vreduce_test_one(0, e, m);
+			vreduce_test_one(1, e, m);
 		}
 	}
 }
