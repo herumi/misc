@@ -24,6 +24,8 @@ def gen_func(op, n):
           vfmadd231ps(Zmm(i), Zmm(i), Zmm(i))
         elif op == 'mem':
           vfmadd231ps(Zmm(i), Zmm(i), ptr_b(rax+i*4))
+        elif op == 'mem-rip':
+          vfmadd231ps(Zmm(i), Zmm(i), ptr_b(rip+DATA))
         elif op == 'imm-bcst':
           vfmadd231ps(Zmm(i), Zmm(i), Zmm(n))
         elif op == 'add':
