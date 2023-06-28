@@ -1,4 +1,4 @@
-# SEAL memo
+# [SEAL](https://github.com/microsoft/SEAL) memo
 
 ## サンプルビルド
 
@@ -96,7 +96,7 @@ Ciphertext x_encrypted;
 encryptor.encrypt(x_plain, x_encrypted);
 ```
 
-- $c^2+1$ を計算する($c=Enc(x)$)
+- $c^2+1$ を計算する( $c=Enc(x)$ )
 ```cpp
 Ciphertext x_sq_plus_one;
 evaluator.square(x_encrypted, x_sq_plus_one); // c^2
