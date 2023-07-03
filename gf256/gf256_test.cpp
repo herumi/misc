@@ -6,6 +6,7 @@
 extern "C" {
 
 void gf256_mul_gfni(uint8_t *pz, const uint8_t *px, const uint8_t *py);
+void gf256_inv_gfni(uint8_t *py, const uint8_t *px);
 
 }
 
@@ -59,4 +60,42 @@ CYBOZU_TEST_AUTO(mulVec)
 		}
 	}
 }
+
+#if 0
+CYBOZU_TEST_AUTO(invVec)
+{
+	const size_t N = 32;
+	uint8_t py[N], px[N];
+	for (uint32_t x = 0; x < 256; x++) {
+		for (size_t i = 0; i < N; i++) {
+			px[i] = uint8_t(x + i);
+		}
+		gf256_inv_gfni(py, px);
+		for (size_t i = 0; i < N; i++) {
+			printf("i=%zd %02x %02x\n", i, py[i], gf256_inv(px[i]));
+			CYBOZU_TEST_EQUAL(py[i], gf256_inv(px[i]));
+		}
+	}
+}
+
+CYBOZU_TEST_AUTO(divVec)
+{
+	const size_t N = 32;
+	uint8_t pz[N], px[N], py[N];
+	for (uint32_t x = 0; x < 256; x++) {
+		for (size_t i = 0; i < N; i++) {
+			px[i] = uint8_t(x + i);
+		}
+		for (uint32_t y = 0; y < 256; y++) {
+			for (size_t i = 0; i < N; i++) {
+				py[i] = uint8_t(y + i);
+			}
+			gf256_div_gfni(pz, px, py);
+			for (size_t i = 0; i < N; i++) {
+				CYBOZU_TEST_EQUAL(pz[i], gf256_div(px[i], py[i]));
+			}
+		}
+	}
+}
+#endif
 
