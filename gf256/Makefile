@@ -1,8 +1,11 @@
 CYBOZU_DIR?=../../cybozulib/include
 
-CFLAGS+=-I $(CYBOZU_DIR)
-test: gf256_test.exe
+CFLAGS+=-I $(CYBOZU_DIR) -DNDEBUG -O2 -Wall -Wextra
+test_emu: gf256_test.exe
 	sde -grr -- ./$<
+
+test: gf256_test.exe
+	./$<
 
 update: gf256_gfni.S gf256_gfni.asm
 

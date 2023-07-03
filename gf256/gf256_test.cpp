@@ -10,6 +10,22 @@ void gf256_inv_gfni(uint8_t *py, const uint8_t *px);
 
 }
 
+static uint8_t g_mulTbl[256 * 256];
+
+uint8_t mulTbl(uint8_t x, uint8_t y)
+{
+	return g_mulTbl[x + y * 256];
+}
+
+CYBOZU_TEST_AUTO(mulTbl)
+{
+	for (uint32_t x = 0; x < 256; x++) {
+		for (uint32_t y = 0; y < 256; y++) {
+			g_mulTbl[x + y * 256] = gf256_mul(x, y);
+		}
+	}
+}
+
 CYBOZU_TEST_AUTO(inv)
 {
 	for (uint32_t x = 1; x < 256; x++) {
@@ -26,6 +42,7 @@ CYBOZU_TEST_AUTO(mul)
 			uint8_t z1 = mul(x, y);
 			uint8_t z2 = gf256_mul(x, y);
 			CYBOZU_TEST_EQUAL(z1, z2);
+			CYBOZU_TEST_EQUAL(z1, mulTbl(x, y));
 		}
 	}
 }
