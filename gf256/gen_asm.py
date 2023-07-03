@@ -16,10 +16,10 @@ def gen_inv_gfni():
       py = sf.p[0]
       px = sf.p[1]
       vmovups(ymm0, ptr(px))
-      mov(eax, 0x1)
-      vmovd(xmm1, eax)
-      vpshufd(ymm1, ymm1, 0)
-      vgf2p8affineinvqb(ymm0, ymm1, ptr(px), 0)
+#      mov(rax, 0x0102040810204080)
+#      vmovq(xmm1, rax)
+      vbroadcastsd(ymm1, ptr(rip+'matrixI'))
+      vgf2p8affineinvqb(ymm0, ymm0, ymm1, 0)
       vmovups(ptr(py), ymm0)
 
 def main():
@@ -29,6 +29,8 @@ def main():
 
   init(param)
   segment('text')
+  makeLabel('matrixI')
+  dq_(0x0102040810204080)
 
   gen_mul_gfni()
   gen_inv_gfni()

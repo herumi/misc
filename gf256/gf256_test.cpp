@@ -61,7 +61,6 @@ CYBOZU_TEST_AUTO(mulVec)
 	}
 }
 
-#if 0
 CYBOZU_TEST_AUTO(invVec)
 {
 	const size_t N = 32;
@@ -71,13 +70,21 @@ CYBOZU_TEST_AUTO(invVec)
 			px[i] = uint8_t(x + i);
 		}
 		gf256_inv_gfni(py, px);
+#if 0
+		puts("ok");
+		for (size_t i = 0; i < N; i++) printf("%02x ", gf256_inv(px[i]));
+		puts("");
+		puts("my");
+		for (size_t i = 0; i < N; i++) printf("%02x ", py[i]);
+		puts("");
+#endif
 		for (size_t i = 0; i < N; i++) {
-			printf("i=%zd %02x %02x\n", i, py[i], gf256_inv(px[i]));
 			CYBOZU_TEST_EQUAL(py[i], gf256_inv(px[i]));
 		}
 	}
 }
 
+#if 0
 CYBOZU_TEST_AUTO(divVec)
 {
 	const size_t N = 32;
