@@ -77,10 +77,11 @@ CYBOZU_TEST_AUTO(invVec)
 		puts("my");
 		for (size_t i = 0; i < N; i++) printf("%02x ", py[i]);
 		puts("");
-#endif
+#else
 		for (size_t i = 0; i < N; i++) {
 			CYBOZU_TEST_EQUAL(py[i], gf256_inv(px[i]));
 		}
+#endif
 	}
 }
 

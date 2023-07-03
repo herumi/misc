@@ -19,6 +19,7 @@ def gen_inv_gfni():
 #      mov(rax, 0x0102040810204080)
 #      vmovq(xmm1, rax)
       vbroadcastsd(ymm1, ptr(rip+'matrixI'))
+      # ymm0 * matrixI + 0
       vgf2p8affineinvqb(ymm0, ymm0, ymm1, 0)
       vmovups(ptr(py), ymm0)
 
