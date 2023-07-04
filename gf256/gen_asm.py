@@ -1,3 +1,5 @@
+import sys
+sys.path.append('../../s_xbyak/')
 from s_xbyak import *
 
 def gen_mul_gfni():

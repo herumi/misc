@@ -1,13 +1,37 @@
-#include <cybozu/test.hpp>
-
 #include "gf256.hpp"
 #include "mul.h"
 
+#include <cybozu/test.hpp>
+#include <cybozu/benchmark.hpp>
+#define XBYAK_ONLY_CLASS_CPU
+#include <xbyak/xbyak_util.h>
+
 extern "C" {
 
+#ifdef XBYAK_INTEL_CPU_SPECIFIC
 void gf256_mul_gfni(uint8_t *pz, const uint8_t *px, const uint8_t *py);
 void gf256_inv_gfni(uint8_t *py, const uint8_t *px);
+#else
+void gf256_mul_gfni(uint8_t *pz, const uint8_t *px, const uint8_t *py)
+{
+	(void)pz;
+	(void)px;
+	(void)py;
+}
+void gf256_inv_gfni(uint8_t *py, const uint8_t *px)
+{
+	(void)py;
+	(void)px;
+}
+#endif
 
+}
+
+bool hasGFNI()
+{
+	using namespace Xbyak::util;
+	static Cpu cpu;
+	return cpu.has(Cpu::tGFNI);
 }
 
 static uint8_t g_mulTbl[256 * 256];
@@ -45,6 +69,14 @@ CYBOZU_TEST_AUTO(mul)
 			CYBOZU_TEST_EQUAL(z1, mulTbl(x, y));
 		}
 	}
+	{
+		uint8_t x = 0x12;
+		const int C = 10000;
+		CYBOZU_BENCH_C("gf256_mul", C, x = gf256_mul, x, x+1);
+		printf("x=%02x\n", x);
+		CYBOZU_BENCH_C("mulTbl", C, x = mulTbl, x, x+1);
+		printf("x=%02x\n", x);
+	}
 }
 
 CYBOZU_TEST_AUTO(div)
@@ -60,6 +92,7 @@ CYBOZU_TEST_AUTO(div)
 
 CYBOZU_TEST_AUTO(mulVec)
 {
+	if (!hasGFNI()) return;
 	const size_t N = 32;
 	uint8_t pz[N], px[N], py[N];
 	for (uint32_t x = 0; x < 256; x++) {
@@ -76,10 +109,13 @@ CYBOZU_TEST_AUTO(mulVec)
 			}
 		}
 	}
+	const int C = 10000;
+	CYBOZU_BENCH_C("gf256_mul_gfni", C, gf256_mul_gfni, px, px, px);
 }
 
 CYBOZU_TEST_AUTO(invVec)
 {
+	if (!hasGFNI()) return;
 	const size_t N = 32;
 	uint8_t py[N], px[N];
 	for (uint32_t x = 0; x < 256; x++) {

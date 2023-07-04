@@ -241,6 +241,13 @@ modulusスイッチイングチェイン
   - 最初から順番にlevel 0(lowest level), level 1, level 2, level 3(highest data level), level 4(key level)
 - 秘密鍵のような全ての鍵は最上位レベルとして作られる
 - 暗号文のようなデータは最下位レベルとして作られる
+- `Evaluator::mod_switch_to_next`はレベルを一つ下げる
+  - modulusスイッチはレベルを下げるしかできない
+  - レベルを下げると多量のnoise budgetを消費する
+    - 演算後のmodulusスイッチはnoise budgetを減らさない
+    - QQQ : 条件は?
+  - 復号はできる
+  - 暗号文サイズが小さくなる
 
 コンテキストへの参照
 ```cpp
