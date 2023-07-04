@@ -11,6 +11,8 @@ extern "C" {
 #ifdef XBYAK_INTEL_CPU_SPECIFIC
 void gf256_mul_gfni(uint8_t *pz, const uint8_t *px, const uint8_t *py);
 void gf256_inv_gfni(uint8_t *py, const uint8_t *px);
+void gf256_mul_gfni512(uint8_t *pz, const uint8_t *px, const uint8_t *py);
+void gf256_inv_gfni512(uint8_t *py, const uint8_t *px);
 #else
 void gf256_mul_gfni(uint8_t *pz, const uint8_t *px, const uint8_t *py)
 {
@@ -23,16 +25,24 @@ void gf256_inv_gfni(uint8_t *py, const uint8_t *px)
 	(void)py;
 	(void)px;
 }
+void gf256_mul_gfni512(uint8_t *pz, const uint8_t *px, const uint8_t *py)
+{
+	(void)pz;
+	(void)px;
+	(void)py;
+}
+void gf256_inv_gfni512(uint8_t *py, const uint8_t *px)
+{
+	(void)py;
+	(void)px;
+}
 #endif
 
 }
 
-bool hasGFNI()
-{
-	using namespace Xbyak::util;
-	static Cpu cpu;
-	return cpu.has(Cpu::tGFNI);
-}
+static Xbyak::util::Cpu cpu;
+bool hasGFNI() { return cpu.has(Xbyak::util::Cpu::tGFNI); }
+bool hasGFNI512() { return cpu.has(Xbyak::util::Cpu::tGFNI|Xbyak::util::Cpu::tAVX512F); }
 
 static uint8_t g_mulTbl[256 * 256];
 
@@ -111,6 +121,29 @@ CYBOZU_TEST_AUTO(mulVec)
 	}
 	const int C = 10000;
 	CYBOZU_BENCH_C("gf256_mul_gfni", C, gf256_mul_gfni, px, px, px);
+}
+
+CYBOZU_TEST_AUTO(mulVec512)
+{
+	if (!hasGFNI512()) return;
+	const size_t N = 64;
+	uint8_t pz[N], px[N], py[N];
+	for (uint32_t x = 0; x < 256; x++) {
+		for (size_t i = 0; i < N; i++) {
+			px[i] = uint8_t(x + i);
+		}
+		for (uint32_t y = 0; y < 256; y++) {
+			for (size_t i = 0; i < N; i++) {
+				py[i] = uint8_t(y + i);
+			}
+			gf256_mul_gfni512(pz, px, py);
+			for (size_t i = 0; i < N; i++) {
+				CYBOZU_TEST_EQUAL(pz[i], gf256_mul(px[i], py[i]));
+			}
+		}
+	}
+	const int C = 10000;
+	CYBOZU_BENCH_C("gf256_mul_gfni512", C, gf256_mul_gfni512, px, px, px);
 }
 
 CYBOZU_TEST_AUTO(invVec)

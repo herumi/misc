@@ -18,12 +18,30 @@ def gen_inv_gfni():
       py = sf.p[0]
       px = sf.p[1]
       vmovups(ymm0, ptr(px))
-#      mov(rax, 0x0102040810204080)
-#      vmovq(xmm1, rax)
       vbroadcastsd(ymm1, ptr(rip+'matrixI'))
       # ymm0 * matrixI + 0
       vgf2p8affineinvqb(ymm0, ymm0, ymm1, 0)
       vmovups(ptr(py), ymm0)
+
+def gen_mul_gfni512():
+  with FuncProc('gf256_mul_gfni512'):
+    with StackFrame(3, vNum=1, vType=T_ZMM) as sf:
+      pz = sf.p[0]
+      px = sf.p[1]
+      py = sf.p[2]
+      vmovups(zmm0, ptr(px))
+      vgf2p8mulb(zmm0, zmm0, ptr(py))
+      vmovups(ptr(pz), zmm0)
+
+def gen_inv_gfni512():
+  with FuncProc('gf256_inv_gfni512'):
+    with StackFrame(2, vNum=1, vType=T_ZMM) as sf:
+      py = sf.p[0]
+      px = sf.p[1]
+      vmovups(zmm0, ptr(px))
+      # ymm0 * matrixI + 0
+      vgf2p8affineinvqb(zmm0, zmm0, ptr_b(rip+'matrixI'), 0)
+      vmovups(ptr(py), zmm0)
 
 def main():
 
@@ -37,6 +55,8 @@ def main():
 
   gen_mul_gfni()
   gen_inv_gfni()
+  gen_mul_gfni512()
+  gen_inv_gfni512()
 
   term()
 
