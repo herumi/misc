@@ -75,7 +75,16 @@ for suf in ['pd', 'ps']:
     op = f'vcmp{pred}{suf}'
     t = RegMemTbl.setdefault(op, cmpArgSet)
 
+vpclmulArgSet = {('xmm', 'xmm', 'm128'),
+                ('ymm', 'ymm', 'm256'),
+                ('zmm', 'zmm', 'm512')}
+HLtbl = ['h', 'l']
+for a in HLtbl:
+  for b in HLtbl:
+    op = f'vpclmul{a}q{b}qdq'
+    RegMemTbl.setdefault(op, vpclmulArgSet)
+
 print('MemRegTbl=',end='')
-pprint.pprint(MemRegTbl)
+pprint.pprint(MemRegTbl, sort_dicts=False)
 print('RegMemTbl=',end='')
-pprint.pprint(RegMemTbl)
+pprint.pprint(RegMemTbl, sort_dicts=False)
