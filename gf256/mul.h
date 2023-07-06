@@ -22,7 +22,8 @@ inline K mul(K x, K y)
 	return ret;
 }
 
-F2 get(K a, int i) { return (a >> i) & 1; }
+template<class T>
+F2 get(T a, int i) { return (a >> i) & 1; }
 template<class T>
 void set(T& a, int i, F2 b)
 {
@@ -59,7 +60,7 @@ K modPoly(K2 c)
 	const int n = 8;
 	for (int i = 2*n-2; i >= 8; i--) {
 		if (get(c, i)) {
-			c ^= 0x11b << (i-8);
+			c ^= 0x1b << (i-8);
 		}
 	}
 	return c;

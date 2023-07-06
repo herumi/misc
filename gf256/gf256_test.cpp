@@ -65,11 +65,6 @@ CYBOZU_TEST_AUTO(mulTbl)
 			g_mulTbl[x + y * 256] = gf256_mul(x, y);
 		}
 	}
-	uint8_t a = 0x23;
-	uint8_t b = 0x72;
-	put(a);
-	put(b);
-	put(mulPoly(a, b), 16);
 }
 
 #ifdef XBYAK_INTEL_CPU_SPECIFIC
