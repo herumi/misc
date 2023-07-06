@@ -44,7 +44,7 @@ def gen_inv_gfni512():
       vmovups(ptr(py), zmm0)
 
 def gen_pclmulqdq():
-  with FuncProc('pclmulqdq'):
+  with FuncProc('a_pclmulqdq'):
     with StackFrame(3, vNum=1, vType=T_ZMM) as sf:
       pz = sf.p[0]
       px = sf.p[1]

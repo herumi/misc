@@ -13,7 +13,7 @@ void gf256_mul_gfni(uint8_t *pz, const uint8_t *px, const uint8_t *py);
 void gf256_inv_gfni(uint8_t *py, const uint8_t *px);
 void gf256_mul_gfni512(uint8_t *pz, const uint8_t *px, const uint8_t *py);
 void gf256_inv_gfni512(uint8_t *py, const uint8_t *px);
-void pclmulqdq(uint8_t pz[16], const uint8_t px[8], const uint8_t py[8]);
+void a_pclmulqdq(uint8_t pz[16], const uint8_t px[8], const uint8_t py[8]);
 #else
 void gf256_mul_gfni(uint8_t *pz, const uint8_t *px, const uint8_t *py)
 {
@@ -37,7 +37,7 @@ void gf256_inv_gfni512(uint8_t *py, const uint8_t *px)
 	(void)py;
 	(void)px;
 }
-void pclmulqdq(uint8_t pz[16], const uint8_t px[8], const uint8_t py[8])
+void a_pclmulqdq(uint8_t pz[16], const uint8_t px[8], const uint8_t py[8])
 {
 	(void)pz;
 	(void)px;
@@ -78,7 +78,7 @@ CYBOZU_TEST_AUTO(pclmulqdq)
 			uint8_t pz[16]={};
 			px[0] = x;
 			py[0] = y;
-			pclmulqdq(pz, px, py);
+			a_pclmulqdq(pz, px, py);
 			uint32_t z2 = pz[0] + pz[1] * 256;
 			CYBOZU_TEST_EQUAL(z1, z2);
 		}
@@ -112,6 +112,10 @@ CYBOZU_TEST_AUTO(mul)
 		CYBOZU_BENCH_C("gf256_mul", C, x = gf256_mul, x, x+1);
 		printf("x=%02x\n", x);
 		CYBOZU_BENCH_C("mulTbl", C, x = mulTbl, x, x+1);
+		printf("x=%02x\n", x);
+		CYBOZU_BENCH_C("mul.h", C, x = mul, x, x+1);
+		printf("x=%02x\n", x);
+		CYBOZU_BENCH_C("mul+mod", C, x = mulMod, x, x+1);
 		printf("x=%02x\n", x);
 	}
 }

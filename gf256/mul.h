@@ -7,17 +7,22 @@ typedef bool F2;
 typedef uint8_t K;
 typedef uint16_t K2;
 
-inline K mul(K x, K y)
+inline K mulX(K a)
+{
+	if (a & 0x80) {
+		a = (a << 1) ^ 0x1b;
+	}else{
+		a <<= 1;
+	}
+	return a;
+}
+inline K mul(K a, K b)
 {
 	K ret = 0;
-	while (x && y) {
-		if (y & 1) ret ^= x;
-		if (x & 0x80) {
-			x = (x << 1) ^ 0x11b;
-		}else{
-			x <<= 1;
-		}
-		y >>= 1;
+	while (b) {
+		if (b & 1) ret ^= a;
+		a = mulX(a);
+		b >>= 1;
 	}
 	return ret;
 }
@@ -64,4 +69,9 @@ K modPoly(K2 c)
 		}
 	}
 	return c;
+}
+
+K mulMod(K a, K b)
+{
+	return modPoly(mulPoly(a, b));
 }
