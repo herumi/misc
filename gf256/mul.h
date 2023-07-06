@@ -58,9 +58,9 @@ K2 mulPoly(K a, K b)
 K modPoly(K2 c)
 {
 	const int n = 8;
-	for (int i = 2*n-2; i >= 8; i--) {
+	for (int i = 2*n-2; i >= n; i--) {
 		if (get(c, i)) {
-			c ^= 0x1b << (i-8);
+			c ^= 0x1b << (i-n);
 		}
 	}
 	return c;
