@@ -18,7 +18,7 @@ update: gf256_gfni.S gf256_gfni.asm
 gf256_test.exe: gf256_test.o $(ASM_OBJ)
 	$(CXX) -o $@ $^ $(CFLAGS)
 
-%.o: %.cpp gf256.hpp
+%.o: %.cpp gf256.hpp mul.h
 	$(CXX) -c -o $@ $< $(CFLAGS)
 
 %.o: %.S

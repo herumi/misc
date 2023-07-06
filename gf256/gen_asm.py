@@ -43,6 +43,18 @@ def gen_inv_gfni512():
       vgf2p8affineinvqb(zmm0, zmm0, ptr_b(rip+'matrixI'), 0)
       vmovups(ptr(py), zmm0)
 
+def gen_pclmulqdq():
+  with FuncProc('pclmulqdq'):
+    with StackFrame(3, vNum=1, vType=T_ZMM) as sf:
+      pz = sf.p[0]
+      px = sf.p[1]
+      py = sf.p[2]
+      # pz[128/8] = px[64/8] * py[64/8]
+      mov(rax, ptr(px))
+      vmovq(xmm0, rax)
+      vpclmulqdq(xmm0, xmm0, ptr(py), 0)
+      vmovups(ptr(pz), xmm0)
+
 def main():
 
   parser = getDefaultParser()
@@ -57,6 +69,7 @@ def main():
   gen_inv_gfni()
   gen_mul_gfni512()
   gen_inv_gfni512()
+  gen_pclmulqdq()
 
   term()
 
