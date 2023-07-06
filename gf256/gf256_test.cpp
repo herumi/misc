@@ -13,6 +13,7 @@ void gf256_mul_gfni(uint8_t *pz, const uint8_t *px, const uint8_t *py);
 void gf256_inv_gfni(uint8_t *py, const uint8_t *px);
 void gf256_mul_gfni512(uint8_t *pz, const uint8_t *px, const uint8_t *py);
 void gf256_inv_gfni512(uint8_t *py, const uint8_t *px);
+void pclmulqdq(uint8_t pz[16], const uint8_t px[8], const uint8_t py[8]);
 #else
 void gf256_mul_gfni(uint8_t *pz, const uint8_t *px, const uint8_t *py)
 {
@@ -36,6 +37,12 @@ void gf256_inv_gfni512(uint8_t *py, const uint8_t *px)
 	(void)py;
 	(void)px;
 }
+void pclmulqdq(uint8_t pz[16], const uint8_t px[8], const uint8_t py[8])
+{
+	(void)pz;
+	(void)px;
+	(void)py;
+}
 #endif
 
 }
@@ -58,7 +65,31 @@ CYBOZU_TEST_AUTO(mulTbl)
 			g_mulTbl[x + y * 256] = gf256_mul(x, y);
 		}
 	}
+	uint8_t a = 0x23;
+	uint8_t b = 0x72;
+	put(a);
+	put(b);
+	put(mulPoly(a, b), 16);
 }
+
+#ifdef XBYAK_INTEL_CPU_SPECIFIC
+CYBOZU_TEST_AUTO(pclmulqdq)
+{
+	for (uint32_t x = 0; x < 256; x++) {
+		for (uint32_t y = 0; y < 256; y++) {
+			uint32_t z1 = mulPoly(x, y);
+			uint8_t px[8]={};
+			uint8_t py[8]={};
+			uint8_t pz[16]={};
+			px[0] = x;
+			py[0] = y;
+			pclmulqdq(pz, px, py);
+			uint32_t z2 = pz[0] + pz[1] * 256;
+			CYBOZU_TEST_EQUAL(z1, z2);
+		}
+	}
+}
+#endif
 
 CYBOZU_TEST_AUTO(inv)
 {
@@ -77,6 +108,7 @@ CYBOZU_TEST_AUTO(mul)
 			uint8_t z2 = gf256_mul(x, y);
 			CYBOZU_TEST_EQUAL(z1, z2);
 			CYBOZU_TEST_EQUAL(z1, mulTbl(x, y));
+			CYBOZU_TEST_EQUAL(z1, modPoly(mulPoly(x, y)));
 		}
 	}
 	{

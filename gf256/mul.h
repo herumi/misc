@@ -1,6 +1,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdio.h>
+
 typedef bool F2;
 typedef uint8_t K;
 typedef uint16_t K2;
@@ -27,12 +29,21 @@ void set(T& a, int i, F2 b)
 	a &= ~(1ull<<i);
 	if (b) a |= 1ull<<i;
 }
-K2 mulPoly(K a, K b, int n)
+template<class T>
+void put(T a, int n = 8)
 {
+	for (int i = 0; i < n; i++) {
+		putchar('0' + ((a>>(n-1-i))&1));
+	}
+	puts("");
+}
+K2 mulPoly(K a, K b)
+{
+	const int n = 8;
 	K2 ret = 0;
 	for (int i = 0; i < n; i++) {
 		F2 r = 0;
-		for (int j = 0; j < i; j++) r ^= get(a, j) & get(b, i-j);
+		for (int j = 0; j <= i; j++) r ^= get(a, j) & get(b, i-j);
 		set(ret, i, r);
 	}
 	for (int i = n; i < 2*n-1; i++) {
@@ -43,3 +54,13 @@ K2 mulPoly(K a, K b, int n)
 	return ret;
 }
 
+K modPoly(K2 c)
+{
+	const int n = 8;
+	for (int i = 2*n-2; i >= 8; i--) {
+		if (get(c, i)) {
+			c ^= 0x11b << (i-8);
+		}
+	}
+	return c;
+}
