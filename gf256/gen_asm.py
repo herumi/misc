@@ -60,8 +60,9 @@ def gen_bitRev():
     with StackFrame(1, vNum=2, vType=T_XMM) as sf:
       x = sf.p[0]
       bswap(x)
+      mov(rax, 0x8040201008040201)
+      vmovq(xmm1, rax)
       vmovq(xmm0, x)
-      vmovups(xmm1, ptr(rip+'bitRevM'))
       vgf2p8affineqb(xmm0, xmm0, xmm1, 0)
       vmovq(rax, xmm0)
 
@@ -74,9 +75,6 @@ def main():
   segment('text')
   makeLabel('matrixI')
   dq_(0x0102040810204080)
-  makeLabel('bitRevM')
-  dq_(0x8040201008040201)
-  dq_(0x8040201008040201)
 
   gen_mul_gfni()
   gen_inv_gfni()
