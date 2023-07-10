@@ -55,6 +55,16 @@ def gen_pclmulqdq():
       vpclmulqdq(xmm0, xmm0, ptr(py), 0)
       vmovups(ptr(pz), xmm0)
 
+def gen_bitRev():
+  with FuncProc('bitRev_gfni'):
+    with StackFrame(1, vNum=2, vType=T_XMM) as sf:
+      x = sf.p[0]
+      bswap(x)
+      vmovq(xmm0, x)
+      vmovups(xmm1, ptr(rip+'bitRevM'))
+      vgf2p8affineqb(xmm0, xmm0, xmm1, 0)
+      vmovq(rax, xmm0)
+
 def main():
 
   parser = getDefaultParser()
@@ -64,12 +74,16 @@ def main():
   segment('text')
   makeLabel('matrixI')
   dq_(0x0102040810204080)
+  makeLabel('bitRevM')
+  dq_(0x8040201008040201)
+  dq_(0x8040201008040201)
 
   gen_mul_gfni()
   gen_inv_gfni()
   gen_mul_gfni512()
   gen_inv_gfni512()
   gen_pclmulqdq()
+  gen_bitRev()
 
   term()
 

@@ -4,7 +4,7 @@ XBYAK_DIR?=../../xbyak/
 
 CFLAGS+=-DNDEBUG -O2 -Wall -Wextra -I $(CYBOZU_DIR) -I $(XBYAK_DIR)
 test_emu: gf256_test.exe
-	sde -grr -- ./$<
+	sde -spr -- ./$<
 
 ifeq ($(ARCH),x86_64)
 ASM_OBJ+=gf256_gfni.o
