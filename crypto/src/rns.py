@@ -52,7 +52,7 @@ def CRT(xs, ss):
     r = invMod(m, ss[i])
     # r * ss[i] = 1 mod s//ss[i]
     v = xs[i]
-    x += r * m * v
+    x += mod(v * r, ss[i]) * m
   return mod(x, s)
 
 def conv(xs, C, B):
