@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from numpy.polynomial import Polynomial as poly
-from math import *
 import secrets
 import random
 
@@ -22,11 +21,10 @@ class Param:
     self.invS = None
     self.cycloPoly = None
     self.delta = delta
-    self.l = 2
     self.L = 3
-    self.p = 10000
-    self.q0 = 10000
-    self.P = 10000
+    self.p = 1000
+    self.q0 = 1000
+    self.P = 1000
     self.qL = (self.p ** self.L) * self.q0
 
 # g_M : power of two
@@ -38,7 +36,7 @@ def init(M: int, delta = 1000):
   g_.M = M
   g_.N = M//2
   g_.halfN = g_.N//2
-  g_.xi = np.exp(2 * pi * 1j / g_.M)
+  g_.xi = np.exp(2 * np.pi * 1j / g_.M)
 
   # g_.S = (a_ij) = (((g_.xi^(2*i + 1))^j)
   for i in range(g_.N):
@@ -208,10 +206,12 @@ def Enc(pk, m):
   t1 = getRealPoly(t1)
   return (t0, t1)
 
-def Dec(sk, c):
+def Dec(sk, c, l=0):
   b, a = c
   t = modPoly(b + a * sk)
-  ql = get_ql(g_.l)
+  if l == 0:
+    l = g_.L
+  ql = get_ql(l)
   t = modCoeff(t, ql)
   return t
 
@@ -220,10 +220,12 @@ def add(c1, c2):
   b2, a2 = c2
   return (b1 + b2, a1 + a2)
 
-def mul(c1, c2, ek=None):
+def mul(c1, c2, ek=None, l=0):
   b1, a1 = c1
   b2, a2 = c2
-  ql = get_ql(g_.l)
+  if l == 0:
+    l = g_.L
+  ql = get_ql(l)
   d0 = modPoly(b1 * b2)
   d1 = modPoly(a1 * b2 + a2 * b1)
   d2 = modPoly(a1 * a2)
@@ -265,18 +267,20 @@ def PUT(msg, x):
   print(msg + '=', x)
 
 def main():
+  print('Ecd / Dcd for M=8')
   M = 8
-  init(M)
-
-  print('Ecd / Dcd')
+  init(M, delta=64)
   if M == 8:
     z = np.array([3+4j, 2-1j])
   else:
     z = randPlainText(False)
   print(f'{z=}')
   m = Ecd(z)
-  print(f'enc={m}')
-  print(f'dec={Dcd(m)}')
+  print(f'ecd={m}')
+  print(f'ded={Dcd(m)}')
+
+  M = 8
+  init(M)
 
   print('\n\nHWT')
   for i in range(5):
@@ -308,32 +312,35 @@ def main():
   m2 = Ecd(z2)
   PUT('m1', m1)
   PUT('m2', m2)
-  org1 = Dcd(m1)
-  org2 = Dcd(m2)
-  PUT('org1', org1)
-  PUT('org2', org2)
+  PUT('dcd1', Dcd(m1))
+  PUT('dcd2', Dcd(m2))
   c1 = Enc(pk, m1)
   c2 = Enc(pk, m2)
   PUT('c1', c1)
   PUT('c2', c2)
   PUT('dec c1', Dec(sk, c1))
   PUT('dec c2', Dec(sk, c2))
+  PUT('dcd c1', Dcd(Dec(sk, c1)))
+  PUT('dcd c2', Dcd(Dec(sk, c2)))
   c = add(c1, c2)
   PUT('add', c)
   d = Dec(sk, c)
   PUT('dec', d)
   PUT('dcd', Dcd(d))
-  PUT('org', org1 + org2)
+  PUT('org', z1 + z2)
   c = mul(c1, c2, ek)
   PUT('mul', c)
   d = Dec(sk, c)
   PUT('dec', d)
   PUT('dcd', Dcd(d) / g_.delta)
-  PUT('org', org1 * org2)
+  PUT('org', z1 * z2)
   c3 = mul(c, c2, ek)
+  PUT('c3', c3)
   PUT('dcd c3', Dcd(Dec(sk, c3))/g_.delta**2)
-  PUT('org', org1 * org2 * org2)
-#  cc = rescale(c3, 2, 1)
+  PUT('org', z1 * z2 * z2)
+#  l = g_.L
+#  cc = rescale(c3, l, l-1)
+#  PUT('cc', cc)
 #  PUT('dcd cc', Dcd(Dec(sk, cc))/g_.delta)
 
 
