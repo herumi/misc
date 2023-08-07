@@ -18,7 +18,7 @@ def main():
     phi_i = i = phi(zero, entry)
     phi_s = s = phi(zero, entry)
     cond = icmp(ult, i, n)
-    r(cond, body, end)
+    br(cond, body, end)
 
     L(body)
     s = add(s, i)
