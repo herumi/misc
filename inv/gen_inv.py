@@ -94,5 +94,6 @@ def gen_inv(N):
     
 
 init()
-gen_inv(3)
+gen_inv(4)
+gen_inv(6)
 term()
