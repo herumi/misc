@@ -12,7 +12,7 @@ extern "C" int invModPre_org(int *py, int x, int m);
 extern "C" int invModPre4(uint64_t *py, const uint64_t *px, const uint64_t *pm);
 extern "C" int invModPre6(uint64_t *py, const uint64_t *px, const uint64_t *pm);
 typedef int (*invModPreType)(uint64_t *, const uint64_t *, const uint64_t *);
-#define AAA
+//#define AAA
 
 // assert m is not full bit
 // y s.t. x y = 1 mod m
@@ -77,12 +77,18 @@ void invMod(Vint& y, const Vint& x, const Vint& m)
 template<class F, size_t N>
 void bench(invModPreType f)
 {
+	printf("f=%p\n", f);
 	const int C = 1000;
 	F x;
-	Unit y1[N], y2[N];
+	Unit y1[N] = { 1 }, y2[N] = { 1 };
 	cybozu::XorShift rg;
 	const fp::Op& op = F::getOp();
 	const Unit *p = op.p;
+	if (op.fp_preInv == 0) {
+		printf("skip cmp\n");
+		CYBOZU_BENCH_C("llv", C, y2[0]++;f, y2, y2, p);
+		return;
+	}
 	for (int i = 0; i < 1000; i++) {
 		x.setRand(rg);
 		int k1 = op.fp_preInv(y1, x.getUnit());
