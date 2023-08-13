@@ -90,9 +90,14 @@ void bench(invModPreType f)
 		CYBOZU_TEST_EQUAL(k1, k2);
 		CYBOZU_TEST_EQUAL_ARRAY(y1, y2, op.N);
 	}
-	CYBOZU_BENCH_C("asm", C, y1[0]++;op.fp_preInv, y1, y1);
-	CYBOZU_BENCH_C("llv", C, y2[0]++;f, y2, y2, p);
+	CYBOZU_BENCH_C("asm ", C, y1[0]++;op.fp_preInv, y1, y1);
+	CYBOZU_BENCH_C("llvm", C, y2[0]++;f, y2, y2, p);
 	CYBOZU_TEST_EQUAL_ARRAY(y1, y2, op.N);
+	{
+		Vint vx = 1;
+		Vint vm = op.mp;
+		CYBOZU_BENCH_C("vint", C, vx++;Vint::invMod, vx, vx, vm);
+	}
 }
 
 int main()

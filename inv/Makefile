@@ -1,5 +1,5 @@
 MCL_DIR?=../../mcl
-CLANG?=clang++-14
+CLANG?=clang++
 CXX=$(CLANG)
 CFLAGS=-g -Wall -Wextra -O2 -DNDEBUG
 CFLAGS+=-I $(MCL_DIR)/include
