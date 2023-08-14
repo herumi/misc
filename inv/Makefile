@@ -29,7 +29,7 @@ inv.ll: gen_inv.py
 	python3 gen_inv.py > inv.ll
 
 clean:
-	rm -rf *.o *.exe *.S
+	rm -rf *.o *.exe *.S inv.ll
 
 .PHONY: test clean
 

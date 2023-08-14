@@ -1,5 +1,6 @@
 MCL_DIR?=../../mcl
-SRC=invmod.cpp
+include $(MCL_DIR)/common.mk
+SRC=invmod.cpp invmod_gmp.cpp
 
 OBJ=$(SRC:.cpp=.o)
 DEP=$(SRC:.cpp=.d)
@@ -7,8 +8,11 @@ EXE=$(SRC:.cpp=.exe)
 
 all: $(EXE)
 
-test: $(EXE)
-	./$(EXE)
+test: invmod.exe
+	./$<
+
+test_gmp: invmod_gmp.exe
+	./$<
 
 CFLAGS+=-I $(MCL_DIR)/include -Ofast -DNDEBUG -Wall -Wextra
 LDFLAGS+=-lmcl -L $(MCL_DIR)/lib -lgmp -lgmpxx
