@@ -164,12 +164,4 @@ void test(const char *Mstr)
 	CYBOZU_BENCH_C("modinv", 1000, x++;invMod.inv, x, x);
 }
 
-int main()
-{
-	const char *tbl[] = {
-		"1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab",
-		"73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001",
-	};
-	test<6>(tbl[0]);
-	test<4>(tbl[1]);
-}
+#include "main.hpp"
