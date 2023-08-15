@@ -1,11 +1,12 @@
-#include <gmpxx.h>
+//#include <gmpxx.h>
 #include <stdio.h>
 #include <iostream>
 #include <cybozu/bit_operation.hpp>
 #include <cybozu/benchmark.hpp>
-//#include <mcl/gmp_util.hpp>
+#include <mcl/gmp_util.hpp>
 #include <mcl/util.hpp>
 #include <mcl/bint.hpp>
+#include <cybozu/test.hpp>
 
 template<int N>
 struct SintT {
@@ -88,7 +89,8 @@ struct InvModT {
 		INT u = 1, v = 0, q = 0, r = 1;
 		int i = modL;
 		for (;;) {
-			INT zeros = mcl::fp::min_<int>(i, cybozu::bsf(g));
+			INT zeros = g == 0 ? i : cybozu::bsf(g);
+			if (i < zeros) zeros = i;
 			eta -= zeros;
 			i -= zeros;
 			g >>= zeros;
@@ -120,30 +122,6 @@ struct InvModT {
 		return eta;
 	}
 
-	template<int N2>
-	void toMpz(mpz_class& y, const SintT<N2>& x) const
-	{
-		mpz_import(y.get_mpz_t(), N2, -1, sizeof(INT), 0, 0, x.v);
-		if (x.sign) y = -y;
-	}
-	template<int N2>
-	void toSint(SintT<N2>& y, const mpz_class& x) const
-	{
-		int n = x.get_mpz_t()->_mp_size;
-		int abs_n = mcl::fp::abs_(n);
-		for (int i = 0; i < abs_n; i++) {
-			y.v[i] = x.get_mpz_t()->_mp_d[i];
-		}
-		for (int i = abs_n; i < N2; i++) y.v[i] = 0;
-		y.sign = n < 0;
-	}
-	template<int N2>
-	INT getMod2powN(const SintT<N2>& x) const
-	{
-		INT r = x.v[0];
-		if (x.sign) r = -r;
-		return r & MASK;
-	}
 	void update_fg(Sint& f, Sint& g, const Tmp& t) const
 	{
 		SintT<N+1> f1, f2, g1, g2;
@@ -192,6 +170,9 @@ struct InvModT {
 		e1.sign = SintT<N+1>::add(e1.v, e1, e2);
 		mcl::bint::shrT<N+1>(d1.v, d1.v, modL);
 		mcl::bint::shrT<N+1>(e1.v, e1.v, modL);
+		if (d1.sign == 0 && (d1.v[N] > 0 || mcl::bint::cmpGeT<N>(d1.v, M.v))) {
+			mcl::bint::subT<N>(d1.v, d1.v, M.v);
+		}
 		d.set(d1.v, d1.sign);
 		e.set(e1.v, e1.sign);
 	}
@@ -206,11 +187,6 @@ struct InvModT {
 		if (v.sign) {
 			v.sign = Sint::add(v.v, v, M);
 		}
-	}
-
-	void invMod(mpz_class& z, const mpz_class& x, const mpz_class& m) const
-	{
-		mpz_invert(z.get_mpz_t(), x.get_mpz_t(), m.get_mpz_t());
 	}
 
 	void inv(mpz_class& y, const mpz_class& x) const
@@ -234,35 +210,54 @@ struct InvModT {
 		normalize(d, f.sign);
 		toMpz(y, d);
 	}
+	template<int N2>
+	void toSint(SintT<N2>& y, const mpz_class& x) const
+	{
+		const size_t n = mcl::gmp::getUnitSize(x);
+		const Unit *p = mcl::gmp::getUnit(x);
+		for (size_t i = 0; i < n; i++) {
+			y.v[i] = p[i];
+		}
+		for (size_t i = n; i < N2; i++) y.v[i] = 0;
+		y.sign = x < 0;
+	}
+	template<int N2>
+	void toMpz(mpz_class& y, const SintT<N2>& x) const
+	{
+		mcl::gmp::setArray(y, x.v, N2);
+		if (x.sign) y = -y;
+	}
 	void init(const mpz_class& mM)
 	{
 		toSint(M, mM);
 		mpz_class inv;
 		mpz_class mod = mpz_class(1) << modL;
-		invMod(inv, mM, mod);
-		invM = inv.get_si();
-		printf("invM=%lld\n", (long long)invM);
+		mcl::gmp::invMod(inv, mM, mod);
+		invM = mcl::gmp::getUnit(inv)[0] & MASK;
 	}
 };
 
 template<int N>
-void test(const char *Mstr)
+void test(const char *Mstr, int C)
 {
-	printf("M=%s\n", Mstr);
 	mpz_class mM;
-	mM.set_str(Mstr, 16);
+	mM.setStr(Mstr, 16);
 	InvModT<mcl::Unit, N, long> invMod;
 	invMod.init(mM);
-	mpz_class x, y;
+	printf("M %s\n", Mstr);
+	printf("Mi %ld\n", invMod.invM);
+	mpz_class x, y, z;
 	x = 1;
-	for (int i = 0; i < 10000; i++) {
-		invMod.inv(y, x);
-		if ((x * y) % mM != 1) {
-			std::cout << "err" << std::endl;
-			std::cout << "x=" << x << std::endl;
-			std::cout << "y=" << y << std::endl;
-			return;
+	for (int i = 0; i < C; i++) {
+		mcl::gmp::invMod(y, x, mM);
+		invMod.inv(z, x);
+		if (y != z) {
+			std::cout << "x=0x" << std::hex << x << std::endl;
+			std::cout << "ok=0x" << y << std::endl;
+			std::cout << "ng=0x" << z << std::endl;
+			std::cout << "mod " << (y-z) % mM << std::endl;
 		}
+		CYBOZU_TEST_EQUAL(y, z);
 		x = y + 1;
 	}
 	puts("ok");

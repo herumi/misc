@@ -14,8 +14,14 @@ test: invmod.exe
 test_gmp: invmod_gmp.exe
 	./$<
 
-CFLAGS+=-I $(MCL_DIR)/include -Ofast -DNDEBUG -Wall -Wextra
-LDFLAGS+=-lmcl -L $(MCL_DIR)/lib -lgmp -lgmpxx
+CFLAGS=-I $(MCL_DIR)/include -Wall -Wextra -g
+LDFLAGS=-lmcl -L $(MCL_DIR)/lib -lgmp -lgmpxx
+ifeq ($(DEBUG),1)
+  CFLAGS+=-fsanitize=address
+  LDFLAGS+=-fsanitize=address
+else
+  CFLAGS+=-O2 -DNDEBUG
+endif
 
 %.exe: %.o
 	$(PRE)$(CXX) $< -o $@ $(LDFLAGS)
