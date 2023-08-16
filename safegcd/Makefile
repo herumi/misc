@@ -17,8 +17,9 @@ test_gmp: invmod_gmp.exe
 CFLAGS=-I $(MCL_DIR)/include -Wall -Wextra -g
 LDFLAGS=-lmcl -L $(MCL_DIR)/lib -lgmp -lgmpxx
 ifeq ($(DEBUG),1)
-  CFLAGS+=-fsanitize=address
-  LDFLAGS+=-fsanitize=address
+  MODE?=address
+  CFLAGS+=-fsanitize=$(MODE)
+  LDFLAGS+=-fsanitize=$(MODE)
 else
   CFLAGS+=-O2 -DNDEBUG
 endif

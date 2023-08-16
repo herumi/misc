@@ -12,16 +12,39 @@ void test(const char *Mstr)
 	for (int i = 0; i < C; i++) {
 		mcl::gmp::invMod(y, x, invMod.mM);
 		invMod.inv(z, x);
-		if (y != z) {
-			std::cout << "x=" << x << std::endl;
-			std::cout << "ok=" << y << std::endl;
-			std::cout << "ng=" << z << std::endl;
-		}
 		CYBOZU_TEST_EQUAL(y, z);
 		x = y + 1;
 	}
-	puts("ok");
+	for (x = 1; x < 1000; x++) {
+		mcl::gmp::invMod(y, x, invMod.mM);
+		invMod.inv(z, x);
+		CYBOZU_TEST_EQUAL(y, z);
+	}
+	x = invMod.mM - 1;
+	for (int i = 0; i < C; i++) {
+		mcl::gmp::invMod(y, x, invMod.mM);
+		invMod.inv(z, x);
+		CYBOZU_TEST_EQUAL(y, z);
+		x--;
+	}
 	CYBOZU_BENCH_C("modinv", 1000, x++;invMod.inv, x, x);
+}
+
+CYBOZU_TEST_AUTO(mini)
+{
+	const char *Mstr = "fb"; // 251
+	InvModT<1> invMod;
+	invMod.init(Mstr);
+	std::cout << "M " << invMod.mM << std::endl;
+	printf("Mi %ld\n", invMod.Mi);
+
+	mpz_class x, y, z;
+	for (int i = 1; i < 251; i++) {
+		x = i;
+		mcl::gmp::invMod(y, x, invMod.mM);
+		invMod.inv(z, x);
+		CYBOZU_TEST_EQUAL(y, z);
+	}
 }
 
 CYBOZU_TEST_AUTO(main)
