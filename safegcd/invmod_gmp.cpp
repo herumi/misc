@@ -8,17 +8,19 @@
 
 typedef __int128_t int128_t;
 
-
-void gmp_invMod(mpz_class& z, const mpz_class& x, const mpz_class& m)
+namespace mcl { namespace gmp {
+void invMod(mpz_class& z, const mpz_class& x, const mpz_class& m)
 {
 	mpz_invert(z.get_mpz_t(), x.get_mpz_t(), m.get_mpz_t());
 }
+
+} }
 
 template<int N, typename INT, typename UINT>
 struct InvModT {
 	static const int modL = 62;
 	static const INT modN = INT(1) << modL;
-	static const INT half = INT(1) << (modL - 1);
+	static const INT half = modN / 2;
 	static const INT MASK = modN - 1;
 	mpz_class M;
 	INT Mi;
@@ -111,19 +113,23 @@ struct InvModT {
 		mpz_class d0 = d;
 		d = d * t.u + e * t.v;
 		e = d0 * t.q + e * t.r;
-		INT cd0 = getLow(d) + getLow(M) * md;
-		INT ce0 = getLow(e) + getLow(M) * me;
-		md -= Mi * cd0;
-		me -= Mi * ce0;
+		INT di = getLow(d) + getLow(M) * md;
+		INT ei = getLow(e) + getLow(M) * me;
+		md -= Mi * di;
+		me -= Mi * ei;
 		md &= MASK;
 		me &= MASK;
+		if (md >= half) md -= modN;
+		if (me >= half) me -= modN;
 		d += M * md;
 		e += M * me;
 		d >>= modL;
 		e >>= modL;
+#if 0
 		if (d >= M) {
 			d -= M;
 		}
+#endif
 	}
 
 	void normalize(mpz_class& v, bool minus) const
@@ -183,44 +189,22 @@ struct InvModT {
 		M.set_str(Mstr, 16);
 		mpz_class inv;
 		mpz_class mod = mpz_class(1) << modL;
-		gmp_invMod(inv, M, mod);
+		mcl::gmp::invMod(inv, M, mod);
 		Mi = getLowMask(inv);
-		printf("Mi %lld\n", (long long)Mi);
 	}
 };
 
+template<class INV>
+void check(const INV& invMod, const mpz_class& M);
+
 template<int N>
-void test(const char *Mstr, int C)
+void test(const char *Mstr)
 {
 	InvModT<N, long, unsigned long> invMod;
 	invMod.init(Mstr);
 	std::cout << "M " << invMod.M << std::endl;
-	mpz_class x, y, z;
-#if 0
-	x = mpz_class("4ebd69ba2662b38e8e25de6fb8d3d5be5d8527825e235437c9fbb18c53a6c527acf0ea2bf37e4d96818d5f31decf0b8", 16);
-	gmp_invMod(y, x, invMod.M);
-	invMod.inv(z, x);
-	std::cout << "x " << x << std::endl;;
-	std::cout << "y " << y << std::endl;;
-	std::cout << "z " << z << std::endl;;
-	std::cout << "mod " << (y-z)%invMod.M << std::endl;
-	return;
-#endif
-
-	x = 1;
-	for (int i = 0; i < C; i++) {
-		gmp_invMod(y, x, invMod.M);
-		invMod.inv(z, x);
-		if (y != z) {
-			std::cout << "x=0x" << std::hex << x << std::endl;
-			std::cout << "ok=0x" << y << std::endl;
-			std::cout << "ng=0x" << z << std::endl;
-		}
-		CYBOZU_TEST_EQUAL(y, z);
-		x = y + 1;
-	}
-	puts("ok");
-	CYBOZU_BENCH_C("modinv", 1000, x++;invMod.inv, x, x);
+	printf("Mi %lld\n", (long long)invMod.Mi);
+	check(invMod, invMod.M);
 }
 
 #include "main.hpp"

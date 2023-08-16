@@ -76,12 +76,22 @@ template<typename Unit, int N, typename INT>
 struct InvModT {
 	typedef SintT<N> Sint;
 	static const int modL = 62;
-	static const INT MASK = (INT(1) << modL) - 1;
+	static const INT modN = INT(1) << modL;
+	static const INT half = modN / 2;
+	static const INT MASK = modN - 1;
 	Sint M;
-	INT invM;
+	INT Mi;
 	struct Tmp {
 		INT u, v, q, r;
 	};
+	void init(const mpz_class& mM)
+	{
+		toSint(M, mM);
+		mpz_class inv;
+		mpz_class mod = mpz_class(1) << modL;
+		mcl::gmp::invMod(inv, mM, mod);
+		Mi = mcl::gmp::getUnit(inv)[0] & MASK;
+	}
 
 	INT divsteps_n_matrix(Tmp& t, INT eta, INT f, INT g) const
 	{
@@ -160,8 +170,12 @@ struct InvModT {
 		e1.sign = SintT<N+1>::add(e1.v, d2, e2);
 		INT di = d1.template getLow<INT>() + M.template getLow<INT>() * md;
 		INT ei = e1.template getLow<INT>() + M.template getLow<INT>() * me;
-		md -= (invM * di) & MASK;
-		me -= (invM * ei) & MASK;
+		md -= Mi * di;
+		me -= Mi * ei;
+		md &= MASK;
+		me &= MASK;
+		if (md >= half) md -= modN;
+		if (me >= half) me -= modN;
 		// d = (d + M * md) >> modL
 		// e = (e + M * me) >> modL
 		d2.sign = SintT<N>::mulUnit(d2.v, M, md);
@@ -170,9 +184,6 @@ struct InvModT {
 		e1.sign = SintT<N+1>::add(e1.v, e1, e2);
 		mcl::bint::shrT<N+1>(d1.v, d1.v, modL);
 		mcl::bint::shrT<N+1>(e1.v, e1.v, modL);
-		if (d1.sign == 0 && (d1.v[N] > 0 || mcl::bint::cmpGeT<N>(d1.v, M.v))) {
-			mcl::bint::subT<N>(d1.v, d1.v, M.v);
-		}
 		d.set(d1.v, d1.sign);
 		e.set(e1.v, e1.sign);
 	}
@@ -227,41 +238,21 @@ struct InvModT {
 		mcl::gmp::setArray(y, x.v, N2);
 		if (x.sign) y = -y;
 	}
-	void init(const mpz_class& mM)
-	{
-		toSint(M, mM);
-		mpz_class inv;
-		mpz_class mod = mpz_class(1) << modL;
-		mcl::gmp::invMod(inv, mM, mod);
-		invM = mcl::gmp::getUnit(inv)[0] & MASK;
-	}
 };
 
+template<class INV>
+void check(const INV& invMod, const mpz_class& M);
+
 template<int N>
-void test(const char *Mstr, int C)
+void test(const char *Mstr)
 {
 	mpz_class mM;
 	mM.setStr(Mstr, 16);
 	InvModT<mcl::Unit, N, long> invMod;
 	invMod.init(mM);
-	printf("M %s\n", Mstr);
-	printf("Mi %ld\n", invMod.invM);
-	mpz_class x, y, z;
-	x = 1;
-	for (int i = 0; i < C; i++) {
-		mcl::gmp::invMod(y, x, mM);
-		invMod.inv(z, x);
-		if (y != z) {
-			std::cout << "x=0x" << std::hex << x << std::endl;
-			std::cout << "ok=0x" << y << std::endl;
-			std::cout << "ng=0x" << z << std::endl;
-			std::cout << "mod " << (y-z) % mM << std::endl;
-		}
-		CYBOZU_TEST_EQUAL(y, z);
-		x = y + 1;
-	}
-	puts("ok");
-	CYBOZU_BENCH_C("modinv", 1000, x++;invMod.inv, x, x);
+	std::cout << "M " << mM << std::endl;
+	printf("Mi %ld\n", invMod.Mi);
+	check(invMod, mM);
 }
 
 #include "main.hpp"
