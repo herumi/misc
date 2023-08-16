@@ -1,11 +1,16 @@
-template<class INV>
-void check(const INV& invMod, const mpz_class& M)
+template<int N>
+void test(const char *Mstr)
 {
+	InvModT<N> invMod;
+	invMod.init(Mstr);
+	std::cout << "M " << invMod.mM << std::endl;
+	printf("Mi %ld\n", invMod.Mi);
+
 	const int C = 10000;
 	mpz_class x, y, z;
 	x = 1;
 	for (int i = 0; i < C; i++) {
-		mcl::gmp::invMod(y, x, M);
+		mcl::gmp::invMod(y, x, invMod.mM);
 		invMod.inv(z, x);
 		if (y != z) {
 			std::cout << "x=" << x << std::endl;

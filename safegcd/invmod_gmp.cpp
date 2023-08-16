@@ -16,13 +16,15 @@ void invMod(mpz_class& z, const mpz_class& x, const mpz_class& m)
 
 } }
 
-template<int N, typename INT, typename UINT>
+template<int N>
 struct InvModT {
+	typedef long INT;
 	static const int modL = 62;
 	static const INT modN = INT(1) << modL;
 	static const INT half = modN / 2;
 	static const INT MASK = modN - 1;
 	mpz_class M;
+	mpz_class mM; // mM == M
 	INT Mi;
 	struct Tmp {
 		INT u, v, q, r;
@@ -33,6 +35,15 @@ struct InvModT {
 			return buf;
 		}
 	};
+	void init(const char *Mstr)
+	{
+		M.set_str(Mstr, 16);
+		mM = M;
+		mpz_class inv;
+		mpz_class mod = mpz_class(1) << modL;
+		mcl::gmp::invMod(inv, M, mod);
+		Mi = getLowMask(inv);
+	}
 	INT adj(INT x) const
 	{
 		x &= MASK;
@@ -88,16 +99,6 @@ struct InvModT {
 		g >>= modL;
 	}
 
-	INT signMod(UINT x) const
-	{
-		x &= (UINT(1) << (modL + 1)) - 1;
-		if (x >= half) {
-			return INT(x) - modN;
-		} else {
-			return INT(x);
-		}
-	}
-
 	void update_de(mpz_class& d, mpz_class& e, const Tmp& t) const
 	{
 		INT md = 0;
@@ -125,11 +126,6 @@ struct InvModT {
 		e += M * me;
 		d >>= modL;
 		e >>= modL;
-#if 0
-		if (d >= M) {
-			d -= M;
-		}
-#endif
 	}
 
 	void normalize(mpz_class& v, bool minus) const
@@ -148,13 +144,6 @@ struct InvModT {
 	INT getLow(const mpz_class& x) const
 	{
 		INT r = x.get_mpz_t()->_mp_d[0];
-//		r &= MASK;
-		if (x < 0) r = -r;
-		return r;
-	}
-	UINT getUlow(const mpz_class& x) const
-	{
-		UINT r = x.get_mpz_t()->_mp_d[0];
 		if (x < 0) r = -r;
 		return r;
 	}
@@ -166,7 +155,6 @@ struct InvModT {
 
 	void inv(mpz_class& o, const mpz_class& x) const
 	{
-//		std::cout << "inp " << x << std::endl;
 		INT eta = -1;
 		mpz_class f = M;
 		mpz_class g = x;
@@ -174,37 +162,15 @@ struct InvModT {
 		mpz_class e = 1;
 		Tmp t;
 		while (g != 0) {
-			eta = divsteps_n_matrix(t, eta, getLow(f), getLow(g));
-//			std::cout << "B " << eta << " " << t.getStr() << std::endl;
+			INT fLow = getLowMask(f);
+			INT gLow = getLowMask(g);
+			eta = divsteps_n_matrix(t, eta, fLow, gLow);
 			update_fg(f, g, t);
-//			std::cout << "C " << f << " " << g << " " << t.getStr() << std::endl;
 			update_de(d, e, t);
-//			std::cout << "D " << d << " " << e << std::endl;
 		}
 		normalize(d, f < 0);
 		o = d;
 	}
-	void init(const char *Mstr)
-	{
-		M.set_str(Mstr, 16);
-		mpz_class inv;
-		mpz_class mod = mpz_class(1) << modL;
-		mcl::gmp::invMod(inv, M, mod);
-		Mi = getLowMask(inv);
-	}
 };
-
-template<class INV>
-void check(const INV& invMod, const mpz_class& M);
-
-template<int N>
-void test(const char *Mstr)
-{
-	InvModT<N, long, unsigned long> invMod;
-	invMod.init(Mstr);
-	std::cout << "M " << invMod.M << std::endl;
-	printf("Mi %lld\n", (long long)invMod.Mi);
-	check(invMod, invMod.M);
-}
 
 #include "main.hpp"

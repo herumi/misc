@@ -64,28 +64,26 @@ struct SintT {
 		for (int i = 1; i < N; i++) r |= v[i];
 		return r == 0;
 	}
-	template<typename INT>
-	INT getLow() const
-	{
-		INT r = v[0];
-		return sign ? -r : r;
-	}
 };
 
-template<typename Unit, int N, typename INT>
+template<int N>
 struct InvModT {
+	typedef mcl::Unit Unit;
+	typedef long INT;
 	typedef SintT<N> Sint;
 	static const int modL = 62;
 	static const INT modN = INT(1) << modL;
 	static const INT half = modN / 2;
 	static const INT MASK = modN - 1;
+	mpz_class mM;
 	Sint M;
 	INT Mi;
 	struct Tmp {
 		INT u, v, q, r;
 	};
-	void init(const mpz_class& mM)
+	void init(const char *Mstr)
 	{
+		mcl::gmp::setStr(mM, Mstr, 16);
 		toSint(M, mM);
 		mpz_class inv;
 		mpz_class mod = mpz_class(1) << modL;
@@ -168,8 +166,8 @@ struct InvModT {
 		e2.sign = SintT<N>::mulUnit(e2.v, e, t.r);
 		d1.sign = SintT<N+1>::add(d1.v, d1, e1);
 		e1.sign = SintT<N+1>::add(e1.v, d2, e2);
-		INT di = d1.template getLow<INT>() + M.template getLow<INT>() * md;
-		INT ei = e1.template getLow<INT>() + M.template getLow<INT>() * me;
+		INT di = getLow(d1) + getLow(M) * md;
+		INT ei = getLow(e1) + getLow(M) * me;
 		md -= Mi * di;
 		me -= Mi * ei;
 		md &= MASK;
@@ -199,6 +197,19 @@ struct InvModT {
 			v.sign = Sint::add(v.v, v, M);
 		}
 	}
+	template<class SINT>
+	INT getLow(const SINT& x) const
+	{
+		INT r = x.v[0];
+		if (x.sign) r = -r;
+		return r;
+	}
+	template<class SINT>
+	INT getLowMask(const SINT& x) const
+	{
+		INT r = getLow(x);
+		return r & MASK;
+	}
 
 	void inv(mpz_class& y, const mpz_class& x) const
 	{
@@ -212,8 +223,8 @@ struct InvModT {
 		e.v[0] = 1;
 		Tmp t;
 		while (!g.isZero()) {
-			INT sfLow = f.template getLow<INT>() & MASK;
-			INT sgLow = g.template getLow<INT>() & MASK;
+			INT sfLow = getLowMask(f);
+			INT sgLow = getLowMask(g);
 			eta = divsteps_n_matrix(t, eta, sfLow, sgLow);
 			update_fg(f, g, t);
 			update_de(d, e, t);
@@ -239,20 +250,5 @@ struct InvModT {
 		if (x.sign) y = -y;
 	}
 };
-
-template<class INV>
-void check(const INV& invMod, const mpz_class& M);
-
-template<int N>
-void test(const char *Mstr)
-{
-	mpz_class mM;
-	mM.setStr(Mstr, 16);
-	InvModT<mcl::Unit, N, long> invMod;
-	invMod.init(mM);
-	std::cout << "M " << mM << std::endl;
-	printf("Mi %ld\n", invMod.Mi);
-	check(invMod, mM);
-}
 
 #include "main.hpp"
