@@ -1,9 +1,9 @@
 test: test.exe
 	./test.exe
 
-CFLAGS=-g -Wall -Wextra
+CFLAGS=-g -Wall -Wextra -I ../../cybozulib/include
 
-test.exe: test.cpp gen.o
+test.exe: test.o gen.o
 	$(CXX) -o $@ $^
 
 %.o: %.cpp
