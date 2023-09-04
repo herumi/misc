@@ -38,9 +38,10 @@ def gen_vpalignr():
       vmovupd(ptr(py), ym1)
 
 # set y by px[0:n] as float
+# return the label for continued execution
 # yt, t : tmp regs
 def loadf(y, px, n, N, yt, t):
-  contiL = Label() # the label for continued execution
+  contiL = Label()
   # prepare jmp table
   loadL = []
   for i in range(N):
@@ -49,10 +50,40 @@ def loadf(y, px, n, N, yt, t):
   vxorps(y, y, y)
   lea(t, ptr(rip + loadTopL))
   jmp(ptr(t + n * 8))
+  segment('data')
+  align(32)
+  L(loadTopL)
+  dq_(0)
+  for i in range(N):
+    dq_(loadL[i])
+  segment('text')
+
   for i in range(N):
     L(loadL[i])
+    if i == 0:
+      vmovss(xm0, ptr(px))
+      jmp(contiL)
+      continue
+    if i == 1:
+      vmovq(xm0, ptr(px))
+      jmp(contiL)
+      continue
+    if i == 2:
+      vmovq(xm0, ptr(px))
+      vmovss(xm1, ptr(px+4*2))
+      vpunpcklqdq(ym0, ym0, ym1)
+      jmp(contiL)
+      continue
     if i == 3:
       vmovups(xm0, ptr(px))
+      jmp(contiL)
+      continue
+    if i == 4:
+      vmovups(xm0, ptr(px))
+      vmovss(xm1, ptr(px+4*4))
+      vinserti128(ym0, ym0, xm1, 1)
+      jmp(contiL)
+      continue
     else:
       for j in range((i+1)%4):
         if j == 0:
@@ -66,13 +97,6 @@ def loadf(y, px, n, N, yt, t):
         vinserti128(ym0, ym1, xm0, 1)
     jmp(contiL)
 
-  segment('data')
-  align(32)
-  L(loadTopL)
-  dq_(0)
-  for i in range(N):
-    dq_(loadL[i])
-  segment('text')
   return contiL
 
 def gen_loadf():
