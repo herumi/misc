@@ -63,10 +63,10 @@ def gen_movq():
 
 # load ym from px[0:n] as float
 # 1 <= n <= 8
-# px[n:8] are cleared
-# return the label for continued execution
+# ym[n:8] are cleared
 # ymt, t : tmp regs
-def loadf_avx(ym, px, n, N, ymt, t):
+def loadf_avx(ym, px, n, ymt, t):
+  N = 8
   xm = Xmm(ym.idx)
   xmt = Xmm(ymt.idx)
   contiL = Label()
@@ -85,42 +85,94 @@ def loadf_avx(ym, px, n, N, ymt, t):
     dq_(loadL[i])
   segment('text')
 
-  for i in range(N):
-    L(loadL[i])
-    if i == 0:
+  for i in range(1,N+1):
+    L(loadL[i-1])
+    if i == 1:
       vmovss(xm, ptr(px)) # upper data is cleared
-    elif i == 1:
-      vmovq(xm, ptr(px))
     elif i == 2:
+      vmovq(xm, ptr(px))
+    elif i == 3:
       vmovq(xm, ptr(px))
       vmovss(xmt, ptr(px+4*2))
       vpunpcklqdq(ym, ym, ymt)
-    elif i == 3:
-      vmovups(xm, ptr(px))
     elif i == 4:
+      vmovups(xm, ptr(px))
+    elif i == 5:
       vmovss(xmt, ptr(px+4*4))
       vmovups(xm, ptr(px))
       vinserti128(ym, ym, xmt, 1)
-    elif i == 5:
+    elif i == 6:
       vmovq(xmt, ptr(px+4*4))
       vmovups(xm, ptr(px))
       vinserti128(ym, ym, xmt, 1)
-    elif i == 6:
+    elif i == 7:
       vmovq(xmt, ptr(px+4*4))
       vmovss(xm, ptr(px+4*6))
       vpunpcklqdq(ymt, ymt, ym)
       vmovups(xm, ptr(px))
       vinserti128(ym, ym, xmt, 1)
-    elif i == 7:
+    elif i == 8:
       vmovups(ym, ptr(px))
     else:
       raise Exception('bad i', i)
     jmp(contiL)
-    continue
+  L(contiL)
 
-  return contiL
+# save ym[0:n] to dst as float
+# 1 <= n <= 8
+# ym may be destroyed
+def savef_avx(dst, ym, n, t):
+  N = 8
+  xm = Xmm(ym.idx)
+  contiL = Label()
+  # prepare jmp table
+  saveL = []
+  for i in range(N):
+    saveL.append(Label())
+  saveTopL = Label()
+  lea(t, ptr(rip + saveTopL))
+  jmp(ptr(t + n * 8))
+  segment('data')
+  align(32)
+  L(saveTopL)
+  dq_(0)
+  for i in range(N):
+    dq_(saveL[i])
+  segment('text')
 
-# lo
+  for i in range(1,N+1):
+    L(saveL[i-1])
+    if i == 1:
+      vmovss(ptr(dst), xm)
+    elif i == 2:
+      vmovq(ptr(dst), xm)
+    elif i == 3:
+      vmovq(ptr(dst), xm)
+      vpunpckhqdq(xm, xm, xm)
+      vmovss(ptr(dst+4*2), xm)
+    elif i == 4:
+      vmovups(ptr(dst), xm)
+    elif i == 5:
+      vmovups(ptr(dst), xm)
+      vextractf128(xm, ym, 1)
+      vmovss(ptr(dst+4*4), xm)
+    elif i == 6:
+      vmovups(ptr(dst), xm)
+      vextractf128(xm, ym, 1)
+      vmovq(ptr(dst+4*4), xm)
+    elif i == 7:
+      vmovups(ptr(dst), xm)
+      vextractf128(xm, ym, 1)
+      vmovq(ptr(dst+4*4), xm)
+      vpunpckhqdq(xm, xm, xm)
+      vmovss(ptr(dst+4*6), xm)
+    elif i == 8:
+      vmovups(ptr(dst), ym)
+    else:
+      raise Exception('bad i', i)
+    jmp(contiL)
+  L(contiL)
+
 def gen_loadf():
   align(32)
   with FuncProc(f'loadf_avx'):
@@ -131,16 +183,10 @@ def gen_loadf():
       n = sf.p[2]
       vxorps(ym0, ym0, ym0)
       vxorps(ym1, ym1, ym1)
-      loadDoneL = Label()
 
-      contiL = loadf_avx(ym0, px, n, 8, ym1, rax)
-
-      L(contiL)
-
+      loadf_avx(ym0, px, n, ym1, rax)
       vaddps(ym0, ym0, ym0)
-      vmovups(ptr(py), ym0)
-
-
+      savef_avx(py, ym0, n, rax)
 
 def main():
   parser = getDefaultParser()

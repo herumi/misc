@@ -74,7 +74,7 @@ void test_loadf_avx()
 		for (int i = 0; i < n; i++) {
 			CYBOZU_TEST_EQUAL(out[i], inp[i]*2);
 		}
-//		CYBOZU_TEST_EQUAL(out[n], boundary);
+		CYBOZU_TEST_EQUAL(out[n], boundary);
 	}
 }
 
