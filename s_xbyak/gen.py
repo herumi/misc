@@ -100,17 +100,17 @@ def loadf_avx(ym, px, n, ymt, t):
     elif i == 5:
       vmovss(xmt, ptr(px+4*4))
       vmovups(xm, ptr(px))
-      vinserti128(ym, ym, xmt, 1)
+      vinsertf128(ym, ym, xmt, 1)
     elif i == 6:
       vmovq(xmt, ptr(px+4*4))
       vmovups(xm, ptr(px))
-      vinserti128(ym, ym, xmt, 1)
+      vinsertf128(ym, ym, xmt, 1)
     elif i == 7:
       vmovq(xmt, ptr(px+4*4))
       vmovss(xm, ptr(px+4*6))
       vpunpcklqdq(ymt, ymt, ym)
       vmovups(xm, ptr(px))
-      vinserti128(ym, ym, xmt, 1)
+      vinsertf128(ym, ym, xmt, 1)
     elif i == 8:
       vmovups(ym, ptr(px))
     else:
