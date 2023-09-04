@@ -6,8 +6,9 @@ extern "C" {
 
 void gen_fma(float *x, const float *y, const float *z);
 void gen_mov(float *y, const float *x);
+void gen_movq(float *y, const float *x, int mode);
 void gen_vpalignr(uint8_t y[32], const uint8_t x[32]);
-void loadf(float *y, const float *x, size_t n);
+void loadf_avx(float *y, const float *x, size_t n);
 
 }
 
@@ -55,20 +56,20 @@ void test_vpalignr()
 
 }
 
-void test_loadf()
+void test_loadf_avx()
 {
 	const size_t N = 8;
 	const float boundary = 123456;
 	float inp[N], out[N+1];
-	for (int n = 1; n < 8; n++) {
+	for (int n = 1; n <= 8; n++) {
 		printf("n=%d\n", n);
 		for (int i = 0; i < n; i++) {
 			inp[i] = (i+10) * 0.1f;
 		}
 		out[n] = boundary;
-		loadf(out, inp, n);
+		loadf_avx(out, inp, n);
 		for (int i = 0; i < n; i++) {
-			printf("%d inp %f out %f %d\n", i, inp[i], out[i], inp[i]*2 == out[i]);
+//			printf("%d inp %f out %f %d\n", i, inp[i], out[i], inp[i]*2 == out[i]);
 		}
 		for (int i = 0; i < n; i++) {
 			CYBOZU_TEST_EQUAL(out[i], inp[i]*2);
@@ -77,10 +78,26 @@ void test_loadf()
 	}
 }
 
+void test_movq()
+{
+	const float x[8] = { 1, 2, 3, 4, 5, 6, 7, 8 };
+	for (int mode = 0; mode < 2; mode++) {
+		printf("mode=%d\n", mode);
+		float y[8] = {};
+		gen_movq(y, x, mode);
+		printf("y=");
+		for (int i = 0; i < 8; i++) {
+			printf("%f ", y[i]);
+		}
+		printf("\n");
+	}
+}
+
 int main()
 {
 	test_fma();
 	test_mov();
+	test_movq();
 	test_vpalignr();
-	test_loadf();
+	test_loadf_avx();
 }
