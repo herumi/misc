@@ -37,6 +37,44 @@ def gen_vpalignr():
       vpalignr(ym1, ym1, ym0, 15)
       vmovupd(ptr(py), ym1)
 
+# set y by px[0:n] as float
+# yt, t : tmp regs
+def loadf(y, px, n, N, yt, t):
+  contiL = Label() # the label for continued execution
+  # prepare jmp table
+  loadL = []
+  for i in range(N):
+    loadL.append(Label())
+  loadTopL = Label()
+  vxorps(y, y, y)
+  lea(t, ptr(rip + loadTopL))
+  jmp(ptr(t + n * 8))
+  for i in range(N):
+    L(loadL[i])
+    if i == 3:
+      vmovups(xm0, ptr(px))
+    else:
+      for j in range((i+1)%4):
+        if j == 0:
+          vmovss(xm0, ptr(px + (i-j)*4))
+        else:
+          vpshufd(ym0, ym0, 0b10010011) # ym0 <<= 32 (assume ym0[3] == 0)
+          vmovss(xm1, ptr(px + (i-j)*4))
+          vorps(ym0, ym0, ym1)
+      if i >= 3:
+        vmovups(xm1, ptr(px))
+        vinserti128(ym0, ym1, xm0, 1)
+    jmp(contiL)
+
+  segment('data')
+  align(32)
+  L(loadTopL)
+  dq_(0)
+  for i in range(N):
+    dq_(loadL[i])
+  segment('text')
+  return contiL
+
 def gen_loadf():
   align(32)
   with FuncProc(f'loadf'):
@@ -47,50 +85,17 @@ def gen_loadf():
       n = sf.p[2]
       vxorps(ym0, ym0, ym0)
       vxorps(ym1, ym1, ym1)
-      loadTopL = Label()
       loadDoneL = Label()
-      exitL = Label()
       L_N = 8
 
-      # prepare jmp table
-      loadL = []
-      for i in range(L_N):
-        loadL.append(Label())
+      contiL = loadf(ym0, px, n, L_N, ym1, rax)
 
-      lea(rax, ptr(rip + loadTopL))
-      jmp(ptr(rax + n * 8))
-
-      # make each code
-      for i in range(L_N):
-        L(loadL[i])
-        if i == 3:
-          vmovups(xm0, ptr(px))
-        else:
-          for j in range((i+1)%4):
-            if j == 0:
-              vmovss(xm0, ptr(px + (i-j)*4))
-            else:
-              vpshufd(ym0, ym0, 0b10010011) # ym0 <<= 32 (assume ym0[3] == 0)
-              vmovss(xm1, ptr(px + (i-j)*4))
-              vorps(ym0, ym0, ym1)
-          if i >= 3:
-            vmovups(xm1, ptr(px))
-            vinserti128(ym0, ym1, xm0, 1)
-        jmp(loadDoneL)
-
-      L(loadDoneL)
+      L(contiL)
 
       vaddps(ym0, ym0, ym0)
       vmovups(ptr(py), ym0)
 
-      L(exitL)
-      sf.close()
 
-
-      L(loadTopL)
-      dq_(0)
-      for i in range(L_N):
-        dq_(loadL[i])
 
 def main():
   parser = getDefaultParser()
