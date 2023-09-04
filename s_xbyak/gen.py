@@ -61,10 +61,14 @@ def gen_movq():
       L(exitL)
       vmovups(ptr(py), ym0)
 
-# set y by px[0:n] as float
+# load ym from px[0:n] as float
+# 1 <= n <= 8
+# px[n:8] are cleared
 # return the label for continued execution
-# yt, t : tmp regs
-def loadf_avx(y, px, n, N, yt, t):
+# ymt, t : tmp regs
+def loadf_avx(ym, px, n, N, ymt, t):
+  xm = Xmm(ym.idx)
+  xmt = Xmm(ymt.idx)
   contiL = Label()
   # prepare jmp table
   loadL = []
@@ -84,31 +88,31 @@ def loadf_avx(y, px, n, N, yt, t):
   for i in range(N):
     L(loadL[i])
     if i == 0:
-      vmovss(xm0, ptr(px)) # upper data is cleared
+      vmovss(xm, ptr(px)) # upper data is cleared
     elif i == 1:
-      vmovq(xm0, ptr(px))
+      vmovq(xm, ptr(px))
     elif i == 2:
-      vmovq(xm0, ptr(px))
-      vmovss(xm1, ptr(px+4*2))
-      vpunpcklqdq(ym0, ym0, ym1)
+      vmovq(xm, ptr(px))
+      vmovss(xmt, ptr(px+4*2))
+      vpunpcklqdq(ym, ym, ymt)
     elif i == 3:
-      vmovups(xm0, ptr(px))
+      vmovups(xm, ptr(px))
     elif i == 4:
-      vmovss(xm1, ptr(px+4*4))
-      vmovups(xm0, ptr(px))
-      vinserti128(ym0, ym0, xm1, 1)
+      vmovss(xmt, ptr(px+4*4))
+      vmovups(xm, ptr(px))
+      vinserti128(ym, ym, xmt, 1)
     elif i == 5:
-      vmovq(xm1, ptr(px+4*4))
-      vmovups(xm0, ptr(px))
-      vinserti128(ym0, ym0, xm1, 1)
+      vmovq(xmt, ptr(px+4*4))
+      vmovups(xm, ptr(px))
+      vinserti128(ym, ym, xmt, 1)
     elif i == 6:
-      vmovq(xm1, ptr(px+4*4))
-      vmovss(xm0, ptr(px+4*6))
-      vpunpcklqdq(ym1, ym1, ym0)
-      vmovups(xm0, ptr(px))
-      vinserti128(ym0, ym0, xm1, 1)
+      vmovq(xmt, ptr(px+4*4))
+      vmovss(xm, ptr(px+4*6))
+      vpunpcklqdq(ymt, ymt, ym)
+      vmovups(xm, ptr(px))
+      vinserti128(ym, ym, xmt, 1)
     elif i == 7:
-      vmovups(ym0, ptr(px))
+      vmovups(ym, ptr(px))
     else:
       raise Exception('bad i', i)
     jmp(contiL)
@@ -116,6 +120,7 @@ def loadf_avx(y, px, n, N, yt, t):
 
   return contiL
 
+# lo
 def gen_loadf():
   align(32)
   with FuncProc(f'loadf_avx'):
