@@ -12,6 +12,7 @@ EMCC_OPT+=-s MODULARIZE=1
 EMCC_OPT+=-s SINGLE_FILE=1
 EMCC_OPT+=-s ABORTING_MALLOC=0
 
+MODE?=2
 # MODE = 1 and MODE = 2 makes the same binary
 ifeq ($(MODE),1)
   # catch C++ exception in JS
