@@ -37,6 +37,29 @@ void add(Unit *z, const Unit *x, const Unit *y)
 	}
 }
 
+void sub(Unit *z, const Unit *x, const Unit *y)
+{
+	Unit t[N];
+	Unit c = 0;
+	for (size_t i = 0; i < N; i++) {
+		t[i] = x[i] - y[i] - c;
+		c = t[i] >> 63;
+		t[i] &= mask;
+	}
+	bool neg = c != 0;
+	Unit s[N];
+	c = 0;
+	for (size_t i = 0; i < N; i++) {
+		s[i] = t[i] + p[i] + c;
+		c = s[i] >> S;
+		s[i] &= mask;
+	}
+	const Unit *o = neg ? s : t;
+	for (size_t i = 0; i < N; i++) {
+		z[i] = o[i];
+	}
+}
+
 void toArray(Unit x[N], mpz_class mx)
 {
 	for (size_t i = 0; i < N; i++) {
@@ -79,6 +102,45 @@ mpz_class madd(const mpz_class& x, const mpz_class& y)
 	return z;
 }
 
+mpz_class msub(const mpz_class& x, const mpz_class& y)
+{
+	mpz_class z = x - y;
+	if (z < 0) z += mp;
+	return z;
+}
+
+void putAll(const mpz_class& x, const mpz_class& y, const mpz_class& z, const mpz_class& w)
+{
+	std::cout << "x=" << x << std::endl;
+	std::cout << "y=" << y << std::endl;
+	std::cout << "z=" << z << std::endl;
+	std::cout << "w=" << w << std::endl;
+}
+
+void test(const mpz_class& mx, const mpz_class& my)
+{
+	mpz_class mz, mw;
+	Unit x[N], y[N], z[N];
+	toArray(x, mx);
+	toArray(y, my);
+
+	mz = madd(mx, my);
+	add(z, x, y);
+	mw = fromArray(z);
+	if (mz != mw) {
+		printf("err add\n");
+		putAll(mx, my, mz, mw);
+	}
+
+	mz = msub(mx, my);
+	sub(z, x, y);
+	mw = fromArray(z);
+	if (mz != mw) {
+		printf("err sub\n");
+		putAll(mx, my, mz, mw);
+	}
+}
+
 int main()
 {
 	cybozu::XorShift rg;
@@ -90,24 +152,7 @@ int main()
 	std::cout << std::hex;
 	for (const auto& mx : tbl) {
 		for (const auto& my : tbl) {
-			mpz_class mz = madd(mx, my);
-			Unit x[N], y[N], z[N];
-			toArray(x, mx);
-			toArray(y, my);
-			add(z, x, y);
-/*
-			putArray(x, "x");
-			putArray(y, "y");
-			putArray(z, "z");
-*/
-			mpz_class e = fromArray(z);
-			if (mz != e) {
-				printf("err\n");
-				std::cout << "mx=" << mx << std::endl;
-				std::cout << "my=" << my << std::endl;
-				std::cout << "mz=" << mz << std::endl;
-				std::cout << "e =" << e << std::endl;
-			}
+			test(mx, my);
 		}
 	}
 }
