@@ -23,6 +23,159 @@ void select(Unit *out, bool c, const Unit *a, const Unit *b)
 	}
 }
 
+template<size_t N>
+void toArray(Unit x[N], mpz_class mx)
+{
+	for (size_t i = 0; i < N; i++) {
+		mpz_class a = mx & mask;
+		x[i] = a.get_ui();
+		mx >>= S;
+	}
+}
+
+template<size_t N>
+mpz_class fromArray(const Unit x[N])
+{
+	mpz_class mx = x[N-1];
+	for (size_t i = 1; i < N; i++) {
+		mx <<= S;
+		mx += x[N-1-i];
+	}
+	return mx;
+}
+
+template<size_t N>
+void putArray(const Unit x[N], const char *msg = nullptr)
+{
+	if (msg) printf("%s ", msg);
+	for (size_t i = 0; i < N; i++) {
+		printf("%016lx ", x[N-1-i]);
+	}
+	printf("\n");
+}
+
+namespace mcl { namespace bint {
+// ppLow = Unit(p)
+inline Unit getMontgomeryCoeff(Unit pLow, size_t bitSize = sizeof(Unit) * 8)
+{
+	Unit pp = 0;
+	Unit t = 0;
+	Unit x = 1;
+	for (size_t i = 0; i < bitSize; i++) {
+		if ((t & 1) == 0) {
+			t += pLow;
+			pp += x;
+		}
+		t >>= 1;
+		x <<= 1;
+	}
+	return pp;
+}
+
+} // mcl::bint
+
+namespace gmp {
+
+inline void set(mpz_class& z, uint64_t x)
+{
+//	setArray(&b, z, &x, 1);
+	z = fromArray<1>(&x);
+}
+inline const Unit *getUnit(const mpz_class& x)
+{
+#ifdef MCL_USE_VINT
+	return x.getUnit();
+#else
+	return reinterpret_cast<const Unit*>(x.get_mpz_t()->_mp_d);
+#endif
+}
+inline Unit getUnit(const mpz_class& x, size_t i)
+{
+	return getUnit(x)[i];
+}
+inline size_t getUnitSize(const mpz_class& x)
+{
+#ifdef MCL_USE_VINT
+	return x.getUnitSize();
+#else
+	return std::abs(x.get_mpz_t()->_mp_size);
+#endif
+}
+
+} // mcl::gmp
+} // mcl
+
+
+class Montgomery {
+	Unit v_[N];
+public:
+	mpz_class mp;
+	mpz_class mR; // (1 << (N * 64)) % p
+	mpz_class mR2; // (R * R) % p
+	Unit rp; // rp * p = -1 mod M = 1 << 64
+	const Unit *p;
+	bool isFullBit;
+	Montgomery() {}
+	static Unit getLow(const mpz_class& x)
+	{
+		if (x == 0) return 0;
+		return mcl::gmp::getUnit(x, 0) & mask;
+	}
+	void put() const
+	{
+		std::cout << std::hex;
+		std::cout << "p=0x" << mp << std::endl;
+		std::cout << "R=0x" << mR << std::endl;
+		std::cout << "R2=0x" << mR2 << std::endl;
+		std::cout << "rp=0x" << rp << std::endl;
+	}
+	explicit Montgomery(const mpz_class& _p)
+	{
+		mp = _p;
+		mR = 1;
+		mR = (mR << (S * N)) % mp;
+		mR2 = (mR * mR) % mp;
+		toArray<N>(v_, _p);
+		putArray<N>(v_, "v_");
+		rp = mcl::bint::getMontgomeryCoeff(v_[0], S);
+		printf("rp=%zx\n", rp);
+		p = v_;
+		isFullBit = p[N - 1] >> (S - 1);
+	}
+
+	mpz_class toMont(const mpz_class& x) const
+	{
+		mpz_class y;
+		mul(y, x, mR2);
+		return y;
+	}
+	mpz_class fromMont(const mpz_class& x) const
+	{
+		mpz_class y;
+		mul(y, x, 1);
+		return y;
+	}
+
+	void mul(mpz_class& z, const mpz_class& x, const mpz_class& y) const
+	{
+		mod(z, x * y);
+	}
+	void mod(mpz_class& z, const mpz_class& xy) const
+	{
+		z = xy;
+		for (size_t i = 0; i < N; i++) {
+			Unit q = (getLow(z) * rp) & mask;
+			mpz_class t = q;
+			z += mp * t;
+			z >>= S;
+		}
+		if (z >= mp) {
+			z -= mp;
+		}
+	}
+};
+
+
 void rawAdd(Unit *z, const Unit *x, const Unit *y)
 {
 	Unit c = 0;
@@ -120,27 +273,6 @@ void rawMul(Unit *z, const Unit *x, const Unit *y)
 	}
 }
 
-template<size_t N>
-void toArray(Unit x[N], mpz_class mx)
-{
-	for (size_t i = 0; i < N; i++) {
-		mpz_class a = mx & mask;
-		x[i] = a.get_ui();
-		mx >>= S;
-	}
-}
-
-template<size_t N>
-mpz_class fromArray(const Unit x[N])
-{
-	mpz_class mx = x[N-1];
-	for (size_t i = 1; i < N; i++) {
-		mx <<= S;
-		mx += x[N-1-i];
-	}
-	return mx;
-}
-
 template<class RG>
 mpz_class mpz_rand(RG& rg)
 {
@@ -157,16 +289,6 @@ void init()
 	const char *pStr = "1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab";
 	mp.set_str(pStr, 16);
 	toArray<N>(p, mp);
-}
-
-template<size_t N>
-void putArray(const Unit x[N], const char *msg = nullptr)
-{
-	if (msg) printf("%s ", msg);
-	for (size_t i = 0; i < N; i++) {
-		printf("%016lx ", x[N-1-i]);
-	}
-	printf("\n");
 }
 
 mpz_class madd(const mpz_class& x, const mpz_class& y)
@@ -202,7 +324,7 @@ void test(const mpz_class& mx, const mpz_class& my)
 	add(z, x, y);
 	mw = fromArray<N>(z);
 	if (mz != mw) {
-		printf("err add\n");
+		puts("err add\n");
 		putAll(mx, my, mz, mw);
 	}
 
@@ -210,25 +332,30 @@ void test(const mpz_class& mx, const mpz_class& my)
 	sub(z, x, y);
 	mw = fromArray<N>(z);
 	if (mz != mw) {
-		printf("err sub\n");
+		puts("err sub\n");
 		putAll(mx, my, mz, mw);
 	}
+}
 
-	{
-		Unit xy[N*2];
-		rawMul(xy, x, y);
-		mz = mx * my;
-		mw = fromArray<N*2>(xy);
-		if (mz != mw) {
-			printf("err rawMul\n");
-			putAll(mx, my, mz, mw);
-		}
+void testMont(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
+{
+	mpz_class ax, ay, axy, xy, mxy;
+	ax = mont.toMont(mx);
+	ay = mont.toMont(my);
+	mont.mul(axy, ax, ay);
+	xy = mont.fromMont(axy);
+	mxy = (mx * my) % mp;
+	if (xy != mxy) {
+		puts("err mont");
+		putAll(mx, my, mxy, xy);
 	}
 }
 
 int main()
 {
 	init();
+	Montgomery mont(mp);
+	mont.put();
 
 	const mpz_class tbl[] = {
 		0, 1, 2, mask-1, mask, mask+1, mp-1, mp>>2, 0x12345, mp-0x1111,
@@ -237,6 +364,7 @@ int main()
 	for (const auto& mx : tbl) {
 		for (const auto& my : tbl) {
 			test(mx, my);
+			testMont(mont, mx, my);
 		}
 	}
 
