@@ -141,6 +141,17 @@ mpz_class fromArray(const Unit x[N])
 	return mx;
 }
 
+template<class RG>
+mpz_class mpz_rand(RG& rg)
+{
+	Unit x[N];
+	for (size_t i = 0; i < N; i++) {
+		x[i] = rg.get64();
+	}
+	mpz_class mx = fromArray<N>(x);
+	return mx % mp;
+}
+
 void init()
 {
 	const char *pStr = "1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab";
@@ -202,20 +213,37 @@ void test(const mpz_class& mx, const mpz_class& my)
 		printf("err sub\n");
 		putAll(mx, my, mz, mw);
 	}
+
+	{
+		Unit xy[N*2];
+		rawMul(xy, x, y);
+		mz = mx * my;
+		mw = fromArray<N*2>(xy);
+		if (mz != mw) {
+			printf("err rawMul\n");
+			putAll(mx, my, mz, mw);
+		}
+	}
 }
 
 int main()
 {
-	cybozu::XorShift rg;
 	init();
 
 	const mpz_class tbl[] = {
-		0, 1, 2, mp-1, mp>>2, 0x12345, mp-0x1111,
+		0, 1, 2, mask-1, mask, mask+1, mp-1, mp>>2, 0x12345, mp-0x1111,
 	};
 	std::cout << std::hex;
 	for (const auto& mx : tbl) {
 		for (const auto& my : tbl) {
 			test(mx, my);
 		}
+	}
+
+	cybozu::XorShift rg;
+	for (int i = 0; i < 100; i++) {
+		mpz_class mx = mpz_rand(rg);
+		mpz_class my = mpz_rand(rg);
+		test(mx, my);
 	}
 }
