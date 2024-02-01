@@ -14,6 +14,15 @@ mpz_class mp;
 // split into 52 bits
 Unit p[N];
 
+// out = c ? a : b
+void select(Unit *out, bool c, const Unit *a, const Unit *b)
+{
+	const Unit *o = c ? a : b;
+	for (size_t i = 0; i < N; i++) {
+		out[i] = o[i];
+	}
+}
+
 void add(Unit *z, const Unit *x, const Unit *y)
 {
 	Unit t[N];
@@ -31,10 +40,7 @@ void add(Unit *z, const Unit *x, const Unit *y)
 		c = s[i] >> 63;
 		s[i] &= mask;
 	}
-	const Unit *o = c ? t : s;
-	for (size_t i = 0; i < N; i++) {
-		z[i] = o[i];
-	}
+	select(z, c, t, s);
 }
 
 void sub(Unit *z, const Unit *x, const Unit *y)
@@ -54,10 +60,7 @@ void sub(Unit *z, const Unit *x, const Unit *y)
 		c = s[i] >> S;
 		s[i] &= mask;
 	}
-	const Unit *o = neg ? s : t;
-	for (size_t i = 0; i < N; i++) {
-		z[i] = o[i];
-	}
+	select(z, neg, s, t);
 }
 
 void toArray(Unit x[N], mpz_class mx)
