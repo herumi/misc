@@ -23,18 +23,23 @@ void select(Unit *out, bool c, const Unit *a, const Unit *b)
 	}
 }
 
+void rawAdd(Unit *z, const Unit *x, const Unit *y)
+{
+	Unit c = 0;
+	for (size_t i = 0; i < N; i++) {
+		z[i] = x[i] + y[i] + c;
+		if (i == N-1) break;
+		c = z[i] >> S;
+		z[i] &= mask;
+	}
+}
+
 void add(Unit *z, const Unit *x, const Unit *y)
 {
 	Unit t[N];
-	Unit c = 0;
-	for (size_t i = 0; i < N; i++) {
-		t[i] = x[i] + y[i] + c;
-		if (i == N-1) break;
-		c = t[i] >> S;
-		t[i] &= mask;
-	}
+	rawAdd(t, x, y);
 	Unit s[N];
-	c = 0;
+	Unit c = 0;
 	for (size_t i = 0; i < N; i++) {
 		s[i] = t[i] - p[i] - c;
 		c = s[i] >> 63;
@@ -54,12 +59,8 @@ void sub(Unit *z, const Unit *x, const Unit *y)
 	}
 	bool neg = c != 0;
 	Unit s[N];
-	c = 0;
-	for (size_t i = 0; i < N; i++) {
-		s[i] = t[i] + p[i] + c;
-		c = s[i] >> S;
-		s[i] &= mask;
-	}
+	rawAdd(s, t, p);
+	s[N-1] &= mask;
 	select(z, neg, s, t);
 }
 
