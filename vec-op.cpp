@@ -34,34 +34,32 @@ void rawAdd(Unit *z, const Unit *x, const Unit *y)
 	}
 }
 
-void add(Unit *z, const Unit *x, const Unit *y)
+bool rawSub(Unit *z, const Unit *x, const Unit *y)
 {
-	Unit t[N];
-	rawAdd(t, x, y);
-	Unit s[N];
 	Unit c = 0;
 	for (size_t i = 0; i < N; i++) {
-		s[i] = t[i] - p[i] - c;
-		c = s[i] >> 63;
-		s[i] &= mask;
+		z[i] = x[i] - y[i] - c;
+		c = z[i] >> 63;
+		z[i] &= mask;
 	}
-	select(z, c, t, s);
+	return c != 0;
+}
+
+void add(Unit *z, const Unit *x, const Unit *y)
+{
+	Unit s[N], t[N];
+	rawAdd(s, x, y);
+	bool c = rawSub(t, s, p);
+	select(z, c, s, t);
 }
 
 void sub(Unit *z, const Unit *x, const Unit *y)
 {
-	Unit t[N];
-	Unit c = 0;
-	for (size_t i = 0; i < N; i++) {
-		t[i] = x[i] - y[i] - c;
-		c = t[i] >> 63;
-		t[i] &= mask;
-	}
-	bool neg = c != 0;
-	Unit s[N];
-	rawAdd(s, t, p);
-	s[N-1] &= mask;
-	select(z, neg, s, t);
+	Unit s[N], t[N];
+	bool c = rawSub(s, x, y);
+	rawAdd(t, s, p);
+	t[N-1] &= mask;
+	select(z, c, t, s);
 }
 
 void toArray(Unit x[N], mpz_class mx)
