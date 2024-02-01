@@ -62,6 +62,65 @@ void sub(Unit *z, const Unit *x, const Unit *y)
 	select(z, c, t, s);
 }
 
+uint64_t mulUnit1(uint64_t *pH, uint64_t x, uint64_t y)
+{
+#if !defined(_MSC_VER) || defined(__INTEL_COMPILER) || defined(__clang__)
+	typedef __attribute__((mode(TI))) unsigned int uint128_t;
+	uint128_t t = uint128_t(x) * y;
+	*pH = uint64_t(t >> 64);
+	return uint64_t(t);
+#else
+	return _umul128(x, y, pH);
+#endif
+}
+
+
+// 52bit x 52bit = 104 bit
+Unit mul52bit(Unit *pH, Unit x, Unit y)
+{
+	Unit L, H;
+	L = mulUnit1(&H, x, y);
+	*pH = (H << 12) | (L >> 52);
+	return L & mask;
+}
+
+// z[N+1] = x[N] * y
+void rawMulUnit(Unit *z, const Unit *x, Unit y)
+{
+	Unit L[N], H[N];
+	for (size_t i = 0; i < N; i++) {
+		L[i] = mul52bit(&H[i], x[i], y);
+	}
+	z[0] = L[0];
+	for (size_t i = 1; i < N; i++) {
+		z[i] = L[i] + H[i-1];
+	}
+	z[N] = H[N-1];
+}
+
+// z[N+1] += x[N] * y
+void rawMulUnitAdd(Unit *z, const Unit *x, Unit y)
+{
+	Unit L[N], H[N];
+	for (size_t i = 0; i < N; i++) {
+		L[i] = mul52bit(&H[i], x[i], y);
+	}
+	z[0] += L[0];
+	for (size_t i = 1; i < N; i++) {
+		z[i] += L[i] + H[i-1];
+	}
+	z[N] = H[N-1];
+}
+
+void rawMul(Unit *z, const Unit *x, const Unit *y)
+{
+	rawMulUnit(z, x, y[0]);
+	for (size_t i = 1; i < N; i++) {
+		rawMulUnitAdd(z + i, x, y[i]);
+	}
+}
+
+template<size_t N>
 void toArray(Unit x[N], mpz_class mx)
 {
 	for (size_t i = 0; i < N; i++) {
@@ -71,6 +130,7 @@ void toArray(Unit x[N], mpz_class mx)
 	}
 }
 
+template<size_t N>
 mpz_class fromArray(const Unit x[N])
 {
 	mpz_class mx = x[N-1];
@@ -85,9 +145,10 @@ void init()
 {
 	const char *pStr = "1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab";
 	mp.set_str(pStr, 16);
-	toArray(p, mp);
+	toArray<N>(p, mp);
 }
 
+template<size_t N>
 void putArray(const Unit x[N], const char *msg = nullptr)
 {
 	if (msg) printf("%s ", msg);
@@ -123,12 +184,12 @@ void test(const mpz_class& mx, const mpz_class& my)
 {
 	mpz_class mz, mw;
 	Unit x[N], y[N], z[N];
-	toArray(x, mx);
-	toArray(y, my);
+	toArray<N>(x, mx);
+	toArray<N>(y, my);
 
 	mz = madd(mx, my);
 	add(z, x, y);
-	mw = fromArray(z);
+	mw = fromArray<N>(z);
 	if (mz != mw) {
 		printf("err add\n");
 		putAll(mx, my, mz, mw);
@@ -136,7 +197,7 @@ void test(const mpz_class& mx, const mpz_class& my)
 
 	mz = msub(mx, my);
 	sub(z, x, y);
-	mw = fromArray(z);
+	mw = fromArray<N>(z);
 	if (mz != mw) {
 		printf("err sub\n");
 		putAll(mx, my, mz, mw);
