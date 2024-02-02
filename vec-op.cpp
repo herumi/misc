@@ -175,7 +175,6 @@ public:
 	}
 };
 
-
 void rawAdd(Unit *z, const Unit *x, const Unit *y)
 {
 	Unit c = 0;
@@ -251,8 +250,8 @@ void rawMulUnit(Unit *z, const Unit *x, Unit y)
 	z[N] = H[N-1];
 }
 
-// z[N+1] += x[N] * y
-void rawMulUnitAdd(Unit *z, const Unit *x, Unit y)
+// [return:z[N+1]] += x[N] * y
+Unit rawMulUnitAdd(Unit *z, const Unit *x, Unit y)
 {
 	Unit L[N], H[N];
 	for (size_t i = 0; i < N; i++) {
@@ -262,15 +261,37 @@ void rawMulUnitAdd(Unit *z, const Unit *x, Unit y)
 	for (size_t i = 1; i < N; i++) {
 		z[i] += L[i] + H[i-1];
 	}
-	z[N] = H[N-1];
+	return H[N-1];
 }
 
+// z[2N] = x[N] * y[N]
 void rawMul(Unit *z, const Unit *x, const Unit *y)
 {
 	rawMulUnit(z, x, y[0]);
 	for (size_t i = 1; i < N; i++) {
-		rawMulUnitAdd(z + i, x, y[i]);
+		z[N+i] = rawMulUnitAdd(z + i, x, y[i]);
 	}
+}
+
+// z[N] = mod(xy[2N])
+void mod(Unit *z, const Unit *xy, const Montgomery& mont)
+{
+	Unit t[N*2], q, H;
+	for (size_t i = 0; i < N*2; i++) {
+		t[i] = xy[i];
+	}
+	for (size_t i = 0; i < N; i++) {
+		q = mul52bit(&H, t[i], mont.rp);
+		t[N+i] += rawMulUnitAdd(t + i, mont.p, q);
+		t[i+1] += t[i] >> S;
+		t[i] &= mask;
+	}
+	for (size_t i = N; i < N*2-1; i++) {
+		t[i+1] += t[i] >> S;
+		t[i] &= mask;
+	}
+	bool c = rawSub(z, t + N, mont.p);
+	select(z, c, t + N, z);
 }
 
 template<class RG>
@@ -343,11 +364,23 @@ void testMont(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
 	ax = mont.toMont(mx);
 	ay = mont.toMont(my);
 	mont.mul(axy, ax, ay);
+#if 1
 	xy = mont.fromMont(axy);
 	mxy = (mx * my) % mp;
 	if (xy != mxy) {
 		puts("err mont");
 		putAll(mx, my, mxy, xy);
+	}
+#endif
+	Unit x[N], y[N], t[N*2], z[N];
+	toArray<N>(x, ax);
+	toArray<N>(y, ay);
+	rawMul(t, x, y);
+	mod(z, t, mont);
+	mpz_class w = fromArray<N>(z);
+	if (w != axy) {
+		puts("err mont2");
+		putAll(mx, my, axy, w);
 	}
 }
 
@@ -373,5 +406,7 @@ int main()
 		mpz_class mx = mpz_rand(rg);
 		mpz_class my = mpz_rand(rg);
 		test(mx, my);
+		testMont(mont, mx, my);
 	}
+	puts("ok");
 }
