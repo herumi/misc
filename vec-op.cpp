@@ -273,7 +273,7 @@ void rawMul(Unit *z, const Unit *x, const Unit *y)
 	}
 }
 
-// z[N] = mod(xy[2N])
+// z[N] = Montgomery mod(xy[2N])
 void mod(Unit *z, const Unit *xy, const Montgomery& mont)
 {
 	Unit t[N*2], q, H;
@@ -292,6 +292,14 @@ void mod(Unit *z, const Unit *xy, const Montgomery& mont)
 	}
 	bool c = rawSub(z, t + N, mont.p);
 	select(z, c, t + N, z);
+}
+
+// z[N] = Montgomery mod(xy[2N])
+void mul(Unit *z, const Unit *x, const Unit *y, const Montgomery& mont)
+{
+	Unit xy[N*2];
+	rawMul(xy, x, y);
+	mod(z, xy, mont);
 }
 
 template<class RG>
@@ -364,14 +372,12 @@ void testMont(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
 	ax = mont.toMont(mx);
 	ay = mont.toMont(my);
 	mont.mul(axy, ax, ay);
-#if 1
 	xy = mont.fromMont(axy);
 	mxy = (mx * my) % mp;
 	if (xy != mxy) {
 		puts("err mont");
 		putAll(mx, my, mxy, xy);
 	}
-#endif
 	Unit x[N], y[N], t[N*2], z[N];
 	toArray<N>(x, ax);
 	toArray<N>(y, ay);
@@ -380,6 +386,13 @@ void testMont(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
 	mpz_class w = fromArray<N>(z);
 	if (w != axy) {
 		puts("err mont2");
+		putAll(mx, my, axy, w);
+	}
+	memset(z, 0, sizeof(z));
+	mul(z, x, y, mont);
+	w = fromArray<N>(z);
+	if (w != axy) {
+		puts("err mont3");
 		putAll(mx, my, axy, w);
 	}
 }
