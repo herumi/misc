@@ -297,9 +297,22 @@ void mod(Unit *z, const Unit *xy, const Montgomery& mont)
 // z[N] = Montgomery mod(xy[2N])
 void mul(Unit *z, const Unit *x, const Unit *y, const Montgomery& mont)
 {
-	Unit xy[N*2];
-	rawMul(xy, x, y);
-	mod(z, xy, mont);
+	Unit t[N*2], q, H;
+	rawMulUnit(t, x, y[0]);
+	q = mul52bit(&H, t[0], mont.rp);
+	t[N] += rawMulUnitAdd(t, mont.p, q);
+	for (size_t i = 1; i < N; i++) {
+		t[N+i] = rawMulUnitAdd(t + i, x, y[i]);
+		t[i] += t[i-1] >> S;
+		q = mul52bit(&H, t[i], mont.rp);
+		t[N+i] += rawMulUnitAdd(t + i, mont.p, q);
+	}
+	for (size_t i = N; i < N*2; i++) {
+		t[i] += t[i-1] >> S;
+		t[i-1] &= mask;
+	}
+	bool c = rawSub(z, t + N, mont.p);
+	select(z, c, t + N, z);
 }
 
 template<class RG>
