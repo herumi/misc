@@ -20,47 +20,129 @@ mpz_class mp;
 Unit p[N];
 
 typedef __m512i Vec;
-typedef __mmask8 Mask;
+typedef __mmask8 Vmask;
 
-Vec mulL(const Vec& a, const Vec& b, const Vec& c)
+void vput(const Vec& v, const char *msg = nullptr)
+{
+	if (msg) printf("%s ", msg);
+	const Unit *p = (const Unit*)&v[0];
+	for (size_t i = 0; i < 8; i++) {
+		printf("%014lx ", p[8-1-i]);
+	}
+	printf("\n");
+}
+
+Vec vzero()
+{
+	return _mm512_setzero_epi32();
+}
+
+typedef struct {
+	CYBOZU_ALIGN(64) Vec v[N];
+	void put(const char *msg = nullptr) const
+	{
+		if (msg) printf("%s\n", msg);
+		for (size_t i = 0; i < N; i++) {
+			vput(v[i]);
+		}
+	}
+} UVec;
+
+static const CYBOZU_ALIGN(64) Unit _vmask[] = {
+	mask, mask, mask, mask, mask, mask, mask, mask
+};
+
+static CYBOZU_ALIGN(64) Unit _vp[N][8];
+
+static const Vec& vmask = *(const Vec*)_vmask;
+static const UVec& vp = *(const UVec*)_vp[0];
+
+Vec vmulL(const Vec& a, const Vec& b, const Vec& c)
 {
 	return _mm512_madd52lo_epu64(a, b, c);
 }
 
-Vec mulH(const Vec& a, const Vec& b, const Vec& c)
+Vec vmulH(const Vec& a, const Vec& b, const Vec& c)
 {
 	return _mm512_madd52hi_epu64(a, b, c);
 }
 
-Vec add(const Vec& a, const Vec& b)
+Vec vadd(const Vec& a, const Vec& b)
 {
 	return _mm512_add_epi64(a, b);
 }
 
-Vec sub(const Vec& a, const Vec& b)
+Vec vsub(const Vec& a, const Vec& b)
 {
 	return _mm512_sub_epi64(a, b);
 }
 
-Vec shl(const Vec& a, int b)
+Vec vshl(const Vec& a, int b)
 {
 	return _mm512_srli_epi64(a, b);
 }
 
-Vec and_(const Vec& a, const Vec& b)
+Vec vand(const Vec& a, const Vec& b)
 {
 	return _mm512_and_epi64(a, b);
 }
 
-Mask cmp(const Vec& a, const Vec& b)
+Vmask vcmp(const Vec& a, const Vec& b)
 {
 	return _mm512_cmpeq_epi64_mask(a, b);
 }
 
 // return c ? a&b : d;
-Vec and_(const Mask& c, const Vec& a, const Vec& b, const Vec& d)
+Vec vand(const Vmask& c, const Vec& a, const Vec& b, const Vec& d)
 {
 	return _mm512_mask_and_epi64(d, c, a, b);
+}
+
+Vec vselect(const Vmask& c, const Vec& a, const Vec& b)
+{
+	return vand(c, a, a, b);
+}
+
+void vrawAdd(UVec& z, const UVec& x, const UVec& y)
+{
+	Vec t = vadd(x.v[0], y.v[0]);
+	Vec c = vshl(t, S);
+	z.v[0] = vand(t, vmask);
+
+	for (size_t i = 1; i < N; i++) {
+		t = vadd(x.v[i], y.v[i]);
+		t = vadd(t, c);
+		if (i == N-1) {
+			z.v[i] = t;
+			return;
+		}
+		c = vshl(t, S);
+		z.v[i] = vand(t, vmask);
+	}
+}
+
+Vmask vrawSub(UVec& z, const UVec& x, const UVec& y)
+{
+	Vec t = vsub(x.v[0], y.v[0]);
+	Vec c = vshl(t, 63);
+	z.v[0] = vand(t, vmask);
+	for (size_t i = 1; i < N; i++) {
+		t = vsub(x.v[i], y.v[i]);
+		t = vsub(t, c);
+		c = vshl(t, 63);
+		z.v[i] = vand(t, vmask);
+	}
+	return vcmp(c, vzero());
+}
+
+void vadd(UVec& z, const UVec& x, const UVec& y)
+{
+	UVec s, t;
+	vrawAdd(s, x, y);
+	Vmask c = vrawSub(t, s, vp);
+	for (size_t i = 0; i < N; i++) {
+		z.v[i] = vselect(c, t.v[i], s.v[i]);
+	}
 }
 
 // out = c ? a : b
@@ -380,6 +462,11 @@ void init()
 	const char *pStr = "1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab";
 	mp.set_str(pStr, 16);
 	toArray<N>(p, mp);
+	for (size_t i = 0; i < N; i++) {
+		for (size_t j = 0; j < 8; j++) {
+			_vp[i][j] = p[i];
+		}
+	}
 }
 
 mpz_class madd(const mpz_class& x, const mpz_class& y)
@@ -428,6 +515,26 @@ void test(const mpz_class& mx, const mpz_class& my)
 	}
 }
 
+#if 0
+void vtest(const mpz_class& mx, const mpz_class& my)
+{
+	mpz_class mz, mw;
+	CYBOZU_ALIGN(64) Unit x[N][8], y[N][8], z[N][8];
+	for (size_t i = 0; i < 8; i++) {
+		toArray<N>(&x[i][0], (mx + i * 123) % mp);
+		toArray<N>(&y[i][0], (my + i * 245) % mp);
+	}
+
+	mz = madd(mx, my);
+	add(z, x, y);
+	mw = fromArray<N>(z);
+	if (mz != mw) {
+		puts("err add\n");
+		putAll(mx, my, mz, mw);
+	}
+}
+#endif
+
 void testMont(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
 {
 	mpz_class ax, ay, axy, xy, mxy;
@@ -473,6 +580,7 @@ int main()
 		for (const auto& my : tbl) {
 			test(mx, my);
 			testMont(mont, mx, my);
+//			vtest(mx, my);
 		}
 	}
 
