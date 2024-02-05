@@ -294,7 +294,7 @@ void mod(Unit *z, const Unit *xy, const Montgomery& mont)
 	select(z, c, t + N, z);
 }
 
-// z[N] = Montgomery mod(xy[2N])
+// z[N] = Montgomery mul(x[N], y[2N])
 void mul(Unit *z, const Unit *x, const Unit *y, const Montgomery& mont)
 {
 	Unit t[N*2], q, H;
