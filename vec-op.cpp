@@ -3,6 +3,11 @@
 #include <gmpxx.h>
 #include <iostream>
 #include <cybozu/xorshift.hpp>
+#ifdef _WIN32
+#include <intrin.h>
+#else
+#include <x86intrin.h>
+#endif
 
 typedef uint64_t Unit;
 const size_t S = 52;
@@ -13,6 +18,50 @@ mpz_class mp;
 
 // split into 52 bits
 Unit p[N];
+
+typedef __m512i Vec;
+typedef __mmask8 Mask;
+
+Vec mulL(const Vec& a, const Vec& b, const Vec& c)
+{
+	return _mm512_madd52lo_epu64(a, b, c);
+}
+
+Vec mulH(const Vec& a, const Vec& b, const Vec& c)
+{
+	return _mm512_madd52hi_epu64(a, b, c);
+}
+
+Vec add(const Vec& a, const Vec& b)
+{
+	return _mm512_add_epi64(a, b);
+}
+
+Vec sub(const Vec& a, const Vec& b)
+{
+	return _mm512_sub_epi64(a, b);
+}
+
+Vec shl(const Vec& a, int b)
+{
+	return _mm512_srli_epi64(a, b);
+}
+
+Vec and_(const Vec& a, const Vec& b)
+{
+	return _mm512_and_epi64(a, b);
+}
+
+Mask cmp(const Vec& a, const Vec& b)
+{
+	return _mm512_cmpeq_epi64_mask(a, b);
+}
+
+// return c ? a&b : d;
+Vec and_(const Mask& c, const Vec& a, const Vec& b, const Vec& d)
+{
+	return _mm512_mask_and_epi64(d, c, a, b);
+}
 
 // out = c ? a : b
 void select(Unit *out, bool c, const Unit *a, const Unit *b)
