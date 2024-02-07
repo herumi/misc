@@ -15,10 +15,10 @@ const size_t W = 52;
 const size_t N = 8; // = ceil(384/52)
 const uint64_t mask = (Unit(1)<<W) - 1;
 
-mpz_class mp;
+static mpz_class mp;
 
 // split into 52 bits
-Unit p[N];
+static Unit p[N];
 
 typedef __m512i Vec;
 typedef __mmask8 Vmask;
@@ -27,7 +27,7 @@ const size_t M = sizeof(Vec) / sizeof(Unit);
 void vput(const Vec& v, const char *msg = nullptr)
 {
 	if (msg) printf("%s ", msg);
-	const Unit *p = (const Unit*)&v[0];
+	const Unit *p = (const Unit*)&v;
 	for (size_t i = 0; i < M; i++) {
 		printf("%014lx ", p[M-1-i]);
 	}
