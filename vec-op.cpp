@@ -179,7 +179,7 @@ Vmask vrawSub(UVec& z, const UVec& x, const UVec& y)
 		c = vshl(t, S);
 		z.v[i] = vand(t, vmask);
 	}
-	return vcmpeq(c, vzero());
+	return vcmpneq(c, vzero());
 }
 
 void uvselect(UVec& z, const Vmask& c, const UVec& a, const UVec& b)
@@ -189,19 +189,12 @@ void uvselect(UVec& z, const Vmask& c, const UVec& a, const UVec& b)
 	}
 }
 
-void uvandSel(UVec& z, const Vmask& c, const UVec& a, const UVec& b)
-{
-	for (size_t i = 0; i < N; i++) {
-		z.v[i] = vand(c, a.v[i], vmask, b.v[i]);
-	}
-}
-
 void uvadd(UVec& z, const UVec& x, const UVec& y)
 {
 	UVec s, t;
 	vrawAdd(s, x, y);
 	Vmask c = vrawSub(t, s, vp);
-	uvselect(z, c, t, s);
+	uvselect(z, c, s, t);
 }
 
 void uvsub(UVec& z, const UVec& x, const UVec& y)
@@ -210,7 +203,7 @@ void uvsub(UVec& z, const UVec& x, const UVec& y)
 	Vmask c = vrawSub(s, x, y);
 	vrawAdd(t, s, vp);
 	t.v[N-1] = vand(t.v[N-1], vmask);
-	uvselect(z, c, s, t);
+	uvselect(z, c, t, s);
 }
 
 // out = c ? a : b
