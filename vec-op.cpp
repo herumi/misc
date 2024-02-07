@@ -10,9 +10,10 @@
 #endif
 
 typedef uint64_t Unit;
-const size_t S = 52;
-const size_t N = 8;
-const uint64_t mask = (Unit(1) << S) - 1;
+const size_t S = sizeof(Unit)*8-1; // 63
+const size_t W = 52;
+const size_t N = 8; // = ceil(384/52)
+const uint64_t mask = (Unit(1)<<W) - 1;
 
 mpz_class mp;
 
@@ -21,13 +22,14 @@ Unit p[N];
 
 typedef __m512i Vec;
 typedef __mmask8 Vmask;
+const size_t M = sizeof(Vec) / sizeof(Unit);
 
 void vput(const Vec& v, const char *msg = nullptr)
 {
 	if (msg) printf("%s ", msg);
 	const Unit *p = (const Unit*)&v[0];
-	for (size_t i = 0; i < 8; i++) {
-		printf("%014lx ", p[8-1-i]);
+	for (size_t i = 0; i < M; i++) {
+		printf("%014lx ", p[M-1-i]);
 	}
 	printf("\n");
 }
@@ -37,7 +39,7 @@ Vec vzero()
 	return _mm512_setzero_epi32();
 }
 
-typedef struct {
+struct UVec {
 	CYBOZU_ALIGN(64) Vec v[N];
 	void put(const char *msg = nullptr) const
 	{
@@ -46,16 +48,36 @@ typedef struct {
 			vput(v[i]);
 		}
 	}
-} UVec;
+};
 
-static const CYBOZU_ALIGN(64) Unit _vmask[] = {
+static const CYBOZU_ALIGN(64) Unit _vmask[M] = {
 	mask, mask, mask, mask, mask, mask, mask, mask
 };
 
-static CYBOZU_ALIGN(64) Unit _vp[N][8];
+static CYBOZU_ALIGN(64) Unit _vp[N*M];
 
 static const Vec& vmask = *(const Vec*)_vmask;
-static const UVec& vp = *(const UVec*)_vp[0];
+static const UVec& vp = *(const UVec*)_vp;
+
+void cvt(UVec& _y, const Unit *x)
+{
+	Unit *y = (Unit *)&_y;
+	for (size_t i = 0; i < M; i++) {
+		for (size_t j = 0; j < N; j++) {
+			y[j*M+i] = x[i*N+j];
+		}
+	}
+}
+
+void cvt(Unit *y, const UVec& _x)
+{
+	const Unit *x = (const Unit *)&_x;
+	for (size_t j = 0; j < N; j++) {
+		for (size_t i = 0; i < M; i++) {
+			y[i*N+j] = x[j*M+i];
+		}
+	}
+}
 
 Vec vmulL(const Vec& a, const Vec& b, const Vec& c)
 {
@@ -106,7 +128,7 @@ Vec vselect(const Vmask& c, const Vec& a, const Vec& b)
 void vrawAdd(UVec& z, const UVec& x, const UVec& y)
 {
 	Vec t = vadd(x.v[0], y.v[0]);
-	Vec c = vshl(t, S);
+	Vec c = vshl(t, W);
 	z.v[0] = vand(t, vmask);
 
 	for (size_t i = 1; i < N; i++) {
@@ -116,7 +138,7 @@ void vrawAdd(UVec& z, const UVec& x, const UVec& y)
 			z.v[i] = t;
 			return;
 		}
-		c = vshl(t, S);
+		c = vshl(t, W);
 		z.v[i] = vand(t, vmask);
 	}
 }
@@ -124,18 +146,18 @@ void vrawAdd(UVec& z, const UVec& x, const UVec& y)
 Vmask vrawSub(UVec& z, const UVec& x, const UVec& y)
 {
 	Vec t = vsub(x.v[0], y.v[0]);
-	Vec c = vshl(t, 63);
+	Vec c = vshl(t, S);
 	z.v[0] = vand(t, vmask);
 	for (size_t i = 1; i < N; i++) {
 		t = vsub(x.v[i], y.v[i]);
 		t = vsub(t, c);
-		c = vshl(t, 63);
+		c = vshl(t, S);
 		z.v[i] = vand(t, vmask);
 	}
 	return vcmp(c, vzero());
 }
 
-void vadd(UVec& z, const UVec& x, const UVec& y)
+void uvadd(UVec& z, const UVec& x, const UVec& y)
 {
 	UVec s, t;
 	vrawAdd(s, x, y);
@@ -160,7 +182,7 @@ void toArray(Unit x[N], mpz_class mx)
 	for (size_t i = 0; i < N; i++) {
 		mpz_class a = mx & mask;
 		x[i] = a.get_ui();
-		mx >>= S;
+		mx >>= W;
 	}
 }
 
@@ -169,7 +191,7 @@ mpz_class fromArray(const Unit x[N])
 {
 	mpz_class mx = x[N-1];
 	for (size_t i = 1; i < N; i++) {
-		mx <<= S;
+		mx <<= W;
 		mx += x[N-1-i];
 	}
 	return mx;
@@ -264,14 +286,14 @@ public:
 	{
 		mp = _p;
 		mR = 1;
-		mR = (mR << (S * N)) % mp;
+		mR = (mR << (W * N)) % mp;
 		mR2 = (mR * mR) % mp;
 		toArray<N>(v_, _p);
 		putArray<N>(v_, "v_");
-		rp = mcl::bint::getMontgomeryCoeff(v_[0], S);
+		rp = mcl::bint::getMontgomeryCoeff(v_[0], W);
 		printf("rp=%zx\n", rp);
 		p = v_;
-		isFullBit = p[N - 1] >> (S - 1);
+		isFullBit = p[N-1] >> (W-1);
 	}
 
 	mpz_class toMont(const mpz_class& x) const
@@ -298,7 +320,7 @@ public:
 			Unit q = (getLow(z) * rp) & mask;
 			mpz_class t = q;
 			z += mp * t;
-			z >>= S;
+			z >>= W;
 		}
 		if (z >= mp) {
 			z -= mp;
@@ -312,7 +334,7 @@ void rawAdd(Unit *z, const Unit *x, const Unit *y)
 	for (size_t i = 0; i < N; i++) {
 		z[i] = x[i] + y[i] + c;
 		if (i == N-1) break;
-		c = z[i] >> S;
+		c = z[i] >> W;
 		z[i] &= mask;
 	}
 }
@@ -322,7 +344,7 @@ bool rawSub(Unit *z, const Unit *x, const Unit *y)
 	Unit c = 0;
 	for (size_t i = 0; i < N; i++) {
 		z[i] = x[i] - y[i] - c;
-		c = z[i] >> 63;
+		c = z[i] >> S;
 		z[i] &= mask;
 	}
 	return c != 0;
@@ -414,11 +436,11 @@ void mod(Unit *z, const Unit *xy, const Montgomery& mont)
 	for (size_t i = 0; i < N; i++) {
 		q = mul52bit(&H, t[i], mont.rp);
 		t[N+i] += rawMulUnitAdd(t + i, mont.p, q);
-		t[i+1] += t[i] >> S;
+		t[i+1] += t[i] >> W;
 		t[i] &= mask;
 	}
 	for (size_t i = N; i < N*2-1; i++) {
-		t[i+1] += t[i] >> S;
+		t[i+1] += t[i] >> W;
 		t[i] &= mask;
 	}
 	bool c = rawSub(z, t + N, mont.p);
@@ -433,17 +455,17 @@ void mul(Unit *z, const Unit *x, const Unit *y, const Montgomery& mont)
 	q = mul52bit(&H, t[0], mont.rp);
 	t[N] += rawMulUnitAdd(t, mont.p, q);
 	for (size_t i = 1; i < N; i++) {
-		t[N+i] = rawMulUnitAdd(t + i, x, y[i]);
-		t[i] += t[i-1] >> S;
+		t[N+i] = rawMulUnitAdd(t+i, x, y[i]);
+		t[i] += t[i-1] >> W;
 		q = mul52bit(&H, t[i], mont.rp);
-		t[N+i] += rawMulUnitAdd(t + i, mont.p, q);
+		t[N+i] += rawMulUnitAdd(t+i, mont.p, q);
 	}
 	for (size_t i = N; i < N*2; i++) {
-		t[i] += t[i-1] >> S;
+		t[i] += t[i-1] >> W;
 		t[i-1] &= mask;
 	}
-	bool c = rawSub(z, t + N, mont.p);
-	select(z, c, t + N, z);
+	bool c = rawSub(z, t+N, mont.p);
+	select(z, c, t+N, z);
 }
 
 template<class RG>
@@ -462,9 +484,9 @@ void init()
 	const char *pStr = "1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab";
 	mp.set_str(pStr, 16);
 	toArray<N>(p, mp);
-	for (size_t i = 0; i < N; i++) {
-		for (size_t j = 0; j < 8; j++) {
-			_vp[i][j] = p[i];
+	for (size_t i = 0; i < M; i++) {
+		for (size_t j = 0; j < N; j++) {
+			_vp[i*N+j] = p[i];
 		}
 	}
 }
@@ -515,25 +537,33 @@ void test(const mpz_class& mx, const mpz_class& my)
 	}
 }
 
-#if 0
-void vtest(const mpz_class& mx, const mpz_class& my)
+void vtest(const mpz_class& _mx, const mpz_class& _my)
 {
-	mpz_class mz, mw;
-	CYBOZU_ALIGN(64) Unit x[N][8], y[N][8], z[N][8];
-	for (size_t i = 0; i < 8; i++) {
-		toArray<N>(&x[i][0], (mx + i * 123) % mp);
-		toArray<N>(&y[i][0], (my + i * 245) % mp);
+	mpz_class mx[M], my[M];
+	CYBOZU_ALIGN(64) Unit _x[N*M], _y[N*M], _z[N*M];
+	UVec x, y, z;
+	for (size_t i = 0; i < M; i++) {
+		mx[i] = (_mx + i * 123) % mp;
+		my[i] = (_my + i * 245) % mp;
+		toArray<N>(_x + i*N, mx[i]);
+		toArray<N>(_y + i*N, my[i]);
 	}
+	cvt(x, _x);
+	cvt(y, _y);
+	uvadd(z, x, y);
+	cvt(_z, z);
 
-	mz = madd(mx, my);
-	add(z, x, y);
-	mw = fromArray<N>(z);
-	if (mz != mw) {
-		puts("err add\n");
-		putAll(mx, my, mz, mw);
+	mpz_class mz, mw;
+	for (size_t i = 0; i < M; i++) {
+		mz = madd(mx[i], my[i]);
+		mw = fromArray<N>(_z + i*N);
+		if (mz != mw) {
+			printf("uvadd err %zd\n", i);
+			putAll(mx[i], my[i], mz, mw);
+			exit(1);
+		}
 	}
 }
-#endif
 
 void testMont(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
 {
@@ -580,7 +610,7 @@ int main()
 		for (const auto& my : tbl) {
 			test(mx, my);
 			testMont(mont, mx, my);
-//			vtest(mx, my);
+			vtest(mx, my);
 		}
 	}
 
