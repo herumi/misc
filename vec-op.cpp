@@ -68,16 +68,13 @@ static const CYBOZU_ALIGN(64) Unit _vmask[M] = {
 	mask, mask, mask, mask, mask, mask, mask, mask
 };
 
-//static const CYBOZU_ALIGN(64) Unit _vone[M] = {
-//	1, 1, 1, 1, 1, 1, 1, 1
-//};
-
-
+static CYBOZU_ALIGN(64) Unit _vrp[N];
 static CYBOZU_ALIGN(64) Unit _vp[N*M];
 
 static const Vec& vmask = *(const Vec*)_vmask;
 //static const Vec& vone = *(const Vec*)_vone;
 static const UVec& vp = *(const UVec*)_vp;
+static const UVec& vrp = *(const UVec*)_vrp;
 
 void cvt(UVec *_y, const Unit *x)
 {
@@ -518,7 +515,7 @@ mpz_class mpz_rand(RG& rg)
 	return mx % mp;
 }
 
-void init()
+void init(const Montgomery& mont)
 {
 	const char *pStr = "1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab";
 	mp.set_str(pStr, 16);
@@ -527,6 +524,7 @@ void init()
 		for (size_t j = 0; j < N; j++) {
 			_vp[i*N+j] = p[i];
 		}
+		_vrp[i] = mont.rp;
 	}
 }
 
@@ -656,8 +654,8 @@ void testMont(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
 
 int main()
 {
-	init();
 	Montgomery mont(mp);
+	init(mont);
 	mont.put();
 
 	const mpz_class tbl[] = {
