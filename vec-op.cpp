@@ -68,15 +68,15 @@ static const CYBOZU_ALIGN(64) Unit _vmask[M] = {
 	mask, mask, mask, mask, mask, mask, mask, mask
 };
 
-static const CYBOZU_ALIGN(64) Unit _vone[M] = {
-	1, 1, 1, 1, 1, 1, 1, 1
-};
+//static const CYBOZU_ALIGN(64) Unit _vone[M] = {
+//	1, 1, 1, 1, 1, 1, 1, 1
+//};
 
 
 static CYBOZU_ALIGN(64) Unit _vp[N*M];
 
 static const Vec& vmask = *(const Vec*)_vmask;
-static const Vec& vone = *(const Vec*)_vone;
+//static const Vec& vone = *(const Vec*)_vone;
 static const UVec& vp = *(const UVec*)_vp;
 
 void cvt(UVec *_y, const Unit *x)
