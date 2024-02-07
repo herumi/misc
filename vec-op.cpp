@@ -1,3 +1,6 @@
+/*
+clang++-15 -Ofast vec-op.cpp -lgmp -lgmpxx -I ../cybozulib/include/ -mavx512f -mavx512ifma -Wall -Wextra && ./a.out
+*/
 #include <stdint.h>
 #include <stdio.h>
 #include <gmpxx.h>
@@ -24,12 +27,23 @@ typedef __m512i Vec;
 typedef __mmask8 Vmask;
 const size_t M = sizeof(Vec) / sizeof(Unit);
 
-void vput(const Vec& v, const char *msg = nullptr)
+void put(const Vec& v, const char *msg = nullptr)
 {
 	if (msg) printf("%s ", msg);
 	const Unit *p = (const Unit*)&v;
 	for (size_t i = 0; i < M; i++) {
 		printf("%014lx ", p[M-1-i]);
+	}
+	printf("\n");
+}
+
+void put(const Vmask& c, const char *msg = nullptr)
+{
+	if (msg) printf("%s ", msg);
+	size_t n = sizeof(Vmask);
+	const uint8_t *p = (const uint8_t*)&c;
+	for (size_t i = 0; i < n; i++) {
+		printf("%02x(%02x) ", p[n-1-i], uint8_t(~p[n-1-i]));
 	}
 	printf("\n");
 }
@@ -45,7 +59,7 @@ struct UVec {
 	{
 		if (msg) printf("%s\n", msg);
 		for (size_t i = 0; i < N; i++) {
-			vput(v[i]);
+			::put(v[i]);
 		}
 	}
 };
@@ -54,14 +68,20 @@ static const CYBOZU_ALIGN(64) Unit _vmask[M] = {
 	mask, mask, mask, mask, mask, mask, mask, mask
 };
 
+static const CYBOZU_ALIGN(64) Unit _vone[M] = {
+	1, 1, 1, 1, 1, 1, 1, 1
+};
+
+
 static CYBOZU_ALIGN(64) Unit _vp[N*M];
 
 static const Vec& vmask = *(const Vec*)_vmask;
+static const Vec& vone = *(const Vec*)_vone;
 static const UVec& vp = *(const UVec*)_vp;
 
-void cvt(UVec& _y, const Unit *x)
+void cvt(UVec *_y, const Unit *x)
 {
-	Unit *y = (Unit *)&_y;
+	Unit *y = (Unit *)_y;
 	for (size_t i = 0; i < M; i++) {
 		for (size_t j = 0; j < N; j++) {
 			y[j*M+i] = x[i*N+j];
@@ -69,9 +89,9 @@ void cvt(UVec& _y, const Unit *x)
 	}
 }
 
-void cvt(Unit *y, const UVec& _x)
+void cvt(Unit *y, const UVec *_x)
 {
-	const Unit *x = (const Unit *)&_x;
+	const Unit *x = (const Unit *)_x;
 	for (size_t j = 0; j < N; j++) {
 		for (size_t i = 0; i < M; i++) {
 			y[i*N+j] = x[j*M+i];
@@ -109,9 +129,14 @@ Vec vand(const Vec& a, const Vec& b)
 	return _mm512_and_epi64(a, b);
 }
 
-Vmask vcmp(const Vec& a, const Vec& b)
+Vmask vcmpeq(const Vec& a, const Vec& b)
 {
 	return _mm512_cmpeq_epi64_mask(a, b);
+}
+
+Vmask vcmpneq(const Vec& a, const Vec& b)
+{
+	return _mm512_cmpneq_epi64_mask(a, b);
 }
 
 // return c ? a&b : d;
@@ -154,7 +179,21 @@ Vmask vrawSub(UVec& z, const UVec& x, const UVec& y)
 		c = vshl(t, S);
 		z.v[i] = vand(t, vmask);
 	}
-	return vcmp(c, vzero());
+	return vcmpeq(c, vzero());
+}
+
+void uvselect(UVec& z, const Vmask& c, const UVec& a, const UVec& b)
+{
+	for (size_t i = 0; i < N; i++) {
+		z.v[i] = vselect(c, a.v[i], b.v[i]);
+	}
+}
+
+void uvandSel(UVec& z, const Vmask& c, const UVec& a, const UVec& b)
+{
+	for (size_t i = 0; i < N; i++) {
+		z.v[i] = vand(c, a.v[i], vmask, b.v[i]);
+	}
 }
 
 void uvadd(UVec& z, const UVec& x, const UVec& y)
@@ -162,9 +201,16 @@ void uvadd(UVec& z, const UVec& x, const UVec& y)
 	UVec s, t;
 	vrawAdd(s, x, y);
 	Vmask c = vrawSub(t, s, vp);
-	for (size_t i = 0; i < N; i++) {
-		z.v[i] = vselect(c, t.v[i], s.v[i]);
-	}
+	uvselect(z, c, t, s);
+}
+
+void uvsub(UVec& z, const UVec& x, const UVec& y)
+{
+	UVec s, t;
+	Vmask c = vrawSub(s, x, y);
+	vrawAdd(t, s, vp);
+	t.v[N-1] = vand(t.v[N-1], vmask);
+	uvselect(z, c, s, t);
 }
 
 // out = c ? a : b
@@ -539,28 +585,47 @@ void test(const mpz_class& mx, const mpz_class& my)
 
 void vtest(const mpz_class& _mx, const mpz_class& _my)
 {
+	mpz_class mz, mw;
 	mpz_class mx[M], my[M];
 	CYBOZU_ALIGN(64) Unit _x[N*M], _y[N*M], _z[N*M];
-	UVec x, y, z;
+	UVec x[M], y[M], z[M];
 	for (size_t i = 0; i < M; i++) {
 		mx[i] = (_mx + i * 123) % mp;
 		my[i] = (_my + i * 245) % mp;
 		toArray<N>(_x + i*N, mx[i]);
 		toArray<N>(_y + i*N, my[i]);
 	}
+
 	cvt(x, _x);
 	cvt(y, _y);
-	uvadd(z, x, y);
+
+	// add
+	for (size_t i = 0; i < M; i++) {
+		uvadd(z[i], x[i], y[i]);
+	}
 	cvt(_z, z);
 
-	mpz_class mz, mw;
 	for (size_t i = 0; i < M; i++) {
 		mz = madd(mx[i], my[i]);
 		mw = fromArray<N>(_z + i*N);
 		if (mz != mw) {
 			printf("uvadd err %zd\n", i);
 			putAll(mx[i], my[i], mz, mw);
-			exit(1);
+		}
+	}
+
+	// sub
+	for (size_t i = 0; i < M; i++) {
+		uvsub(z[i], x[i], y[i]);
+	}
+	cvt(_z, z);
+
+	for (size_t i = 0; i < M; i++) {
+		mz = msub(mx[i], my[i]);
+		mw = fromArray<N>(_z + i*N);
+		if (mz != mw) {
+			printf("uvsub err %zd\n", i);
+			putAll(mx[i], my[i], mz, mw);
 		}
 	}
 }
@@ -620,6 +685,7 @@ int main()
 		mpz_class my = mpz_rand(rg);
 		test(mx, my);
 		testMont(mont, mx, my);
+		vtest(mx, my);
 	}
 	puts("ok");
 }
