@@ -99,11 +99,13 @@ void cvt(Unit *y, const UVec *_x)
 	}
 }
 
+// low(c+a*b)
 Vec vmulL(const Vec& a, const Vec& b, const Vec& c = vzero())
 {
 	return _mm512_madd52lo_epu64(c, a, b);
 }
 
+// high(c+a*b)
 Vec vmulH(const Vec& a, const Vec& b, const Vec& c = vzero())
 {
 	return _mm512_madd52hi_epu64(c, a, b);
