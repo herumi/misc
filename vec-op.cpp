@@ -27,14 +27,18 @@ typedef __m512i Vec;
 typedef __mmask8 Vmask;
 const size_t M = sizeof(Vec) / sizeof(Unit);
 
-void put(const Vec& v, const char *msg = nullptr)
+void put(const Unit *v, const char *msg = nullptr)
 {
 	if (msg) printf("%s ", msg);
-	const Unit *p = (const Unit*)&v;
 	for (size_t i = 0; i < M; i++) {
-		printf("%014lx ", p[M-1-i]);
+		printf("%014lx ", v[M-1-i]);
 	}
 	printf("\n");
+}
+
+void put(const Vec& v, const char *msg = nullptr)
+{
+	put((const Unit*)&v, msg);
 }
 
 void put(const Vmask& c, const char *msg = nullptr)
@@ -72,9 +76,8 @@ static CYBOZU_ALIGN(64) Unit _vrp[N];
 static CYBOZU_ALIGN(64) Unit _vp[N*M];
 
 static const Vec& vmask = *(const Vec*)_vmask;
-//static const Vec& vone = *(const Vec*)_vone;
+static const Vec& vrp = *(const Vec*)_vrp;
 static const UVec& vp = *(const UVec*)_vp;
-static const UVec& vrp = *(const UVec*)_vrp;
 
 void cvt(UVec *_y, const Unit *x)
 {
@@ -96,14 +99,14 @@ void cvt(Unit *y, const UVec *_x)
 	}
 }
 
-Vec vmulL(const Vec& a, const Vec& b, const Vec& c)
+Vec vmulL(const Vec& a, const Vec& b, const Vec& c = vzero())
 {
-	return _mm512_madd52lo_epu64(a, b, c);
+	return _mm512_madd52lo_epu64(c, a, b);
 }
 
-Vec vmulH(const Vec& a, const Vec& b, const Vec& c)
+Vec vmulH(const Vec& a, const Vec& b, const Vec& c = vzero())
 {
-	return _mm512_madd52hi_epu64(a, b, c);
+	return _mm512_madd52hi_epu64(c, a, b);
 }
 
 Vec vadd(const Vec& a, const Vec& b)
@@ -165,13 +168,13 @@ void vrawAdd(UVec& z, const UVec& x, const UVec& y)
 	}
 }
 
-Vmask vrawSub(UVec& z, const UVec& x, const UVec& y)
+Vmask vrawSub(UVec& z, const Vec *x, const Vec *y)
 {
-	Vec t = vsub(x.v[0], y.v[0]);
+	Vec t = vsub(x[0], y[0]);
 	Vec c = vshl(t, S);
 	z.v[0] = vand(t, vmask);
 	for (size_t i = 1; i < N; i++) {
-		t = vsub(x.v[i], y.v[i]);
+		t = vsub(x[i], y[i]);
 		t = vsub(t, c);
 		c = vshl(t, S);
 		z.v[i] = vand(t, vmask);
@@ -179,11 +182,21 @@ Vmask vrawSub(UVec& z, const UVec& x, const UVec& y)
 	return vcmpneq(c, vzero());
 }
 
-void uvselect(UVec& z, const Vmask& c, const UVec& a, const UVec& b)
+Vmask vrawSub(UVec& z, const UVec& x, const UVec& y)
+{
+	return vrawSub(z, x.v, y.v);
+}
+
+void uvselect(UVec& z, const Vmask& c, const Vec *a, const Vec *b)
 {
 	for (size_t i = 0; i < N; i++) {
-		z.v[i] = vselect(c, a.v[i], b.v[i]);
+		z.v[i] = vselect(c, a[i], b[i]);
 	}
+}
+
+void uvselect(UVec& z, const Vmask& c, const UVec& a, const UVec& b)
+{
+	uvselect(z, c, a.v, b.v);
 }
 
 void uvadd(UVec& z, const UVec& x, const UVec& y)
@@ -201,6 +214,61 @@ void uvsub(UVec& z, const UVec& x, const UVec& y)
 	vrawAdd(t, s, vp);
 	t.v[N-1] = vand(t.v[N-1], vmask);
 	uvselect(z, c, t, s);
+}
+
+void vrawMulUnit(Vec *z, const Vec *x, const Vec& y)
+{
+	Vec L[N], H[N];
+	for (size_t i = 0; i < N; i++) {
+		L[i] = vmulL(x[i], y);
+		H[i] = vmulH(x[i], y);
+	}
+	z[0] = L[0];
+	for (size_t i = 1; i < N; i++) {
+		z[i] = vadd(L[i], H[i-1]);
+	}
+	z[N] = H[N-1];
+}
+
+Vec vrawMulUnitAdd(Vec *z, const Vec *x, const Vec& y)
+{
+	Vec L[N], H[N];
+	for (size_t i = 0; i < N; i++) {
+		L[i] = vmulL(x[i], y);
+		H[i] = vmulH(x[i], y);
+	}
+	z[0] = vadd(z[0], L[0]);
+	for (size_t i = 1; i < N; i++) {
+		z[i] = vadd(z[i], vadd(L[i], H[i-1]));
+	}
+	return H[N-1];
+}
+
+void copy(UVec& y, const Vec *x)
+{
+	for (size_t i = 0; i < N; i++) {
+		y.v[i] = x[i];
+	}
+}
+
+void uvmul(UVec& z, const UVec& x, const UVec& y)
+{
+	Vec t[N*2], q;
+	vrawMulUnit(t, x.v, y.v[0]);
+	q = vmulL(t[0], vrp);
+	t[N] = vadd(t[N], vrawMulUnitAdd(t, vp.v, q));
+	for (size_t i = 1; i < N; i++) {
+		t[N+i] = vrawMulUnitAdd(t+i, x.v, y.v[i]);
+		t[i] = vadd(t[i], vshl(t[i-1], W));
+		q = vmulL(t[i], vrp);
+		t[N+i] = vadd(t[N+i], vrawMulUnitAdd(t+i, vp.v, q));
+	}
+	for (size_t i = N; i < N*2; i++) {
+		t[i] = vadd(t[i], vshl(t[i-1], W));
+		t[i-1] = vand(t[i-1], vmask);
+	}
+	Vmask c = vrawSub(z, t+N, vp.v);
+	uvselect(z, c, t+N, z.v);
 }
 
 // out = c ? a : b
@@ -318,7 +386,7 @@ public:
 		std::cout << "R2=0x" << mR2 << std::endl;
 		std::cout << "rp=0x" << rp << std::endl;
 	}
-	explicit Montgomery(const mpz_class& _p)
+	void set(const mpz_class& _p)
 	{
 		mp = _p;
 		mR = 1;
@@ -483,6 +551,10 @@ void mod(Unit *z, const Unit *xy, const Montgomery& mont)
 	select(z, c, t + N, z);
 }
 
+void copy(Unit *y, const Unit *x)
+{
+	for (size_t i = 0; i < N; i++) y[i] = x[i];
+}
 // z[N] = Montgomery mul(x[N], y[2N])
 void mul(Unit *z, const Unit *x, const Unit *y, const Montgomery& mont)
 {
@@ -515,11 +587,12 @@ mpz_class mpz_rand(RG& rg)
 	return mx % mp;
 }
 
-void init(const Montgomery& mont)
+void init(Montgomery& mont)
 {
 	const char *pStr = "1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab";
 	mp.set_str(pStr, 16);
 	toArray<N>(p, mp);
+	mont.set(mp);
 	for (size_t i = 0; i < M; i++) {
 		for (size_t j = 0; j < N; j++) {
 			_vp[i*N+j] = p[i];
@@ -574,7 +647,7 @@ void test(const mpz_class& mx, const mpz_class& my)
 	}
 }
 
-void vtest(const mpz_class& _mx, const mpz_class& _my)
+void vtest(const Montgomery& mont, const mpz_class& _mx, const mpz_class& _my)
 {
 	mpz_class mz, mw;
 	mpz_class mx[M], my[M];
@@ -619,6 +692,33 @@ void vtest(const mpz_class& _mx, const mpz_class& _my)
 			putAll(mx[i], my[i], mz, mw);
 		}
 	}
+
+	// mul
+	for (size_t i = 0; i < M; i++) {
+		uvmul(z[i], x[i], y[i]);
+	}
+	cvt(_z, z);
+#if 0
+Unit ww[N*W];
+for (size_t i = 0; i < M; i++) {
+mul(ww+i*N, _x+i*N, _y+i*N, mont);
+}
+for (size_t i = 0; i < M; i++) {
+	printf("i=%zd\n", i);
+	put(ww+i*N, "ok");
+	put(_z+i*N, "my");
+}
+exit(1);
+#endif
+
+	for (size_t i = 0; i < M; i++) {
+		mont.mul(mz, mx[i], my[i]);
+		mw = fromArray<N>(_z + i*N);
+		if (mz != mw) {
+			printf("uvmul err %zd\n", i);
+			putAll(mx[i], my[i], mz, mw);
+		}
+	}
 }
 
 void testMont(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
@@ -654,19 +754,19 @@ void testMont(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
 
 int main()
 {
-	Montgomery mont(mp);
+	Montgomery mont;
 	init(mont);
 	mont.put();
 
 	const mpz_class tbl[] = {
-		0, 1, 2, mask-1, mask, mask+1, mp-1, mp>>2, 0x12345, mp-0x1111,
+		0xaabbccdd, 0x11223344, 0, 1, 2, mask-1, mask, mask+1, mp-1, mp>>2, 0x12345, mp-0x1111,
 	};
 	std::cout << std::hex;
 	for (const auto& mx : tbl) {
 		for (const auto& my : tbl) {
 			test(mx, my);
 			testMont(mont, mx, my);
-			vtest(mx, my);
+			vtest(mont, mx, my);
 		}
 	}
 
@@ -676,7 +776,7 @@ int main()
 		mpz_class my = mpz_rand(rg);
 		test(mx, my);
 		testMont(mont, mx, my);
-		vtest(mx, my);
+		vtest(mont, mx, my);
 	}
 	puts("ok");
 }
