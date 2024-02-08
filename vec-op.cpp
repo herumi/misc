@@ -1,11 +1,16 @@
 /*
-clang++-15 -Ofast vec-op.cpp -lgmp -lgmpxx -I ../cybozulib/include/ -mavx512f -mavx512ifma -Wall -Wextra && ./a.out
+clang++-15 -O2 vec-op.cpp -lgmp -lgmpxx -I ../cybozulib/include/ -mavx512f -mavx512ifma -Wall -Wextra && ./a.out
+Xeon w9-3495X
+uvadd  18.70 clk
+uvsub  15.70 clk
+uvmul 145.23 clk
 */
 #include <stdint.h>
 #include <stdio.h>
 #include <gmpxx.h>
 #include <iostream>
 #include <cybozu/xorshift.hpp>
+#include <cybozu/benchmark.hpp>
 #ifdef _WIN32
 #include <intrin.h>
 #else
@@ -721,6 +726,9 @@ exit(1);
 			putAll(mx[i], my[i], mz, mw);
 		}
 	}
+	CYBOZU_BENCH_C("uvadd", 10000, uvadd, x[0], x[0], y[0]);
+	CYBOZU_BENCH_C("uvsub", 10000, uvsub, x[0], x[0], y[0]);
+	CYBOZU_BENCH_C("uvmul", 10000, uvmul, x[0], x[0], y[0]);
 }
 
 void testMont(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
