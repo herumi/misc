@@ -223,7 +223,7 @@ void uvsub(UVec& z, const UVec& x, const UVec& y)
 	uvselect(z, c, t, s);
 }
 
-void vrawMulUnit(Vec *z, const Vec *x, const Vec& y)
+void vrawMulUnitOrg(Vec *z, const Vec *x, const Vec& y)
 {
 	Vec L[N], H[N];
 	for (size_t i = 0; i < N; i++) {
@@ -237,7 +237,7 @@ void vrawMulUnit(Vec *z, const Vec *x, const Vec& y)
 	z[N] = H[N-1];
 }
 
-Vec vrawMulUnitAdd(Vec *z, const Vec *x, const Vec& y)
+Vec vrawMulUnitAddOrg(Vec *z, const Vec *x, const Vec& y)
 {
 	Vec L[N], H[N];
 	for (size_t i = 0; i < N; i++) {
@@ -249,6 +249,30 @@ Vec vrawMulUnitAdd(Vec *z, const Vec *x, const Vec& y)
 		z[i] = vadd(z[i], vadd(L[i], H[i-1]));
 	}
 	return H[N-1];
+}
+
+void vrawMulUnit(Vec *z, const Vec *x, const Vec& y)
+{
+	Vec H;
+	z[0] = vmulL(x[0], y);
+	H = vmulH(x[0], y);
+	for (size_t i = 1; i < N; i++) {
+		z[i] = vmulL(x[i], y, H);
+		H = vmulH(x[i], y);
+	}
+	z[N] = H;
+}
+
+Vec vrawMulUnitAdd(Vec *z, const Vec *x, const Vec& y)
+{
+	Vec H;
+	z[0] = vmulL(x[0], y, z[0]);
+	H = vmulH(x[0], y);
+	for (size_t i = 1; i < N; i++) {
+		z[i] = vadd(vmulL(x[i], y, H), z[i]);
+		H = vmulH(x[i], y);
+	}
+	return H;
 }
 
 void copy(UVec& y, const Vec *x)
@@ -700,24 +724,34 @@ void vtest(const Montgomery& mont, const mpz_class& _mx, const mpz_class& _my)
 		}
 	}
 
+#if 1
+	// mulUnit
+	{
+		Vec z1[M+1], z2[M+1];
+		memset(z1, 0, sizeof(z1));
+		memset(z2, 0, sizeof(z2));
+		vrawMulUnitOrg(z1, x[0].v, y[0].v[0]);
+		vrawMulUnit(z2, x[0].v, y[0].v[0]);
+		if (memcmp(z1, z2, sizeof(z1)) != 0) {
+			for (size_t i = 0; i < N; i++) {
+				printf("%zd ", i);
+				put(x[0].v[i], "x");
+			}
+			put(y[0].v[0], "y");
+			for (size_t i = 0; i < M+1; i++) {
+				printf("i=%zd mulUnit %c\n", i, memcmp(&z1[i], &z2[i], sizeof(z1[0])) == 0 ? 'o' : 'x');
+				put(z1[i], "z1");
+				put(z2[i], "z2");
+			}
+		}
+	}
+#endif
+
 	// mul
 	for (size_t i = 0; i < M; i++) {
 		uvmul(z[i], x[i], y[i]);
 	}
 	cvt(_z, z);
-#if 0
-Unit ww[N*W];
-for (size_t i = 0; i < M; i++) {
-mul(ww+i*N, _x+i*N, _y+i*N, mont);
-}
-for (size_t i = 0; i < M; i++) {
-	printf("i=%zd\n", i);
-	put(ww+i*N, "ok");
-	put(_z+i*N, "my");
-}
-exit(1);
-#endif
-
 	for (size_t i = 0; i < M; i++) {
 		mont.mul(mz, mx[i], my[i]);
 		mw = fromArray<N>(_z + i*N);
@@ -762,6 +796,13 @@ void testMont(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
 	}
 }
 
+void testAll(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
+{
+	test(mx, my);
+	testMont(mont, mx, my);
+	vtest(mont, mx, my);
+}
+
 int main()
 {
 	Montgomery mont;
@@ -774,9 +815,7 @@ int main()
 	std::cout << std::hex;
 	for (const auto& mx : tbl) {
 		for (const auto& my : tbl) {
-			test(mx, my);
-			testMont(mont, mx, my);
-			vtest(mont, mx, my);
+			testAll(mont, mx, my);
 		}
 	}
 
@@ -784,9 +823,7 @@ int main()
 	for (int i = 0; i < 100; i++) {
 		mpz_class mx = mpz_rand(rg);
 		mpz_class my = mpz_rand(rg);
-		test(mx, my);
-		testMont(mont, mx, my);
-		vtest(mont, mx, my);
+		testAll(mont, mx, my);
 	}
 	puts("ok");
 }
