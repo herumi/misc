@@ -73,13 +73,13 @@ Vec vzero()
 static const CYBOZU_ALIGN(64) Unit _vmask[M] = {
 	mask, mask, mask, mask, mask, mask, mask, mask
 };
-
-static CYBOZU_ALIGN(64) Unit _vrp[N];
-static CYBOZU_ALIGN(64) Unit _vp[N*M];
-
 static const Vec& vmask = *(const Vec*)_vmask;
+
+static CYBOZU_ALIGN(64) Unit _vrp[M];
 static const Vec& vrp = *(const Vec*)_vrp;
-static const Vec *vpN = (const Vec*)_vp;
+
+static CYBOZU_ALIGN(64) Unit _vpN[N*M];
+static const Vec *vpN = (const Vec*)_vpN;
 
 void cvt(Vec *yN, const Unit *x)
 {
@@ -260,13 +260,6 @@ Vec vrawMulUnitAdd(Vec *z, const Vec *x, const Vec& y)
 		H = vmulH(x[i], y);
 	}
 	return H;
-}
-
-void copy(Vec *y, const Vec *x)
-{
-	for (size_t i = 0; i < N; i++) {
-		y[i] = x[i];
-	}
 }
 
 void uvmul(Vec *z, const Vec *x, const Vec *y)
@@ -569,10 +562,6 @@ void mod(Unit *z, const Unit *xy, const Montgomery& mont)
 	select(z, c, t + N, z);
 }
 
-void copy(Unit *y, const Unit *x)
-{
-	for (size_t i = 0; i < N; i++) y[i] = x[i];
-}
 // z[N] = Montgomery mul(x[N], y[2N])
 void mul(Unit *z, const Unit *x, const Unit *y, const Montgomery& mont)
 {
@@ -613,7 +602,7 @@ void init(Montgomery& mont)
 	mont.set(mp);
 	for (size_t i = 0; i < M; i++) {
 		for (size_t j = 0; j < N; j++) {
-			_vp[i*N+j] = p[i];
+			_vpN[i*N+j] = p[i];
 		}
 		_vrp[i] = mont.rp;
 	}
@@ -707,7 +696,6 @@ void dblCTProj(E& R, const E& P)
 	F::mul(R.x, t0, t1);
 	F::add(R.x, R.x, R.x);
 }
-
 
 void test(const mpz_class& mx, const mpz_class& my)
 {
