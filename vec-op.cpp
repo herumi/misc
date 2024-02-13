@@ -46,6 +46,14 @@ void put(const Vec& v, const char *msg = nullptr)
 	put((const Unit*)&v, msg);
 }
 
+void put(const Vec *v, size_t n = N, const char *msg = nullptr)
+{
+	if (msg) printf("%s\n", msg);
+	for (size_t i = 0; i < n; i++) {
+		put(v[i]);
+	}
+}
+
 void put(const Vmask& c, const char *msg = nullptr)
 {
 	if (msg) printf("%s ", msg);
@@ -64,13 +72,6 @@ Vec vzero()
 
 struct UVec {
 	CYBOZU_ALIGN(64) Vec v[N];
-	void put(const char *msg = nullptr) const
-	{
-		if (msg) printf("%s\n", msg);
-		for (size_t i = 0; i < N; i++) {
-			::put(v[i]);
-		}
-	}
 };
 
 static const CYBOZU_ALIGN(64) Unit _vmask[M] = {
@@ -82,9 +83,9 @@ static CYBOZU_ALIGN(64) Unit _vp[N*M];
 
 static const Vec& vmask = *(const Vec*)_vmask;
 static const Vec& vrp = *(const Vec*)_vrp;
-static const UVec& vp = *(const UVec*)_vp;
+static const Vec *vp = (const Vec*)_vp;
 
-void cvt(UVec *_y, const Unit *x)
+void cvt(Vec *_y, const Unit *x)
 {
 	Unit *y = (Unit *)_y;
 	for (size_t i = 0; i < M; i++) {
@@ -94,7 +95,7 @@ void cvt(UVec *_y, const Unit *x)
 	}
 }
 
-void cvt(Unit *y, const UVec *_x)
+void cvt(Unit *y, const Vec *_x)
 {
 	const Unit *x = (const Unit *)_x;
 	for (size_t j = 0; j < N; j++) {
@@ -157,70 +158,60 @@ Vec vselect(const Vmask& c, const Vec& a, const Vec& b)
 	return vand(c, a, a, b);
 }
 
-void vrawAdd(UVec& z, const UVec& x, const UVec& y)
+void vrawAdd(Vec *z, const Vec *x, const Vec *y)
 {
-	Vec t = vadd(x.v[0], y.v[0]);
+	Vec t = vadd(x[0], y[0]);
 	Vec c = vshl(t, W);
-	z.v[0] = vand(t, vmask);
+	z[0] = vand(t, vmask);
 
 	for (size_t i = 1; i < N; i++) {
-		t = vadd(x.v[i], y.v[i]);
+		t = vadd(x[i], y[i]);
 		t = vadd(t, c);
 		if (i == N-1) {
-			z.v[i] = t;
+			z[i] = t;
 			return;
 		}
 		c = vshl(t, W);
-		z.v[i] = vand(t, vmask);
+		z[i] = vand(t, vmask);
 	}
 }
 
-Vmask vrawSub(UVec& z, const Vec *x, const Vec *y)
+Vmask vrawSub(Vec *z, const Vec *x, const Vec *y)
 {
 	Vec t = vsub(x[0], y[0]);
 	Vec c = vshl(t, S);
-	z.v[0] = vand(t, vmask);
+	z[0] = vand(t, vmask);
 	for (size_t i = 1; i < N; i++) {
 		t = vsub(x[i], y[i]);
 		t = vsub(t, c);
 		c = vshl(t, S);
-		z.v[i] = vand(t, vmask);
+		z[i] = vand(t, vmask);
 	}
 	return vcmpneq(c, vzero());
 }
 
-Vmask vrawSub(UVec& z, const UVec& x, const UVec& y)
-{
-	return vrawSub(z, x.v, y.v);
-}
-
-void uvselect(UVec& z, const Vmask& c, const Vec *a, const Vec *b)
+void uvselect(Vec *z, const Vmask& c, const Vec *a, const Vec *b)
 {
 	for (size_t i = 0; i < N; i++) {
-		z.v[i] = vselect(c, a[i], b[i]);
+		z[i] = vselect(c, a[i], b[i]);
 	}
 }
 
-void uvselect(UVec& z, const Vmask& c, const UVec& a, const UVec& b)
-{
-	uvselect(z, c, a.v, b.v);
-}
-
-void uvadd(UVec& z, const UVec& x, const UVec& y)
+void uvadd(Vec *z, const Vec *x, const Vec *y)
 {
 	UVec s, t;
-	vrawAdd(s, x, y);
-	Vmask c = vrawSub(t, s, vp);
-	uvselect(z, c, s, t);
+	vrawAdd(s.v, x, y);
+	Vmask c = vrawSub(t.v, s.v, vp);
+	uvselect(z, c, s.v, t.v);
 }
 
-void uvsub(UVec& z, const UVec& x, const UVec& y)
+void uvsub(Vec *z, const Vec *x, const Vec *y)
 {
 	UVec s, t;
-	Vmask c = vrawSub(s, x, y);
-	vrawAdd(t, s, vp);
+	Vmask c = vrawSub(s.v, x, y);
+	vrawAdd(t.v, s.v, vp);
 	t.v[N-1] = vand(t.v[N-1], vmask);
-	uvselect(z, c, t, s);
+	uvselect(z, c, t.v, s.v);
 }
 
 void vrawMulUnitOrg(Vec *z, const Vec *x, const Vec& y)
@@ -275,31 +266,31 @@ Vec vrawMulUnitAdd(Vec *z, const Vec *x, const Vec& y)
 	return H;
 }
 
-void copy(UVec& y, const Vec *x)
+void copy(Vec *y, const Vec *x)
 {
 	for (size_t i = 0; i < N; i++) {
-		y.v[i] = x[i];
+		y[i] = x[i];
 	}
 }
 
-void uvmul(UVec& z, const UVec& x, const UVec& y)
+void uvmul(Vec *z, const Vec *x, const Vec *y)
 {
 	Vec t[N*2], q;
-	vrawMulUnit(t, x.v, y.v[0]);
+	vrawMulUnit(t, x, y[0]);
 	q = vmulL(t[0], vrp);
-	t[N] = vadd(t[N], vrawMulUnitAdd(t, vp.v, q));
+	t[N] = vadd(t[N], vrawMulUnitAdd(t, vp, q));
 	for (size_t i = 1; i < N; i++) {
-		t[N+i] = vrawMulUnitAdd(t+i, x.v, y.v[i]);
+		t[N+i] = vrawMulUnitAdd(t+i, x, y[i]);
 		t[i] = vadd(t[i], vshl(t[i-1], W));
 		q = vmulL(t[i], vrp);
-		t[N+i] = vadd(t[N+i], vrawMulUnitAdd(t+i, vp.v, q));
+		t[N+i] = vadd(t[N+i], vrawMulUnitAdd(t+i, vp, q));
 	}
 	for (size_t i = N; i < N*2; i++) {
 		t[i] = vadd(t[i], vshl(t[i-1], W));
 		t[i-1] = vand(t[i-1], vmask);
 	}
-	Vmask c = vrawSub(z, t+N, vp.v);
-	uvselect(z, c, t+N, z.v);
+	Vmask c = vrawSub(z, t+N, vp);
+	uvselect(z, c, t+N, z);
 }
 
 // out = c ? a : b
@@ -654,6 +645,74 @@ void putAll(const mpz_class& x, const mpz_class& y, const mpz_class& z, const mp
 	std::cout << "w=" << w << std::endl;
 }
 
+template<class E>
+void addCTProj(E& R, const E& P, const E& Q)
+{
+	typedef typename E::Fp F;
+	assert(E::a_ == 0);
+	F t0, t1, t2, t3, t4, x3, y3;
+	F::mul(t0, P.x, Q.x);
+	F::mul(t1, P.y, Q.y);
+	F::mul(t2, P.z, Q.z);
+	F::add(t3, P.x, P.y);
+	F::add(t4, Q.x, Q.y);
+	F::mul(t3, t3, t4);
+	F::add(t4, t0, t1);
+	F::sub(t3, t3, t4);
+	F::add(t4, P.y, P.z);
+	F::add(x3, Q.y, Q.z);
+	F::mul(t4, t4, x3);
+	F::add(x3, t1, t2);
+	F::sub(t4, t4, x3);
+	F::add(x3, P.x, P.z);
+	F::add(y3, Q.x, Q.z);
+	F::mul(x3, x3, y3);
+	F::add(y3, t0, t2);
+	F::sub(y3, x3, y3);
+	F::add(x3, t0, t0);
+	F::add(t0, t0, x3);
+	F::mul(t2, t2, E::b3_);
+	F::add(R.z, t1, t2);
+	F::sub(t1, t1, t2);
+	F::mul(y3, y3, E::b3_);
+	F::mul(x3, y3, t4);
+	F::mul(t2, t3, t1);
+	F::sub(R.x, t2, x3);
+	F::mul(y3, y3, t0);
+	F::mul(t1, t1, R.z);
+	F::add(R.y, y3, t1);
+	F::mul(t0, t0, t3);
+	F::mul(R.z, R.z, t4);
+	F::add(R.z, R.z, t0);
+}
+// 7M+2S
+template<class E>
+void dblCTProj(E& R, const E& P)
+{
+	typedef typename E::Fp F;
+	assert(E::a_ == 0);
+	F t0, t1, t2, x3, y3;
+	F::sqr(t0, P.y);
+	F::mul(t1, P.y, P.z);
+	F::sqr(t2, P.z);
+	F::add(R.z, t0, t0);
+	F::add(R.z, R.z, R.z);
+	F::add(R.z, R.z, R.z);
+	F::mul(t2, t2, E::b3_);
+	F::mul(x3, t2, P.z);
+	F::add(y3, t0, t2);
+	F::mul(R.z, R.z, t1);
+	F::add(t1, t2, t2);
+	F::add(t2, t2, t1);
+	F::mul(t1, P.x, P.y);
+	F::sub(t0, t0, t2);
+	F::mul(R.y, y3, t0);
+	F::add(R.y, R.y, x3);
+	F::mul(R.x, t0, t1);
+	F::add(R.x, R.x, R.x);
+}
+
+
 void test(const mpz_class& mx, const mpz_class& my)
 {
 	mpz_class mz, mw;
@@ -691,14 +750,14 @@ void vtest(const Montgomery& mont, const mpz_class& _mx, const mpz_class& _my)
 		toArray<N>(_y + i*N, my[i]);
 	}
 
-	cvt(x, _x);
-	cvt(y, _y);
+	cvt(x[0].v, _x);
+	cvt(y[0].v, _y);
 
 	// add
 	for (size_t i = 0; i < M; i++) {
-		uvadd(z[i], x[i], y[i]);
+		uvadd(z[i].v, x[i].v, y[i].v);
 	}
-	cvt(_z, z);
+	cvt(_z, z[0].v);
 
 	for (size_t i = 0; i < M; i++) {
 		mz = madd(mx[i], my[i]);
@@ -711,9 +770,9 @@ void vtest(const Montgomery& mont, const mpz_class& _mx, const mpz_class& _my)
 
 	// sub
 	for (size_t i = 0; i < M; i++) {
-		uvsub(z[i], x[i], y[i]);
+		uvsub(z[i].v, x[i].v, y[i].v);
 	}
-	cvt(_z, z);
+	cvt(_z, z[0].v);
 
 	for (size_t i = 0; i < M; i++) {
 		mz = msub(mx[i], my[i]);
@@ -749,9 +808,9 @@ void vtest(const Montgomery& mont, const mpz_class& _mx, const mpz_class& _my)
 
 	// mul
 	for (size_t i = 0; i < M; i++) {
-		uvmul(z[i], x[i], y[i]);
+		uvmul(z[i].v, x[i].v, y[i].v);
 	}
-	cvt(_z, z);
+	cvt(_z, z[0].v);
 	for (size_t i = 0; i < M; i++) {
 		mont.mul(mz, mx[i], my[i]);
 		mw = fromArray<N>(_z + i*N);
@@ -760,9 +819,9 @@ void vtest(const Montgomery& mont, const mpz_class& _mx, const mpz_class& _my)
 			putAll(mx[i], my[i], mz, mw);
 		}
 	}
-	CYBOZU_BENCH_C("uvadd", 10000, uvadd, x[0], x[0], y[0]);
-	CYBOZU_BENCH_C("uvsub", 10000, uvsub, x[0], x[0], y[0]);
-	CYBOZU_BENCH_C("uvmul", 10000, uvmul, x[0], x[0], y[0]);
+	CYBOZU_BENCH_C("uvadd", 10000, uvadd, x[0].v, x[0].v, y[0].v);
+	CYBOZU_BENCH_C("uvsub", 10000, uvsub, x[0].v, x[0].v, y[0].v);
+	CYBOZU_BENCH_C("uvmul", 10000, uvmul, x[0].v, x[0].v, y[0].v);
 }
 
 void testMont(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
