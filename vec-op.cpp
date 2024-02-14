@@ -18,19 +18,40 @@ uvmul 145.23 clk
 #endif
 
 typedef uint64_t Unit;
+typedef __m512i Vec;
+typedef __mmask8 Vmask;
+
 const size_t S = sizeof(Unit)*8-1; // 63
 const size_t W = 52;
 const size_t N = 8; // = ceil(384/52)
+const size_t M = sizeof(Vec) / sizeof(Unit);
 const uint64_t mask = (Unit(1)<<W) - 1;
 
 static mpz_class mp;
 
 // split into 52 bits
-static Unit p[N];
+static Unit g_p[N];
 
-typedef __m512i Vec;
-typedef __mmask8 Vmask;
-const size_t M = sizeof(Vec) / sizeof(Unit);
+template<size_t N>
+void toArray(Unit x[N], mpz_class mx)
+{
+	for (size_t i = 0; i < N; i++) {
+		mpz_class a = mx & mask;
+		x[i] = a.get_ui();
+		mx >>= W;
+	}
+}
+
+template<size_t N>
+mpz_class fromArray(const Unit x[N])
+{
+	mpz_class mx = x[N-1];
+	for (size_t i = 1; i < N; i++) {
+		mx <<= W;
+		mx += x[N-1-i];
+	}
+	return mx;
+}
 
 void put(const Unit *v, const char *msg = nullptr)
 {
@@ -70,34 +91,59 @@ Vec vzero()
 	return _mm512_setzero_epi32();
 }
 
-static const CYBOZU_ALIGN(64) Unit _vmask[M] = {
-	mask, mask, mask, mask, mask, mask, mask, mask
-};
-static const Vec& vmask = *(const Vec*)_vmask;
+static Vec vmask;
+static Vec vrp;
+static Vec vpN[N];
 
-static CYBOZU_ALIGN(64) Unit _vrp[M];
-static const Vec& vrp = *(const Vec*)_vrp;
-
-static CYBOZU_ALIGN(64) Unit _vpN[N*M];
-static const Vec *vpN = (const Vec*)_vpN;
-
-void cvt(Vec *yN, const Unit *x)
+// set x[j] to i-th SIMD element of v[j]
+void set(Vec v[N], size_t i, const Unit x[N])
 {
-	Unit *y = (Unit *)yN;
-	for (size_t i = 0; i < M; i++) {
-		for (size_t j = 0; j < N; j++) {
-			y[j*M+i] = x[i*N+j];
-		}
+	assert(i < M);
+	Unit *p = (Unit *)v;
+	for (size_t j = 0; j < N; j++) {
+		p[j*M+i] = x[j];
 	}
 }
 
-void cvt(Unit *y, const Vec *xN)
+void get(Unit x[N], const Vec v[N], size_t i)
 {
-	const Unit *x = (const Unit *)xN;
+	assert(i < M);
+	const Unit *p = (const Unit *)v;
 	for (size_t j = 0; j < N; j++) {
-		for (size_t i = 0; i < M; i++) {
-			y[i*N+j] = x[j*M+i];
-		}
+		x[j] = p[j*M+i];
+	}
+}
+
+
+void cvt(Vec yN[N], const Unit x[N*M])
+{
+	for (size_t i = 0; i < M; i++) {
+		set(yN, i, x+i*N);
+	}
+}
+
+void cvt(Unit y[N*M], const Vec xN[N])
+{
+	for (size_t i = 0; i < M; i++) {
+		get(y+i*N, xN, i);
+	}
+}
+
+// expand x to Vec
+void expand(Vec& v, Unit x)
+{
+	Unit *p = (Unit *)&v;
+	for (size_t i = 0; i < M; i++) {
+		p[i] = x;
+	}
+}
+
+void expandN(Vec v[N], const mpz_class& x)
+{
+	Unit a[N];
+	toArray<N>(a, x);
+	for (size_t i = 0; i < N; i++) {
+		expand(v[i], a[i]);
 	}
 }
 
@@ -291,37 +337,6 @@ void select(Unit *out, bool c, const Unit *a, const Unit *b)
 	}
 }
 
-template<size_t N>
-void toArray(Unit x[N], mpz_class mx)
-{
-	for (size_t i = 0; i < N; i++) {
-		mpz_class a = mx & mask;
-		x[i] = a.get_ui();
-		mx >>= W;
-	}
-}
-
-template<size_t N>
-mpz_class fromArray(const Unit x[N])
-{
-	mpz_class mx = x[N-1];
-	for (size_t i = 1; i < N; i++) {
-		mx <<= W;
-		mx += x[N-1-i];
-	}
-	return mx;
-}
-
-template<size_t N>
-void putArray(const Unit x[N], const char *msg = nullptr)
-{
-	if (msg) printf("%s ", msg);
-	for (size_t i = 0; i < N; i++) {
-		printf("%016lx ", x[N-1-i]);
-	}
-	printf("\n");
-}
-
 namespace mcl { namespace bint {
 // ppLow = Unit(p)
 inline Unit getMontgomeryCoeff(Unit pLow, size_t bitSize = sizeof(Unit) * 8)
@@ -346,7 +361,6 @@ namespace gmp {
 
 inline void set(mpz_class& z, uint64_t x)
 {
-//	setArray(&b, z, &x, 1);
 	z = fromArray<1>(&x);
 }
 inline const Unit *getUnit(const mpz_class& x)
@@ -404,7 +418,7 @@ public:
 		mR = (mR << (W * N)) % mp;
 		mR2 = (mR * mR) % mp;
 		toArray<N>(v_, _p);
-		putArray<N>(v_, "v_");
+		::put(v_, "v_");
 		rp = mcl::bint::getMontgomeryCoeff(v_[0], W);
 		printf("rp=%zx\n", rp);
 		p = v_;
@@ -469,7 +483,7 @@ void add(Unit *z, const Unit *x, const Unit *y)
 {
 	Unit s[N], t[N];
 	rawAdd(s, x, y);
-	bool c = rawSub(t, s, p);
+	bool c = rawSub(t, s, g_p);
 	select(z, c, s, t);
 }
 
@@ -477,7 +491,7 @@ void sub(Unit *z, const Unit *x, const Unit *y)
 {
 	Unit s[N], t[N];
 	bool c = rawSub(s, x, y);
-	rawAdd(t, s, p);
+	rawAdd(t, s, g_p);
 	t[N-1] &= mask;
 	select(z, c, t, s);
 }
@@ -594,20 +608,6 @@ mpz_class mpz_rand(RG& rg)
 	return mx % mp;
 }
 
-void init(Montgomery& mont)
-{
-	const char *pStr = "1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab";
-	mp.set_str(pStr, 16);
-	toArray<N>(p, mp);
-	mont.set(mp);
-	for (size_t i = 0; i < M; i++) {
-		for (size_t j = 0; j < N; j++) {
-			_vpN[i*N+j] = p[i];
-		}
-		_vrp[i] = mont.rp;
-	}
-}
-
 mpz_class madd(const mpz_class& x, const mpz_class& y)
 {
 	mpz_class z = x + y;
@@ -695,6 +695,75 @@ void dblCTProj(E& R, const E& P)
 	F::add(R.y, R.y, x3);
 	F::mul(R.x, t0, t1);
 	F::add(R.x, R.x, R.x);
+}
+
+struct FpM {
+	Vec v[N];
+	static void add(FpM& z, const FpM& x, const FpM& y)
+	{
+		uvadd(z.v, x.v, y.v);
+	}
+	static void sub(FpM& z, const FpM& x, const FpM& y)
+	{
+		uvsub(z.v, x.v, y.v);
+	}
+	static void mul(FpM& z, const FpM& x, const FpM& y)
+	{
+		uvmul(z.v, x.v, y.v);
+	}
+	static void sqr(FpM& z, const FpM& x)
+	{
+		uvmul(z.v, x.v, x.v);
+	}
+	void set(const mpz_class x[M])
+	{
+		Unit xv[N*M];
+		for (size_t i = 0; i < M; i++) {
+			toArray<N>(xv+i*N, x[i]);
+		}
+		cvt(v, xv);
+	}
+};
+
+struct Ec {
+	typedef FpM Fp;
+	static const int a_ = 0;
+	static FpM b3_;
+	FpM x, y, z;
+	static void add(Ec& z, const Ec& x, const Ec& y)
+	{
+		addCTProj(z, x, y);
+	}
+	static void dbl(Ec& z, const Ec& x)
+	{
+		dblCTProj(z, x);
+	}
+	static void init(const Montgomery& mont)
+	{
+		const int b = 4;
+		mpz_class b3 = mont.toMont(b * 3);
+		expandN(b3_.v, b3);
+	}
+	void set(const mpz_class _x[M], const mpz_class _y[M], const mpz_class _z[M])
+	{
+		x.set(_x);
+		y.set(_y);
+		z.set(_z);
+	}
+};
+
+FpM Ec::b3_;
+
+void init(Montgomery& mont)
+{
+	const char *pStr = "1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab";
+	mp.set_str(pStr, 16);
+	mont.set(mp);
+	toArray<N>(g_p, mp);
+	expand(vmask, mask);
+	expandN(vpN, mp);
+	expand(vrp, mont.rp);
+	Ec::init(mont);
 }
 
 void test(const mpz_class& mx, const mpz_class& my)
@@ -839,11 +908,29 @@ void testMont(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
 	}
 }
 
+void ecTest(const Montgomery& mont, const mpz_class& _mx, const mpz_class& _my)
+{
+	mpz_class mz, mw;
+	mpz_class mx[M], my[M];
+	CYBOZU_ALIGN(64) Unit _x[N*M], _y[N*M], _z[N*M];
+	Vec xN[N*M], yN[N*M], zN[N*M];
+	for (size_t i = 0; i < M; i++) {
+		mx[i] = (_mx + i * 123) % mp;
+		my[i] = (_my + i * 245) % mp;
+		toArray<N>(_x + i*N, mx[i]);
+		toArray<N>(_y + i*N, my[i]);
+	}
+
+	cvt(xN, _x);
+	cvt(yN, _y);
+}
+
 void testAll(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
 {
 	test(mx, my);
 	testMont(mont, mx, my);
 	vtest(mont, mx, my);
+	ecTest(mont, mx, my);
 }
 
 int main()
