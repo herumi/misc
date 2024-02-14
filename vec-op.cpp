@@ -729,8 +729,7 @@ struct Fp {
 struct Ec {
 	typedef Fp Fp;
 	static const int a_ = 0;
-	static const int b_ = 4;
-	static const Fp b3_;
+	static Fp b3_;
 	Fp x, y, z;
 	static void add(Ec& z, const Ec& x, const Ec& y)
 	{
@@ -740,9 +739,14 @@ struct Ec {
 	{
 		dblCTProj(z, x);
 	}
+	static void init(Montgomery& mont)
+	{
+		const int b = 4;
+		b3_.v = mont.toMont(b * 3);
+	}
 };
 
-const Fp Ec::b3_(Ec::b_*3);
+Fp Ec::b3_;
 
 struct FpM {
 	Vec v[N];
@@ -816,6 +820,7 @@ void init(Montgomery& mont)
 	expand(vmask, mask);
 	expandN(vpN, mp);
 	expand(vrp, mont.rp);
+	Ec::init(mont);
 	EcM::init(mont);
 	g_mx.set_str("17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb", 16);
 	g_my.set_str("08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1", 16);
@@ -977,8 +982,9 @@ void testMont(const mpz_class& mx, const mpz_class& my)
 	}
 }
 
-void cmpEc(const EcM& P, const Ec Q[M])
+void cmpEc(const EcM& P, const Ec Q[M], const char *msg = nullptr)
 {
+	if (msg) printf("%s\n", msg);
 	for (size_t i = 0; i < M; i++) {
 		assertEq(P.x.get(i), Q[i].x.v, "x");
 		assertEq(P.y.get(i), Q[i].y.v, "y");
@@ -1002,20 +1008,28 @@ void ecTest()
 		Ec::dbl(P1[i], P1[i-1]);
 	}
 	P2.set(P1);
-	cmpEc(P2, P1);
+	cmpEc(P2, P1, "P");
 
 	for (size_t i = 0; i < M; i++) {
 		Ec::add(Q1[i], P1[i], P1[M-1]);
 	}
 	Q2.set(Q1);
-	cmpEc(Q2, Q1);
-
+	cmpEc(Q2, Q1, "Q");
 
 	for (size_t i = 0; i < M; i++) {
 		Ec::add(R1[i], P1[i], Q1[i]);
 	}
 	EcM::add(R2, P2, Q2);
-	cmpEc(R2, R1);
+	cmpEc(R2, R1, "R");
+
+
+	for (size_t i = 0; i < M; i++) {
+		Ec::dbl(R1[i], R1[i]);
+	}
+	EcM::dbl(R2, R2);
+	cmpEc(R2, R1, "R2");
+	CYBOZU_BENCH_C("EcM::add", 10000, EcM::add, R2, R2, Q2);
+	CYBOZU_BENCH_C("EcM::dbl", 10000, EcM::dbl, R2, R2);
 }
 
 void testAll(const mpz_class& mx, const mpz_class& my)
