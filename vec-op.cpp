@@ -29,6 +29,8 @@ const uint64_t mask = (Unit(1)<<W) - 1;
 
 static mpz_class mp;
 
+static mpz_class g_mx, g_my, g_mr;
+
 // split into 52 bits
 static Unit g_p[N];
 
@@ -457,6 +459,8 @@ public:
 	}
 };
 
+Montgomery g_mont;
+
 void rawAdd(Unit *z, const Unit *x, const Unit *y)
 {
 	Unit c = 0;
@@ -556,15 +560,15 @@ void rawMul(Unit *z, const Unit *x, const Unit *y)
 }
 
 // z[N] = Montgomery mod(xy[2N])
-void mod(Unit *z, const Unit *xy, const Montgomery& mont)
+void mod(Unit *z, const Unit *xy)
 {
 	Unit t[N*2], q, H;
 	for (size_t i = 0; i < N*2; i++) {
 		t[i] = xy[i];
 	}
 	for (size_t i = 0; i < N; i++) {
-		q = mul52bit(&H, t[i], mont.rp);
-		t[N+i] += rawMulUnitAdd(t + i, mont.p, q);
+		q = mul52bit(&H, t[i], g_mont.rp);
+		t[N+i] += rawMulUnitAdd(t + i, g_mont.p, q);
 		t[i+1] += t[i] >> W;
 		t[i] &= mask;
 	}
@@ -572,28 +576,28 @@ void mod(Unit *z, const Unit *xy, const Montgomery& mont)
 		t[i+1] += t[i] >> W;
 		t[i] &= mask;
 	}
-	bool c = rawSub(z, t + N, mont.p);
+	bool c = rawSub(z, t + N, g_mont.p);
 	select(z, c, t + N, z);
 }
 
 // z[N] = Montgomery mul(x[N], y[2N])
-void mul(Unit *z, const Unit *x, const Unit *y, const Montgomery& mont)
+void mul(Unit *z, const Unit *x, const Unit *y)
 {
 	Unit t[N*2], q, H;
 	rawMulUnit(t, x, y[0]);
-	q = mul52bit(&H, t[0], mont.rp);
-	t[N] += rawMulUnitAdd(t, mont.p, q);
+	q = mul52bit(&H, t[0], g_mont.rp);
+	t[N] += rawMulUnitAdd(t, g_mont.p, q);
 	for (size_t i = 1; i < N; i++) {
 		t[N+i] = rawMulUnitAdd(t+i, x, y[i]);
 		t[i] += t[i-1] >> W;
-		q = mul52bit(&H, t[i], mont.rp);
-		t[N+i] += rawMulUnitAdd(t+i, mont.p, q);
+		q = mul52bit(&H, t[i], g_mont.rp);
+		t[N+i] += rawMulUnitAdd(t+i, g_mont.p, q);
 	}
 	for (size_t i = N; i < N*2; i++) {
 		t[i] += t[i-1] >> W;
 		t[i-1] &= mask;
 	}
-	bool c = rawSub(z, t+N, mont.p);
+	bool c = rawSub(z, t+N, g_mont.p);
 	select(z, c, t+N, z);
 }
 
@@ -697,6 +701,49 @@ void dblCTProj(E& R, const E& P)
 	F::add(R.x, R.x, R.x);
 }
 
+struct Fp {
+	mpz_class v;
+	Fp(int _v = 0) : v(_v) {}
+	static void add(Fp& z, const Fp& x, const Fp& y)
+	{
+		z.v = madd(x.v, y.v);
+	}
+	static void sub(Fp& z, const Fp& x, const Fp& y)
+	{
+		z.v = msub(x.v, y.v);
+	}
+	static void mul(Fp& z, const Fp& x, const Fp& y)
+	{
+		g_mont.mul(z.v, x.v, y.v);
+	}
+	static void sqr(Fp& z, const Fp& x)
+	{
+		mul(z, x, x);
+	}
+	void set(const mpz_class& x)
+	{
+		v = x % mp;
+	}
+};
+
+struct Ec {
+	typedef Fp Fp;
+	static const int a_ = 0;
+	static const int b_ = 4;
+	static const Fp b3_;
+	Fp x, y, z;
+	static void add(Ec& z, const Ec& x, const Ec& y)
+	{
+		addCTProj(z, x, y);
+	}
+	static void dbl(Ec& z, const Ec& x)
+	{
+		dblCTProj(z, x);
+	}
+};
+
+const Fp Ec::b3_(Ec::b_*3);
+
 struct FpM {
 	Vec v[N];
 	static void add(FpM& z, const FpM& x, const FpM& y)
@@ -715,44 +762,50 @@ struct FpM {
 	{
 		uvmul(z.v, x.v, x.v);
 	}
-	void set(const mpz_class x[M])
+	void set(const mpz_class& x, size_t i)
 	{
-		Unit xv[N*M];
-		for (size_t i = 0; i < M; i++) {
-			toArray<N>(xv+i*N, x[i]);
-		}
-		cvt(v, xv);
+		Unit xv[N];
+		toArray<N>(xv, x);
+		::set(v, i, xv);
+	}
+	mpz_class get(size_t i) const
+	{
+		Unit x[N];
+		::get(x, v, i);
+		return fromArray<N>(x);
 	}
 };
 
-struct Ec {
+struct EcM {
 	typedef FpM Fp;
 	static const int a_ = 0;
 	static FpM b3_;
 	FpM x, y, z;
-	static void add(Ec& z, const Ec& x, const Ec& y)
+	static void add(EcM& z, const EcM& x, const EcM& y)
 	{
 		addCTProj(z, x, y);
 	}
-	static void dbl(Ec& z, const Ec& x)
+	static void dbl(EcM& z, const EcM& x)
 	{
 		dblCTProj(z, x);
 	}
-	static void init(const Montgomery& mont)
+	static void init(Montgomery& mont)
 	{
 		const int b = 4;
 		mpz_class b3 = mont.toMont(b * 3);
 		expandN(b3_.v, b3);
 	}
-	void set(const mpz_class _x[M], const mpz_class _y[M], const mpz_class _z[M])
+	void set(const Ec v[M])
 	{
-		x.set(_x);
-		y.set(_y);
-		z.set(_z);
+		for (size_t i = 0; i < M; i++) {
+			x.set(v[i].x.v, i);
+			y.set(v[i].y.v, i);
+			z.set(v[i].z.v, i);
+		}
 	}
 };
 
-FpM Ec::b3_;
+FpM EcM::b3_;
 
 void init(Montgomery& mont)
 {
@@ -763,7 +816,22 @@ void init(Montgomery& mont)
 	expand(vmask, mask);
 	expandN(vpN, mp);
 	expand(vrp, mont.rp);
-	Ec::init(mont);
+	EcM::init(mont);
+	g_mx.set_str("17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb", 16);
+	g_my.set_str("08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1", 16);
+	g_mr.set_str("73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001", 16);
+	printf("(mx, my) is on %d\n", (g_mx * g_mx * g_mx + 4 - g_my * g_my) % mp == 0);
+}
+
+template<typename T>
+void assertEq(const T& a, const T& b, const char *msg = nullptr)
+{
+	if (a != b) {
+		if (msg) std::cout << msg << std::endl;
+		std::cout << "a=" << a << std::endl;
+		std::cout << "b=" << b << std::endl;
+		exit(1);
+	}
 }
 
 void test(const mpz_class& mx, const mpz_class& my)
@@ -790,7 +858,7 @@ void test(const mpz_class& mx, const mpz_class& my)
 	}
 }
 
-void vtest(const Montgomery& mont, const mpz_class& _mx, const mpz_class& _my)
+void vtest(const mpz_class& _mx, const mpz_class& _my)
 {
 	mpz_class mz, mw;
 	mpz_class mx[M], my[M];
@@ -865,42 +933,43 @@ void vtest(const Montgomery& mont, const mpz_class& _mx, const mpz_class& _my)
 	}
 	cvt(_z, zN);
 	for (size_t i = 0; i < M; i++) {
-		mont.mul(mz, mx[i], my[i]);
+		g_mont.mul(mz, mx[i], my[i]);
 		mw = fromArray<N>(_z + i*N);
 		if (mz != mw) {
 			printf("uvmul err %zd\n", i);
 			putAll(mx[i], my[i], mz, mw);
 		}
 	}
+return;
 	CYBOZU_BENCH_C("uvadd", 10000, uvadd, xN, xN, yN);
 	CYBOZU_BENCH_C("uvsub", 10000, uvsub, xN, xN, yN);
 	CYBOZU_BENCH_C("uvmul", 10000, uvmul, xN, xN, yN);
 }
 
-void testMont(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
+void testMont(const mpz_class& mx, const mpz_class& my)
 {
 	mpz_class ax, ay, axy, xy, mxy;
-	ax = mont.toMont(mx);
-	ay = mont.toMont(my);
-	mont.mul(axy, ax, ay);
-	xy = mont.fromMont(axy);
+	ax = g_mont.toMont(mx);
+	ay = g_mont.toMont(my);
+	g_mont.mul(axy, ax, ay);
+	xy = g_mont.fromMont(axy);
 	mxy = (mx * my) % mp;
 	if (xy != mxy) {
-		puts("err mont");
+		puts("err g_mont");
 		putAll(mx, my, mxy, xy);
 	}
 	Unit x[N], y[N], t[N*2], z[N];
 	toArray<N>(x, ax);
 	toArray<N>(y, ay);
 	rawMul(t, x, y);
-	mod(z, t, mont);
+	mod(z, t);
 	mpz_class w = fromArray<N>(z);
 	if (w != axy) {
 		puts("err mont2");
 		putAll(mx, my, axy, w);
 	}
 	memset(z, 0, sizeof(z));
-	mul(z, x, y, mont);
+	mul(z, x, y);
 	w = fromArray<N>(z);
 	if (w != axy) {
 		puts("err mont3");
@@ -908,36 +977,58 @@ void testMont(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
 	}
 }
 
-void ecTest(const Montgomery& mont, const mpz_class& _mx, const mpz_class& _my)
+void cmpEc(const EcM& P, const Ec Q[M])
 {
-	mpz_class mz, mw;
-	mpz_class mx[M], my[M];
-	CYBOZU_ALIGN(64) Unit _x[N*M], _y[N*M], _z[N*M];
-	Vec xN[N*M], yN[N*M], zN[N*M];
 	for (size_t i = 0; i < M; i++) {
-		mx[i] = (_mx + i * 123) % mp;
-		my[i] = (_my + i * 245) % mp;
-		toArray<N>(_x + i*N, mx[i]);
-		toArray<N>(_y + i*N, my[i]);
+		assertEq(P.x.get(i), Q[i].x.v, "x");
+		assertEq(P.y.get(i), Q[i].y.v, "y");
+		assertEq(P.z.get(i), Q[i].z.v, "z");
 	}
-
-	cvt(xN, _x);
-	cvt(yN, _y);
 }
 
-void testAll(const Montgomery& mont, const mpz_class& mx, const mpz_class& my)
+void ecTest()
+{
+	puts("ecTest");
+	Ec P1[M], Q1[M], R1[M];
+	EcM P2, Q2, R2;
+	mpz_class x, y, z;
+	x = g_mont.toMont(g_mx);
+	y = g_mont.toMont(g_my);
+	z = g_mont.toMont(1);
+	P1[0].x.set(x);
+	P1[0].y.set(y);
+	P1[0].z.set(z);
+	for (size_t i = 1; i < M; i++) {
+		Ec::dbl(P1[i], P1[i-1]);
+	}
+	P2.set(P1);
+	cmpEc(P2, P1);
+
+	for (size_t i = 0; i < M; i++) {
+		Ec::add(Q1[i], P1[i], P1[M-1]);
+	}
+	Q2.set(Q1);
+	cmpEc(Q2, Q1);
+
+
+	for (size_t i = 0; i < M; i++) {
+		Ec::add(R1[i], P1[i], Q1[i]);
+	}
+	EcM::add(R2, P2, Q2);
+	cmpEc(R2, R1);
+}
+
+void testAll(const mpz_class& mx, const mpz_class& my)
 {
 	test(mx, my);
-	testMont(mont, mx, my);
-	vtest(mont, mx, my);
-	ecTest(mont, mx, my);
+	testMont(mx, my);
+	vtest(mx, my);
 }
 
 int main()
 {
-	Montgomery mont;
-	init(mont);
-	mont.put();
+	init(g_mont);
+	g_mont.put();
 
 	const mpz_class tbl[] = {
 		0xaabbccdd, 0x11223344, 0, 1, 2, mask-1, mask, mask+1, mp-1, mp>>2, 0x12345, mp-0x1111,
@@ -945,7 +1036,7 @@ int main()
 	std::cout << std::hex;
 	for (const auto& mx : tbl) {
 		for (const auto& my : tbl) {
-			testAll(mont, mx, my);
+			testAll(mx, my);
 		}
 	}
 
@@ -953,7 +1044,8 @@ int main()
 	for (int i = 0; i < 100; i++) {
 		mpz_class mx = mpz_rand(rg);
 		mpz_class my = mpz_rand(rg);
-		testAll(mont, mx, my);
+		testAll(mx, my);
 	}
+	ecTest();
 	puts("ok");
 }
