@@ -25,11 +25,11 @@ const size_t S = sizeof(Unit)*8-1; // 63
 const size_t W = 52;
 const size_t N = 8; // = ceil(384/52)
 const size_t M = sizeof(Vec) / sizeof(Unit);
-const uint64_t mask = (Unit(1)<<W) - 1;
+const uint64_t g_mask = (Unit(1)<<W) - 1;
 
 const int C = 1000000;
 
-static mpz_class mp;
+static mpz_class g_mp;
 
 static mpz_class g_mx, g_my, g_mr;
 
@@ -40,7 +40,7 @@ template<size_t N>
 void toArray(Unit x[N], mpz_class mx)
 {
 	for (size_t i = 0; i < N; i++) {
-		mpz_class a = mx & mask;
+		mpz_class a = mx & g_mask;
 		x[i] = a.get_ui();
 		mx >>= W;
 	}
@@ -411,7 +411,7 @@ public:
 	static Unit getLow(const mpz_class& x)
 	{
 		if (x == 0) return 0;
-		return mcl::gmp::getUnit(x, 0) & mask;
+		return mcl::gmp::getUnit(x, 0) & g_mask;
 	}
 	void put() const
 	{
@@ -456,7 +456,7 @@ public:
 	{
 		z = xy;
 		for (size_t i = 0; i < N; i++) {
-			Unit q = (getLow(z) * rp) & mask;
+			Unit q = (getLow(z) * rp) & g_mask;
 			mpz_class t = q;
 			z += mp * t;
 			z >>= W;
@@ -476,7 +476,7 @@ void rawAdd(Unit *z, const Unit *x, const Unit *y)
 		z[i] = x[i] + y[i] + c;
 		if (i == N-1) break;
 		c = z[i] >> W;
-		z[i] &= mask;
+		z[i] &= g_mask;
 	}
 }
 
@@ -486,7 +486,7 @@ bool rawSub(Unit *z, const Unit *x, const Unit *y)
 	for (size_t i = 0; i < N; i++) {
 		z[i] = x[i] - y[i] - c;
 		c = z[i] >> S;
-		z[i] &= mask;
+		z[i] &= g_mask;
 	}
 	return c != 0;
 }
@@ -504,7 +504,7 @@ void sub(Unit *z, const Unit *x, const Unit *y)
 	Unit s[N], t[N];
 	bool c = rawSub(s, x, y);
 	rawAdd(t, s, g_p);
-	t[N-1] &= mask;
+	t[N-1] &= g_mask;
 	select(z, c, t, s);
 }
 
@@ -527,7 +527,7 @@ Unit mul52bit(Unit *pH, Unit x, Unit y)
 	Unit L, H;
 	L = mulUnit1(&H, x, y);
 	*pH = (H << 12) | (L >> 52);
-	return L & mask;
+	return L & g_mask;
 }
 
 // z[N+1] = x[N] * y
@@ -578,11 +578,11 @@ void mod(Unit *z, const Unit *xy)
 		q = mul52bit(&H, t[i], g_mont.rp);
 		t[N+i] += rawMulUnitAdd(t + i, g_mont.p, q);
 		t[i+1] += t[i] >> W;
-		t[i] &= mask;
+		t[i] &= g_mask;
 	}
 	for (size_t i = N; i < N*2-1; i++) {
 		t[i+1] += t[i] >> W;
-		t[i] &= mask;
+		t[i] &= g_mask;
 	}
 	bool c = rawSub(z, t + N, g_mont.p);
 	select(z, c, t + N, z);
@@ -603,7 +603,7 @@ void mul(Unit *z, const Unit *x, const Unit *y)
 	}
 	for (size_t i = N; i < N*2; i++) {
 		t[i] += t[i-1] >> W;
-		t[i-1] &= mask;
+		t[i-1] &= g_mask;
 	}
 	bool c = rawSub(z, t+N, g_mont.p);
 	select(z, c, t+N, z);
@@ -617,20 +617,20 @@ mpz_class mpz_rand(RG& rg)
 		x[i] = rg.get64();
 	}
 	mpz_class mx = fromArray<N>(x);
-	return mx % mp;
+	return mx % g_mp;
 }
 
 mpz_class madd(const mpz_class& x, const mpz_class& y)
 {
 	mpz_class z = x + y;
-	if (z >= mp) z -= mp;
+	if (z >= g_mp) z -= g_mp;
 	return z;
 }
 
 mpz_class msub(const mpz_class& x, const mpz_class& y)
 {
 	mpz_class z = x - y;
-	if (z < 0) z += mp;
+	if (z < 0) z += g_mp;
 	return z;
 }
 
@@ -731,20 +731,6 @@ void dblCTProj(E& R, const E& P)
 	F::add(R.x, R.x, R.x);
 }
 
-// Q = P * y[]
-template<class E>
-void mulT(E& Q, const E& P, const Unit *y)
-{
-	const int w = 4;
-	const int tblN = 1<<w;
-	E tbl[tblN];
-	tbl[0] = E::zero();
-	tbl[1] = P;
-	for (size_t i = 2; i < tblN; i++) {
-		E::add(tbl[i], tbl[i-1], P);
-	}
-}
-
 struct Fp {
 	mpz_class v;
 	Fp(int _v = 0) : v(_v) {}
@@ -767,6 +753,10 @@ struct Fp {
 	void set(const mpz_class& x)
 	{
 		v = g_mont.toMont(x);
+	}
+	mpz_class get() const
+	{
+		return g_mont.fromMont(v);
 	}
 };
 
@@ -794,15 +784,36 @@ struct Ec {
 	{
 		return zero_;
 	}
+	void clear()
+	{
+		*this = zero();
+	}
 	void set(const mpz_class& _x, const mpz_class& _y, const mpz_class& _z)
 	{
 		x.set(_x);
 		y.set(_y);
 		z.set(_z);
 	}
-	static void mul(Ec& z, const Ec& x, const Unit *y)
+	static void mul(Ec& Q, const Ec& P, Unit y)
 	{
-		mulT(z, x, y);
+		const int w = 4;
+		const int tblN = 1<<w;
+		const int mask = tblN-1;
+		Ec tbl[tblN];
+		tbl[0].clear();
+		tbl[1] = P;
+		for (size_t i = 2; i < tblN; i++) {
+			add(tbl[i], tbl[i-1], P);
+		}
+		const size_t bitLen = sizeof(Unit)*8;
+		Q = tbl[(y >> (bitLen - w)) & mask];
+		for (int j = (int)bitLen - w*2; j >= 0; j -= w) {
+			for (size_t i = 0; i < w; i++) {
+				Ec::dbl(Q, Q);
+			}
+			size_t idx = (y >> j) & mask;
+			Ec::add(Q, Q, tbl[idx]);
+		}
 	}
 };
 
@@ -866,6 +877,10 @@ struct EcM {
 	{
 		return zero_;
 	}
+	void clear()
+	{
+		*this = zero();
+	}
 	void set(const Ec& v, size_t i)
 	{
 		x.set(v.x.v, i);
@@ -889,17 +904,14 @@ struct EcM {
 FpM EcM::b3_;
 EcM EcM::zero_;
 
-static Ec e_zero;
-static EcM e_vzero;
-
 void init(Montgomery& mont)
 {
 	const char *pStr = "1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab";
-	mp.set_str(pStr, 16);
-	mont.set(mp);
-	toArray<N>(g_p, mp);
-	expand(vmask, mask);
-	expandN(vpN, mp);
+	g_mp.set_str(pStr, 16);
+	mont.set(g_mp);
+	toArray<N>(g_p, g_mp);
+	expand(vmask, g_mask);
+	expandN(vpN, g_mp);
 	expand(vrp, mont.rp);
 	Ec::init(mont);
 	EcM::init(mont);
@@ -909,7 +921,7 @@ void init(Montgomery& mont)
 	g_mx.set_str("17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb", 16);
 	g_my.set_str("08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1", 16);
 	g_mr.set_str("73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001", 16);
-	printf("(mx, my) is on %d\n", (g_mx * g_mx * g_mx + 4 - g_my * g_my) % mp == 0);
+	printf("(mx, my) is on %d\n", (g_mx * g_mx * g_mx + 4 - g_my * g_my) % g_mp == 0);
 }
 
 template<typename T>
@@ -954,8 +966,8 @@ void vtest(const mpz_class& _mx, const mpz_class& _my)
 	alignas(64) Unit _x[N*M], _y[N*M], _z[N*M];
 	Vec xN[N*M], yN[N*M], zN[N*M];
 	for (size_t i = 0; i < M; i++) {
-		mx[i] = (_mx + i * 123) % mp;
-		my[i] = (_my + i * 245) % mp;
+		mx[i] = (_mx + i * 123) % g_mp;
+		my[i] = (_my + i * 245) % g_mp;
 		toArray<N>(_x + i*N, mx[i]);
 		toArray<N>(_y + i*N, my[i]);
 	}
@@ -1042,7 +1054,7 @@ void testMont(const mpz_class& mx, const mpz_class& my)
 	ay = g_mont.toMont(my);
 	g_mont.mul(axy, ax, ay);
 	xy = g_mont.fromMont(axy);
-	mxy = (mx * my) % mp;
+	mxy = (mx * my) % g_mp;
 	if (xy != mxy) {
 		puts("err g_mont");
 		putAll(mx, my, mxy, xy);
@@ -1115,6 +1127,24 @@ void ecTest()
 	CYBOZU_BENCH_C("FpM::mul", C, FpM::mul, R2.x, R2.x, Q2.x);
 }
 
+void mulTest()
+{
+	puts("mulTest");
+	Ec P1[M], Q1[M];
+	EcM P2, Q2;
+	P1[0].x.set(g_mx);
+	P1[0].y.set(g_my);
+	P1[0].z.set(1);
+	for (size_t i = 1; i < M; i++) {
+		Ec::dbl(P1[i], P1[i-1]);
+	}
+	P2.set(P1);
+	Ec::mul(Q1[0], P1[0], 123456789);
+	std::cout << "X=" << Q1[0].x.get() << std::endl;
+	std::cout << "Y=" << Q1[0].y.get() << std::endl;
+	std::cout << "Z=" << Q1[0].z.get() << std::endl;
+}
+
 void testAll(const mpz_class& mx, const mpz_class& my)
 {
 	test(mx, my);
@@ -1150,7 +1180,7 @@ int main()
 	g_mont.put();
 
 	const mpz_class tbl[] = {
-		0xaabbccdd, 0x11223344, 0, 1, 2, mask-1, mask, mask+1, mp-1, mp>>2, 0x12345, mp-0x1111,
+		0xaabbccdd, 0x11223344, 0, 1, 2, g_mask-1, g_mask, g_mask+1, g_mp-1, g_mp>>2, 0x12345, g_mp-0x1111,
 	};
 	std::cout << std::hex;
 	for (const auto& mx : tbl) {
@@ -1166,6 +1196,7 @@ int main()
 		testAll(mx, my);
 	}
 	miscTest();
+	mulTest();
 	ecTest();
 	puts("ok");
 }
