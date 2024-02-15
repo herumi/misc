@@ -27,6 +27,8 @@ const size_t N = 8; // = ceil(384/52)
 const size_t M = sizeof(Vec) / sizeof(Unit);
 const uint64_t mask = (Unit(1)<<W) - 1;
 
+const int C = 1000000;
+
 static mpz_class mp;
 
 static mpz_class g_mx, g_my, g_mr;
@@ -634,6 +636,7 @@ void putAll(const mpz_class& x, const mpz_class& y, const mpz_class& z, const mp
 	std::cout << "w=" << w << std::endl;
 }
 
+// 14M+19A
 template<class E>
 void addCTProj(E& R, const E& P, const E& Q)
 {
@@ -674,7 +677,7 @@ void addCTProj(E& R, const E& P, const E& Q)
 	F::mul(R.z, R.z, t4);
 	F::add(R.z, R.z, t0);
 }
-// 7M+2S
+// 7M+2S+9A
 template<class E>
 void dblCTProj(E& R, const E& P)
 {
@@ -946,9 +949,9 @@ void vtest(const mpz_class& _mx, const mpz_class& _my)
 		}
 	}
 return;
-	CYBOZU_BENCH_C("uvadd", 10000, uvadd, xN, xN, yN);
-	CYBOZU_BENCH_C("uvsub", 10000, uvsub, xN, xN, yN);
-	CYBOZU_BENCH_C("uvmul", 10000, uvmul, xN, xN, yN);
+	CYBOZU_BENCH_C("uvadd", C, uvadd, xN, xN, yN);
+	CYBOZU_BENCH_C("uvsub", C, uvsub, xN, xN, yN);
+	CYBOZU_BENCH_C("uvmul", C, uvmul, xN, xN, yN);
 }
 
 void testMont(const mpz_class& mx, const mpz_class& my)
@@ -1028,8 +1031,11 @@ void ecTest()
 	}
 	EcM::dbl(R2, R2);
 	cmpEc(R2, R1, "R2");
-	CYBOZU_BENCH_C("EcM::add", 10000, EcM::add, R2, R2, Q2);
-	CYBOZU_BENCH_C("EcM::dbl", 10000, EcM::dbl, R2, R2);
+	CYBOZU_BENCH_C("EcM::add", C, EcM::add, R2, R2, Q2);
+	CYBOZU_BENCH_C("EcM::dbl", C, EcM::dbl, R2, R2);
+	CYBOZU_BENCH_C("FpM::add", C, FpM::add, R2.x, R2.x, Q2.x);
+	CYBOZU_BENCH_C("FpM::sub", C, FpM::sub, R2.x, R2.x, Q2.x);
+	CYBOZU_BENCH_C("FpM::mul", C, FpM::mul, R2.x, R2.x, Q2.x);
 }
 
 void testAll(const mpz_class& mx, const mpz_class& my)
