@@ -636,12 +636,21 @@ void putAll(const mpz_class& x, const mpz_class& y, const mpz_class& z, const mp
 	std::cout << "w=" << w << std::endl;
 }
 
+template<class F>
+void mul12(F& x)
+{
+	F t;
+	F::add(t, x, x);
+	F::add(x, t, x); // 3x
+	F::add(x, x, x);
+	F::add(x, x, x);
+}
 // 14M+19A
 template<class E>
 void addCTProj(E& R, const E& P, const E& Q)
 {
 	typedef typename E::Fp F;
-	assert(E::a_ == 0);
+	assert(E::a_ == 0 && E::b_ == 4);
 	F t0, t1, t2, t3, t4, x3, y3;
 	F::mul(t0, P.x, Q.x);
 	F::mul(t1, P.y, Q.y);
@@ -663,10 +672,18 @@ void addCTProj(E& R, const E& P, const E& Q)
 	F::sub(y3, x3, y3);
 	F::add(x3, t0, t0);
 	F::add(t0, t0, x3);
+#if 1
+	mul12(t2);
+#else
 	F::mul(t2, t2, E::b3_);
+#endif
 	F::add(R.z, t1, t2);
 	F::sub(t1, t1, t2);
+#if 1
+	mul12(y3);
+#else
 	F::mul(y3, y3, E::b3_);
+#endif
 	F::mul(x3, y3, t4);
 	F::mul(t2, t3, t1);
 	F::sub(R.x, t2, x3);
@@ -682,7 +699,7 @@ template<class E>
 void dblCTProj(E& R, const E& P)
 {
 	typedef typename E::Fp F;
-	assert(E::a_ == 0);
+	assert(E::a_ == 0 && E::b_ == 4);
 	F t0, t1, t2, x3, y3;
 	F::sqr(t0, P.y);
 	F::mul(t1, P.y, P.z);
@@ -690,7 +707,11 @@ void dblCTProj(E& R, const E& P)
 	F::add(R.z, t0, t0);
 	F::add(R.z, R.z, R.z);
 	F::add(R.z, R.z, R.z);
+#if 1
+	mul12(t2);
+#else
 	F::mul(t2, t2, E::b3_);
+#endif
 	F::mul(x3, t2, P.z);
 	F::add(y3, t0, t2);
 	F::mul(R.z, R.z, t1);
@@ -732,6 +753,7 @@ struct Fp {
 struct Ec {
 	typedef Fp Fp;
 	static const int a_ = 0;
+	static const int b_ = 4;
 	static Fp b3_;
 	Fp x, y, z;
 	static void add(Ec& z, const Ec& x, const Ec& y)
@@ -786,6 +808,7 @@ struct FpM {
 struct EcM {
 	typedef FpM Fp;
 	static const int a_ = 0;
+	static const int b_ = 4;
 	static FpM b3_;
 	FpM x, y, z;
 	static void add(EcM& z, const EcM& x, const EcM& y)
