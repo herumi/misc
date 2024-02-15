@@ -731,16 +731,19 @@ void dblCTProj(E& R, const E& P)
 	F::add(R.x, R.x, R.x);
 }
 
-#if 0
 // Q = P * y[]
 template<class E>
-void mul(E& Q, const E& P, const Unit *y)
+void mulT(E& Q, const E& P, const Unit *y)
 {
 	const int w = 4;
-	E tbl[1<<w];
-	tbl[0].clear();
+	const int tblN = 1<<w;
+	E tbl[tblN];
+	tbl[0] = E::zero();
+	tbl[1] = P;
+	for (size_t i = 2; i < tblN; i++) {
+		E::add(tbl[i], tbl[i-1], P);
+	}
 }
-#endif
 
 struct Fp {
 	mpz_class v;
@@ -765,10 +768,6 @@ struct Fp {
 	{
 		v = g_mont.toMont(x);
 	}
-	void clear()
-	{
-		v = 0;
-	}
 };
 
 struct Ec {
@@ -776,6 +775,7 @@ struct Ec {
 	static const int a_ = 0;
 	static const int b_ = 4;
 	static Fp b3_;
+	static Ec zero_;
 	Fp x, y, z;
 	static void add(Ec& z, const Ec& x, const Ec& y)
 	{
@@ -790,9 +790,24 @@ struct Ec {
 		const int b = 4;
 		b3_.v = mont.toMont(b * 3);
 	}
+	static const Ec& zero()
+	{
+		return zero_;
+	}
+	void set(const mpz_class& _x, const mpz_class& _y, const mpz_class& _z)
+	{
+		x.set(_x);
+		y.set(_y);
+		z.set(_z);
+	}
+	static void mul(Ec& z, const Ec& x, const Unit *y)
+	{
+		mulT(z, x, y);
+	}
 };
 
 Fp Ec::b3_;
+Ec Ec::zero_;
 
 struct FpM {
 	Vec v[N];
@@ -831,6 +846,7 @@ struct EcM {
 	static const int a_ = 0;
 	static const int b_ = 4;
 	static FpM b3_;
+	static EcM zero_;
 	FpM x, y, z;
 	static void add(EcM& z, const EcM& x, const EcM& y)
 	{
@@ -846,17 +862,35 @@ struct EcM {
 		mpz_class b3 = mont.toMont(b * 3);
 		expandN(b3_.v, b3);
 	}
+	static const EcM& zero()
+	{
+		return zero_;
+	}
+	void set(const Ec& v, size_t i)
+	{
+		x.set(v.x.v, i);
+		y.set(v.y.v, i);
+		z.set(v.z.v, i);
+	}
+	void set(const Ec& v)
+	{
+		for (size_t i = 0; i < M; i++) {
+			set(v, i);
+		}
+	}
 	void set(const Ec v[M])
 	{
 		for (size_t i = 0; i < M; i++) {
-			x.set(v[i].x.v, i);
-			y.set(v[i].y.v, i);
-			z.set(v[i].z.v, i);
+			set(v[i], i);
 		}
 	}
 };
 
 FpM EcM::b3_;
+EcM EcM::zero_;
+
+static Ec e_zero;
+static EcM e_vzero;
 
 void init(Montgomery& mont)
 {
@@ -869,6 +903,9 @@ void init(Montgomery& mont)
 	expand(vrp, mont.rp);
 	Ec::init(mont);
 	EcM::init(mont);
+	Ec::zero_.set(0, 1, 0);
+	EcM::zero_.set(Ec::zero());
+
 	g_mx.set_str("17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb", 16);
 	g_my.set_str("08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1", 16);
 	g_mr.set_str("73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001", 16);
