@@ -183,6 +183,12 @@ Vec vand(const Vec& a, const Vec& b)
 	return _mm512_and_epi64(a, b);
 }
 
+// return [H:L][idx]
+Vec vperm2tq(const Vec& L, const Vec& idx, const Vec& H)
+{
+	return _mm512_permutex2var_epi64(L, idx, H);
+}
+
 Vmask vcmpeq(const Vec& a, const Vec& b)
 {
 	return _mm512_cmpeq_epi64_mask(a, b);
@@ -725,6 +731,17 @@ void dblCTProj(E& R, const E& P)
 	F::add(R.x, R.x, R.x);
 }
 
+#if 0
+// Q = P * y[]
+template<class E>
+void mul(E& Q, const E& P, const Unit *y)
+{
+	const int w = 4;
+	E tbl[1<<w];
+	tbl[0].clear();
+}
+#endif
+
 struct Fp {
 	mpz_class v;
 	Fp(int _v = 0) : v(_v) {}
@@ -746,7 +763,11 @@ struct Fp {
 	}
 	void set(const mpz_class& x)
 	{
-		v = x % mp;
+		v = g_mont.toMont(x);
+	}
+	void clear()
+	{
+		v = 0;
 	}
 };
 
@@ -893,7 +914,7 @@ void vtest(const mpz_class& _mx, const mpz_class& _my)
 {
 	mpz_class mz, mw;
 	mpz_class mx[M], my[M];
-	CYBOZU_ALIGN(64) Unit _x[N*M], _y[N*M], _z[N*M];
+	alignas(64) Unit _x[N*M], _y[N*M], _z[N*M];
 	Vec xN[N*M], yN[N*M], zN[N*M];
 	for (size_t i = 0; i < M; i++) {
 		mx[i] = (_mx + i * 123) % mp;
@@ -1023,13 +1044,9 @@ void ecTest()
 	puts("ecTest");
 	Ec P1[M], Q1[M], R1[M];
 	EcM P2, Q2, R2;
-	mpz_class x, y, z;
-	x = g_mont.toMont(g_mx);
-	y = g_mont.toMont(g_my);
-	z = g_mont.toMont(1);
-	P1[0].x.set(x);
-	P1[0].y.set(y);
-	P1[0].z.set(z);
+	P1[0].x.set(g_mx);
+	P1[0].y.set(g_my);
+	P1[0].z.set(1);
 	for (size_t i = 1; i < M; i++) {
 		Ec::dbl(P1[i], P1[i-1]);
 	}
@@ -1068,6 +1085,28 @@ void testAll(const mpz_class& mx, const mpz_class& my)
 	vtest(mx, my);
 }
 
+void miscTest()
+{
+	Unit v[] = {
+		0x1234000, 0x1234001, 0x1234002, 0x1234003, 0x1234004, 0x1234005, 0x1234006, 0x1234007,
+		0x1234008, 0x1234009, 0x123400a, 0x123400b, 0x123400c, 0x123400d, 0x123400e, 0x123400f,
+	};
+	Unit idx1[] = {
+		0, 2, 4, 6, 8, 10, 12, 14
+	};
+	Unit idx2[] = {
+		15, 13, 11, 9, 7, 5, 3, 1
+	};
+	Vec a = *(const Vec*)&v[0];
+	Vec b = *(const Vec*)&v[8];
+	Vec idx = *(const Vec*)idx1;
+	Vec x = vperm2tq(a, idx, b);
+	put(x, "idx1");
+	idx = *(const Vec*)idx2;
+	x = vperm2tq(a, idx, b);
+	put(x, "idx2");
+}
+
 int main()
 {
 	init(g_mont);
@@ -1089,6 +1128,7 @@ int main()
 		mpz_class my = mpz_rand(rg);
 		testAll(mx, my);
 	}
+	miscTest();
 	ecTest();
 	puts("ok");
 }
