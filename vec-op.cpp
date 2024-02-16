@@ -36,7 +36,13 @@ static mpz_class g_mx, g_my;
 // split into 52 bits
 static Unit g_p[N];
 
-static Unit g_mpM2[6]; // x^(-1) = x^(r-2)
+static Unit g_mpM2[6]; // x^(-1) = x^(p-2) mod p
+
+static Vec vmask;
+static Vec vrp;
+static Vec vpN[N];
+static Vec g_vmpM2[6];
+static Vec g_vmask4;
 
 Unit getMask(int w)
 {
@@ -103,10 +109,6 @@ Vec vzero()
 {
 	return _mm512_setzero_epi32();
 }
-
-static Vec vmask;
-static Vec vrp;
-static Vec vpN[N];
 
 // set x[j] to i-th SIMD element of v[j]
 void set(Vec v[N], size_t i, const Unit x[N])
@@ -190,6 +192,11 @@ Vec vshl(const Vec& a, int b)
 Vec vand(const Vec& a, const Vec& b)
 {
 	return _mm512_and_epi64(a, b);
+}
+
+Vec vpgatherqq(const Vec& idx, const void *base)
+{
+	return _mm512_i64gather_epi64(idx, base, 8);
 }
 
 // return [H:L][idx]
@@ -866,6 +873,7 @@ Ec Ec::zero_;
 
 struct FpM {
 	Vec v[N];
+	static FpM one_;
 	static void add(FpM& z, const FpM& x, const FpM& y)
 	{
 		uvadd(z.v, x.v, y.v);
@@ -894,7 +902,33 @@ struct FpM {
 		::get(x, v, i);
 		return fromArray<N>(x);
 	}
+	static void pow(FpM& z, const FpM& x, const Vec *y, size_t yn)
+	{
+		const int w = 4;
+		const int tblN = 1<<w;
+		const int mask = tblN-1;
+		FpM tbl[tblN];
+		tbl[0] = one_;
+		tbl[1] = x;
+		for (size_t i = 2; i < tblN; i++) {
+			mul(tbl[i], tbl[i-1], x);
+		}
+		const size_t bitLen = sizeof(Unit)*8;
+		const size_t jn = bitLen / w;
+		z = one_;
+		for (size_t i = 0; i < yn; i++) {
+			const Vec& v = y[yn-1-i];
+			for (size_t j = 0; j < jn; j++) {
+				for (int k = 0; k < w; k++) FpM::sqr(z, z);
+				Vec idx = vand(vshl(v, bitLen-w-j*w), g_vmask4);
+//				Vec t = vpgatherqq(idx, tbl);
+//				mul(z, z, t);
+			}
+		}
+	}
 };
+
+FpM FpM::one_;
 
 struct EcM {
 	typedef FpM Fp;
@@ -960,6 +994,11 @@ void init(Montgomery& mont)
 	expand(vmask, g_mask);
 	expandN(vpN, g_mp);
 	expand(vrp, mont.rp);
+	for (int i = 0; i < 6; i++) {
+		expand(g_vmpM2[i], g_mpM2[i]);
+	}
+	expand(g_vmask4, getMask(4));
+	expandN(FpM::one_.v, Fp(1).v);
 	Ec::init(mont);
 	EcM::init(mont);
 	Ec::zero_.set(0, 1, 0);
