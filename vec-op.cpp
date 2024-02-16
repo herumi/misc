@@ -29,20 +29,29 @@ const uint64_t g_mask = (Unit(1)<<W) - 1;
 
 const int C = 1000000;
 
-static mpz_class g_mp;
+static mpz_class g_mp, g_mr;
 
-static mpz_class g_mx, g_my, g_mr;
+static mpz_class g_mx, g_my;
 
 // split into 52 bits
 static Unit g_p[N];
 
-template<size_t N>
+static Unit g_mpM2[6]; // x^(-1) = x^(r-2)
+
+Unit getMask(int w)
+{
+	if (w == 64) return Unit(-1);
+	return (Unit(1) << w) - 1;
+}
+
+template<size_t N, int w = W>
 void toArray(Unit x[N], mpz_class mx)
 {
+	const Unit mask = getMask(w);
 	for (size_t i = 0; i < N; i++) {
-		mpz_class a = mx & g_mask;
+		mpz_class a = mx & mask;
 		x[i] = a.get_ui();
-		mx >>= W;
+		mx >>= w;
 	}
 }
 
@@ -57,11 +66,11 @@ mpz_class fromArray(const Unit x[N])
 	return mx;
 }
 
-void put(const Unit *v, const char *msg = nullptr)
+void put(const Unit *v, const char *msg = nullptr, size_t m = M)
 {
 	if (msg) printf("%s ", msg);
-	for (size_t i = 0; i < M; i++) {
-		printf("%014lx ", v[M-1-i]);
+	for (size_t i = 0; i < m; i++) {
+		printf("%014lx ", v[m-1-i]);
 	}
 	printf("\n");
 }
@@ -71,7 +80,7 @@ void put(const Vec& v, const char *msg = nullptr)
 	put((const Unit*)&v, msg);
 }
 
-void put(const Vec *v, size_t n = N, const char *msg = nullptr)
+void put(const Vec *v, const char *msg = nullptr, size_t n = N)
 {
 	if (msg) printf("%s\n", msg);
 	for (size_t i = 0; i < n; i++) {
@@ -733,7 +742,8 @@ void dblCTProj(E& R, const E& P)
 
 struct Fp {
 	mpz_class v;
-	Fp(int _v = 0) : v(_v) {}
+	Fp() : v(0) {}
+	Fp(int _v) : v(g_mont.toMont(_v)) {}
 	static void add(Fp& z, const Fp& x, const Fp& y)
 	{
 		z.v = madd(x.v, y.v);
@@ -757,6 +767,40 @@ struct Fp {
 	mpz_class get() const
 	{
 		return g_mont.fromMont(v);
+	}
+	bool operator==(const Fp& rhs) const { return v == rhs.v; }
+	bool operator!=(const Fp& rhs) const { return v != rhs.v; }
+	friend std::ostream& operator<<(std::ostream& os, const Fp& x)
+	{
+		return os << x.get();
+	}
+	// z = x^y[yn]
+	static void pow(Fp& z, const Fp& x, const Unit *y, size_t yn)
+	{
+		const int w = 4;
+		const int tblN = 1<<w;
+		const int mask = tblN-1;
+		Fp tbl[tblN];
+		tbl[0] = 1;
+		tbl[1] = x;
+		for (size_t i = 2; i < tblN; i++) {
+			mul(tbl[i], tbl[i-1], x);
+		}
+		const size_t bitLen = sizeof(Unit)*8;
+		const size_t jn = bitLen / w;
+		z = 1;
+		for (size_t i = 0; i < yn; i++) {
+			Unit v = y[yn-1-i];
+			for (size_t j = 0; j < jn; j++) {
+				for (int k = 0; k < w; k++) Fp::sqr(z, z);
+				size_t idx = (v >> (bitLen-w - j*w)) & mask;
+				Fp::mul(z, z, tbl[idx]);
+			}
+		}
+	}
+	static void inv(Fp& z, const Fp& x)
+	{
+		pow(z, x, g_mpM2, sizeof(g_mpM2)/sizeof(g_mpM2[0]));
 	}
 };
 
@@ -907,9 +951,12 @@ EcM EcM::zero_;
 void init(Montgomery& mont)
 {
 	const char *pStr = "1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab";
+	const char *rStr = "73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001";
 	g_mp.set_str(pStr, 16);
+	g_mr.set_str(rStr, 16);
 	mont.set(g_mp);
 	toArray<N>(g_p, g_mp);
+	toArray<6, 64>(g_mpM2, g_mp-2);
 	expand(vmask, g_mask);
 	expandN(vpN, g_mp);
 	expand(vrp, mont.rp);
@@ -1096,6 +1143,26 @@ void ecTest()
 	P1[0].x.set(g_mx);
 	P1[0].y.set(g_my);
 	P1[0].z.set(1);
+	{
+		Unit y[4] = {};
+		Fp x = P1[0].x, z, w = x;
+		for (int i = 1; i < 100; i++) {
+			y[0] = i;
+			Fp::pow(z, x, y, 4);
+			assertEq(z, w);
+			Fp::mul(w, w, x);
+		}
+		puts("pow ok");
+	}
+	{
+		Fp x = P1[0].x, y, z;
+		for (int i = 0; i < 100; i++) {
+			Fp::inv(y, x);
+			Fp::mul(z, x, y);
+			assertEq(z.get(), mpz_class(1));
+		}
+		puts("inv ok");
+	}
 	for (size_t i = 1; i < M; i++) {
 		Ec::dbl(P1[i], P1[i-1]);
 	}
@@ -1113,7 +1180,6 @@ void ecTest()
 	}
 	EcM::add(R2, P2, Q2);
 	cmpEc(R2, R1, "R");
-
 
 	for (size_t i = 0; i < M; i++) {
 		Ec::dbl(R1[i], R1[i]);
