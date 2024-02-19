@@ -41,8 +41,19 @@ static Unit g_mpM2[6]; // x^(-1) = x^(p-2) mod p
 static Vec vmask;
 static Vec vrp;
 static Vec vpN[N];
-static Vec g_vmpM2[6];
+static Vec g_vmpM2[6]; // NOT 52-bit but 64-bit
 static Vec g_vmask4;
+
+std::ostream& operator<<(std::ostream& os, const Vec& v)
+{
+	const Unit *p = (const Unit *)&v;
+	char buf[64];
+	for (size_t i = 0; i < M; i++) {
+		snprintf(buf, sizeof(buf), "%016lx ", p[M-1-i]);
+		os << buf;
+	}
+	return os;
+}
 
 Unit getMask(int w)
 {
@@ -184,10 +195,16 @@ Vec vsub(const Vec& a, const Vec& b)
 	return _mm512_sub_epi64(a, b);
 }
 
-Vec vshl(const Vec& a, int b)
+Vec vpsrlq(const Vec& a, int b)
 {
 	return _mm512_srli_epi64(a, b);
 }
+
+Vec vpsllq(const Vec& a, int b)
+{
+	return _mm512_slli_epi64(a, b);
+}
+
 
 Vec vand(const Vec& a, const Vec& b)
 {
@@ -229,7 +246,7 @@ Vec vselect(const Vmask& c, const Vec& a, const Vec& b)
 void vrawAdd(Vec *z, const Vec *x, const Vec *y)
 {
 	Vec t = vadd(x[0], y[0]);
-	Vec c = vshl(t, W);
+	Vec c = vpsrlq(t, W);
 	z[0] = vand(t, vmask);
 
 	for (size_t i = 1; i < N; i++) {
@@ -239,7 +256,7 @@ void vrawAdd(Vec *z, const Vec *x, const Vec *y)
 			z[i] = t;
 			return;
 		}
-		c = vshl(t, W);
+		c = vpsrlq(t, W);
 		z[i] = vand(t, vmask);
 	}
 }
@@ -247,12 +264,12 @@ void vrawAdd(Vec *z, const Vec *x, const Vec *y)
 Vmask vrawSub(Vec *z, const Vec *x, const Vec *y)
 {
 	Vec t = vsub(x[0], y[0]);
-	Vec c = vshl(t, S);
+	Vec c = vpsrlq(t, S);
 	z[0] = vand(t, vmask);
 	for (size_t i = 1; i < N; i++) {
 		t = vsub(x[i], y[i]);
 		t = vsub(t, c);
-		c = vshl(t, S);
+		c = vpsrlq(t, S);
 		z[i] = vand(t, vmask);
 	}
 	return vcmpneq(c, vzero());
@@ -342,12 +359,12 @@ void uvmul(Vec *z, const Vec *x, const Vec *y)
 	t[N] = vadd(t[N], vrawMulUnitAdd(t, vpN, q));
 	for (size_t i = 1; i < N; i++) {
 		t[N+i] = vrawMulUnitAdd(t+i, x, y[i]);
-		t[i] = vadd(t[i], vshl(t[i-1], W));
+		t[i] = vadd(t[i], vpsrlq(t[i-1], W));
 		q = vmulL(t[i], vrp);
 		t[N+i] = vadd(t[N+i], vrawMulUnitAdd(t+i, vpN, q));
 	}
 	for (size_t i = N; i < N*2; i++) {
-		t[i] = vadd(t[i], vshl(t[i-1], W));
+		t[i] = vadd(t[i], vpsrlq(t[i-1], W));
 		t[i-1] = vand(t[i-1], vmask);
 	}
 	Vmask c = vrawSub(z, t+N, vpN);
@@ -809,6 +826,10 @@ struct Fp {
 	{
 		pow(z, x, g_mpM2, sizeof(g_mpM2)/sizeof(g_mpM2[0]));
 	}
+	void put() const
+	{
+		std::cout << std::hex << get() << std::endl;
+	}
 };
 
 struct Ec {
@@ -900,13 +921,27 @@ struct FpM {
 	{
 		Unit x[N];
 		::get(x, v, i);
-		return fromArray<N>(x);
+		mpz_class r = fromArray<N>(x);
+		return g_mont.fromMont(r);
+	}
+	void put() const
+	{
+		for (size_t i = 0; i < M; i++) {
+			std::cout << std::hex << get(i) << std::endl;
+		}
+	}
+	friend std::ostream& operator<<(std::ostream& os, const FpM& x)
+	{
+		for (size_t i = 0; i < N; i++) {
+			os << i << ' ' << x.v[i] << '\n';
+		}
+		return os;
 	}
 	static void pow(FpM& z, const FpM& x, const Vec *y, size_t yn)
 	{
 		const int w = 4;
+		assert(w == 4);
 		const int tblN = 1<<w;
-		const int mask = tblN-1;
 		FpM tbl[tblN];
 		tbl[0] = one_;
 		tbl[1] = x;
@@ -920,11 +955,19 @@ struct FpM {
 			const Vec& v = y[yn-1-i];
 			for (size_t j = 0; j < jn; j++) {
 				for (int k = 0; k < w; k++) FpM::sqr(z, z);
-				Vec idx = vand(vshl(v, bitLen-w-j*w), g_vmask4);
-//				Vec t = vpgatherqq(idx, tbl);
-//				mul(z, z, t);
+				Vec idx = vand(vpsrlq(v, bitLen-w-j*w), g_vmask4);
+				idx = vpsllq(idx, 3);
+				FpM t;
+				for (size_t k = 0; k < N; k++) {
+					t.v[i] = vpgatherqq(idx, &tbl[0].v[k]);
+				}
+				mul(z, z, t);
 			}
 		}
+	}
+	static void inv(FpM& z, const FpM& x)
+	{
+		pow(z, x, g_vmpM2, 6);
 	}
 };
 
@@ -1168,9 +1211,9 @@ void cmpEc(const EcM& P, const Ec Q[M], const char *msg = nullptr)
 {
 	if (msg) printf("%s\n", msg);
 	for (size_t i = 0; i < M; i++) {
-		assertEq(P.x.get(i), Q[i].x.v, "x");
-		assertEq(P.y.get(i), Q[i].y.v, "y");
-		assertEq(P.z.get(i), Q[i].z.v, "z");
+		assertEq(P.x.get(i), Q[i].x.get(), "x");
+		assertEq(P.y.get(i), Q[i].y.get(), "y");
+		assertEq(P.z.get(i), Q[i].z.get(), "z");
 	}
 }
 
@@ -1182,6 +1225,7 @@ void ecTest()
 	P1[0].x.set(g_mx);
 	P1[0].y.set(g_my);
 	P1[0].z.set(1);
+#if 1
 	{
 		Unit y[4] = {};
 		Fp x = P1[0].x, z, w = x;
@@ -1202,11 +1246,52 @@ void ecTest()
 		}
 		puts("inv ok");
 	}
+#endif
 	for (size_t i = 1; i < M; i++) {
 		Ec::dbl(P1[i], P1[i-1]);
 	}
 	P2.set(P1);
 	cmpEc(P2, P1, "P");
+#if 0
+	{
+		Unit y[1] = {};
+		Fp x = P1[0].x, z, w = x;
+puts("AAA");
+puts("x");
+x.put();
+		for (int i = 1; i < 8; i++) {
+printf("i=%d\n", i);
+			y[0] = i;
+			Fp::pow(z, x, y, 1);
+z.put();
+		}
+	}
+	{
+		Vec y[1];
+		memset(y, 0, sizeof(y));
+		for (int i = 1; i < 8; i++) {
+			*(Unit *)&y[i] = i;
+		}
+
+		FpM x = P2.x, z;
+puts("x");
+x.put();
+		FpM::pow(z, x, y, 1);
+z.put();
+	}
+exit(1);
+#endif
+	{
+		Vec y[6];
+		for (int i = 0; i < 6; i++) {
+			expand(y[i], g_mpM2[i]);
+		}
+		FpM x = P2.x, z;
+		FpM::inv(z, x);
+		FpM::mul(z, z, x);
+		std::cout << "z\n" << z << std::endl;
+		puts("vpow ok");
+	}
 
 	for (size_t i = 0; i < M; i++) {
 		Ec::add(Q1[i], P1[i], P1[M-1]);
