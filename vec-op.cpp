@@ -43,6 +43,7 @@ static Vec vrp;
 static Vec vpN[N];
 static Vec g_vmpM2[6]; // NOT 52-bit but 64-bit
 static Vec g_vmask4;
+static Vec g_offset;
 
 std::ostream& operator<<(std::ostream& os, const Vec& v)
 {
@@ -449,11 +450,10 @@ public:
 	}
 	void put() const
 	{
-		std::cout << std::hex;
-		std::cout << "p=0x" << mp << std::endl;
-		std::cout << "R=0x" << mR << std::endl;
-		std::cout << "R2=0x" << mR2 << std::endl;
-		std::cout << "rp=0x" << rp << std::endl;
+		std::cout << "p=0x" << mp.get_str(16) << std::endl;
+		std::cout << "R=0x" << mR.get_str(16) << std::endl;
+		std::cout << "R2=0x" << mR2.get_str(16) << std::endl;
+		printf("rp=0x%lx\n", rp);
 	}
 	void set(const mpz_class& _p)
 	{
@@ -827,9 +827,10 @@ struct Fp {
 	{
 		pow(z, x, g_mpM2, sizeof(g_mpM2)/sizeof(g_mpM2[0]));
 	}
-	void put() const
+	void put(const char *msg = nullptr, int base = 16) const
 	{
-		std::cout << std::hex << get() << std::endl;
+		if (msg) printf("%s ", msg);
+		printf("%s\n", get().get_str(base).c_str());
 	}
 };
 
@@ -926,10 +927,11 @@ struct FpM {
 		mpz_class r = fromArray<N>(x);
 		return g_mont.fromMont(r);
 	}
-	void put() const
+	void put(const char *msg = nullptr, int base = 16) const
 	{
+		if (msg) printf("%s\n", msg);
 		for (size_t i = 0; i < M; i++) {
-			std::cout << std::hex << i << ' ' << get(i) << std::endl;
+			printf("% 2zd %s\n", i, get(i).get_str(base).c_str());
 		}
 	}
 	friend std::ostream& operator<<(std::ostream& os, const FpM& x)
@@ -958,10 +960,11 @@ struct FpM {
 			for (size_t j = 0; j < jn; j++) {
 				for (int k = 0; k < w; k++) FpM::sqr(z, z);
 				Vec idx = vand(vpsrlq(v, bitLen-w-j*w), g_vmask4);
-				idx = vpsllq(idx, 6);
+				idx = vpsllq(idx, 6); // 512 B = 64 Unit
+				idx = vadd(idx, g_offset);
 				FpM t;
 				for (size_t k = 0; k < N; k++) {
-					t.v[k] = vpgatherqq(idx, &tbl[0].v[k]);
+					t.v[k] = vpgatherqq(idx, (const Unit*)&tbl[0].v[k]);
 				}
 				mul(z, z, t);
 			}
@@ -1044,6 +1047,9 @@ void init(Montgomery& mont)
 	}
 	expand(g_vmask4, getMask(4));
 	put(g_vmask4, "g_vmask4");
+	for (int i = 0; i < 8; i++) {
+		((Unit*)&g_offset)[i] = i;
+	}
 	expandN(FpM::one_.v, Fp(1).v);
 	Ec::init(mont);
 	EcM::init(mont);
@@ -1222,6 +1228,50 @@ void cmpEc(const EcM& P, const Ec Q[M], const char *msg = nullptr)
 	}
 }
 
+void powTest()
+{
+	{
+		Unit yv[4] = {};
+		Fp x = 100, y, z, w = x;
+		for (int i = 1; i < 100; i++) {
+			yv[0] = i;
+			Fp::pow(z, x, yv, 4);
+			assertEq(z, w);
+			Fp::mul(w, w, x);
+		}
+		puts("pow ok");
+
+		for (int i = 0; i < 100; i++) {
+			Fp::add(x, x, x);
+			Fp::inv(y, x);
+			Fp::mul(z, x, y);
+			assertEq(z.get(), mpz_class(1));
+		}
+		puts("inv ok");
+	}
+	{
+		Fp x[8], z[8];
+		Unit y[8];
+		FpM xm, zm;
+		Vec ym;
+		for (int i = 0; i < 8; i++) {
+			x[i].set(i+0x98765432);
+			y[i] = i+0x12345678;
+			xm.set(x[i].get(), i);
+		}
+		memcpy(&ym, y, sizeof(y));
+		for (int i = 0; i < 8; i++) {
+			Fp::pow(z[i], x[i], &y[i], 1);
+		}
+		FpM::pow(zm, xm, &ym, 1);
+
+		for (int i = 0; i < 8; i++) {
+			assertEq(z[i].get(), zm.get(i));
+		}
+	}
+	puts("FpM::pow ok");
+}
+
 void ecTest()
 {
 	puts("ecTest");
@@ -1230,64 +1280,11 @@ void ecTest()
 	P1[0].x.set(g_mx);
 	P1[0].y.set(g_my);
 	P1[0].z.set(1);
-#if 1
-	{
-		Unit y[4] = {};
-		Fp x = P1[0].x, z, w = x;
-		for (int i = 1; i < 100; i++) {
-			y[0] = i;
-			Fp::pow(z, x, y, 4);
-			assertEq(z, w);
-			Fp::mul(w, w, x);
-		}
-		puts("pow ok");
-	}
-	{
-		Fp x = P1[0].x, y, z;
-		for (int i = 0; i < 100; i++) {
-			Fp::inv(y, x);
-			Fp::mul(z, x, y);
-			assertEq(z.get(), mpz_class(1));
-		}
-		puts("inv ok");
-	}
-#endif
 	for (size_t i = 1; i < M; i++) {
 		Ec::dbl(P1[i], P1[i-1]);
 	}
 	P2.set(P1);
 	cmpEc(P2, P1, "P");
-#if 0
-	{
-		Fp x[8];
-		Unit y[8];
-		FpM xm;
-		Vec ym;
-		for (int i = 0; i < 8; i++) {
-			x[i].set(i+3);
-			y[i] = i+1;
-			xm.set(x[i].get(), i);
-printf("i=%d ", i);
-x[i].put();
-std::cout << "xm " << xm.get(i) << std::endl;
-		}
-		memcpy(&ym, y, sizeof(y));
-		puts("x");
-		for (int i = 0; i < 8; i++) {
-			printf("%d ", i);
-			x[i].put();
-		}
-		puts("xm");
-		xm.put();
-		puts("y");
-		for (int i = 0; i < 8; i++) {
-			printf("%d %d\n", i, y[i]);
-		}
-		puts("ym");
-		put(ym);
-	}
-exit(1);
-#endif
 	{
 		Vec y[6];
 		for (int i = 0; i < 6; i++) {
@@ -1296,7 +1293,9 @@ exit(1);
 		FpM x = P2.x, z;
 		FpM::inv(z, x);
 		FpM::mul(z, z, x);
-		std::cout << "z\n" << z << std::endl;
+		for (int i = 0; i < 8; i++) {
+			assertEq(z.get(i), mpz_class(1));
+		}
 		puts("vpow ok");
 	}
 
@@ -1328,7 +1327,7 @@ void mulTest()
 {
 	puts("mulTest");
 	Ec P1[M], Q1[M];
-	EcM P2, Q2;
+	EcM P2;
 	P1[0].x.set(g_mx);
 	P1[0].y.set(g_my);
 	P1[0].z.set(1);
@@ -1337,9 +1336,6 @@ void mulTest()
 	}
 	P2.set(P1);
 	Ec::mul(Q1[0], P1[0], 123456789);
-	std::cout << "X=" << Q1[0].x.get() << std::endl;
-	std::cout << "Y=" << Q1[0].y.get() << std::endl;
-	std::cout << "Z=" << Q1[0].z.get() << std::endl;
 }
 
 void testAll(const mpz_class& mx, const mpz_class& my)
@@ -1371,6 +1367,26 @@ void miscTest()
 	put(x, "idx2");
 }
 
+void gatherTest()
+{
+	const int N = 64;
+	Unit tbl[N], xv[8];
+	for (int i = 0; i < N; i++) {
+		tbl[i] = 1000+i;
+	}
+	for (int i = 0; i < 8; i++) {
+		xv[i] = i*4;
+	}
+	Vec z, x;
+	memcpy(&x, xv, sizeof(xv));
+	z = vpgatherqq(x, tbl);
+	Unit zv[8];
+	memcpy(zv, &z, sizeof(z));
+	for (int i = 0; i < 8; i++) {
+		assertEq(zv[i], tbl[xv[i]]);
+	}
+}
+
 int main()
 {
 	init(g_mont);
@@ -1379,7 +1395,6 @@ int main()
 	const mpz_class tbl[] = {
 		0xaabbccdd, 0x11223344, 0, 1, 2, g_mask-1, g_mask, g_mask+1, g_mp-1, g_mp>>2, 0x12345, g_mp-0x1111,
 	};
-	std::cout << std::hex;
 	for (const auto& mx : tbl) {
 		for (const auto& my : tbl) {
 			testAll(mx, my);
@@ -1392,8 +1407,10 @@ int main()
 		mpz_class my = mpz_rand(rg);
 		testAll(mx, my);
 	}
+	gatherTest();
 	miscTest();
 	mulTest();
+	powTest();
 	ecTest();
 	puts("ok");
 }
