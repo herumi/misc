@@ -1321,6 +1321,7 @@ void ecTest()
 	CYBOZU_BENCH_C("FpM::add", C, FpM::add, R2.x, R2.x, Q2.x);
 	CYBOZU_BENCH_C("FpM::sub", C, FpM::sub, R2.x, R2.x, Q2.x);
 	CYBOZU_BENCH_C("FpM::mul", C, FpM::mul, R2.x, R2.x, Q2.x);
+	CYBOZU_BENCH_C("FpM::inv", 1000, FpM::inv, R2.x, R2.x);
 }
 
 void mulTest()
