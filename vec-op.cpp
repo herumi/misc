@@ -44,6 +44,7 @@ static Vec vpN[N];
 static Vec g_vmpM2[6]; // NOT 52-bit but 64-bit
 static Vec g_vmask4;
 static Vec g_offset;
+static Vec g_vi192;
 
 std::ostream& operator<<(std::ostream& os, const Vec& v)
 {
@@ -795,6 +796,24 @@ struct Fp {
 	}
 	bool operator==(const Fp& rhs) const { return v == rhs.v; }
 	bool operator!=(const Fp& rhs) const { return v != rhs.v; }
+	Fp operator+(const Fp& rhs) const
+	{
+		Fp r;
+		add(r, *this, rhs);
+		return r;
+	}
+	Fp operator-(const Fp& rhs) const
+	{
+		Fp r;
+		sub(r, *this, rhs);
+		return r;
+	}
+	Fp operator*(const Fp& rhs) const
+	{
+		Fp r;
+		mul(r, *this, rhs);
+		return r;
+	}
 	friend std::ostream& operator<<(std::ostream& os, const Fp& x)
 	{
 		return os << x.get();
@@ -868,7 +887,13 @@ struct Ec {
 		y.set(_y);
 		z.set(_z);
 	}
-	static void mul(Ec& Q, const Ec& P, Unit y)
+	// proj
+	bool operator==(const Ec& rhs) const
+	{
+		return x * rhs.z == rhs.x * z && y * rhs.z == rhs.y * z;
+	}
+	bool operator!=(const Ec& rhs) const { return !operator==(rhs); }
+	static void mul(Ec& Q, const Ec& P, const Unit *y, size_t yn)
 	{
 		const int w = 4;
 		const int tblN = 1<<w;
@@ -880,14 +905,27 @@ struct Ec {
 			add(tbl[i], tbl[i-1], P);
 		}
 		const size_t bitLen = sizeof(Unit)*8;
-		Q = tbl[(y >> (bitLen - w)) & mask];
-		for (int j = (int)bitLen - w*2; j >= 0; j -= w) {
-			for (size_t i = 0; i < w; i++) {
-				Ec::dbl(Q, Q);
+		const size_t jn = bitLen / w;
+		Q = tbl[0];
+		for (size_t i = 0; i < yn; i++) {
+			Unit v = y[yn-1-i];
+			for (size_t j = 0; j < jn; j++) {
+				for (int k = 0; k < w; k++) Ec::dbl(Q, Q);
+				size_t idx = (v >> (bitLen-w - j*w)) & mask;
+				Ec::add(Q, Q, tbl[idx]);
 			}
-			size_t idx = (y >> j) & mask;
-			Ec::add(Q, Q, tbl[idx]);
 		}
+	}
+	static void mul(Ec& Q, const Ec& P, Unit y)
+	{
+		mul(Q, P, &y, 1);
+	}
+	void put(const char *msg = nullptr) const
+	{
+		if (msg) printf("%s\n", msg);
+		x.put("x");
+		y.put("y");
+		z.put("z");
 	}
 };
 
@@ -927,6 +965,14 @@ struct FpM {
 		mpz_class r = fromArray<N>(x);
 		return g_mont.fromMont(r);
 	}
+	bool operator==(const FpM& rhs) const
+	{
+		for (size_t i = 0; i < N; i++) {
+			if (memcmp(&v[i], &rhs.v[i], sizeof(Vec)) != 0) return false;
+		}
+		return true;
+	}
+	bool operator!=(const FpM& rhs) const { return !operator==(rhs); }
 	void put(const char *msg = nullptr, int base = 16) const
 	{
 		if (msg) printf("%s\n", msg);
@@ -1013,6 +1059,14 @@ struct EcM {
 		y.set(v.y.get(), i);
 		z.set(v.z.get(), i);
 	}
+	Ec get(size_t i) const
+	{
+		Ec P;
+		P.x.set(x.get(i));
+		P.y.set(y.get(i));
+		P.z.set(z.get(i));
+		return P;
+	}
 	void set(const Ec& v)
 	{
 		for (size_t i = 0; i < M; i++) {
@@ -1023,6 +1077,37 @@ struct EcM {
 	{
 		for (size_t i = 0; i < M; i++) {
 			set(v[i], i);
+		}
+	}
+	static void mul(EcM& Q, const EcM& P, const Vec *y, size_t yn)
+	{
+		const int w = 4;
+		const int tblN = 1<<w;
+		const int mask = tblN-1;
+		EcM tbl[tblN];
+		tbl[0].clear();
+		tbl[1] = P;
+		for (size_t i = 2; i < tblN; i++) {
+			add(tbl[i], tbl[i-1], P);
+		}
+		const size_t bitLen = sizeof(Unit)*8;
+		const size_t jn = bitLen / w;
+		Q = tbl[0];
+		for (size_t i = 0; i < yn; i++) {
+			const Vec& v = y[yn-1-i];
+			for (size_t j = 0; j < jn; j++) {
+				for (int k = 0; k < w; k++) EcM::dbl(Q, Q);
+				Vec idx = vand(vpsrlq(v, bitLen-w-j*w), g_vmask4);
+				idx = vmulL(idx, g_vi192);
+				idx = vadd(idx, g_offset);
+				EcM t;
+				for (size_t k = 0; k < N; k++) {
+					t.x.v[k] = vpgatherqq(idx, (const Unit*)&tbl[0].x.v[k]);
+					t.y.v[k] = vpgatherqq(idx, (const Unit*)&tbl[0].y.v[k]);
+					t.z.v[k] = vpgatherqq(idx, (const Unit*)&tbl[0].z.v[k]);
+				}
+				add(Q, Q, t);
+			}
 		}
 	}
 };
@@ -1050,6 +1135,7 @@ void init(Montgomery& mont)
 	for (int i = 0; i < 8; i++) {
 		((Unit*)&g_offset)[i] = i;
 	}
+	expand(g_vi192, 192);
 	expandN(FpM::one_.v, Fp(1).v);
 	Ec::init(mont);
 	EcM::init(mont);
@@ -1181,10 +1267,6 @@ void vtest(const mpz_class& _mx, const mpz_class& _my)
 			putAll(mx[i], my[i], mz, mw);
 		}
 	}
-return;
-	CYBOZU_BENCH_C("uvadd", C, uvadd, xN, xN, yN);
-	CYBOZU_BENCH_C("uvsub", C, uvsub, xN, xN, yN);
-	CYBOZU_BENCH_C("uvmul", C, uvmul, xN, xN, yN);
 }
 
 void testMont(const mpz_class& mx, const mpz_class& my)
@@ -1328,7 +1410,10 @@ void mulTest()
 {
 	puts("mulTest");
 	Ec P1[M], Q1[M];
-	EcM P2;
+	EcM P2, Q2;
+	const int w = 4;
+	Unit y[w*M];
+	Vec yv[w];
 	P1[0].x.set(g_mx);
 	P1[0].y.set(g_my);
 	P1[0].z.set(1);
@@ -1336,7 +1421,29 @@ void mulTest()
 		Ec::dbl(P1[i], P1[i-1]);
 	}
 	P2.set(P1);
-	Ec::mul(Q1[0], P1[0], 123456789);
+	for (size_t i = 0; i < w*M; i++) {
+		y[i] = i * 0x123456 + 0x345678;
+	}
+#if 1
+	for (size_t j = 0; j < M; j++) {
+		for (size_t i = 0; i < w; i++) {
+			((Unit *)yv)[i*M+j] = y[j*w+i];
+		}
+	}
+#endif
+	for (size_t i = 0; i < M; i++) {
+		Ec::mul(Q1[i], P1[i], y+i*w, w);
+	}
+	EcM::mul(Q2, P2, yv, w);
+
+	for (size_t i = 0; i < M; i++) {
+		if (Q1[i] != Q2.get(i)) {
+			printf("%zd\n", i);
+			Q1[i].put("Q1");
+			Q2.get(i).put("Q2");
+		}
+	}
+	CYBOZU_BENCH_C("EcM::mul", 1000, EcM::mul, Q2, P2, yv, w);
 }
 
 void testAll(const mpz_class& mx, const mpz_class& my)
