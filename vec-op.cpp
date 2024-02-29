@@ -1,23 +1,24 @@
 /*
-clang++-15 -O2 vec-op.cpp -lgmp -lgmpxx -I ../cybozulib/include/ -mavx512f -mavx512ifma -Wall -Wextra && ./a.out
+clang++-15 -O2 vec-op.cpp -lgmp -lgmpxx -I ../cybozulib/include/ -mavx512f -mavx512ifma -Wall -Wextra -I ../mcl/include/ ../mcl/lib/libmcl.a && ./a.out
 Xeon w9-3495X
 uvadd  18.70 clk
 uvsub  15.70 clk
 uvmul 145.23 clk
 */
+#define MCL_USE_GMP
 #include <stdint.h>
 #include <stdio.h>
-#include <gmpxx.h>
 #include <iostream>
 #include <cybozu/xorshift.hpp>
 #include <cybozu/benchmark.hpp>
+#include <mcl/fp.hpp>
 #ifdef _WIN32
 #include <intrin.h>
 #else
 #include <x86intrin.h>
 #endif
 
-typedef uint64_t Unit;
+typedef mcl::Unit Unit;
 typedef __m512i Vec;
 typedef __mmask8 Vmask;
 
@@ -382,57 +383,6 @@ void select(Unit *out, bool c, const Unit *a, const Unit *b)
 		out[i] = o[i];
 	}
 }
-
-namespace mcl { namespace bint {
-// ppLow = Unit(p)
-inline Unit getMontgomeryCoeff(Unit pLow, size_t bitSize = sizeof(Unit) * 8)
-{
-	Unit pp = 0;
-	Unit t = 0;
-	Unit x = 1;
-	for (size_t i = 0; i < bitSize; i++) {
-		if ((t & 1) == 0) {
-			t += pLow;
-			pp += x;
-		}
-		t >>= 1;
-		x <<= 1;
-	}
-	return pp;
-}
-
-} // mcl::bint
-
-namespace gmp {
-
-inline void set(mpz_class& z, uint64_t x)
-{
-	z = fromArray<1>(&x);
-}
-inline const Unit *getUnit(const mpz_class& x)
-{
-#ifdef MCL_USE_VINT
-	return x.getUnit();
-#else
-	return reinterpret_cast<const Unit*>(x.get_mpz_t()->_mp_d);
-#endif
-}
-inline Unit getUnit(const mpz_class& x, size_t i)
-{
-	return getUnit(x)[i];
-}
-inline size_t getUnitSize(const mpz_class& x)
-{
-#ifdef MCL_USE_VINT
-	return x.getUnitSize();
-#else
-	return std::abs(x.get_mpz_t()->_mp_size);
-#endif
-}
-
-} // mcl::gmp
-} // mcl
-
 
 class Montgomery {
 	Unit v_[N];
@@ -1443,7 +1393,8 @@ void mulTest()
 			Q2.get(i).put("Q2");
 		}
 	}
-	CYBOZU_BENCH_C("EcM::mul", 1000, EcM::mul, Q2, P2, yv, w);
+	CYBOZU_BENCH_C("EcM::mul(2)", 10000, EcM::mul, Q2, P2, yv, 2);
+	CYBOZU_BENCH_C("EcM::mul(4)", 10000, EcM::mul, Q2, P2, yv, w);
 }
 
 void testAll(const mpz_class& mx, const mpz_class& my)
