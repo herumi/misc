@@ -34,10 +34,14 @@ static mpz_class g_mp, g_mr;
 
 static mpz_class g_mx, g_my;
 
+static mpz_class g_rw;
+
 // split into 52 bits
 static Unit g_p[N];
 
 static Unit g_mpM2[6]; // x^(-1) = x^(p-2) mod p
+
+static const Unit g_L[2] = { 0x00000000ffffffff, 0xac45a4010001a402 };
 
 static Vec vmask;
 static Vec vrp;
@@ -384,6 +388,28 @@ void select(Unit *out, bool c, const Unit *a, const Unit *b)
 	}
 }
 
+static inline void split(Unit a[2], Unit b[2], const Unit x[4])
+{
+	/*
+		z = -0xd201000000010000
+		L = z^2-1 = 0xac45a4010001a40200000000ffffffff
+		r = L^2+L+1 = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+		s=255
+		v = 0xbe35f678f00fd56eb1fb72917b67f718
+	*/
+	static const uint64_t Lv[] = { 0x00000000ffffffff, 0xac45a4010001a402 };
+	static const uint64_t vv[] = { 0xb1fb72917b67f718, 0xbe35f678f00fd56e };
+	static const size_t n = 128 / mcl::UnitBitSize;
+	Unit t[n*3];
+	mcl::bint::mulNM(t, x, n*2, (const Unit*)vv, n);
+	mcl::bint::shrT<n+1>(t, t+n*2-1, mcl::UnitBitSize-1); // >>255
+	b[0] = t[0];
+	b[1] = t[1];
+	mcl::bint::mulT<n>(t, t, (const Unit*)Lv);
+	mcl::bint::subT<n>(a, x, t);
+}
+
+
 class Montgomery {
 	Unit v_[N];
 public:
@@ -493,24 +519,11 @@ void sub(Unit *z, const Unit *x, const Unit *y)
 	select(z, c, t, s);
 }
 
-uint64_t mulUnit1(uint64_t *pH, uint64_t x, uint64_t y)
-{
-#if !defined(_MSC_VER) || defined(__INTEL_COMPILER) || defined(__clang__)
-	typedef __attribute__((mode(TI))) unsigned int uint128_t;
-	uint128_t t = uint128_t(x) * y;
-	*pH = uint64_t(t >> 64);
-	return uint64_t(t);
-#else
-	return _umul128(x, y, pH);
-#endif
-}
-
-
 // 52bit x 52bit = 104 bit
 Unit mul52bit(Unit *pH, Unit x, Unit y)
 {
 	Unit L, H;
-	L = mulUnit1(&H, x, y);
+	L = mcl::bint::mulUnit1(&H, x, y);
 	*pH = (H << 12) | (L >> 52);
 	return L & g_mask;
 }
@@ -636,7 +649,7 @@ void mul12(F& x)
 	F::add(x, x, x);
 	F::add(x, x, x);
 }
-// 14M+19A
+// 14M+19A+2 mul12
 template<class E>
 void addCTProj(E& R, const E& P, const E& Q)
 {
@@ -685,7 +698,7 @@ void addCTProj(E& R, const E& P, const E& Q)
 	F::mul(R.z, R.z, t4);
 	F::add(R.z, R.z, t0);
 }
-// 7M+2S+9A
+// 7M+2S+9A+1 mul12
 template<class E>
 void dblCTProj(E& R, const E& P)
 {
@@ -703,7 +716,7 @@ void dblCTProj(E& R, const E& P)
 #else
 	F::mul(t2, t2, E::b3_);
 #endif
-	F::mul(x3, t2, P.z);
+	F::mul(x3, t2, R.z);
 	F::add(y3, t0, t2);
 	F::mul(R.z, R.z, t1);
 	F::add(t1, t2, t2);
@@ -717,6 +730,8 @@ void dblCTProj(E& R, const E& P)
 }
 
 struct Fp {
+	static Fp one_;
+	static Fp rw_;
 	mpz_class v;
 	Fp() : v(0) {}
 	Fp(int _v) : v(g_mont.toMont(_v)) {}
@@ -802,6 +817,8 @@ struct Fp {
 		printf("%s\n", get().get_str(base).c_str());
 	}
 };
+Fp Fp::one_;
+Fp Fp::rw_;
 
 struct Ec {
 	typedef Fp Fp;
@@ -843,6 +860,10 @@ struct Ec {
 		return x * rhs.z == rhs.x * z && y * rhs.z == rhs.y * z;
 	}
 	bool operator!=(const Ec& rhs) const { return !operator==(rhs); }
+	bool isValid() const
+	{
+		return y * y * z == x * x * x + z * z * z * b_;
+	}
 	static void mul(Ec& Q, const Ec& P, const Unit *y, size_t yn)
 	{
 		const int w = 4;
@@ -870,12 +891,37 @@ struct Ec {
 	{
 		mul(Q, P, &y, 1);
 	}
+	void normalize()
+	{
+		if (z.v == 0) return;
+		Fp r;
+		Fp::inv(r, z);
+		Fp::mul(x, x, r);
+		Fp::mul(y, y, r);
+		z = Fp::one_;
+	}
 	void put(const char *msg = nullptr) const
 	{
 		if (msg) printf("%s\n", msg);
 		x.put("x");
 		y.put("y");
 		z.put("z");
+	}
+	static void mulLambda(Ec& Q, const Ec& P)
+	{
+		Fp::mul(Q.x, P.x, Fp::rw_);
+		Q.y = P.y;
+		Q.z = P.z;
+	}
+	static void mulGLV(Ec& Q, const Ec& P, const Unit y[4])
+	{
+		Unit a[2], b[2];
+		Ec T;
+		mulLambda(T, P);
+		split(a, b, y);
+		mul(Q, P, a, 2);
+		mul(T, T, b, 2);
+		add(Q, Q, T);
 	}
 };
 
@@ -885,6 +931,7 @@ Ec Ec::zero_;
 struct FpM {
 	Vec v[N];
 	static FpM one_;
+	static FpM rw_;
 	static void add(FpM& z, const FpM& x, const FpM& y)
 	{
 		uvadd(z.v, x.v, y.v);
@@ -907,6 +954,15 @@ struct FpM {
 		Unit rv[N];
 		toArray<N>(rv, r);
 		::set(v, i, rv);
+	}
+	void set(const mpz_class& x)
+	{
+		mpz_class r = g_mont.toMont(x);
+		Unit rv[N];
+		toArray<N>(rv, r);
+		for (size_t i = 0; i < M; i++) {
+			::set(v, i, rv);
+		}
 	}
 	mpz_class get(size_t i) const
 	{
@@ -973,6 +1029,7 @@ struct FpM {
 };
 
 FpM FpM::one_;
+FpM FpM::rw_;
 
 struct EcM {
 	typedef FpM Fp;
@@ -1033,7 +1090,6 @@ struct EcM {
 	{
 		const int w = 4;
 		const int tblN = 1<<w;
-		const int mask = tblN-1;
 		EcM tbl[tblN];
 		tbl[0].clear();
 		tbl[1] = P;
@@ -1059,6 +1115,31 @@ struct EcM {
 				add(Q, Q, t);
 			}
 		}
+	}
+	static void mulLambda(EcM& Q, const EcM& P)
+	{
+		FpM::mul(Q.x, P.x, FpM::rw_);
+		Q.y = P.y;
+		Q.z = P.z;
+	}
+	static void mulGLV(EcM& Q, const EcM& P, const Vec y[4])
+	{
+		EcM T;
+		Vec a[2], b[2];
+		mulLambda(T, P);
+		const Unit *src = (const Unit*)y;
+		Unit *pa = (Unit*)a;
+		Unit *pb = (Unit*)b;
+		for (size_t i = 0; i < M; i++) {
+			Unit buf[4] = { src[i+M*0], src[i+M*1], src[i+M*2], src[i+M*3] };
+			Unit aa[2], bb[2];
+			split(aa, bb, buf);
+			pa[i+M*0] = aa[0]; pa[i+M*1] = aa[1];
+			pb[i+M*0] = bb[0]; pb[i+M*1] = bb[1];
+		}
+		mul(Q, P, a, 2);
+		mul(T, T, b, 2);
+		add(Q, Q, T);
 	}
 };
 
@@ -1086,11 +1167,17 @@ void init(Montgomery& mont)
 		((Unit*)&g_offset)[i] = i;
 	}
 	expand(g_vi192, 192);
+	Fp::one_.set(1);
 	expandN(FpM::one_.v, Fp(1).v);
 	Ec::init(mont);
 	EcM::init(mont);
 	Ec::zero_.set(0, 1, 0);
 	EcM::zero_.set(Ec::zero());
+	const char *rwStr = "1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac";
+	mpz_class rw;
+	rw.set_str(rwStr, 16);
+	Fp::rw_.set(rw);
+	FpM::rw_.set(rw);
 
 	g_mx.set_str("17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb", 16);
 	g_my.set_str("08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1", 16);
@@ -1314,6 +1401,14 @@ void ecTest()
 	P1[0].z.set(1);
 	for (size_t i = 1; i < M; i++) {
 		Ec::dbl(P1[i], P1[i-1]);
+		Ec t = P1[i];
+		t.normalize();
+		if (t != P1[i]) {
+			puts("normalize err");
+			P1[i].put("P1");
+			t.put("t");
+			exit(1);
+		}
 	}
 	P2.set(P1);
 	cmpEc(P2, P1, "P");
@@ -1356,11 +1451,54 @@ void ecTest()
 	CYBOZU_BENCH_C("FpM::inv", 1000, FpM::inv, R2.x, R2.x);
 }
 
+void GLVtest()
+{
+	puts("GLVtest");
+	Ec P, Q, R;
+	P.x.set(mpz_class("13400cd4fe26471eef602b91432ac4180e12519b68e7b7efa081fc8a20654e215ef7eb439a622e21466a3dd6add55fac", 16));
+	P.y.set(mpz_class("b81cd9a01198e1ea3ba3d94aaf4036750f84537fa5d2a9a6fa917b8a1d264b7c513f4dcef866142bd33094107404452", 16));
+//	P.x.set(g_mx);
+//	P.y.set(g_my);
+	P.z.set(1);
+	for (int i = 0; i < 10; i++) {
+		Ec::mulLambda(Q, P);
+		Ec::mul(P, P, g_L, 2);
+		if (Q != P) {
+			puts("ERR");
+		}
+	}
+	mpz_class y("2ac00f2c9af814438db241461ec7825ed88d00b0951049aa1b5116e6dca345ea", 16);
+	Unit ya[4];
+	toArray<4, 64>(ya, y);
+	Ec::mul(Q, P, ya, 4);
+	Q.normalize();
+	Ec::mulGLV(R, P, ya);
+	if (Q != R) {
+		puts("ERR GLV");
+		Q.put("Q");
+		R.put("R");
+		exit(1);
+	}
+	EcM P1, Q1;
+	Vec vy[4];
+	for (size_t i = 0; i < 4; i++) {
+		((Unit*)vy)[i*M] = ya[i];
+	}
+	memset(&P1, 0, sizeof(P1));
+	memset(&Q1, 0, sizeof(Q1));
+	P1.set(P, 0);
+	EcM::mulGLV(Q1, P1, vy);
+	if (Q != Q1.get(0)) {
+		puts("ERR EcM::mulGLV");
+		exit(1);
+	}
+}
+
 void mulTest()
 {
 	puts("mulTest");
 	Ec P1[M], Q1[M];
-	EcM P2, Q2;
+	EcM P2, Q2, Q3;
 	const int w = 4;
 	Unit y[w*M];
 	Vec yv[w];
@@ -1369,28 +1507,52 @@ void mulTest()
 	P1[0].z.set(1);
 	for (size_t i = 1; i < M; i++) {
 		Ec::dbl(P1[i], P1[i-1]);
+		Ec T1, T2;
+		Ec::mulLambda(T1, P1[i]);
+		Ec::mul(T2, P1[i], g_L, 2);
+		if (T1 != T2) {
+			printf("ERR %zd\n", i);
+			T1.normalize();
+			T2.normalize();
+			P1[i].put("P");
+			T1.put("T1");
+			T2.put("T2");
+			exit(1);
+		}
 	}
 	P2.set(P1);
 	for (size_t i = 0; i < w*M; i++) {
 		y[i] = i * 0x123456 + 0x345678;
 	}
-#if 1
 	for (size_t j = 0; j < M; j++) {
 		for (size_t i = 0; i < w; i++) {
 			((Unit *)yv)[i*M+j] = y[j*w+i];
 		}
 	}
-#endif
 	for (size_t i = 0; i < M; i++) {
 		Ec::mul(Q1[i], P1[i], y+i*w, w);
+		Ec t;
+		Ec::mulGLV(t, P1[i], y+i*w);
+		if (Q1[i] != t) {
+			printf("ERRRR %zd\n", i);
+			Q1[i].put("Q1");
+			t.put("t");
+			exit(1);
+		}
 	}
 	EcM::mul(Q2, P2, yv, w);
+	EcM::mulGLV(Q3, P2, yv);
 
 	for (size_t i = 0; i < M; i++) {
 		if (Q1[i] != Q2.get(i)) {
 			printf("%zd\n", i);
 			Q1[i].put("Q1");
 			Q2.get(i).put("Q2");
+		}
+		if (Q2.get(i) != Q3.get(i)) {
+			printf("ERR %zd\n", i);
+			Q2.get(i).put("Q2");
+			Q3.get(i).put("Q3");
 		}
 	}
 	CYBOZU_BENCH_C("EcM::mul(2)", 10000, EcM::mul, Q2, P2, yv, 2);
@@ -1468,8 +1630,9 @@ int main()
 	}
 	gatherTest();
 	miscTest();
-	mulTest();
 	powTest();
+	GLVtest();
+	mulTest();
 	ecTest();
 	puts("ok");
 }
