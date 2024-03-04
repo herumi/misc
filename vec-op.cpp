@@ -1037,6 +1037,7 @@ struct EcM {
 	static const int b_ = 4;
 	static const int w = 4;
 	static const int tblN = 1<<w;
+	static const size_t bitLen = sizeof(Unit)*8;
 	static FpM b3_;
 	static EcM zero_;
 	FpM x, y, z;
@@ -1096,27 +1097,30 @@ struct EcM {
 			add(tbl[i], tbl[i-1], P);
 		}
 	}
+	static void setGather(EcM& T, const EcM *tbl, const Vec& v, size_t j)
+	{
+		Vec idx = vand(vpsrlq(v, bitLen-w-j*w), g_vmask4);
+		idx = vmulL(idx, g_vi192);
+		idx = vadd(idx, g_offset);
+		for (size_t k = 0; k < N; k++) {
+			T.x.v[k] = vpgatherqq(idx, (const Unit*)&tbl[0].x.v[k]);
+			T.y.v[k] = vpgatherqq(idx, (const Unit*)&tbl[0].y.v[k]);
+			T.z.v[k] = vpgatherqq(idx, (const Unit*)&tbl[0].z.v[k]);
+		}
+	}
 	static void mul(EcM& Q, const EcM& P, const Vec *y, size_t yn)
 	{
 		EcM tbl[tblN];
 		makeTable(tbl, P);
-		const size_t bitLen = sizeof(Unit)*8;
 		const size_t jn = bitLen / w;
 		Q = tbl[0];
 		for (size_t i = 0; i < yn; i++) {
 			const Vec& v = y[yn-1-i];
 			for (size_t j = 0; j < jn; j++) {
 				for (int k = 0; k < w; k++) EcM::dbl(Q, Q);
-				Vec idx = vand(vpsrlq(v, bitLen-w-j*w), g_vmask4);
-				idx = vmulL(idx, g_vi192);
-				idx = vadd(idx, g_offset);
-				EcM t;
-				for (size_t k = 0; k < N; k++) {
-					t.x.v[k] = vpgatherqq(idx, (const Unit*)&tbl[0].x.v[k]);
-					t.y.v[k] = vpgatherqq(idx, (const Unit*)&tbl[0].y.v[k]);
-					t.z.v[k] = vpgatherqq(idx, (const Unit*)&tbl[0].z.v[k]);
-				}
-				add(Q, Q, t);
+				EcM T;
+				setGather(T, tbl, v, j);
+				add(Q, Q, T);
 			}
 		}
 	}
@@ -1145,7 +1149,6 @@ struct EcM {
 			pb[i+M*0] = bb[0]; pb[i+M*1] = bb[1];
 		}
 #if 1
-		const size_t bitLen = sizeof(Unit)*8;
 		const size_t jn = bitLen / w;
 		const size_t yn = 2;
 		Q.clear();
@@ -1154,26 +1157,10 @@ struct EcM {
 			const Vec& v2 = b[yn-1-i];
 			for (size_t j = 0; j < jn; j++) {
 				for (int k = 0; k < w; k++) EcM::dbl(Q, Q);
-				Vec idx;
 				EcM T;
-				idx = vand(vpsrlq(v1, bitLen-w-j*w), g_vmask4);
-				idx = vmulL(idx, g_vi192);
-				idx = vadd(idx, g_offset);
-				for (size_t k = 0; k < N; k++) {
-					T.x.v[k] = vpgatherqq(idx, (const Unit*)&tbl1[0].x.v[k]);
-					T.y.v[k] = vpgatherqq(idx, (const Unit*)&tbl1[0].y.v[k]);
-					T.z.v[k] = vpgatherqq(idx, (const Unit*)&tbl1[0].z.v[k]);
-				}
+				setGather(T, tbl1, v1, j);
 				add(Q, Q, T);
-
-				idx = vand(vpsrlq(v2, bitLen-w-j*w), g_vmask4);
-				idx = vmulL(idx, g_vi192);
-				idx = vadd(idx, g_offset);
-				for (size_t k = 0; k < N; k++) {
-					T.x.v[k] = vpgatherqq(idx, (const Unit*)&tbl2[0].x.v[k]);
-					T.y.v[k] = vpgatherqq(idx, (const Unit*)&tbl2[0].y.v[k]);
-					T.z.v[k] = vpgatherqq(idx, (const Unit*)&tbl2[0].z.v[k]);
-				}
+				setGather(T, tbl2, v2, j);
 				add(Q, Q, T);
 			}
 		}
