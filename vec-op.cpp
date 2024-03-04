@@ -1035,6 +1035,8 @@ struct EcM {
 	typedef FpM Fp;
 	static const int a_ = 0;
 	static const int b_ = 4;
+	static const int w = 4;
+	static const int tblN = 1<<w;
 	static FpM b3_;
 	static EcM zero_;
 	FpM x, y, z;
@@ -1086,16 +1088,18 @@ struct EcM {
 			set(v[i], i);
 		}
 	}
-	static void mul(EcM& Q, const EcM& P, const Vec *y, size_t yn)
+	static void makeTable(EcM *tbl, const EcM& P)
 	{
-		const int w = 4;
-		const int tblN = 1<<w;
-		EcM tbl[tblN];
 		tbl[0].clear();
 		tbl[1] = P;
 		for (size_t i = 2; i < tblN; i++) {
 			add(tbl[i], tbl[i-1], P);
 		}
+	}
+	static void mul(EcM& Q, const EcM& P, const Vec *y, size_t yn)
+	{
+		EcM tbl[tblN];
+		makeTable(tbl, P);
 		const size_t bitLen = sizeof(Unit)*8;
 		const size_t jn = bitLen / w;
 		Q = tbl[0];
@@ -1124,9 +1128,12 @@ struct EcM {
 	}
 	static void mulGLV(EcM& Q, const EcM& P, const Vec y[4])
 	{
-		EcM T;
 		Vec a[2], b[2];
-		mulLambda(T, P);
+		EcM tbl1[tblN], tbl2[tblN];
+		makeTable(tbl1, P);
+		for (size_t i = 0; i < tblN; i++) {
+			mulLambda(tbl2[i], tbl1[i]);
+		}
 		const Unit *src = (const Unit*)y;
 		Unit *pa = (Unit*)a;
 		Unit *pb = (Unit*)b;
@@ -1137,9 +1144,44 @@ struct EcM {
 			pa[i+M*0] = aa[0]; pa[i+M*1] = aa[1];
 			pb[i+M*0] = bb[0]; pb[i+M*1] = bb[1];
 		}
+#if 1
+		const size_t bitLen = sizeof(Unit)*8;
+		const size_t jn = bitLen / w;
+		const size_t yn = 2;
+		Q.clear();
+		for (size_t i = 0; i < yn; i++) {
+			const Vec& v1 = a[yn-1-i];
+			const Vec& v2 = b[yn-1-i];
+			for (size_t j = 0; j < jn; j++) {
+				for (int k = 0; k < w; k++) EcM::dbl(Q, Q);
+				Vec idx;
+				EcM T;
+				idx = vand(vpsrlq(v1, bitLen-w-j*w), g_vmask4);
+				idx = vmulL(idx, g_vi192);
+				idx = vadd(idx, g_offset);
+				for (size_t k = 0; k < N; k++) {
+					T.x.v[k] = vpgatherqq(idx, (const Unit*)&tbl1[0].x.v[k]);
+					T.y.v[k] = vpgatherqq(idx, (const Unit*)&tbl1[0].y.v[k]);
+					T.z.v[k] = vpgatherqq(idx, (const Unit*)&tbl1[0].z.v[k]);
+				}
+				add(Q, Q, T);
+
+				idx = vand(vpsrlq(v2, bitLen-w-j*w), g_vmask4);
+				idx = vmulL(idx, g_vi192);
+				idx = vadd(idx, g_offset);
+				for (size_t k = 0; k < N; k++) {
+					T.x.v[k] = vpgatherqq(idx, (const Unit*)&tbl2[0].x.v[k]);
+					T.y.v[k] = vpgatherqq(idx, (const Unit*)&tbl2[0].y.v[k]);
+					T.z.v[k] = vpgatherqq(idx, (const Unit*)&tbl2[0].z.v[k]);
+				}
+				add(Q, Q, T);
+			}
+		}
+#else
 		mul(Q, P, a, 2);
 		mul(T, T, b, 2);
 		add(Q, Q, T);
+#endif
 	}
 };
 
@@ -1557,6 +1599,7 @@ void mulTest()
 	}
 	CYBOZU_BENCH_C("EcM::mul(2)", 10000, EcM::mul, Q2, P2, yv, 2);
 	CYBOZU_BENCH_C("EcM::mul(4)", 10000, EcM::mul, Q2, P2, yv, w);
+	CYBOZU_BENCH_C("EcM::mulGLV", 10000, EcM::mulGLV, Q2, P2, yv);
 }
 
 void testAll(const mpz_class& mx, const mpz_class& my)
