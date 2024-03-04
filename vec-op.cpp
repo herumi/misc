@@ -218,10 +218,22 @@ Vec vand(const Vec& a, const Vec& b)
 	return _mm512_and_epi64(a, b);
 }
 
-template<int scale=8>
+//template<int scale=8>
 Vec vpgatherqq(const Vec& idx, const void *base)
 {
+#if 0
+	const Unit *p = (const Unit *)&idx;
+	const Unit *src = (const Unit *)base;
+	Vec v;
+	Unit *q = (Unit *)&v;
+	for (size_t i = 0; i < M; i++) {
+		q[i] = src[idx[i]];
+	}
+	return v;
+#else
+	const int scale = 8;
 	return _mm512_i64gather_epi64(idx, base, scale);
+#endif
 }
 
 // return [H:L][idx]
@@ -1099,6 +1111,18 @@ struct EcM {
 	}
 	static void setGather(EcM& T, const EcM *tbl, const Vec& v, size_t j)
 	{
+#if 0
+		const size_t S = sizeof(FpM)/sizeof(Unit);
+		const Unit *pv = (const Unit *)&v;
+		const Unit *q = (const Unit*)&tbl[0].x;
+		for (size_t i = 0; i < M; i++) {
+			size_t idx = (v[i] >> (bitLen-w-j*w)) & getMask(4);
+			idx = idx * S*3 + i;
+			for (size_t k = 0; k < N; k++) ((Unit*)&T.x)[k*M+i] = q[S*0+idx+k*M];
+			for (size_t k = 0; k < N; k++) ((Unit*)&T.y)[k*M+i] = q[S*1+idx+k*M];
+			for (size_t k = 0; k < N; k++) ((Unit*)&T.z)[k*M+i] = q[S*2+idx+k*M];
+		}
+#else
 		Vec idx = vand(vpsrlq(v, bitLen-w-j*w), g_vmask4);
 		idx = vmulL(idx, g_vi192);
 		idx = vadd(idx, g_offset);
@@ -1107,6 +1131,7 @@ struct EcM {
 			T.y.v[k] = vpgatherqq(idx, (const Unit*)&tbl[0].y.v[k]);
 			T.z.v[k] = vpgatherqq(idx, (const Unit*)&tbl[0].z.v[k]);
 		}
+#endif
 	}
 	static void mul(EcM& Q, const EcM& P, const Vec *y, size_t yn)
 	{
@@ -1577,11 +1602,13 @@ void mulTest()
 			printf("%zd\n", i);
 			Q1[i].put("Q1");
 			Q2.get(i).put("Q2");
+			exit(1);
 		}
 		if (Q2.get(i) != Q3.get(i)) {
 			printf("ERR %zd\n", i);
 			Q2.get(i).put("Q2");
 			Q3.get(i).put("Q3");
+			exit(1);
 		}
 	}
 	CYBOZU_BENCH_C("EcM::mul(2)", 10000, EcM::mul, Q2, P2, yv, 2);
