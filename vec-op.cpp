@@ -629,7 +629,7 @@ void mul(Unit *z, const Unit *x, const Unit *y)
 	x|52:12|40:24|28:36|16:48|4:52:8|44:20|
     y|52|52   |52   |52   |52  |52|52  |20|
 */
-void split52(Vec y[8], const Vec x[6])
+void split52bit(Vec y[8], const Vec x[6])
 {
 	assert(&y != &x);
 	y[0] = vand(x[0], vmask);
@@ -640,6 +640,25 @@ void split52(Vec y[8], const Vec x[6])
 	y[5] = vand(vpsrlq(x[4], 4), vmask);
 	y[6] = vand(vor(vpsrlq(x[4], 56), vpsllq(x[5], 8)), vmask);
 	y[7] = vpsrlq(x[5], 44);
+}
+
+/*
+	384bit = 6U (U=64)
+	G1(=6U x 3(x, y, z)) x 8 => 8Ux8x3
+*/
+static uint64_t g_pickUp[8] = {
+	18*0, 18*1, 18*2, 18*3, 18*4, 18*5, 18*6, 18*7,
+};
+static const Vec& v_pickUp = *(const Vec*)g_pickUp;
+void cvt6Ux3x8to8Ux8x3(Vec y[8*3], const Unit x[6*3*8])
+{
+	for (int j = 0; j < 3; j++) {
+		Vec t[6];
+		for (int i = 0; i < 6; i++) {
+			t[i] = vpgatherqq(v_pickUp, x+i+j*6);
+		}
+		split52bit(&y[j*8], t);
+	}
 }
 
 template<class RG>
@@ -1118,11 +1137,28 @@ struct EcM {
 			set(v, i);
 		}
 	}
-	void set(const Ec v[M])
+	void set_naive(const Ec v[M])
 	{
 		for (size_t i = 0; i < M; i++) {
 			set(v[i], i);
 		}
+	}
+	void set(const Ec v[M])
+	{
+		Unit a[6*3*M];
+		for (size_t i = 0; i < M; i++) {
+			mcl::gmp::getArray(&a[6*3*i+6*0], 6, v[i].x.v);
+			mcl::gmp::getArray(&a[6*3*i+6*1], 6, v[i].y.v);
+			mcl::gmp::getArray(&a[6*3*i+6*2], 6, v[i].z.v);
+		}
+		cvt6Ux3x8to8Ux8x3(x.v, a);
+	}
+	void put(const char *msg = nullptr) const
+	{
+		if (msg) printf("%s\n", msg);
+		x.put("x");
+		y.put("y");
+		z.put("z");
 	}
 	static void makeTable(EcM *tbl, const EcM& P)
 	{
@@ -1488,6 +1524,12 @@ void ecTest()
 		}
 	}
 	P2.set(P1);
+	R2.set_naive(P1);
+	if (memcmp(&P2, &R2, sizeof(P2)) != 0) {
+		P2.put("P2");
+		R2.put("R2");
+		exit(1);
+	}
 	cmpEc(P2, P1, "P");
 	{
 		Vec y[6];
@@ -1688,9 +1730,9 @@ void gatherTest()
 	}
 }
 
-void split52Test()
+void split52bitTest()
 {
-	puts("split52Test");
+	puts("split52bitTest");
 	Vec x[6], y[8];
 	Unit *px = (Unit *)x;
 	Unit *py = (Unit *)y;
@@ -1700,7 +1742,7 @@ void split52Test()
 		int q = i / 64;
 		int r = i % 64;
 		px[q*M] = Unit(1) << r;
-		split52(y, x);
+		split52bit(y, x);
 		int q2 = i / 52;
 		int r2 = i % 52;
 		if (py[q2*M] != (Unit(1) << r2)) {
@@ -1734,7 +1776,7 @@ int main()
 		mpz_class my = mpz_rand(rg);
 		testAll(mx, my);
 	}
-	split52Test();
+	split52bitTest();
 	gatherTest();
 	miscTest();
 	powTest();
