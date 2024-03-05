@@ -643,6 +643,22 @@ void split52bit(Vec y[8], const Vec x[6])
 }
 
 /*
+	 |52|52   |52   |52   |52  |52|52  |20|
+	x|52|12:40|24:28|36:16|48:4|52|8:44|20|
+    y|64   |64   |64   |64   |64    |64
+*/
+void concat52bit(Vec y[6], const Vec x[8])
+{
+	assert(&y != &x);
+	y[0] = vor(x[0], vpsllq(x[1], 52));
+	y[1] = vor(vpsrlq(x[1], 12), vpsllq(x[2], 40));
+	y[2] = vor(vpsrlq(x[2], 24), vpsllq(x[3], 28));
+	y[3] = vor(vpsrlq(x[3], 36), vpsllq(x[4], 16));
+	y[4] = vor(vor(vpsrlq(x[4], 48), vpsllq(x[5], 4)), vpsllq(x[6], 56));
+	y[5] = vor(vpsrlq(x[6], 8), vpsllq(x[7], 44));
+}
+
+/*
 	384bit = 6U (U=64)
 	G1(=6U x 3(x, y, z)) x 8 => 8Ux8x3
 */
@@ -1733,7 +1749,7 @@ void gatherTest()
 void split52bitTest()
 {
 	puts("split52bitTest");
-	Vec x[6], y[8];
+	Vec x[6], y[8], z[6];
 	Unit *px = (Unit *)x;
 	Unit *py = (Unit *)y;
 	for (int i = 0; i < 384; i++) {
@@ -1747,12 +1763,29 @@ void split52bitTest()
 		int r2 = i % 52;
 		if (py[q2*M] != (Unit(1) << r2)) {
 			printf("err i=%d\n", i);
+			exit(1);
 		}
 		for (int j = 0; j < 8; j++) {
 			if (j != q2 && py[j*M] != 0) {
 				printf("err2 i=%d j=%d\n", i, j);
+				exit(1);
 			}
 		}
+		concat52bit(z, y);
+		if (memcmp(x, z, sizeof(x)) != 0) {
+			puts("err3");
+			exit(1);
+		}
+	}
+	cybozu::XorShift rg;
+	for (size_t i = 0; i < 6*M; i++) {
+		px[i] = rg.get64();
+	}
+	split52bit(y, x);
+	concat52bit(z, y);
+	if (memcmp(x, z, sizeof(x)) != 0) {
+		puts("err4");
+		exit(1);
 	}
 }
 
