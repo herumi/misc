@@ -218,6 +218,11 @@ Vec vand(const Vec& a, const Vec& b)
 	return _mm512_and_epi64(a, b);
 }
 
+Vec vor(const Vec& a, const Vec& b)
+{
+	return _mm512_or_epi64(a, b);
+}
+
 //template<int scale=8>
 Vec vpgatherqq(const Vec& idx, const void *base)
 {
@@ -617,6 +622,24 @@ void mul(Unit *z, const Unit *x, const Unit *y)
 	}
 	bool c = rawSub(z, t+N, g_mont.p);
 	select(z, c, t+N, z);
+}
+
+/*
+	 |64   |64   |64   |64   |64    |64   |
+	x|52:12|40:24|28:36|16:48|4:52:8|44:20|
+    y|52|52   |52   |52   |52  |52|52  |20|
+*/
+void split52(Vec y[8], const Vec x[6])
+{
+	assert(&y != &x);
+	y[0] = vand(x[0], vmask);
+	y[1] = vand(vor(vpsrlq(x[0], 52), vpsllq(x[1], 12)), vmask);
+	y[2] = vand(vor(vpsrlq(x[1], 40), vpsllq(x[2], 24)), vmask);
+	y[3] = vand(vor(vpsrlq(x[2], 28), vpsllq(x[3], 36)), vmask);
+	y[4] = vand(vor(vpsrlq(x[3], 16), vpsllq(x[4], 48)), vmask);
+	y[5] = vand(vpsrlq(x[4], 4), vmask);
+	y[6] = vand(vor(vpsrlq(x[4], 56), vpsllq(x[5], 8)), vmask);
+	y[7] = vpsrlq(x[5], 44);
 }
 
 template<class RG>
@@ -1665,6 +1688,32 @@ void gatherTest()
 	}
 }
 
+void split52Test()
+{
+	puts("split52Test");
+	Vec x[6], y[8];
+	Unit *px = (Unit *)x;
+	Unit *py = (Unit *)y;
+	for (int i = 0; i < 384; i++) {
+		memset(x, 0, sizeof(x));
+		memset(y, 0, sizeof(y));
+		int q = i / 64;
+		int r = i % 64;
+		px[q*M] = Unit(1) << r;
+		split52(y, x);
+		int q2 = i / 52;
+		int r2 = i % 52;
+		if (py[q2*M] != (Unit(1) << r2)) {
+			printf("err i=%d\n", i);
+		}
+		for (int j = 0; j < 8; j++) {
+			if (j != q2 && py[j*M] != 0) {
+				printf("err2 i=%d j=%d\n", i, j);
+			}
+		}
+	}
+}
+
 int main()
 {
 	init(g_mont);
@@ -1685,6 +1734,7 @@ int main()
 		mpz_class my = mpz_rand(rg);
 		testAll(mx, my);
 	}
+	split52Test();
 	gatherTest();
 	miscTest();
 	powTest();
