@@ -677,6 +677,21 @@ void cvt6Ux3x8to8Ux8x3(Vec y[8*3], const Unit x[6*3*8])
 	}
 }
 
+// EcM(=8Ux8x3) => G1(=6U x 3) x 8
+void cvt8Ux8x3to6Ux3x8(Unit y[6*3*8], const Vec x[8*3])
+{
+	Vec t[6];
+	const Unit *pt = (const Unit *)t;
+	for (size_t i = 0; i < 3; i++) {
+		concat52bit(t, x+8*i);
+		for (size_t j = 0; j < 8; j++) {
+			for (size_t k = 0; k < 6; k++) {
+				y[i*6+j*18+k] = pt[j+k*8];
+			}
+		}
+	}
+}
+
 template<class RG>
 mpz_class mpz_rand(RG& rg)
 {
@@ -1168,6 +1183,16 @@ struct EcM {
 			mcl::gmp::getArray(&a[6*3*i+6*2], 6, v[i].z.v);
 		}
 		cvt6Ux3x8to8Ux8x3(x.v, a);
+	}
+	void getEc(Ec v[M])
+	{
+		Unit a[6*3*M];
+		cvt8Ux8x3to6Ux3x8(a, x.v);
+		for (size_t i = 0; i < M; i++) {
+			mcl::gmp::setArray(v[i].x.v, &a[6*3*i+6*0], 6);
+			mcl::gmp::setArray(v[i].y.v, &a[6*3*i+6*1], 6);
+			mcl::gmp::setArray(v[i].z.v, &a[6*3*i+6*2], 6);
+		}
 	}
 	void put(const char *msg = nullptr) const
 	{
@@ -1789,6 +1814,35 @@ void split52bitTest()
 	}
 }
 
+void cvtTest()
+{
+	const size_t n = 6*3*8;
+	Unit x[n], z[n];
+	Vec y[8*3];
+	cybozu::XorShift rg;
+	for (size_t i = 0; i < n; i++) {
+		x[i] = rg.get64();
+	}
+	cvt6Ux3x8to8Ux8x3(y, x);
+	cvt8Ux8x3to6Ux3x8(z, y);
+	if (memcmp(x, z, sizeof(x)) != 0) {
+		puts("cvtTest err");
+		for (size_t j = 0; j < n/6; j++) {
+			printf("%zd\n", j);
+			printf("x ");
+			for (size_t i = 0; i < 6; i++) {
+				printf("%016lx ", x[j*6+i]);
+			}
+			printf("\nz ");
+			for (size_t i = 0; i < 6; i++) {
+				printf("%016lx ", z[j*6+i]);
+			}
+			printf(" %c\n", memcmp(&x[j*6], &z[j*6], sizeof(Unit)*6) == 0 ? 'o' : 'x');
+		}
+		exit(1);
+	}
+}
+
 int main()
 {
 	init(g_mont);
@@ -1809,6 +1863,7 @@ int main()
 		mpz_class my = mpz_rand(rg);
 		testAll(mx, my);
 	}
+	cvtTest();
 	split52bitTest();
 	gatherTest();
 	miscTest();
