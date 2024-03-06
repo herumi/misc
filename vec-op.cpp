@@ -1,4 +1,5 @@
 /*
+make CFLAGS_USER=-DMCL_USE_GMP=1 lib/libmcl.a
 clang++-15 -O2 vec-op.cpp -lgmp -lgmpxx -I ../cybozulib/include/ -mavx512f -mavx512ifma -Wall -Wextra -I ../mcl/include/ ../mcl/lib/libmcl.a && ./a.out
 Xeon w9-3495X
 uvadd  18.70 clk
@@ -11,7 +12,7 @@ uvmul 145.23 clk
 #include <iostream>
 #include <cybozu/xorshift.hpp>
 #include <cybozu/benchmark.hpp>
-#include <mcl/fp.hpp>
+#include <mcl/bls12_381.hpp>
 #ifdef _WIN32
 #include <intrin.h>
 #else
@@ -680,9 +681,9 @@ void cvt6Ux3x8to8Ux8x3(Vec y[8*3], const Unit x[6*3*8])
 // EcM(=8Ux8x3) => G1(=6U x 3) x 8
 void cvt8Ux8x3to6Ux3x8(Unit y[6*3*8], const Vec x[8*3])
 {
-	Vec t[6];
-	const Unit *pt = (const Unit *)t;
 	for (size_t i = 0; i < 3; i++) {
+		Vec t[6];
+		const Unit *pt = (const Unit *)t;
 		concat52bit(t, x+8*i);
 		for (size_t j = 0; j < 8; j++) {
 			for (size_t k = 0; k < 6; k++) {
@@ -1841,10 +1842,31 @@ void cvtTest()
 		}
 		exit(1);
 	}
+	CYBOZU_BENCH_C("cvt6Ux3x8to8Ux8x3", C, cvt6Ux3x8to8Ux8x3, y, x);
+	CYBOZU_BENCH_C("cvt8Ux8x3to6Ux3x8", C, cvt8Ux8x3to6Ux3x8, z, y);
+}
+void mtTest()
+{
+	using namespace mcl::bls12;
+	const size_t n = 8192;
+	const int C = 100;
+	cybozu::XorShift rg;
+	std::vector<G1> Pvec(n);
+	std::vector<G2> Qvec(n);
+	std::vector<Fr> xVec(n);
+	hashAndMapToG1(Pvec[0], "abc", 3);
+	hashAndMapToG2(Qvec[0], "abc", 3);
+	for (size_t i = 1; i < n; i++) {
+		G1::add(Pvec[i], Pvec[i-1], Pvec[0]);
+		G2::add(Qvec[i], Qvec[i-1], Qvec[0]);
+	}
+	G1 P1, P2;
+	CYBOZU_BENCH_C("G1::mulVec", C, G1::mulVec, P1, Pvec.data(), xVec.data(), n);
 }
 
 int main()
 {
+	mcl::bls12::initPairing(mcl::BLS12_381);
 	init(g_mont);
 	g_mont.put();
 
@@ -1863,6 +1885,7 @@ int main()
 		mpz_class my = mpz_rand(rg);
 		testAll(mx, my);
 	}
+	mtTest();
 	cvtTest();
 	split52bitTest();
 	gatherTest();
