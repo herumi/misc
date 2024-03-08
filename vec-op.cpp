@@ -693,6 +693,17 @@ void cvt8Ux8x3to6Ux3x8(Unit y[6*3*8], const Vec x[8*3])
 	}
 }
 
+// Fr x 8 = U4x8 => Vec(U8) x 4
+void cvt4Ux8to8Ux4(Vec y[4], const Unit x[4*8])
+{
+	const size_t w = 4;
+	for (size_t j = 0; j < M; j++) {
+		for (size_t i = 0; i < w; i++) {
+			((Unit *)y)[i*M+j] = x[j*w+i];
+		}
+	}
+}
+
 template<class RG>
 mpz_class mpz_rand(RG& rg)
 {
@@ -902,6 +913,11 @@ struct Fp {
 		if (msg) printf("%s ", msg);
 		printf("%s\n", get().get_str(base).c_str());
 	}
+	void putRaw(const char *msg = nullptr) const
+	{
+		if (msg) printf("%s ", msg);
+		printf("%s\n", v.get_str(16).c_str());
+	}
 };
 Fp Fp::one_;
 Fp Fp::rw_;
@@ -993,6 +1009,13 @@ struct Ec {
 		y.put("y");
 		z.put("z");
 	}
+	void putRaw(const char *msg = nullptr) const
+	{
+		if (msg) printf("%s\n", msg);
+		x.putRaw("x");
+		y.putRaw("y");
+		z.putRaw("z");
+	}
 	static void mulLambda(Ec& Q, const Ec& P)
 	{
 		Fp::mul(Q.x, P.x, Fp::rw_);
@@ -1017,7 +1040,9 @@ Ec Ec::zero_;
 struct FpM {
 	Vec v[N];
 	static FpM one_;
+	static FpM rawOne_;
 	static FpM rw_;
+	static FpM mR2_;
 	static void add(FpM& z, const FpM& x, const FpM& y)
 	{
 		uvadd(z.v, x.v, y.v);
@@ -1050,11 +1075,23 @@ struct FpM {
 			::set(v, i, rv);
 		}
 	}
-	mpz_class get(size_t i) const
+	void toMont(FpM& x) const
+	{
+		mul(x, *this, mR2_);
+	}
+	void fromMont(const FpM &x)
+	{
+		mul(*this, x, rawOne_);
+	}
+	mpz_class getRaw(size_t i) const
 	{
 		Unit x[N];
 		::get(x, v, i);
-		mpz_class r = fromArray<N>(x);
+		return fromArray<N>(x);
+	}
+	mpz_class get(size_t i) const
+	{
+		mpz_class r = getRaw(i);
 		return g_mont.fromMont(r);
 	}
 	bool operator==(const FpM& rhs) const
@@ -1070,6 +1107,13 @@ struct FpM {
 		if (msg) printf("%s\n", msg);
 		for (size_t i = 0; i < M; i++) {
 			printf("% 2zd %s\n", i, get(i).get_str(base).c_str());
+		}
+	}
+	void putRaw(const char *msg = nullptr) const
+	{
+		if (msg) printf("%s\n", msg);
+		for (size_t i = 0; i < M; i++) {
+			printf("% 2zd %s\n", i, getRaw(i).get_str(16).c_str());
 		}
 	}
 	friend std::ostream& operator<<(std::ostream& os, const FpM& x)
@@ -1115,7 +1159,9 @@ struct FpM {
 };
 
 FpM FpM::one_;
+FpM FpM::rawOne_;
 FpM FpM::rw_;
+FpM FpM::mR2_;
 
 struct EcM {
 	typedef FpM Fp;
@@ -1175,6 +1221,14 @@ struct EcM {
 			set(v[i], i);
 		}
 	}
+	void setArray(const Unit a[6*3*M])
+	{
+		cvt6Ux3x8to8Ux8x3(x.v, a);
+	}
+	void getArray(Unit a[6*3*M]) const
+	{
+		cvt8Ux8x3to6Ux3x8(a, x.v);
+	}
 	void set(const Ec v[M])
 	{
 		Unit a[6*3*M];
@@ -1183,16 +1237,41 @@ struct EcM {
 			mcl::gmp::getArray(&a[6*3*i+6*1], 6, v[i].y.v);
 			mcl::gmp::getArray(&a[6*3*i+6*2], 6, v[i].z.v);
 		}
-		cvt6Ux3x8to8Ux8x3(x.v, a);
+		setArray(a);
 	}
-	void getEc(Ec v[M])
+	void getEc(Ec v[M]) const
 	{
 		Unit a[6*3*M];
-		cvt8Ux8x3to6Ux3x8(a, x.v);
+		getArray(a);
 		for (size_t i = 0; i < M; i++) {
 			mcl::gmp::setArray(v[i].x.v, &a[6*3*i+6*0], 6);
 			mcl::gmp::setArray(v[i].y.v, &a[6*3*i+6*1], 6);
 			mcl::gmp::setArray(v[i].z.v, &a[6*3*i+6*2], 6);
+		}
+	}
+	void setG1(const mcl::bn::G1 v[M])
+	{
+		Unit a[6*3*M];
+		const Unit *src = (const Unit *)v;
+		for (size_t i = 0; i < M*3; i++) {
+			mcl::bn::Fp::getOp().fromMont(a+i*6, src+i*6);
+		}
+		setArray(a);
+		x.toMont(x);
+		y.toMont(y);
+		z.toMont(z);
+	}
+	void getG1(mcl::bn::G1 v[M]) const
+	{
+		EcM t;
+		t.x.fromMont(x);
+		t.y.fromMont(y);
+		t.z.fromMont(z);
+		Unit a[6*3*M];
+		t.getArray(a);
+		Unit *dst = (Unit *)v;
+		for (size_t i = 0; i < M*3; i++) {
+			mcl::bn::Fp::getOp().toMont(dst+i*6, a+i*6);
 		}
 	}
 	void put(const char *msg = nullptr) const
@@ -1201,6 +1280,21 @@ struct EcM {
 		x.put("x");
 		y.put("y");
 		z.put("z");
+	}
+	void putRaw(const char *msg = nullptr) const
+	{
+		if (msg) printf("%s\n", msg);
+		x.putRaw("x");
+		y.putRaw("y");
+		z.putRaw("z");
+	}
+	void normalize()
+	{
+		FpM r;
+		FpM::inv(r, z);
+		FpM::mul(x, x, r);
+		FpM::mul(y, y, r);
+		z = FpM::one_;
 	}
 	static void makeTable(EcM *tbl, const EcM& P)
 	{
@@ -1324,6 +1418,8 @@ void init(Montgomery& mont)
 	expand(g_vi192, 192);
 	Fp::one_.set(1);
 	expandN(FpM::one_.v, Fp(1).v);
+	expandN(FpM::rawOne_.v, mpz_class(1));
+	expandN(FpM::mR2_.v, g_mont.mR2);
 	Ec::init(mont);
 	EcM::init(mont);
 	Ec::zero_.set(0, 1, 0);
@@ -1685,11 +1781,7 @@ void mulTest()
 	for (size_t i = 0; i < w*M; i++) {
 		y[i] = i * 0x123456 + 0x345678;
 	}
-	for (size_t j = 0; j < M; j++) {
-		for (size_t i = 0; i < w; i++) {
-			((Unit *)yv)[i*M+j] = y[j*w+i];
-		}
-	}
+	cvt4Ux8to8Ux4(yv, y);
 	for (size_t i = 0; i < M; i++) {
 		Ec::mul(Q1[i], P1[i], y+i*w, w);
 		Ec t;
@@ -1721,6 +1813,13 @@ void mulTest()
 	CYBOZU_BENCH_C("EcM::mul(2)", 10000, EcM::mul, Q2, P2, yv, 2);
 	CYBOZU_BENCH_C("EcM::mul(4)", 10000, EcM::mul, Q2, P2, yv, w);
 	CYBOZU_BENCH_C("EcM::mulGLV", 10000, EcM::mulGLV, Q2, P2, yv);
+	{
+		using namespace mcl;
+		const bn::Fr& ya = *(const bn::Fr*)y;
+		bn::G1 xa;
+		bn::hashAndMapToG1(xa, "abc", 3);
+		CYBOZU_BENCH_C("G1::mul", 10000, bn::G1::mul, xa, xa, ya);
+	}
 }
 
 void testAll(const mpz_class& mx, const mpz_class& my)
@@ -1845,30 +1944,133 @@ void cvtTest()
 	CYBOZU_BENCH_C("cvt6Ux3x8to8Ux8x3", C, cvt6Ux3x8to8Ux8x3, y, x);
 	CYBOZU_BENCH_C("cvt8Ux8x3to6Ux3x8", C, cvt8Ux8x3to6Ux3x8, z, y);
 }
+
+void reduceSum(mcl::bn::G1& Q, const EcM& P)
+{
+	mcl::bn::G1 z[8];
+	P.getG1(z);
+	Q = z[0];
+	for (int i = 1; i < 8; i++) {
+		Q += z[i];
+	}
+}
+
+void mulVecAVX512_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n)
+{
+	assert(n % 8 == 0);
+	EcM R;
+	R.clear();
+	for (size_t i = 0; i < n; i += 8) {
+		Unit ya[4*8];
+		for (size_t j = 0; j < 8; j++) {
+			mcl::bn::Fr::getOp().fromMont(ya+j*4, y[i].getUnit());
+		}
+		Vec yv[4];
+		cvt4Ux8to8Ux4(yv, ya);
+		EcM T, X;
+		X.setG1(x+i);
+		mcl::ec::JacobiToProj(X, X);
+		EcM::mulGLV(T, X, yv);
+T.normalize();
+T.put("T");
+		EcM::add(R, R, T);
+	}
+	reduceSum(P, R);
+	mcl::ec::ProjToJacobi(P, P);
+}
+
+#if 0
+void mulVecAVX512(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n)
+{
+	assert(n % 8 == 0);
+	EcM R;
+	R.clear();
+	for (size_t i = 0; i < n; i += 8) {
+		Vec yv[4];
+		cvt4Ux8to8Ux4(yv, (const Unit*)&y[i]);
+		EcM T, X;
+		X.setArray((const Unit*)&x[i]);
+		EcM::mulGLV(T, X, yv);
+		EcM::add(R, R, T);
+	}
+	reduceSum(P, R);
+}
+#endif
+
+void mulVec_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n)
+{
+	using namespace mcl::bn;
+	G1::mul(P, x[0], y[0]);
+printf("0 %s\n", P.getStr(16|mcl::IoEcAffine).c_str());
+	for (size_t i = 1; i < n; i++) {
+		G1 T;
+		G1::mul(T, x[i], y[i]);
+printf("%zd %s\n", i, T.getStr(16|mcl::IoEcAffine).c_str());
+		P += T;
+	}
+}
+
 void mtTest()
 {
-	using namespace mcl::bls12;
-	const size_t n = 8192;
-	const int C = 100;
+	using namespace mcl::bn;
+	const size_t n = 8;//192;
+	const int C = 1;//0;
 	cybozu::XorShift rg;
 	std::vector<G1> Pvec(n);
-	std::vector<G2> Qvec(n);
 	std::vector<Fr> xVec(n);
+	memset(&Pvec[0], 0, n*sizeof(G1));
 	hashAndMapToG1(Pvec[0], "abc", 3);
-	hashAndMapToG2(Qvec[0], "abc", 3);
 	for (size_t i = 1; i < n; i++) {
 		G1::add(Pvec[i], Pvec[i-1], Pvec[0]);
-		G2::add(Qvec[i], Qvec[i-1], Qvec[0]);
 	}
-	G1 P1, P2;
+	for (size_t i = 0; i < n; i++) {
+		xVec[i].setByCSPRNG(rg);
+	}
+	{
+		EcM Q;
+		G1 R[8];
+		Q.setG1(Pvec.data());
+		Q.getG1(R);
+		for (int i = 0; i < 8; i++) {
+			if (Pvec[i] != R[i]) {
+				printf("ERR %d\n", i);
+				printf("P %s\n", Pvec[i].getStr(16|mcl::IoEcProj).c_str());
+				printf("R %s\n", R[i].getStr(16|mcl::IoEcProj).c_str());
+				exit(1);
+			}
+		}
+	}
+	G1 P1, P2, P3;
+	G1::mulVec(P1, Pvec.data(), xVec.data(), n);
+	mulVec_naive(P2, Pvec.data(), xVec.data(), n);
+	mulVecAVX512_naive(P3, Pvec.data(), xVec.data(), n);
+	if (P1 != P2) {
+		puts("err mulVec_naive");
+		printf("P1=%s\n", P1.getStr(16).c_str());
+		printf("P2=%s\n", P2.getStr(16).c_str());
+		exit(1);
+	}
+	if (P1 != P3) {
+		puts("err mulVecAVX512_naive");
+		printf("P1=%s\n", P1.getStr(16|mcl::IoEcProj).c_str());
+		printf("P3=%s\n", P3.getStr(16|mcl::IoEcProj).c_str());
+		exit(1);
+	}
 	CYBOZU_BENCH_C("G1::mulVec", C, G1::mulVec, P1, Pvec.data(), xVec.data(), n);
+	CYBOZU_BENCH_C("mulVec_naive", C, mulVec_naive, P2, Pvec.data(), xVec.data(), n);
+	CYBOZU_BENCH_C("mulVecAVX512_naive", C, mulVecAVX512_naive, P3, Pvec.data(), xVec.data(), n);
 }
 
 int main()
 {
-	mcl::bls12::initPairing(mcl::BLS12_381);
+	mcl::bn::initPairing(mcl::BLS12_381);
 	init(g_mont);
 	g_mont.put();
+	Fp x;
+	x.set(mpz_class("123456789012356789000000003", 16));
+	x.put("xxx");
+	x.putRaw("xxx raw");
+	printf("x.get=0x%s\n", x.get().get_str(16).c_str());
 
 	const mpz_class tbl[] = {
 		0xaabbccdd, 0x11223344, 0, 1, 2, g_mask-1, g_mask, g_mask+1, g_mp-1, g_mp>>2, 0x12345, g_mp-0x1111,
