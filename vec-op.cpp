@@ -1947,6 +1947,7 @@ void cvtTest()
 
 void reduceSum(mcl::bn::G1& Q, const EcM& P)
 {
+
 	mcl::bn::G1 z[8];
 	P.getG1(z);
 	Q = z[0];
@@ -1963,7 +1964,7 @@ void mulVecAVX512_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr 
 	for (size_t i = 0; i < n; i += 8) {
 		Unit ya[4*8];
 		for (size_t j = 0; j < 8; j++) {
-			mcl::bn::Fr::getOp().fromMont(ya+j*4, y[i].getUnit());
+			mcl::bn::Fr::getOp().fromMont(ya+j*4, y[i+j].getUnit());
 		}
 		Vec yv[4];
 		cvt4Ux8to8Ux4(yv, ya);
@@ -1971,12 +1972,10 @@ void mulVecAVX512_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr 
 		X.setG1(x+i);
 		mcl::ec::JacobiToProj(X, X);
 		EcM::mulGLV(T, X, yv);
-T.normalize();
-T.put("T");
 		EcM::add(R, R, T);
 	}
+R.normalize();
 	reduceSum(P, R);
-	mcl::ec::ProjToJacobi(P, P);
 }
 
 #if 0
@@ -2001,11 +2000,9 @@ void mulVec_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, si
 {
 	using namespace mcl::bn;
 	G1::mul(P, x[0], y[0]);
-printf("0 %s\n", P.getStr(16|mcl::IoEcAffine).c_str());
 	for (size_t i = 1; i < n; i++) {
 		G1 T;
 		G1::mul(T, x[i], y[i]);
-printf("%zd %s\n", i, T.getStr(16|mcl::IoEcAffine).c_str());
 		P += T;
 	}
 }
@@ -2013,8 +2010,8 @@ printf("%zd %s\n", i, T.getStr(16|mcl::IoEcAffine).c_str());
 void mtTest()
 {
 	using namespace mcl::bn;
-	const size_t n = 8;//192;
-	const int C = 1;//0;
+	const size_t n = 8192;
+	const int C = 10;
 	cybozu::XorShift rg;
 	std::vector<G1> Pvec(n);
 	std::vector<Fr> xVec(n);
@@ -2057,7 +2054,7 @@ void mtTest()
 		exit(1);
 	}
 	CYBOZU_BENCH_C("G1::mulVec", C, G1::mulVec, P1, Pvec.data(), xVec.data(), n);
-	CYBOZU_BENCH_C("mulVec_naive", C, mulVec_naive, P2, Pvec.data(), xVec.data(), n);
+//	CYBOZU_BENCH_C("mulVec_naive", C, mulVec_naive, P2, Pvec.data(), xVec.data(), n);
 	CYBOZU_BENCH_C("mulVecAVX512_naive", C, mulVecAVX512_naive, P3, Pvec.data(), xVec.data(), n);
 }
 
