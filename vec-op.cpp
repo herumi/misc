@@ -1974,7 +1974,7 @@ void mulVecAVX512_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr 
 		EcM::mulGLV(T, X, yv);
 		EcM::add(R, R, T);
 	}
-R.normalize();
+	mcl::ec::ProjToJacobi(R, R);
 	reduceSum(P, R);
 }
 
