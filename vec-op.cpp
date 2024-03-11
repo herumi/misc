@@ -242,6 +242,12 @@ Vec vpgatherqq(const Vec& idx, const void *base)
 #endif
 }
 
+void vpscatterqq(void *base, const Vec& idx, const Vec& v)
+{
+	const int scale = 8;
+	_mm512_i64scatter_epi64(base, idx, v, scale);
+}
+
 // return [H:L][idx]
 Vec vperm2tq(const Vec& L, const Vec& idx, const Vec& H)
 {
@@ -256,6 +262,11 @@ Vmask vcmpeq(const Vec& a, const Vec& b)
 Vmask vcmpneq(const Vec& a, const Vec& b)
 {
 	return _mm512_cmpneq_epi64_mask(a, b);
+}
+
+Vec vpbroadcastq(int64_t a)
+{
+	return _mm512_set1_epi64(a);
 }
 
 // return c ? a&b : d;
@@ -404,6 +415,16 @@ void select(Unit *out, bool c, const Unit *a, const Unit *b)
 	for (size_t i = 0; i < N; i++) {
 		out[i] = o[i];
 	}
+}
+
+Vec getUnitAt(const Vec *x, size_t bitPos)
+{
+	const size_t bitSize = 64;
+	const size_t q = bitPos / bitSize;
+	const size_t r = bitPos % bitSize;
+	if (r == 0) return x[q];
+	if (q == 1) return vpsrlq(x[1], r);
+	return vor(vpsrlq(x[0], r), vpsllq(x[1], bitSize - r));
 }
 
 static inline void split(Unit a[2], Unit b[2], const Unit x[4])
@@ -1260,15 +1281,17 @@ struct EcM {
 		x.toMont(x);
 		y.toMont(y);
 		z.toMont(z);
+		mcl::ec::JacobiToProj(*this, *this);
 	}
 	void getG1(mcl::bn::G1 v[M]) const
 	{
-		EcM t;
-		t.x.fromMont(x);
-		t.y.fromMont(y);
-		t.z.fromMont(z);
+		EcM T;
+		mcl::ec::ProjToJacobi(T, *this);
+		T.x.fromMont(T.x);
+		T.y.fromMont(T.y);
+		T.z.fromMont(T.z);
 		Unit a[6*3*M];
-		t.getArray(a);
+		T.getArray(a);
 		Unit *dst = (Unit *)v;
 		for (size_t i = 0; i < M*3; i++) {
 			mcl::bn::Fp::getOp().toMont(dst+i*6, a+i*6);
@@ -1956,25 +1979,28 @@ void reduceSum(mcl::bn::G1& Q, const EcM& P)
 	}
 }
 
+void cvtFr8toVec4(Vec yv[4], const mcl::bn::Fr y[8])
+{
+	Unit ya[4*8];
+	for (size_t i = 0; i < 8; i++) {
+		mcl::bn::Fr::getOp().fromMont(ya+i*4, y[i].getUnit());
+	}
+	cvt4Ux8to8Ux4(yv, ya);
+}
+
 void mulVecAVX512_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n)
 {
 	assert(n % 8 == 0);
 	EcM R;
 	R.clear();
 	for (size_t i = 0; i < n; i += 8) {
-		Unit ya[4*8];
-		for (size_t j = 0; j < 8; j++) {
-			mcl::bn::Fr::getOp().fromMont(ya+j*4, y[i+j].getUnit());
-		}
 		Vec yv[4];
-		cvt4Ux8to8Ux4(yv, ya);
+		cvtFr8toVec4(yv, y+i);
 		EcM T, X;
 		X.setG1(x+i);
-		mcl::ec::JacobiToProj(X, X);
 		EcM::mulGLV(T, X, yv);
 		EcM::add(R, R, T);
 	}
-	mcl::ec::ProjToJacobi(R, R);
 	reduceSum(P, R);
 }
 
