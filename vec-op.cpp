@@ -2008,22 +2008,42 @@ void mulVecAVX512_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr 
 void mulVecAVX512(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n)
 {
 	assert(n % 8 == 0);
-	EcM R;
-	R.clear();
-	for (size_t i = 0; i < n; i += 8) {
-		Vec yv[4];
-		cvt4Ux8to8Ux4(yv, (const Unit*)&y[i]);
-		EcM T, X;
-		X.setArray((const Unit*)&x[i]);
-		EcM::mulGLV(T, X, yv);
-		EcM::add(R, R, T);
+	size_t c = argminForMulVec(n/8);
+	EcM tblN = 1 << c;
+	EcM tbl = (EcM*)CYBOZU_ALLOCA(sizeof(EcM) * tblN);
+	const size_t maxBitSize = 128;
+	const size_t winN = maxBitSize / c + 1;
+	EcM *win = (EcM*)CYBOZU_ALLOCA(sizeof(EcM) * winN);
+
+	for (size_t w = 0; w < winN; w++) {
+		for (size_t i = 0; i < tblN; i++) {
+			tbl[i].clear();
+		}
+		for (size_t i = 0; i < n; i += 8) {
+			Unit v = fp::getUnitAt(yVec + next * i, yUnitSize, c * w) & (tblN-1);
+			tbl[v] += xVec[i];
+		}
+		G sum = tbl[tblN - 1];
+		win[w] = sum;
+		for (size_t i = 1; i < tblN - 1; i++) {
+			sum += tbl[tblN - 1 - i];
+			win[w] += sum;
+		}
 	}
-	reduceSum(P, R);
+	z.clear(); // remove a wrong gcc warning
+	z = win[winN - 1];
+	for (size_t w = 1; w < winN; w++) {
+		for (size_t i = 0; i < c; i++) {
+			G::dbl(z, z);
+		}
+		z += win[winN - 1 - w];
+	}
 }
 #endif
 
 void mulVec_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n)
 {
+#if 1
 	using namespace mcl::bn;
 	G1::mul(P, x[0], y[0]);
 	for (size_t i = 1; i < n; i++) {
@@ -2031,6 +2051,42 @@ void mulVec_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, si
 		G1::mul(T, x[i], y[i]);
 		P += T;
 	}
+#else
+	size_t c = mcl::ec::argminForMulVec(n);
+	size_t tblN = (1 << c) - 0;
+	mcl::bn::G1 *tbl = (mcl::bn::G1*)CYBOZU_ALLOCA(sizeof(mcl::bn::G1) * tblN);
+	const size_t maxBitSize = 256;
+	const size_t winN = maxBitSize / c + 1;
+	mcl::bn::G1 *win = (mcl::bn::G1*)CYBOZU_ALLOCA(sizeof(mcl::bn::G1) * winN);
+
+	Unit *yVec = (Unit*)CYBOZU_ALLOCA(sizeof(mcl::bn::Fr) * n);
+	for (size_t i = 0; i < n; i++) {
+		mcl::bn::Fr::getOp().fromMont(yVec+i*4, y[i].getUnit());
+	}
+	for (size_t w = 0; w < winN; w++) {
+		for (size_t i = 0; i < tblN; i++) {
+			tbl[i].clear();
+		}
+		for (size_t i = 0; i < n; i++) {
+			Unit v = mcl::fp::getUnitAt(yVec+i*4, 4, c * w) & (tblN-1);
+			tbl[v] += x[i];
+		}
+		mcl::bn::G1 sum = tbl[tblN-1];
+		win[w] = sum;
+		for (size_t i = 1; i < tblN-1; i++) {
+			sum += tbl[tblN - 1 - i];
+			win[w] += sum;
+		}
+	}
+	P.clear(); // remove a wrong gcc warning
+	P = win[winN - 1];
+	for (size_t w = 1; w < winN; w++) {
+		for (size_t i = 0; i < c; i++) {
+			mcl::bn::G1::dbl(P, P);
+		}
+		P += win[winN - 1 - w];
+	}
+#endif
 }
 
 void mtTest()
