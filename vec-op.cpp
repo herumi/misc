@@ -693,7 +693,7 @@ void cvt6Ux3x8to8Ux8x3(Vec y[8*3], const Unit x[6*3*8])
 	for (int j = 0; j < 3; j++) {
 		Vec t[6];
 		for (int i = 0; i < 6; i++) {
-			t[i] = vpgatherqq(v_pickUp, x+i+j*6);
+			t[i] = vpgatherqq(v_pickUp, x+j*6+i);
 		}
 		split52bit(&y[j*8], t);
 	}
@@ -702,14 +702,18 @@ void cvt6Ux3x8to8Ux8x3(Vec y[8*3], const Unit x[6*3*8])
 // EcM(=8Ux8x3) => G1(=6U x 3) x 8
 void cvt8Ux8x3to6Ux3x8(Unit y[6*3*8], const Vec x[8*3])
 {
-	for (size_t i = 0; i < 3; i++) {
+	for (size_t j = 0; j < 3; j++) {
 		Vec t[6];
-		const Unit *pt = (const Unit *)t;
-		concat52bit(t, x+8*i);
-		for (size_t j = 0; j < 8; j++) {
-			for (size_t k = 0; k < 6; k++) {
-				y[i*6+j*18+k] = pt[j+k*8];
+		concat52bit(t, x+8*j);
+		for (size_t i = 0; i < 6; i++) {
+#if 1
+			vpscatterqq(y+j*6+i, v_pickUp, t[i]);
+#else
+			const Unit *pt = (const Unit *)t;
+			for (size_t k = 0; k < 8; k++) {
+				y[j*6+k*18+i] = pt[k+i*8];
 			}
+#endif
 		}
 	}
 }
@@ -2015,12 +2019,18 @@ void mulVecAVX512(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, si
 	const size_t winN = maxBitSize / c + 1;
 	EcM *win = (EcM*)CYBOZU_ALLOCA(sizeof(EcM) * winN);
 
+	Vec *yVec = (Vec*)CYBOZU_ALLOCA(sizeof(mcl::bn::Fr) * n);
+	for (size_t i = 0; i < n; i += 8) {
+		cvtFr8toVec4(yv+i/2, y+i);
+	}
+
 	for (size_t w = 0; w < winN; w++) {
 		for (size_t i = 0; i < tblN; i++) {
 			tbl[i].clear();
 		}
 		for (size_t i = 0; i < n; i += 8) {
-			Unit v = fp::getUnitAt(yVec + next * i, yUnitSize, c * w) & (tblN-1);
+//			Unit v = fp::getUnitAt(yVec + next * i, yUnitSize, c * w) & (tblN-1);
+			Vec v = getUnitAt(yVec, c*w);
 			tbl[v] += xVec[i];
 		}
 		G sum = tbl[tblN - 1];
