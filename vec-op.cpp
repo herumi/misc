@@ -12,6 +12,7 @@ uvmul 145.23 clk
 #include <iostream>
 #include <cybozu/xorshift.hpp>
 #include <cybozu/benchmark.hpp>
+#include <cybozu/option.hpp>
 #include <mcl/bls12_381.hpp>
 #ifdef _WIN32
 #include <intrin.h>
@@ -478,9 +479,9 @@ public:
 		mR = (mR << (W * N)) % mp;
 		mR2 = (mR * mR) % mp;
 		toArray<N>(v_, _p);
-		::put(v_, "v_");
+//		::put(v_, "v_");
 		rp = mcl::bint::getMontgomeryCoeff(v_[0], W);
-		printf("rp=%zx\n", rp);
+//		printf("rp=%zx\n", rp);
 		p = v_;
 		isFullBit = p[N-1] >> (W-1);
 	}
@@ -1437,7 +1438,7 @@ void init(Montgomery& mont)
 		expand(g_vmpM2[i], g_mpM2[i]);
 	}
 	expand(g_vmask4, getMask(4));
-	put(g_vmask4, "g_vmask4");
+//	put(g_vmask4, "g_vmask4");
 	for (int i = 0; i < 8; i++) {
 		((Unit*)&g_offset)[i] = i;
 	}
@@ -1459,7 +1460,7 @@ void init(Montgomery& mont)
 	g_mx.set_str("17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb", 16);
 	g_my.set_str("08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1", 16);
 	g_mr.set_str("73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001", 16);
-	printf("(mx, my) is on %d\n", (g_mx * g_mx * g_mx + 4 - g_my * g_my) % g_mp == 0);
+//	printf("(mx, my) is on %d\n", (g_mx * g_mx * g_mx + 4 - g_my * g_my) % g_mp == 0);
 }
 
 template<typename T>
@@ -2152,10 +2153,9 @@ void mulVec_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, si
 #endif
 }
 
-void mtTest()
+void mtTest(size_t n, bool onlyBench)
 {
 	using namespace mcl::bn;
-	const size_t n = 8192*1;
 	const int C = 10;
 	cybozu::XorShift rg;
 	std::vector<G1> Pvec(n);
@@ -2183,6 +2183,10 @@ void mtTest()
 		}
 	}
 	G1 P1, P2, P3, P4;
+	if (onlyBench) {
+		CYBOZU_BENCH_C("mulVecAVX512", C, mulVecAVX512, P4, Pvec.data(), xVec.data(), n);
+		return;
+	}
 	G1::mulVec(P1, Pvec.data(), xVec.data(), n);
 	mulVec_naive(P2, Pvec.data(), xVec.data(), n);
 	mulVecAVX512_naive(P3, Pvec.data(), xVec.data(), n);
@@ -2213,16 +2217,26 @@ void mtTest()
 	CYBOZU_BENCH_C("mulVecAVX512", C, mulVecAVX512, P4, Pvec.data(), xVec.data(), n);
 }
 
-int main()
+int main(int argc, char *argv[])
 {
+	size_t xn;
+	bool onlyBench;
+	cybozu::Option opt;
+	opt.appendOpt(&xn, 8192, "n", ":# of elem");
+	opt.appendBoolOpt(&onlyBench, "b", ": benchmark");
+	opt.appendHelp("h");
+	if (!opt.parse(argc, argv)) {
+		opt.usage();
+		return 1;
+	}
+	printf("xn=%zd\n", xn);
 	mcl::bn::initPairing(mcl::BLS12_381);
 	init(g_mont);
+
+	mtTest(xn, onlyBench);
+	if (onlyBench) return 0;
+
 	g_mont.put();
-	Fp x;
-	x.set(mpz_class("123456789012356789000000003", 16));
-	x.put("xxx");
-	x.putRaw("xxx raw");
-	printf("x.get=0x%s\n", x.get().get_str(16).c_str());
 
 	const mpz_class tbl[] = {
 		0xaabbccdd, 0x11223344, 0, 1, 2, g_mask-1, g_mask, g_mask+1, g_mp-1, g_mp>>2, 0x12345, g_mp-0x1111,
@@ -2239,7 +2253,6 @@ int main()
 		mpz_class my = mpz_rand(rg);
 		testAll(mx, my);
 	}
-	mtTest();
 	cvtTest();
 	split52bitTest();
 	gatherTest();
