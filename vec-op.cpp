@@ -1171,7 +1171,7 @@ struct FpM {
 				idx = vadd(idx, g_offset);
 				FpM t;
 				for (size_t k = 0; k < N; k++) {
-					t.v[k] = vpgatherqq(idx, (const Unit*)&tbl[0].v[k]);
+					t.v[k] = vpgatherqq(idx, &tbl[0].v[k]);
 				}
 				mul(z, z, t);
 			}
@@ -1331,30 +1331,25 @@ struct EcM {
 			add(tbl[i], tbl[i-1], P);
 		}
 	}
-	static void setGather(EcM& T, const EcM *tbl, const Vec& v, size_t j)
+	void gather(const EcM *tbl, Vec idx)
 	{
-#if 0
-		const size_t S = sizeof(FpM)/sizeof(Unit);
-		const Unit *pv = (const Unit *)&v;
-		const Unit *q = (const Unit*)&tbl[0].x;
-		for (size_t i = 0; i < M; i++) {
-			size_t idx = (v[i] >> (bitLen-w-j*w)) & getMask(4);
-			idx = idx * S*3 + i;
-			for (size_t k = 0; k < N; k++) ((Unit*)&T.x)[k*M+i] = q[S*0+idx+k*M];
-			for (size_t k = 0; k < N; k++) ((Unit*)&T.y)[k*M+i] = q[S*1+idx+k*M];
-			for (size_t k = 0; k < N; k++) ((Unit*)&T.z)[k*M+i] = q[S*2+idx+k*M];
+		idx = vmulL(idx, g_vi192, g_offset);
+		for (size_t i = 0; i < N; i++) {
+			x.v[i] = vpgatherqq(idx, &tbl[0].x.v[i]);
+			y.v[i] = vpgatherqq(idx, &tbl[0].y.v[i]);
+			z.v[i] = vpgatherqq(idx, &tbl[0].z.v[i]);
 		}
-#else
-		Vec idx = vand(vpsrlq(v, bitLen-w-j*w), g_vmask4);
-		idx = vmulL(idx, g_vi192);
-		idx = vadd(idx, g_offset);
-		for (size_t k = 0; k < N; k++) {
-			T.x.v[k] = vpgatherqq(idx, (const Unit*)&tbl[0].x.v[k]);
-			T.y.v[k] = vpgatherqq(idx, (const Unit*)&tbl[0].y.v[k]);
-			T.z.v[k] = vpgatherqq(idx, (const Unit*)&tbl[0].z.v[k]);
-		}
-#endif
 	}
+	void scatter(EcM *tbl, Vec idx) const
+	{
+		idx = vmulL(idx, g_vi192, g_offset);
+		for (size_t i = 0; i < N; i++) {
+			vpscatterqq(&tbl[0].x.v[i], idx, x.v[i]);
+			vpscatterqq(&tbl[0].y.v[i], idx, y.v[i]);
+			vpscatterqq(&tbl[0].z.v[i], idx, z.v[i]);
+		}
+	}
+
 	static void mul(EcM& Q, const EcM& P, const Vec *y, size_t yn)
 	{
 		EcM tbl[tblN];
@@ -1365,8 +1360,9 @@ struct EcM {
 			const Vec& v = y[yn-1-i];
 			for (size_t j = 0; j < jn; j++) {
 				for (int k = 0; k < w; k++) EcM::dbl(Q, Q);
+				Vec idx = vand(vpsrlq(v, bitLen-w-j*w), g_vmask4);
 				EcM T;
-				setGather(T, tbl, v, j);
+				T.gather(tbl, idx);
 				add(Q, Q, T);
 			}
 		}
@@ -1405,9 +1401,12 @@ struct EcM {
 			for (size_t j = 0; j < jn; j++) {
 				for (int k = 0; k < w; k++) EcM::dbl(Q, Q);
 				EcM T;
-				setGather(T, tbl1, v1, j);
+				Vec idx;
+				idx = vand(vpsrlq(v1, bitLen-w-j*w), g_vmask4);
+				T.gather(tbl1, idx);
 				add(Q, Q, T);
-				setGather(T, tbl2, v2, j);
+				idx = vand(vpsrlq(v2, bitLen-w-j*w), g_vmask4);
+				T.gather(tbl2, idx);
 				add(Q, Q, T);
 			}
 		}
@@ -2008,46 +2007,52 @@ void mulVecAVX512_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr 
 	reduceSum(P, R);
 }
 
-#if 0
+#if 1
 void mulVecAVX512(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n)
 {
 	assert(n % 8 == 0);
-	size_t c = argminForMulVec(n/8);
-	EcM tblN = 1 << c;
-	EcM tbl = (EcM*)CYBOZU_ALLOCA(sizeof(EcM) * tblN);
-	const size_t maxBitSize = 128;
+	size_t c = mcl::ec::argminForMulVec(n/8);
+	size_t tblN = 1 << c;
+	EcM *tbl = (EcM*)CYBOZU_ALLOCA(sizeof(EcM) * tblN);
+	const size_t maxBitSize = 256;
 	const size_t winN = maxBitSize / c + 1;
 	EcM *win = (EcM*)CYBOZU_ALLOCA(sizeof(EcM) * winN);
 
-	Vec *yVec = (Vec*)CYBOZU_ALLOCA(sizeof(mcl::bn::Fr) * n);
-	for (size_t i = 0; i < n; i += 8) {
-		cvtFr8toVec4(yv+i/2, y+i);
+	EcM *xVec = (EcM*)CYBOZU_ALLOCA(sizeof(EcM) * n/8);
+	for (size_t i = 0; i < n/8; i++) {
+		xVec[i].setG1(x+i*8);
 	}
-
+	Vec *yVec = (Vec*)CYBOZU_ALLOCA(sizeof(yVec) * n/2);
+	for (size_t i = 0; i < n/8; i++) {
+		cvtFr8toVec4(yVec+i*4, y+i*8);
+	}
+return;
 	for (size_t w = 0; w < winN; w++) {
 		for (size_t i = 0; i < tblN; i++) {
 			tbl[i].clear();
 		}
-		for (size_t i = 0; i < n; i += 8) {
-//			Unit v = fp::getUnitAt(yVec + next * i, yUnitSize, c * w) & (tblN-1);
+		for (size_t i = 0; i < n/8; i++) {
 			Vec v = getUnitAt(yVec, c*w);
-			tbl[v] += xVec[i];
+			EcM T;
+			T.gather(tbl, v);
+			EcM::add(T, T, xVec[i]);
+			T.scatter(tbl, v);
 		}
-		G sum = tbl[tblN - 1];
+		EcM sum = tbl[tblN - 1];
 		win[w] = sum;
 		for (size_t i = 1; i < tblN - 1; i++) {
-			sum += tbl[tblN - 1 - i];
-			win[w] += sum;
+			EcM::add(sum, sum, tbl[tblN - 1- i]);
+			EcM::add(win[w], win[w], sum);
 		}
 	}
-	z.clear(); // remove a wrong gcc warning
-	z = win[winN - 1];
+	EcM T = win[winN - 1];
 	for (size_t w = 1; w < winN; w++) {
 		for (size_t i = 0; i < c; i++) {
-			G::dbl(z, z);
+			EcM::dbl(T, T);
 		}
-		z += win[winN - 1 - w];
+		EcM::add(T, T, win[winN - 1- w]);
 	}
+	reduceSum(P, T);
 }
 #endif
 
@@ -2129,10 +2134,11 @@ void mtTest()
 			}
 		}
 	}
-	G1 P1, P2, P3;
+	G1 P1, P2, P3, P4;
 	G1::mulVec(P1, Pvec.data(), xVec.data(), n);
 	mulVec_naive(P2, Pvec.data(), xVec.data(), n);
 	mulVecAVX512_naive(P3, Pvec.data(), xVec.data(), n);
+	mulVecAVX512(P4, Pvec.data(), xVec.data(), n);
 	if (P1 != P2) {
 		puts("err mulVec_naive");
 		printf("P1=%s\n", P1.getStr(16).c_str());
@@ -2145,9 +2151,16 @@ void mtTest()
 		printf("P3=%s\n", P3.getStr(16|mcl::IoEcProj).c_str());
 		exit(1);
 	}
+	if (P1 != P4) {
+		puts("err mulVecAVX512");
+		printf("P1=%s\n", P1.getStr(16|mcl::IoEcProj).c_str());
+		printf("P4=%s\n", P4.getStr(16|mcl::IoEcProj).c_str());
+		exit(1);
+	}
 	CYBOZU_BENCH_C("G1::mulVec", C, G1::mulVec, P1, Pvec.data(), xVec.data(), n);
 //	CYBOZU_BENCH_C("mulVec_naive", C, mulVec_naive, P2, Pvec.data(), xVec.data(), n);
 	CYBOZU_BENCH_C("mulVecAVX512_naive", C, mulVecAVX512_naive, P3, Pvec.data(), xVec.data(), n);
+	CYBOZU_BENCH_C("mulVecAVX512", C, mulVecAVX512, P4, Pvec.data(), xVec.data(), n);
 }
 
 int main()
