@@ -2021,34 +2021,22 @@ inline void *AlignedMalloc(size_t size, size_t alignment = 64)
 }
 
 
-#if 1
-void mulVecAVX512(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n)
+// xVec[n], yVec[n*4]
+void mulVecAVX512_inner(mcl::bn::G1& P, const EcM *xVec, const Vec *yVec, size_t n)
 {
-#undef CYBOZU_ALLOCA
-#define CYBOZU_ALLOCA AlignedMalloc
-	assert(n % 8 == 0);
-	size_t c = mcl::ec::argminForMulVec(n/8);
+	size_t c = mcl::ec::argminForMulVec(n);
 	size_t tblN = 1 << c;
-	EcM *tbl = (EcM*)CYBOZU_ALLOCA(sizeof(EcM) * tblN);
+	EcM *tbl = (EcM*)AlignedMalloc(sizeof(EcM) * tblN);
 	const size_t maxBitSize = 256;
 	const size_t winN = maxBitSize / c + 1;
-	EcM *win = (EcM*)CYBOZU_ALLOCA(sizeof(EcM) * winN);
-
-	EcM *xVec = (EcM*)CYBOZU_ALLOCA(sizeof(EcM) * n/8);
-	for (size_t i = 0; i < n/8; i++) {
-		xVec[i].setG1(x+i*8);
-	}
-	Vec *yVec = (Vec*)CYBOZU_ALLOCA(sizeof(Vec) * n/2);
-	for (size_t i = 0; i < n/8; i++) {
-		cvtFr8toVec4(yVec+i*4, y+i*8);
-	}
+	EcM *win = (EcM*)AlignedMalloc(sizeof(EcM) * winN);
 
 	const Vec m = vpbroadcastq(tblN-1);
 	for (size_t w = 0; w < winN; w++) {
 		for (size_t i = 0; i < tblN; i++) {
 			tbl[i].clear();
 		}
-		for (size_t i = 0; i < n/8; i++) {
+		for (size_t i = 0; i < n; i++) {
 			Vec v = getUnitAt(yVec+i*4, 4, c*w);
 			v = vand(v, m);
 			EcM T;
@@ -2071,13 +2059,25 @@ void mulVecAVX512(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, si
 		EcM::add(T, T, win[winN - 1- w]);
 	}
 	reduceSum(P, T);
-
-	free(yVec);
-	free(xVec);
 	free(win);
 	free(tbl);
 }
-#endif
+
+void mulVecAVX512(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n)
+{
+	assert(n % 8 == 0);
+	EcM *xVec = (EcM*)AlignedMalloc(sizeof(EcM) * n/8);
+	for (size_t i = 0; i < n/8; i++) {
+		xVec[i].setG1(x+i*8);
+	}
+	Vec *yVec = (Vec*)AlignedMalloc(sizeof(Vec) * n/2);
+	for (size_t i = 0; i < n/8; i++) {
+		cvtFr8toVec4(yVec+i*4, y+i*8);
+	}
+	mulVecAVX512_inner(P, xVec, yVec, n/8);
+	free(yVec);
+	free(xVec);
+}
 
 void mulVec_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n)
 {
