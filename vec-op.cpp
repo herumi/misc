@@ -2021,14 +2021,14 @@ inline void *AlignedMalloc(size_t size, size_t alignment = 64)
 }
 
 
-// xVec[n], yVec[n*4]
-void mulVecAVX512_inner(mcl::bn::G1& P, const EcM *xVec, const Vec *yVec, size_t n)
+// xVec[n], yVec[n * maxBitSize/64]
+void mulVecAVX512_inner(mcl::bn::G1& P, const EcM *xVec, const Vec *yVec, size_t n, size_t maxBitSize)
 {
 	size_t c = mcl::ec::argminForMulVec(n);
 	size_t tblN = 1 << c;
 	EcM *tbl = (EcM*)AlignedMalloc(sizeof(EcM) * tblN);
-	const size_t maxBitSize = 256;
-	const size_t winN = maxBitSize / c + 1;
+	const size_t yn = maxBitSize / 64;
+	const size_t winN = (maxBitSize + c-1) / c;
 	EcM *win = (EcM*)AlignedMalloc(sizeof(EcM) * winN);
 
 	const Vec m = vpbroadcastq(tblN-1);
@@ -2037,7 +2037,7 @@ void mulVecAVX512_inner(mcl::bn::G1& P, const EcM *xVec, const Vec *yVec, size_t
 			tbl[i].clear();
 		}
 		for (size_t i = 0; i < n; i++) {
-			Vec v = getUnitAt(yVec+i*4, 4, c*w);
+			Vec v = getUnitAt(yVec+i*yn, yn, c*w);
 			v = vand(v, m);
 			EcM T;
 			T.gather(tbl, v);
@@ -2066,22 +2066,47 @@ void mulVecAVX512_inner(mcl::bn::G1& P, const EcM *xVec, const Vec *yVec, size_t
 void mulVecAVX512(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n)
 {
 	assert(n % 8 == 0);
-	EcM *xVec = (EcM*)AlignedMalloc(sizeof(EcM) * n/8);
-	for (size_t i = 0; i < n/8; i++) {
+	const size_t n8 = n/8;
+#if 1
+	EcM *xVec = (EcM*)AlignedMalloc(sizeof(EcM) * n8 * 2);
+	for (size_t i = 0; i < n8; i++) {
+		xVec[i*2].setG1(x+i*8);
+		EcM::mulLambda(xVec[i*2+1], xVec[i*2]);
+	}
+	Vec *yVec = (Vec*)AlignedMalloc(sizeof(Vec) * n8 * 4);
+	Unit *py = (Unit*)yVec;
+	for (size_t i = 0; i < n8; i++) {
+		for (size_t j = 0; j < 8; j++) {
+			Unit ya[4];
+			mcl::bn::Fr::getOp().fromMont(ya, y[i*8+j].getUnit());
+			Unit a[2], b[2];
+			split(a, b, ya);
+			py[j+0] = a[0];
+			py[j+8] = a[1];
+			py[j+16] = b[0];
+			py[j+24] = b[1];
+		}
+		py += 32;
+	}
+	mulVecAVX512_inner(P, xVec, yVec, n8*2, 128);
+#else
+	EcM *xVec = (EcM*)AlignedMalloc(sizeof(EcM) * n8);
+	for (size_t i = 0; i < n8; i++) {
 		xVec[i].setG1(x+i*8);
 	}
-	Vec *yVec = (Vec*)AlignedMalloc(sizeof(Vec) * n/2);
-	for (size_t i = 0; i < n/8; i++) {
+	Vec *yVec = (Vec*)AlignedMalloc(sizeof(Vec) * n8 * 4);
+	for (size_t i = 0; i < n8; i++) {
 		cvtFr8toVec4(yVec+i*4, y+i*8);
 	}
-	mulVecAVX512_inner(P, xVec, yVec, n/8);
+	mulVecAVX512_inner(P, xVec, yVec, n8, 256);
+#endif
 	free(yVec);
 	free(xVec);
 }
 
 void mulVec_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n)
 {
-#if 1
+#if 0
 	using namespace mcl::bn;
 	G1::mul(P, x[0], y[0]);
 	for (size_t i = 1; i < n; i++) {
@@ -2094,7 +2119,7 @@ void mulVec_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, si
 	size_t tblN = (1 << c) - 0;
 	mcl::bn::G1 *tbl = (mcl::bn::G1*)CYBOZU_ALLOCA(sizeof(mcl::bn::G1) * tblN);
 	const size_t maxBitSize = 256;
-	const size_t winN = maxBitSize / c + 1;
+	const size_t winN = (maxBitSize + c-1) / c;
 	mcl::bn::G1 *win = (mcl::bn::G1*)CYBOZU_ALLOCA(sizeof(mcl::bn::G1) * winN);
 
 	Unit *yVec = (Unit*)CYBOZU_ALLOCA(sizeof(mcl::bn::Fr) * n);
