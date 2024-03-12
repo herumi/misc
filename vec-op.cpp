@@ -417,14 +417,14 @@ void select(Unit *out, bool c, const Unit *a, const Unit *b)
 	}
 }
 
-Vec getUnitAt(const Vec *x, size_t bitPos)
+Vec getUnitAt(const Vec *x, size_t xN, size_t bitPos)
 {
 	const size_t bitSize = 64;
 	const size_t q = bitPos / bitSize;
 	const size_t r = bitPos % bitSize;
 	if (r == 0) return x[q];
-	if (q == 1) return vpsrlq(x[1], r);
-	return vor(vpsrlq(x[0], r), vpsllq(x[1], bitSize - r));
+	if (q == xN - 1) return vpsrlq(x[q], r);
+	return vor(vpsrlq(x[q], r), vpsllq(x[q+1], bitSize - r));
 }
 
 static inline void split(Unit a[2], Unit b[2], const Unit x[4])
@@ -684,7 +684,7 @@ void concat52bit(Vec y[6], const Vec x[8])
 	384bit = 6U (U=64)
 	G1(=6U x 3(x, y, z)) x 8 => 8Ux8x3
 */
-static uint64_t g_pickUp[8] = {
+static CYBOZU_ALIGN(64) uint64_t g_pickUp[8] = {
 	18*0, 18*1, 18*2, 18*3, 18*4, 18*5, 18*6, 18*7,
 };
 static const Vec& v_pickUp = *(const Vec*)g_pickUp;
@@ -2007,9 +2007,25 @@ void mulVecAVX512_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr 
 	reduceSum(P, R);
 }
 
+inline void *AlignedMalloc(size_t size, size_t alignment = 64)
+{
+#ifdef __MINGW32__
+	return __mingw_aligned_malloc(size, alignment);
+#elif defined(_WIN32)
+	return _aligned_malloc(size, alignment);
+#else
+	void *p;
+	int ret = posix_memalign(&p, alignment, size);
+	return (ret == 0) ? p : 0;
+#endif
+}
+
+
 #if 1
 void mulVecAVX512(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n)
 {
+#undef CYBOZU_ALLOCA
+#define CYBOZU_ALLOCA AlignedMalloc
 	assert(n % 8 == 0);
 	size_t c = mcl::ec::argminForMulVec(n/8);
 	size_t tblN = 1 << c;
@@ -2022,17 +2038,19 @@ void mulVecAVX512(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, si
 	for (size_t i = 0; i < n/8; i++) {
 		xVec[i].setG1(x+i*8);
 	}
-	Vec *yVec = (Vec*)CYBOZU_ALLOCA(sizeof(yVec) * n/2);
+	Vec *yVec = (Vec*)CYBOZU_ALLOCA(sizeof(Vec) * n/2);
 	for (size_t i = 0; i < n/8; i++) {
 		cvtFr8toVec4(yVec+i*4, y+i*8);
 	}
-return;
+
+	const Vec m = vpbroadcastq(tblN-1);
 	for (size_t w = 0; w < winN; w++) {
 		for (size_t i = 0; i < tblN; i++) {
 			tbl[i].clear();
 		}
 		for (size_t i = 0; i < n/8; i++) {
-			Vec v = getUnitAt(yVec, c*w);
+			Vec v = getUnitAt(yVec+i*4, 4, c*w);
+			v = vand(v, m);
 			EcM T;
 			T.gather(tbl, v);
 			EcM::add(T, T, xVec[i]);
@@ -2053,6 +2071,11 @@ return;
 		EcM::add(T, T, win[winN - 1- w]);
 	}
 	reduceSum(P, T);
+
+	free(yVec);
+	free(xVec);
+	free(win);
+	free(tbl);
 }
 #endif
 
@@ -2151,12 +2174,14 @@ void mtTest()
 		printf("P3=%s\n", P3.getStr(16|mcl::IoEcProj).c_str());
 		exit(1);
 	}
+#if 1
 	if (P1 != P4) {
 		puts("err mulVecAVX512");
 		printf("P1=%s\n", P1.getStr(16|mcl::IoEcProj).c_str());
 		printf("P4=%s\n", P4.getStr(16|mcl::IoEcProj).c_str());
 		exit(1);
 	}
+#endif
 	CYBOZU_BENCH_C("G1::mulVec", C, G1::mulVec, P1, Pvec.data(), xVec.data(), n);
 //	CYBOZU_BENCH_C("mulVec_naive", C, mulVec_naive, P2, Pvec.data(), xVec.data(), n);
 	CYBOZU_BENCH_C("mulVecAVX512_naive", C, mulVecAVX512_naive, P3, Pvec.data(), xVec.data(), n);
