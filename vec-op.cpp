@@ -2155,7 +2155,7 @@ void mulVec_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, si
 void mtTest()
 {
 	using namespace mcl::bn;
-	const size_t n = 8192;
+	const size_t n = 8192*1;
 	const int C = 10;
 	cybozu::XorShift rg;
 	std::vector<G1> Pvec(n);
@@ -2209,7 +2209,7 @@ void mtTest()
 #endif
 	CYBOZU_BENCH_C("G1::mulVec", C, G1::mulVec, P1, Pvec.data(), xVec.data(), n);
 //	CYBOZU_BENCH_C("mulVec_naive", C, mulVec_naive, P2, Pvec.data(), xVec.data(), n);
-	CYBOZU_BENCH_C("mulVecAVX512_naive", C, mulVecAVX512_naive, P3, Pvec.data(), xVec.data(), n);
+//	CYBOZU_BENCH_C("mulVecAVX512_naive", C, mulVecAVX512_naive, P3, Pvec.data(), xVec.data(), n);
 	CYBOZU_BENCH_C("mulVecAVX512", C, mulVecAVX512, P4, Pvec.data(), xVec.data(), n);
 }
 
