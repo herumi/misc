@@ -1069,6 +1069,8 @@ struct FpM {
 	static FpM rawOne_;
 	static FpM rw_;
 	static FpM mR2_;
+	static FpM m64to52_;
+	static FpM m52to64_;
 	static void add(FpM& z, const FpM& x, const FpM& y)
 	{
 		uvadd(z.v, x.v, y.v);
@@ -1188,6 +1190,8 @@ FpM FpM::one_;
 FpM FpM::rawOne_;
 FpM FpM::rw_;
 FpM FpM::mR2_;
+FpM FpM::m64to52_;
+FpM FpM::m52to64_;
 
 struct EcM {
 	typedef FpM Fp;
@@ -1277,6 +1281,12 @@ struct EcM {
 	}
 	void setG1(const mcl::bn::G1 v[M])
 	{
+#if 1
+		setArray((const Unit*)v);
+		FpM::mul(x, x, FpM::m64to52_);
+		FpM::mul(y, y, FpM::m64to52_);
+		FpM::mul(z, z, FpM::m64to52_);
+#else
 		Unit a[6*3*M];
 		const Unit *src = (const Unit *)v;
 		for (size_t i = 0; i < M*3; i++) {
@@ -1286,12 +1296,19 @@ struct EcM {
 		x.toMont(x);
 		y.toMont(y);
 		z.toMont(z);
+#endif
 		mcl::ec::JacobiToProj(*this, *this);
 	}
 	void getG1(mcl::bn::G1 v[M]) const
 	{
 		EcM T;
 		mcl::ec::ProjToJacobi(T, *this);
+#if 1
+		FpM::mul(T.x, T.x, FpM::m52to64_);
+		FpM::mul(T.y, T.y, FpM::m52to64_);
+		FpM::mul(T.z, T.z, FpM::m52to64_);
+		T.getArray((Unit*)v);
+#else
 		T.x.fromMont(T.x);
 		T.y.fromMont(T.y);
 		T.z.fromMont(T.z);
@@ -1301,6 +1318,7 @@ struct EcM {
 		for (size_t i = 0; i < M*3; i++) {
 			mcl::bn::Fp::getOp().toMont(dst+i*6, a+i*6);
 		}
+#endif
 	}
 	void put(const char *msg = nullptr) const
 	{
@@ -1447,6 +1465,11 @@ void init(Montgomery& mont)
 	expandN(FpM::one_.v, Fp(1).v);
 	expandN(FpM::rawOne_.v, mpz_class(1));
 	expandN(FpM::mR2_.v, g_mont.mR2);
+	{
+		mpz_class t;
+		FpM::m64to52_.set(mpz_class(0x100000000));
+		FpM::inv(FpM::m52to64_, FpM::m64to52_);
+	}
 	Ec::init(mont);
 	EcM::init(mont);
 	Ec::zero_.set(0, 1, 0);
