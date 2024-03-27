@@ -949,7 +949,7 @@ Fp Fp::one_;
 Fp Fp::rw_;
 
 struct Ec {
-	typedef Fp Fp;
+	typedef ::Fp Fp;
 	static const int a_ = 0;
 	static const int b_ = 4;
 	static Fp b3_;
@@ -2183,7 +2183,6 @@ void mtTest(size_t n, bool onlyBench)
 	cybozu::XorShift rg;
 	std::vector<G1> Pvec(n);
 	std::vector<Fr> xVec(n);
-	memset(&Pvec[0], 0, n*sizeof(G1));
 	hashAndMapToG1(Pvec[0], "abc", 3);
 	for (size_t i = 1; i < n; i++) {
 		G1::add(Pvec[i], Pvec[i-1], Pvec[0]);
