@@ -1828,9 +1828,15 @@ void mulTest()
 		}
 	}
 	P2.set(P1);
-	for (size_t i = 0; i < w*M; i++) {
-		y[i] = i * 0x123456 + 0x345678;
+	{
+		cybozu::XorShift rg;
+		for (size_t i = 0; i < M; i++) {
+			(*(mcl::bn::Fr*)&y[i*w]).setByCSPRNG(rg);
+		}
 	}
+//	for (size_t i = 0; i < w*M; i++) {
+//		y[i] = i * 0x123456 + 0x345678;
+//	}
 	cvt4Ux8to8Ux4(yv, y);
 	for (size_t i = 0; i < M; i++) {
 		Ec::mul(Q1[i], P1[i], y+i*w, w);
@@ -1860,9 +1866,9 @@ void mulTest()
 			exit(1);
 		}
 	}
-	CYBOZU_BENCH_C("EcM::mul(2)", 10000, EcM::mul, Q2, P2, yv, 2);
-	CYBOZU_BENCH_C("EcM::mul(4)", 10000, EcM::mul, Q2, P2, yv, w);
-	CYBOZU_BENCH_C("EcM::mulGLV", 10000, EcM::mulGLV, Q2, P2, yv);
+	CYBOZU_BENCH_C("EcM::mul(2)", 10000, EcM::mul, P2, P2, yv, 2);
+	CYBOZU_BENCH_C("EcM::mul(4)", 10000, EcM::mul, P2, P2, yv, w);
+	CYBOZU_BENCH_C("EcM::mulGLV", 10000, EcM::mulGLV, P2, P2, yv);
 	{
 		using namespace mcl;
 		const bn::Fr& ya = *(const bn::Fr*)y;
