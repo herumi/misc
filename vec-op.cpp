@@ -763,64 +763,7 @@ void putAll(const mpz_class& x, const mpz_class& y, const mpz_class& z, const mp
 	std::cout << "w=" << w << std::endl;
 }
 
-template<class F>
-void mul12(F& x)
-{
-	F t;
-	F::add(t, x, x);
-	F::add(x, t, x); // 3x
-	F::add(x, x, x);
-	F::add(x, x, x);
-}
-// 14M+19A+2 mul12
-template<class E>
-void addCTProj(E& R, const E& P, const E& Q)
-{
-	typedef typename E::Fp F;
-	assert(E::a_ == 0 && E::b_ == 4);
-	F t0, t1, t2, t3, t4, x3, y3;
-	F::mul(t0, P.x, Q.x);
-	F::mul(t1, P.y, Q.y);
-	F::mul(t2, P.z, Q.z);
-	F::add(t3, P.x, P.y);
-	F::add(t4, Q.x, Q.y);
-	F::mul(t3, t3, t4);
-	F::add(t4, t0, t1);
-	F::sub(t3, t3, t4);
-	F::add(t4, P.y, P.z);
-	F::add(x3, Q.y, Q.z);
-	F::mul(t4, t4, x3);
-	F::add(x3, t1, t2);
-	F::sub(t4, t4, x3);
-	F::add(x3, P.x, P.z);
-	F::add(y3, Q.x, Q.z);
-	F::mul(x3, x3, y3);
-	F::add(y3, t0, t2);
-	F::sub(y3, x3, y3);
-	F::add(x3, t0, t0);
-	F::add(t0, t0, x3);
-#if 1
-	mul12(t2);
-#else
-	F::mul(t2, t2, E::b3_);
-#endif
-	F::add(R.z, t1, t2);
-	F::sub(t1, t1, t2);
-#if 1
-	mul12(y3);
-#else
-	F::mul(y3, y3, E::b3_);
-#endif
-	F::mul(x3, y3, t4);
-	F::mul(t2, t3, t1);
-	F::sub(R.x, t2, x3);
-	F::mul(y3, y3, t0);
-	F::mul(t1, t1, R.z);
-	F::add(R.y, y3, t1);
-	F::mul(t0, t0, t3);
-	F::mul(R.z, R.z, t4);
-	F::add(R.z, R.z, t0);
-}
+#if 0
 // 7M+2S+9A+1 mul12
 template<class E>
 void dblCTProj(E& R, const E& P)
@@ -835,7 +778,7 @@ void dblCTProj(E& R, const E& P)
 	F::add(R.z, R.z, R.z);
 	F::add(R.z, R.z, R.z);
 #if 1
-	mul12(t2);
+	mcl::ec::mul12(t2);
 #else
 	F::mul(t2, t2, E::b3_);
 #endif
@@ -851,6 +794,7 @@ void dblCTProj(E& R, const E& P)
 	F::mul(R.x, t0, t1);
 	F::add(R.x, R.x, R.x);
 }
+#endif
 
 struct Fp {
 	static Fp one_;
@@ -953,15 +897,16 @@ struct Ec {
 	static const int a_ = 0;
 	static const int b_ = 4;
 	static Fp b3_;
+	static const int specialB_ = mcl::ec::Plus4;
 	static Ec zero_;
 	Fp x, y, z;
 	static void add(Ec& z, const Ec& x, const Ec& y)
 	{
-		addCTProj(z, x, y);
+		mcl::ec::addCTProj(z, x, y);
 	}
 	static void dbl(Ec& z, const Ec& x)
 	{
-		dblCTProj(z, x);
+		mcl::ec::dblCTProj(z, x);
 	}
 	static void init(Montgomery& mont)
 	{
@@ -1197,6 +1142,7 @@ struct EcM {
 	typedef FpM Fp;
 	static const int a_ = 0;
 	static const int b_ = 4;
+	static const int specialB_ = mcl::ec::Plus4;
 	static const int w = 4;
 	static const int tblN = 1<<w;
 	static const size_t bitLen = sizeof(Unit)*8;
@@ -1205,11 +1151,11 @@ struct EcM {
 	FpM x, y, z;
 	static void add(EcM& z, const EcM& x, const EcM& y)
 	{
-		addCTProj(z, x, y);
+		mcl::ec::addCTProj(z, x, y);
 	}
 	static void dbl(EcM& z, const EcM& x)
 	{
-		dblCTProj(z, x);
+		mcl::ec::dblCTProj(z, x);
 	}
 	static void init(Montgomery& mont)
 	{
