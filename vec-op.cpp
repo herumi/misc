@@ -1176,7 +1176,7 @@ FpM FpM::mR2_;
 FpM FpM::m64to52_;
 FpM FpM::m52to64_;
 
-// assume P != 0, Q != 0, P != Q
+// assume P.x != P.y, Q != 0, P != Q
 template<class E>
 void addJacobiNoCheck(E& R, const E& P, const E& Q)
 {
