@@ -8,7 +8,6 @@
 
 namespace mcl { namespace bbs {
 
-using namespace mcl;
 using namespace mcl::bn;
 
 static const size_t MAX_MSG_SIZE = 1024;
@@ -245,9 +244,10 @@ struct Proof {
 };
 
 namespace local {
-inline void calc_cv(Fr& cv, const Proof& prf, const G1& C1, const G1& C2, size_t R, const uint32_t *discIdxs, const Fr *msgs, bool isDisclosed, const Fr& dom)
+inline void calc_cv(Fr& cv, const Proof& prf, const G1& C1, const G1& C2, size_t R, const uint32_t *discIdxs, const Fr *msgs, bool isDisclosed, const Fr& dom, const uint8_t *nonce = 0, size_t nonceSize = 0)
 {
 	local::Hash hash;
+	for (size_t i = 0; i < nonceSize; i++) hash << nonce[i];
 	hash << prf.A_prime << prf.A_bar << prf.D << C1 << C2 << R;
 	for (size_t i = 0; i < R; i++) hash << discIdxs[i];
 	if (isDisclosed) {
@@ -278,7 +278,7 @@ inline void addSelectedMulVec(G1& out, const uint32_t *selectedIdx, size_t U, co
 	discIdxs : accending order
 	msgs[discIdxs[i]] : disclosed messages for i in [0, R)
 */
-inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t L, const uint32_t *discIdxs, size_t R)
+inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t L, const uint32_t *discIdxs, size_t R, const uint8_t *nonce = 0, size_t nonceSize = 0)
 {
 	if (L > s_maxMsgSize) return false;
 	if (L < R) return false;
@@ -314,7 +314,7 @@ inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, con
 	if (prf.U > 0) {
 		local::addSelectedMulVec(C2, js, prf.U, m_tilde);
 	}
-	local::calc_cv(prf.c, prf, C1, C2, R, discIdxs, msgs, false, dom);
+	local::calc_cv(prf.c, prf, C1, C2, R, discIdxs, msgs, false, dom, nonce, nonceSize);
 	prf.e_hat= prf.c * sig.get_e() + e_tilde;
 	prf.r2_hat = prf.c * r2 + r2_tilde;
 	prf.r3_hat = prf.c * r3 + r3_tilde;
@@ -328,7 +328,7 @@ inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, con
 	return true;
 }
 
-bool proofVerify(const PublicKey& pub, const Proof& prf, size_t L, const Fr *discMsgs, const uint32_t *discIdxs, size_t R)
+bool proofVerify(const PublicKey& pub, const Proof& prf, size_t L, const Fr *discMsgs, const uint32_t *discIdxs, size_t R, const uint8_t *nonce = 0, size_t nonceSize = 0)
 {
 	if (L > s_maxMsgSize) return false;
 	if (L < R) return false;
@@ -348,7 +348,7 @@ bool proofVerify(const PublicKey& pub, const Proof& prf, size_t L, const Fr *dis
 		local::addSelectedMulVec(C2, js, prf.U, prf.m_hat);
 	}
 	Fr cv;
-	local::calc_cv(cv, prf, C1, C2, R, discIdxs, discMsgs, true, dom);
+	local::calc_cv(cv, prf, C1, C2, R, discIdxs, discMsgs, true, dom, nonce, nonceSize);
 	if (cv != prf.c) return false;
 	if (prf.A_prime.isZero()) return false;
 	return local::verifyMultiPairing(prf.A_prime, prf.A_bar, pub.get_v());

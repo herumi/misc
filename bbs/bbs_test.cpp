@@ -84,8 +84,9 @@ void checkProof(const PublicKey& pub, const Signature& sig, const Fr *msgs, size
 	Proof prf;
 	Fr *m_hat = (Fr *)CYBOZU_ALLOCA(sizeof(Fr) * U);
 	prf.set(m_hat, U);
-	CYBOZU_TEST_ASSERT(proofGen(prf, pub, sig, msgs, L, discIdxs, R));
-	CYBOZU_TEST_ASSERT(proofVerify(pub, prf, L, discMsgs, discIdxs, R));
+	const uint8_t nonce[] = { 1, 2, 3, 4, 0x11, 0x22, 0x33 };
+	CYBOZU_TEST_ASSERT(proofGen(prf, pub, sig, msgs, L, discIdxs, R, nonce, sizeof(nonce)));
+	CYBOZU_TEST_ASSERT(proofVerify(pub, prf, L, discMsgs, discIdxs, R, nonce, sizeof(nonce)));
 }
 
 CYBOZU_TEST_AUTO(proof)
