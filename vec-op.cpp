@@ -897,7 +897,7 @@ struct Ec {
 	static const int a_ = 0;
 	static const int b_ = 4;
 	static Fp b3_;
-	static const int specialB_ = mcl::ec::Plus4;
+	static const int specialB_ = mcl::ec::local::Plus4;
 	static Ec zero_;
 	Fp x, y, z;
 	static void add(Ec& z, const Ec& x, const Ec& y)
@@ -1142,7 +1142,7 @@ struct EcM {
 	typedef FpM Fp;
 	static const int a_ = 0;
 	static const int b_ = 4;
-	static const int specialB_ = mcl::ec::Plus4;
+	static const int specialB_ = mcl::ec::local::Plus4;
 	static const int w = 4;
 	static const int tblN = 1<<w;
 	static const size_t bitLen = sizeof(Unit)*8;
