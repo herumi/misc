@@ -685,16 +685,16 @@ void concat52bit(Vec y[6], const Vec x[8])
 	384bit = 6U (U=64)
 	G1(=6U x 3(x, y, z)) x 8 => 8Ux8x3
 */
-static CYBOZU_ALIGN(64) uint64_t g_pickUp[8] = {
+static CYBOZU_ALIGN(64) uint64_t g_pickUpEc[8] = {
 	18*0, 18*1, 18*2, 18*3, 18*4, 18*5, 18*6, 18*7,
 };
-static const Vec& v_pickUp = *(const Vec*)g_pickUp;
+static const Vec& v_pickUpEc = *(const Vec*)g_pickUpEc;
 void cvt6Ux3x8to8Ux8x3(Vec y[8*3], const Unit x[6*3*8])
 {
 	for (int j = 0; j < 3; j++) {
 		Vec t[6];
 		for (int i = 0; i < 6; i++) {
-			t[i] = vpgatherqq(v_pickUp, x+j*6+i);
+			t[i] = vpgatherqq(v_pickUpEc, x+j*6+i);
 		}
 		split52bit(&y[j*8], t);
 	}
@@ -708,7 +708,7 @@ void cvt8Ux8x3to6Ux3x8(Unit y[6*3*8], const Vec x[8*3])
 		concat52bit(t, x+8*j);
 		for (size_t i = 0; i < 6; i++) {
 #if 1
-			vpscatterqq(y+j*6+i, v_pickUp, t[i]);
+			vpscatterqq(y+j*6+i, v_pickUpEc, t[i]);
 #else
 			const Unit *pt = (const Unit *)t;
 			for (size_t k = 0; k < 8; k++) {
@@ -728,6 +728,29 @@ void cvt4Ux8to8Ux4(Vec y[4], const Unit x[4*8])
 			((Unit *)y)[i*M+j] = x[j*w+i];
 		}
 	}
+}
+
+static CYBOZU_ALIGN(64) uint64_t g_pickUpFp[8] = {
+	6*0, 6*1, 6*2, 6*3, 6*4, 6*5, 6*6, 6*7,
+};
+static const Vec& v_pickUpFp = *(const Vec*)g_pickUpFp;
+// FpM(8Ux8) => Fp(=6U) x 8
+void cvt8Ux8to6Ux8(Unit y[6*8], const Vec x[8])
+{
+	Vec t[6];
+	concat52bit(t, x);
+	for (size_t i = 0; i < 6; i++) {
+		vpscatterqq(y+i, v_pickUpFp, t[i]);
+	}
+}
+// Fp(=6U)x8 => FpM(8Ux8)
+void cvt6Ux8to8Ux8(Vec y[8], const Unit x[6*8])
+{
+	Vec t[6];
+	for (int i = 0; i < 6; i++) {
+		t[i] = vpgatherqq(v_pickUpFp, x+i);
+	}
+	split52bit(y, t);
 }
 
 template<class RG>
@@ -1125,9 +1148,24 @@ struct FpM {
 			}
 		}
 	}
+	void setFp(const mcl::bn::Fp v[M])
+	{
+		cvt6Ux8to8Ux8(this->v, (const Unit*)v);
+		FpM::mul(*this, *this, FpM::m64to52_);
+	}
+	void getFp(mcl::bn::Fp v[M]) const
+	{
+		FpM t;
+		FpM::mul(t, *this, FpM::m52to64_);
+		cvt8Ux8to6Ux8((Unit*)v, t.v);
+	}
 	static void inv(FpM& z, const FpM& x)
 	{
+		// use Fp::invVec
+#if 0
+#else
 		pow(z, x, g_vmpM2, 6);
+#endif
 	}
 };
 
@@ -1137,6 +1175,38 @@ FpM FpM::rw_;
 FpM FpM::mR2_;
 FpM FpM::m64to52_;
 FpM FpM::m52to64_;
+
+// assume P != 0, Q != 0, P != Q
+template<class E>
+void addJacobiNoCheck(E& R, const E& P, const E& Q)
+{
+	typedef typename E::Fp F;
+	F r, U1, S1, H, H3;
+	F::sqr(r, P.z);
+	F::sqr(S1, Q.z);
+	F::mul(U1, P.x, S1);
+	F::mul(H, Q.x, r);
+	F::sub(H, H, U1);
+	F::mul(S1, S1, Q.z);
+	F::mul(S1, S1, P.y);
+
+	F::mul(r, r, P.z);
+	F::mul(r, r, Q.y);
+	F::sub(r, r, S1);
+	F::mul(R.z, P.z, Q.z);
+	F::mul(R.z, R.z, H);
+	F::sqr(H3, H); // H^2
+	F::sqr(R.y, r); // r^2
+	F::mul(U1, U1, H3); // U1 H^2
+	F::mul(H3, H3, H); // H^3
+	F::sub(R.y, R.y, U1);
+	F::sub(R.y, R.y, U1);
+	F::sub(R.x, R.y, H3);
+	F::sub(U1, U1, R.x);
+	F::mul(U1, U1, r);
+	F::mul(H3, H3, S1);
+	F::sub(R.y, U1, H3);
+}
 
 struct EcM {
 	typedef FpM Fp;
@@ -1821,6 +1891,9 @@ void mulTest()
 		bn::G1 xa;
 		bn::hashAndMapToG1(xa, "abc", 3);
 		CYBOZU_BENCH_C("G1::mul", 10000, bn::G1::mul, xa, xa, ya);
+		bn::Fp a = xa.x, b = xa.y;
+		CYBOZU_BENCH_C("Fp::mul", 10000, bn::Fp::mul, a, b, a);
+		CYBOZU_BENCH_C("Fp::inv", 10000, bn::Fp::inv, a, a);
 	}
 }
 
@@ -1916,8 +1989,9 @@ void split52bitTest()
 	}
 }
 
-void cvtTest()
+void cvtEcTest()
 {
+	puts("cvtEcTest");
 	const size_t n = 6*3*8;
 	Unit x[n], z[n];
 	Vec y[8*3];
@@ -1928,7 +2002,7 @@ void cvtTest()
 	cvt6Ux3x8to8Ux8x3(y, x);
 	cvt8Ux8x3to6Ux3x8(z, y);
 	if (memcmp(x, z, sizeof(x)) != 0) {
-		puts("cvtTest err");
+		puts("cvtEcTest err");
 		for (size_t j = 0; j < n/6; j++) {
 			printf("%zd\n", j);
 			printf("x ");
@@ -1945,6 +2019,26 @@ void cvtTest()
 	}
 	CYBOZU_BENCH_C("cvt6Ux3x8to8Ux8x3", C, cvt6Ux3x8to8Ux8x3, y, x);
 	CYBOZU_BENCH_C("cvt8Ux8x3to6Ux3x8", C, cvt8Ux8x3to6Ux3x8, z, y);
+}
+
+void cvtFpTest()
+{
+	puts("cvtFpTest");
+	const size_t n = 6*8;
+	Unit x[n], z[n];
+	Vec y[8];
+	cybozu::XorShift rg;
+	for (size_t i = 0; i < n; i++) {
+		x[i] = rg.get64();
+	}
+	cvt6Ux8to8Ux8(y, x);
+	cvt8Ux8to6Ux8(z, y);
+	if (memcmp(x, z, sizeof(x)) != 0) {
+		puts("cvtFpTest err");
+		exit(1);
+	}
+	CYBOZU_BENCH_C("cvt6Ux8to8Ux8", C, cvt6Ux8to8Ux8, y, x);
+	CYBOZU_BENCH_C("cvt8Ux8to6Ux8", C, cvt8Ux8to6Ux8, z, y);
 }
 
 void reduceSum(mcl::bn::G1& Q, const EcM& P)
@@ -2187,7 +2281,7 @@ void mtTest(size_t n, bool onlyBench)
 #endif
 	CYBOZU_BENCH_C("G1::mulVec", C, G1::mulVec, P1, Pvec.data(), xVec.data(), n);
 //	CYBOZU_BENCH_C("mulVec_naive", C, mulVec_naive, P2, Pvec.data(), xVec.data(), n);
-//	CYBOZU_BENCH_C("mulVecAVX512_naive", C, mulVecAVX512_naive, P3, Pvec.data(), xVec.data(), n);
+	CYBOZU_BENCH_C("mulVecAVX512_naive", C, mulVecAVX512_naive, P3, Pvec.data(), xVec.data(), n);
 	CYBOZU_BENCH_C("mulVecAVX512", C, mulVecAVX512, P4, Pvec.data(), xVec.data(), n);
 }
 
@@ -2227,7 +2321,8 @@ int main(int argc, char *argv[])
 		mpz_class my = mpz_rand(rg);
 		testAll(mx, my);
 	}
-	cvtTest();
+	cvtEcTest();
+	cvtFpTest();
 	split52bitTest();
 	gatherTest();
 	miscTest();
