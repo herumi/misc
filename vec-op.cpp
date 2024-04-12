@@ -1225,7 +1225,7 @@ struct EcM {
 			mcl::gmp::setArray(v[i].z.v, &a[6*3*i+6*2], 6);
 		}
 	}
-	void setG1(const mcl::bn::G1 v[M])
+	void setG1(const mcl::bn::G1 v[M], bool JacobiToProj = true)
 	{
 #if 1
 		setArray((const Unit*)v);
@@ -1243,12 +1243,12 @@ struct EcM {
 		y.toMont(y);
 		z.toMont(z);
 #endif
-		mcl::ec::JacobiToProj(*this, *this);
+		if (JacobiToProj) mcl::ec::JacobiToProj(*this, *this);
 	}
-	void getG1(mcl::bn::G1 v[M]) const
+	void getG1(mcl::bn::G1 v[M], bool ProjToJacobi = true) const
 	{
-		EcM T;
-		mcl::ec::ProjToJacobi(T, *this);
+		EcM T = *this;
+		if (ProjToJacobi) mcl::ec::ProjToJacobi(T, T);
 #if 1
 		FpM::mul(T.x, T.x, FpM::m52to64_);
 		FpM::mul(T.y, T.y, FpM::m52to64_);
