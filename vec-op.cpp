@@ -225,6 +225,11 @@ Vec vor(const Vec& a, const Vec& b)
 	return _mm512_or_epi64(a, b);
 }
 
+Vec vxor(const Vec& a, const Vec& b)
+{
+	return _mm512_xor_epi64(a, b);
+}
+
 //template<int scale=8>
 Vec vpgatherqq(const Vec& idx, const void *base)
 {
@@ -263,6 +268,16 @@ Vmask vcmpeq(const Vec& a, const Vec& b)
 Vmask vcmpneq(const Vec& a, const Vec& b)
 {
 	return _mm512_cmpneq_epi64_mask(a, b);
+}
+
+Vmask mand(const Vmask& a, const Vmask& b)
+{
+	return _mm512_kand(a, b);
+}
+
+Vmask mor(const Vmask& a, const Vmask& b)
+{
+	return _mm512_kor(a, b);
 }
 
 Vec vpbroadcastq(int64_t a)
@@ -1102,6 +1117,14 @@ struct FpM {
 		return true;
 	}
 	bool operator!=(const FpM& rhs) const { return !operator==(rhs); }
+	Vmask isEqualAll(const FpM& rhs) const
+	{
+		Vec t = vxor(v[0], rhs.v[0]);
+		for (size_t i = 1; i < M; i++) {
+			t = vor(t, vxor(v[i], rhs.v[i]));
+		}
+		return vcmpeq(t, vzero());
+	}
 	void put(const char *msg = nullptr, int base = 16) const
 	{
 		if (msg) printf("%s\n", msg);
@@ -1171,6 +1194,13 @@ struct FpM {
 		pow(z, x, g_vmpM2, 6);
 #endif
 	}
+	// condition set (set x if c)
+	void cset(const Vmask& c, const FpM& x)
+	{
+		for (size_t i = 0; i < N; i++) {
+			v[i] = vselect(c, x.v[i], v[i]);
+		}
+	}
 };
 
 FpM FpM::one_;
@@ -1180,11 +1210,23 @@ FpM FpM::mR2_;
 FpM FpM::m64to52_;
 FpM FpM::m52to64_;
 
-// assume P.x != P.y, Q != 0, P != Q
+template<class E>
+Vmask isZero(const E& P)
+{
+	Vec v = P.z.v[0];
+	for (size_t i = 1; i < N; i++) {
+		v = vor(v, P.z.v[i]);
+	}
+	return vcmpeq(v, vzero());
+}
+
+// assume P.x != Q.x, P != Q
 template<class E>
 void addJacobiNoCheck(E& R, const E& P, const E& Q)
 {
 	typedef typename E::Fp F;
+	Vmask c = isZero(Q);
+	E saveP = P;
 	F r, U1, S1, H, H3;
 	F::sqr(r, P.z);
 	F::sqr(S1, Q.z);
@@ -1210,6 +1252,7 @@ void addJacobiNoCheck(E& R, const E& P, const E& Q)
 	F::mul(U1, U1, r);
 	F::mul(H3, H3, S1);
 	F::sub(R.y, U1, H3);
+	R.cset(c, saveP);
 }
 
 // assume a = 0
@@ -1254,20 +1297,41 @@ struct EcM {
 	template<bool isProj=true>
 	static void add(EcM& z, const EcM& x, const EcM& y)
 	{
+#if 0
+		EcM tx, ty;
+		Vmask c = isZero(y);
+		EcM saveX = x;
+		mcl::ec::ProjToJacobi(tx, x);
+		mcl::ec::ProjToJacobi(ty, y);
+		addJacobiNoCheck(z, tx, ty);
+		mcl::ec::JacobiToProj(z, z);
+		z.cset(c, saveX);
+#else
 		if (isProj) {
 			mcl::ec::addCTProj(z, x, y);
 		} else {
 			addJacobiNoCheck(z, x, y);
 		}
+#endif
 	}
 	template<bool isProj=true>
 	static void dbl(EcM& z, const EcM& x)
 	{
+#if 0
+		EcM t;
+		Vmask c = isZero(x);
+		EcM saveX = x;
+		mcl::ec::ProjToJacobi(t, x);
+		dblJacobiNoCheck(t, t);
+		mcl::ec::JacobiToProj(z, t);
+		z.cset(c, saveX);
+#else
 		if (isProj) {
 			mcl::ec::dblCTProj(z, x);
 		} else {
 			dblJacobiNoCheck(z, x);
 		}
+#endif
 	}
 	static void init(Montgomery& mont)
 	{
@@ -1400,12 +1464,14 @@ struct EcM {
 		FpM::mul(y, y, r);
 		z = FpM::one_;
 	}
+	template<bool isProj=true>
 	static void makeTable(EcM *tbl, const EcM& P)
 	{
 		tbl[0].clear();
 		tbl[1] = P;
-		for (size_t i = 2; i < tblN; i++) {
-			add(tbl[i], tbl[i-1], P);
+		dbl<isProj>(tbl[2], P);
+		for (size_t i = 3; i < tblN; i++) {
+			add<isProj>(tbl[i], tbl[i-1], P);
 		}
 	}
 	void gather(const EcM *tbl, Vec idx)
@@ -1450,11 +1516,14 @@ struct EcM {
 		Q.y = P.y;
 		Q.z = P.z;
 	}
-	static void mulGLV(EcM& Q, const EcM& P, const Vec y[4])
+	template<bool isProj=true>
+	static void mulGLV(EcM& Q, const EcM& _P, const Vec y[4])
 	{
+		EcM P = _P;
+		if (!isProj) mcl::ec::ProjToJacobi(P, _P);
 		Vec a[2], b[2];
 		EcM tbl1[tblN], tbl2[tblN];
-		makeTable(tbl1, P);
+		makeTable<isProj>(tbl1, P);
 		for (size_t i = 0; i < tblN; i++) {
 			mulLambda(tbl2[i], tbl1[i]);
 		}
@@ -1471,13 +1540,12 @@ struct EcM {
 #if 1
 		const size_t jn = bitLen / w;
 		const size_t yn = 2;
-//		Q.clear();
 		bool first = true;
 		for (size_t i = 0; i < yn; i++) {
 			const Vec& v1 = a[yn-1-i];
 			const Vec& v2 = b[yn-1-i];
 			for (size_t j = 0; j < jn; j++) {
-				if (!first) for (int k = 0; k < w; k++) EcM::dbl(Q, Q);
+				if (!first) for (int k = 0; k < w; k++) EcM::dbl<isProj>(Q, Q);
 				EcM T;
 				Vec idx;
 				idx = vand(vpsrlq(v1, bitLen-w-j*w), g_vmask4);
@@ -1486,11 +1554,11 @@ struct EcM {
 					first = false;
 				} else {
 					T.gather(tbl1, idx);
-					add(Q, Q, T);
+					add<isProj>(Q, Q, T);
 				}
 				idx = vand(vpsrlq(v2, bitLen-w-j*w), g_vmask4);
 				T.gather(tbl2, idx);
-				add(Q, Q, T);
+				add<isProj>(Q, Q, T);
 			}
 		}
 #else
@@ -1498,6 +1566,29 @@ struct EcM {
 		mul(T, T, b, 2);
 		add(Q, Q, T);
 #endif
+		if (!isProj) mcl::ec::JacobiToProj(Q, Q);
+	}
+	void cset(const Vmask& c, const EcM& v)
+	{
+		x.cset(c, v.x);
+		y.cset(c, v.y);
+		z.cset(c, v.z);
+	}
+	bool isEqualAll(const EcM& rhs) const
+	{
+		FpM s1, s2, t1, t2;
+		Vmask v1, v2;
+		FpM::sqr(s1, z);
+		FpM::sqr(s2, rhs.z);
+		FpM::mul(t1, x, s2);
+		FpM::mul(t2, rhs.x, s1);
+		v1 = t2.isEqualAll(s1);
+		FpM::mul(t1, y, s2);
+		FpM::mul(t2, rhs.y, s1);
+		FpM::mul(t1, t1, rhs.z);
+		FpM::mul(t2, t2, z);
+		v2 = t1.isEqualAll(t2);
+		return mand(v1, v2);
 	}
 };
 
@@ -1706,9 +1797,11 @@ void cmpEc(const EcM& P, const Ec Q[M], const char *msg = nullptr)
 {
 	if (msg) printf("%s\n", msg);
 	for (size_t i = 0; i < M; i++) {
-		assertEq(P.x.get(i), Q[i].x.get(), "x");
-		assertEq(P.y.get(i), Q[i].y.get(), "y");
-		assertEq(P.z.get(i), Q[i].z.get(), "z");
+		if (P.get(i) != Q[i]) {
+			assertEq(P.x.get(i), Q[i].x.get(), "x");
+			assertEq(P.y.get(i), Q[i].y.get(), "y");
+			assertEq(P.z.get(i), Q[i].z.get(), "z");
+		}
 	}
 }
 
