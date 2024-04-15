@@ -1043,6 +1043,10 @@ struct FpM {
 	{
 		uvadd(z.v, x.v, y.v);
 	}
+	static void mul2(FpM& z, const FpM& x)
+	{
+		add(z, x, x);
+	}
 	static void sub(FpM& z, const FpM& x, const FpM& y)
 	{
 		uvsub(z.v, x.v, y.v);
@@ -1208,6 +1212,34 @@ void addJacobiNoCheck(E& R, const E& P, const E& Q)
 	F::sub(R.y, U1, H3);
 }
 
+// assume a = 0
+template<class E>
+void dblJacobiNoCheck(E& R, const E& P)
+{
+	typedef typename E::Fp F;
+	F x2, y2, xy, t;
+	F::sqr(x2, P.x);
+	F::sqr(y2, P.y);
+	F::mul(xy, P.x, y2);
+	F::mul2(xy, xy);
+	F::sqr(y2, y2);
+	F::mul2(xy, xy); // 4xy^2
+	F::mul2(t, x2);
+	F::add(x2, x2, t);
+	F::sqr(R.x, x2);
+	F::sub(R.x, R.x, xy);
+	F::sub(R.x, R.x, xy);
+	F::mul(R.z, P.y, P.z);
+	F::mul2(R.z, R.z);
+	F::sub(R.y, xy, R.x);
+	F::mul(R.y, R.y, x2);
+	F::mul2(y2, y2);
+	F::mul2(y2, y2);
+	F::mul2(y2, y2);
+	F::sub(R.y, R.y, y2);
+}
+
+
 struct EcM {
 	typedef FpM Fp;
 	static const int a_ = 0;
@@ -1219,13 +1251,23 @@ struct EcM {
 	static FpM b3_;
 	static EcM zero_;
 	FpM x, y, z;
+	template<bool isProj=true>
 	static void add(EcM& z, const EcM& x, const EcM& y)
 	{
-		mcl::ec::addCTProj(z, x, y);
+		if (isProj) {
+			mcl::ec::addCTProj(z, x, y);
+		} else {
+			addJacobiNoCheck(z, x, y);
+		}
 	}
+	template<bool isProj=true>
 	static void dbl(EcM& z, const EcM& x)
 	{
-		mcl::ec::dblCTProj(z, x);
+		if (isProj) {
+			mcl::ec::dblCTProj(z, x);
+		} else {
+			dblJacobiNoCheck(z, x);
+		}
 	}
 	static void init(Montgomery& mont)
 	{
@@ -1429,17 +1471,23 @@ struct EcM {
 #if 1
 		const size_t jn = bitLen / w;
 		const size_t yn = 2;
-		Q.clear();
+//		Q.clear();
+		bool first = true;
 		for (size_t i = 0; i < yn; i++) {
 			const Vec& v1 = a[yn-1-i];
 			const Vec& v2 = b[yn-1-i];
 			for (size_t j = 0; j < jn; j++) {
-				for (int k = 0; k < w; k++) EcM::dbl(Q, Q);
+				if (!first) for (int k = 0; k < w; k++) EcM::dbl(Q, Q);
 				EcM T;
 				Vec idx;
 				idx = vand(vpsrlq(v1, bitLen-w-j*w), g_vmask4);
-				T.gather(tbl1, idx);
-				add(Q, Q, T);
+				if (first) {
+					Q.gather(tbl1, idx);
+					first = false;
+				} else {
+					T.gather(tbl1, idx);
+					add(Q, Q, T);
+				}
 				idx = vand(vpsrlq(v2, bitLen-w-j*w), g_vmask4);
 				T.gather(tbl2, idx);
 				add(Q, Q, T);
