@@ -1220,6 +1220,7 @@ Vmask isZero(const E& P)
 	return vcmpeq(v, vzero());
 }
 
+// 12M+4S+7A
 // assume P.x != Q.x, P != Q
 template<class E>
 void addJacobiNoCheck(E& R, const E& P, const E& Q)
@@ -1235,7 +1236,6 @@ void addJacobiNoCheck(E& R, const E& P, const E& Q)
 	F::sub(H, H, U1);
 	F::mul(S1, S1, Q.z);
 	F::mul(S1, S1, P.y);
-
 	F::mul(r, r, P.z);
 	F::mul(r, r, Q.y);
 	F::sub(r, r, S1);
@@ -1256,6 +1256,7 @@ void addJacobiNoCheck(E& R, const E& P, const E& Q)
 }
 
 // assume a = 0
+// 3M+4S+12A
 template<class E>
 void dblJacobiNoCheck(E& R, const E& P)
 {
@@ -1292,7 +1293,8 @@ struct EcM {
 	static const int tblN = 1<<w;
 	static const size_t bitLen = sizeof(Unit)*8;
 	static FpM b3_;
-	static EcM zero_;
+	static EcM zeroProj_;
+	static EcM zeroJacobi_;
 	FpM x, y, z;
 	template<bool isProj=true>
 	static void add(EcM& z, const EcM& x, const EcM& y)
@@ -1339,13 +1341,15 @@ struct EcM {
 		mpz_class b3 = mont.toMont(b * 3);
 		expandN(b3_.v, b3);
 	}
+	template<bool isProj=true>
 	static const EcM& zero()
 	{
-		return zero_;
+		return isProj ? zeroProj_ : zeroJacobi_;
 	}
+	template<bool isProj=true>
 	void clear()
 	{
-		*this = zero();
+		*this = zero<isProj>();
 	}
 	void set(const Ec& v, size_t i)
 	{
@@ -1574,7 +1578,7 @@ struct EcM {
 		y.cset(c, v.y);
 		z.cset(c, v.z);
 	}
-	bool isEqualAll(const EcM& rhs) const
+	Vmask isEqualAll(const EcM& rhs) const
 	{
 		FpM s1, s2, t1, t2;
 		Vmask v1, v2;
@@ -1593,7 +1597,8 @@ struct EcM {
 };
 
 FpM EcM::b3_;
-EcM EcM::zero_;
+EcM EcM::zeroProj_;
+EcM EcM::zeroJacobi_;
 
 void init(Montgomery& mont)
 {
@@ -1627,8 +1632,11 @@ void init(Montgomery& mont)
 	}
 	Ec::init(mont);
 	EcM::init(mont);
+	Ec zeroJacobi;
+	zeroJacobi.set(1, 1, 0);
+	EcM::zeroJacobi_.set(zeroJacobi);
 	Ec::zero_.set(0, 1, 0);
-	EcM::zero_.set(Ec::zero());
+	EcM::zeroProj_.set(Ec::zero());
 	const char *rwStr = "1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac";
 	mpz_class rw;
 	rw.set_str(rwStr, 16);
@@ -1951,7 +1959,7 @@ void GLVtest()
 	memset(&P1, 0, sizeof(P1));
 	memset(&Q1, 0, sizeof(Q1));
 	P1.set(P, 0);
-	EcM::mulGLV(Q1, P1, vy);
+	EcM::mulGLV<false>(Q1, P1, vy);
 	if (Q != Q1.get(0)) {
 		puts("ERR EcM::mulGLV");
 		exit(1);
@@ -2007,7 +2015,7 @@ void mulTest()
 		}
 	}
 	EcM::mul(Q2, P2, yv, w);
-	EcM::mulGLV(Q3, P2, yv);
+	EcM::mulGLV<false>(Q3, P2, yv);
 
 	for (size_t i = 0; i < M; i++) {
 		if (Q1[i] != Q2.get(i)) {
@@ -2023,9 +2031,10 @@ void mulTest()
 			exit(1);
 		}
 	}
-	CYBOZU_BENCH_C("EcM::mul(2)", 10000, EcM::mul, P2, P2, yv, 2);
-	CYBOZU_BENCH_C("EcM::mul(4)", 10000, EcM::mul, P2, P2, yv, w);
-	CYBOZU_BENCH_C("EcM::mulGLV", 10000, EcM::mulGLV, P2, P2, yv);
+//	CYBOZU_BENCH_C("EcM::mul(2)", 10000, EcM::mul, P2, P2, yv, 2);
+//	CYBOZU_BENCH_C("EcM::mul(4)", 10000, EcM::mul, P2, P2, yv, w);
+	CYBOZU_BENCH_C("EcM::mulGLV:proj", 10000, EcM::mulGLV<true>, P2, P2, yv);
+	CYBOZU_BENCH_C("EcM::mulGLV:jacobi", 10000, EcM::mulGLV<false>, P2, P2, yv);
 	{
 		using namespace mcl;
 		const bn::Fr& ya = *(const bn::Fr*)y;
@@ -2202,19 +2211,24 @@ void cvtFr8toVec4(Vec yv[4], const mcl::bn::Fr y[8])
 	cvt4Ux8to8Ux4(yv, ya);
 }
 
+template<bool isProj=true>
 void mulVecAVX512_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n)
 {
 	assert(n % 8 == 0);
 	EcM R;
-	R.clear();
 	for (size_t i = 0; i < n; i += 8) {
 		Vec yv[4];
 		cvtFr8toVec4(yv, y+i);
 		EcM T, X;
-		X.setG1(x+i);
-		EcM::mulGLV(T, X, yv);
-		EcM::add(R, R, T);
+		X.setG1(x+i, isProj);
+		if (i == 0) {
+			EcM::mulGLV<isProj>(R, X, yv);
+		} else {
+			EcM::mulGLV<isProj>(T, X, yv);
+			EcM::add<isProj>(R, R, T);
+		}
 	}
+	if (!isProj) mcl::ec::JacobiToProj(R, R);
 	reduceSum(P, R);
 }
 
