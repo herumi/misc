@@ -438,8 +438,10 @@ void vrawSqr(Vec z[n*2], const Vec x[n])
 	}
 	for (size_t j = 2; j < n; j++) {
 		for (size_t i = j; i < n; i++) {
-			z[i*2-j  ] = vadd(z[i*2-j  ], vmulL(x[i], x[i-j]));
-			z[i*2-j+1] = vadd(z[i*2-j+1], vmulH(x[i], x[i-j]));
+//			z[i*2-j  ] = vadd(z[i*2-j  ], vmulL(x[i], x[i-j]));
+//			z[i*2-j+1] = vadd(z[i*2-j+1], vmulH(x[i], x[i-j]));
+			z[i*2-j  ] = vmulL(x[i], x[i-j], z[i*2-j  ]);
+			z[i*2-j+1] = vmulH(x[i], x[i-j], z[i*2-j+1]);
 		}
 	}
 	for (size_t i = 1; i < n*2-1; i++) {
@@ -447,8 +449,10 @@ void vrawSqr(Vec z[n*2], const Vec x[n])
 	}
 	z[0] = vmulL(x[0], x[0]);
 	for (size_t i = 1; i < n; i++) {
-		z[i*2-1] = vadd(z[i*2-1], vmulH(x[i-1], x[i-1]));
-		z[i*2] = vadd(z[i*2], vmulL(x[i], x[i]));
+//		z[i*2-1] = vadd(z[i*2-1], vmulH(x[i-1], x[i-1]));
+//		z[i*2] = vadd(z[i*2], vmulL(x[i], x[i]));
+		z[i*2-1] = vmulH(x[i-1], x[i-1], z[i*2-1]);
+		z[i*2] = vmulL(x[i], x[i], z[i*2]);
 	}
 	z[n*2-1] = vmulH(x[n-1], x[n-1]);
 }
@@ -479,7 +483,7 @@ void uvmont(Vec z[N], Vec xy[N*2])
 
 void uvmul(Vec *z, const Vec *x, const Vec *y)
 {
-#if 1
+#if 0
 	Vec xy[N*2];
 	vrawMul(xy, x, y);
 	uvmont(z, xy);
@@ -503,6 +507,7 @@ void uvmul(Vec *z, const Vec *x, const Vec *y)
 #endif
 }
 
+// slower than uvmul
 void uvsqr(Vec *z, const Vec *x)
 {
 	Vec xx[N*2];
@@ -1158,7 +1163,8 @@ struct FpM {
 	}
 	static void sqr(FpM& z, const FpM& x)
 	{
-		uvsqr(z.v, x.v);
+//		uvsqr(z.v, x.v);
+		mul(z, x, x);
 	}
 	void set(const mpz_class& x, size_t i)
 	{
@@ -2005,8 +2011,10 @@ void ecTest()
 			xy[N+i] = R2.y.v[i];
 		}
 		CYBOZU_BENCH_C("vrawMul ", 1000, vrawMul, xy, xy, xy);
+		CYBOZU_BENCH_C("vrawSqr ", 1000, vrawSqr, xy, xy);
 		CYBOZU_BENCH_C("uvmont  ", 1000, uvmont, xy, xy);
 		CYBOZU_BENCH_C("uvmul   ", 1000, uvmul, xy, xy, xy);
+		CYBOZU_BENCH_C("uvsqr   ", 1000, uvsqr, xy, xy);
 		CYBOZU_BENCH_C("FpM::mul", C, FpM::mul, R2.x, R2.x, Q2.x);
 		CYBOZU_BENCH_C("FpM::sqr", C, FpM::sqr, R2.x, R2.x);
 	}
