@@ -110,6 +110,7 @@ void put(const Vec *v, const char *msg = nullptr, size_t n = N)
 {
 	if (msg) printf("%s\n", msg);
 	for (size_t i = 0; i < n; i++) {
+		printf("%02zd ", i);
 		put(v[i]);
 	}
 }
@@ -128,6 +129,11 @@ void put(const Vmask& c, const char *msg = nullptr)
 Vec vzero()
 {
 	return _mm512_setzero_epi32();
+}
+
+Vec vone()
+{
+	return _mm512_set1_epi32(1);
 }
 
 // set x[j] to i-th SIMD element of v[j]
@@ -270,6 +276,11 @@ Vmask vcmpneq(const Vec& a, const Vec& b)
 	return _mm512_cmpneq_epi64_mask(a, b);
 }
 
+Vmask vcmpgt(const Vec& a, const Vec& b)
+{
+	return _mm512_cmpgt_epi64_mask(a, b);
+}
+
 Vmask mand(const Vmask& a, const Vmask& b)
 {
 	return _mm512_kand(a, b);
@@ -291,21 +302,23 @@ Vec vand(const Vmask& c, const Vec& a, const Vec& b, const Vec& d)
 	return _mm512_mask_and_epi64(d, c, a, b);
 }
 
+// return c ? a : b;
 Vec vselect(const Vmask& c, const Vec& a, const Vec& b)
 {
 	return vand(c, a, a, b);
 }
 
+template<size_t n=N>
 void vrawAdd(Vec *z, const Vec *x, const Vec *y)
 {
 	Vec t = vadd(x[0], y[0]);
 	Vec c = vpsrlq(t, W);
 	z[0] = vand(t, vmask);
 
-	for (size_t i = 1; i < N; i++) {
+	for (size_t i = 1; i < n; i++) {
 		t = vadd(x[i], y[i]);
 		t = vadd(t, c);
-		if (i == N-1) {
+		if (i == n-1) {
 			z[i] = t;
 			return;
 		}
@@ -314,12 +327,13 @@ void vrawAdd(Vec *z, const Vec *x, const Vec *y)
 	}
 }
 
+template<size_t n=N>
 Vmask vrawSub(Vec *z, const Vec *x, const Vec *y)
 {
 	Vec t = vsub(x[0], y[0]);
 	Vec c = vpsrlq(t, S);
 	z[0] = vand(t, vmask);
-	for (size_t i = 1; i < N; i++) {
+	for (size_t i = 1; i < n; i++) {
 		t = vsub(x[i], y[i]);
 		t = vsub(t, c);
 		c = vpsrlq(t, S);
@@ -380,36 +394,73 @@ Vec vrawMulUnitAddOrg(Vec *z, const Vec *x, const Vec& y)
 	return H[N-1];
 }
 
+template<size_t n=N>
 void vrawMulUnit(Vec *z, const Vec *x, const Vec& y)
 {
 	Vec H;
 	z[0] = vmulL(x[0], y);
 	H = vmulH(x[0], y);
-	for (size_t i = 1; i < N; i++) {
+	for (size_t i = 1; i < n; i++) {
 		z[i] = vmulL(x[i], y, H);
 		H = vmulH(x[i], y);
 	}
-	z[N] = H;
+	z[n] = H;
 }
 
+template<size_t n=N>
 Vec vrawMulUnitAdd(Vec *z, const Vec *x, const Vec& y)
 {
 	Vec H;
 	z[0] = vmulL(x[0], y, z[0]);
 	H = vmulH(x[0], y);
-	for (size_t i = 1; i < N; i++) {
+	for (size_t i = 1; i < n; i++) {
 		z[i] = vadd(vmulL(x[i], y, H), z[i]);
 		H = vmulH(x[i], y);
 	}
 	return H;
 }
 
-void vrawMul(Vec z[N*2], const Vec x[N], const Vec y[N])
+template<size_t n=N>
+void vrawMul(Vec z[n*2], const Vec x[n], const Vec y[n])
 {
-	vrawMulUnit(z, x, y[0]);
-	for (size_t i = 1; i < N; i++) {
-		z[N+i] = vrawMulUnitAdd(z+i, x, y[i]);
+	vrawMulUnit<n>(z, x, y[0]);
+	for (size_t i = 1; i < n; i++) {
+		z[n+i] = vrawMulUnitAdd<n>(z+i, x, y[i]);
 	}
+}
+
+// t[n] = c ? a[n] : zero
+template<size_t n=N>
+void vset(Vec *t, const Vmask& c, const Vec a[n])
+{
+	for (size_t i = 0; i < n; i++) {
+		t[i] = vselect(c, a[i], vzero());
+	}
+}
+
+// HAS A BUG
+template<size_t n=N>
+void vrawMulK(Vec z[n*2], const Vec x[n], const Vec y[n])
+{
+//	assert(z != x && z != y);
+	// (a+bM)(c+dM)=ac+(ad+bc)M+bdM^2=ac+((a+b)(c+d)-ac-bd)M+bdM^2
+	const size_t h = n/2;
+	Vec t[n];
+	vrawAdd<h>(z, x, x+h); // a+b
+	vrawAdd<h>(z+n, y, y+h); // c+d
+	vrawMul<h>(t, z, z+n); // (a+b)(c+d)
+	Vmask c1 = vcmpgt(z[h], vmask);
+	Vmask c2 = vcmpgt(z[n+h], vmask);
+	Vec tt[h];
+	vset(tt, c1, z+n);
+	vrawAdd<h>(t+h, t+h, tt); // add c+d if a+b has CF
+	vset(tt, c2, z);
+	vrawAdd<h>(t+h, t+h, tt); // add a+b if c+d has CF
+	vrawMul<h>(z, x, y); // ac
+	vrawMul<h>(z+n, x+h, y+h); // bd
+	vrawSub<n>(t, t, z);
+	vrawSub<n>(t, t, z+n);
+	vrawAdd<n>(z+h, z+h, t);
 }
 
 void uvmont(Vec z[N], Vec xy[N*2])
@@ -432,7 +483,7 @@ void uvmul(Vec *z, const Vec *x, const Vec *y)
 {
 #if 0
 	Vec xy[N*2];
-	vrawMul(xy, x, y);
+	vrawMulK(xy, x, y);
 	uvmont(z, xy);
 #else
 	Vec t[N*2], q;
@@ -1929,7 +1980,7 @@ void ecTest()
 	CYBOZU_BENCH_C("FpM::add", C, FpM::add, R2.x, R2.x, Q2.x);
 	CYBOZU_BENCH_C("FpM::sub", C, FpM::sub, R2.x, R2.x, Q2.x);
 	{
-		Vec xy[N];
+		Vec xy[N*2];
 		for (size_t i = 0; i < N; i++) {
 			xy[i] = R2.x.v[i];
 			xy[N+i] = R2.y.v[i];
@@ -2473,6 +2524,24 @@ int main(int argc, char *argv[])
 	}
 	printf("xn=%zd\n", xn);
 	mcl::bn::initPairing(mcl::BLS12_381);
+#if 0
+	{
+		Vec x[N], y[N], xy1[N*2], xy2[N*2];
+		for (size_t i = 0; i < N*8; i++) {
+			((Unit*)x)[i] = i;
+			((Unit*)y)[i] = i+100;
+		}
+		vrawMul(xy1, x, y);
+		vrawMulK(xy2, x, y);
+		if (memcmp(xy1, xy2, sizeof(xy1)) != 0) {
+			puts("vramulK err");
+			put(xy1, "xy1", N*2);
+			put(xy2, "xy2", N*2);
+		}
+		CYBOZU_BENCH_C("kara   ", 1000, vrawMulK, xy1, x, y);
+		CYBOZU_BENCH_C("vrawMul", 1000, vrawMul, xy2, x, y);
+	}
+#endif
 	init(g_mont);
 
 	ecTest();
