@@ -1280,8 +1280,11 @@ struct FpM {
 	}
 	static void inv(FpM& z, const FpM& x)
 	{
-		// use Fp::invVec
-#if 0
+#if 1
+		mcl::bn::Fp v[M];
+		x.getFp(v);
+		mcl::invVec(v, v, M);
+		z.setFp(v);
 #else
 		pow(z, x, g_vmpM2, 6);
 #endif
@@ -1374,7 +1377,6 @@ void dblJacobiNoCheck(E& R, const E& P)
 	F::mul2(y2, y2);
 	F::sub(R.y, R.y, y2);
 }
-
 
 struct EcM {
 	typedef FpM Fp;
@@ -1533,11 +1535,22 @@ struct EcM {
 	}
 	void normalize()
 	{
+#if 0
+		mcl::bn::Fp v[M];
+		z.getFp(v);
+		mcl::invVec(v, v, M);
+		FpM r;
+		r.setFp(v);
+		FpM::mul(x, x, r);
+		FpM::mul(y, y, r);
+		z = FpM::one_;
+#else
 		FpM r;
 		FpM::inv(r, z);
 		FpM::mul(x, x, r);
 		FpM::mul(y, y, r);
 		z = FpM::one_;
+#endif
 	}
 	template<bool isProj=true>
 	static void makeTable(EcM *tbl, const EcM& P)
@@ -1699,7 +1712,9 @@ void init(Montgomery& mont)
 	{
 		mpz_class t;
 		FpM::m64to52_.set(mpz_class(0x100000000));
-		FpM::inv(FpM::m52to64_, FpM::m64to52_);
+//		FpM::inv(FpM::m52to64_, FpM::m64to52_);
+		puts("init m52to64_");
+		FpM::pow(FpM::m52to64_, FpM::m64to52_, g_vmpM2, 6);
 	}
 	Ec::init(mont);
 	EcM::init(mont);
@@ -1928,6 +1943,18 @@ void powTest()
 			x[i].set(i+0x98765432);
 			y[i] = i+0x12345678;
 			xm.set(x[i].get(), i);
+		}
+		puts("setFp/getFp test");
+		{
+			mcl::bn::Fp v[M];
+			xm.getFp(v);
+			zm.setFp(v);
+			if (xm != zm) {
+				puts("setFp/getFp err");
+				xm.put("xm");
+				zm.put("zm");
+				exit(1);
+			}
 		}
 		memcpy(&ym, y, sizeof(y));
 		for (int i = 0; i < 8; i++) {
