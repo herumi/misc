@@ -429,6 +429,30 @@ void vrawMul(Vec z[n*2], const Vec x[n], const Vec y[n])
 	}
 }
 
+template<size_t n=N>
+void vrawSqr(Vec z[n*2], const Vec x[n])
+{
+	for (size_t i = 1; i < n; i++) {
+		z[i*2-1] = vmulL(x[i], x[i-1]);
+		z[i*2  ] = vmulH(x[i], x[i-1]);
+	}
+	for (size_t j = 2; j < n; j++) {
+		for (size_t i = j; i < n; i++) {
+			z[i*2-j  ] = vadd(z[i*2-j  ], vmulL(x[i], x[i-j]));
+			z[i*2-j+1] = vadd(z[i*2-j+1], vmulH(x[i], x[i-j]));
+		}
+	}
+	for (size_t i = 1; i < n*2-1; i++) {
+		z[i] = vadd(z[i], z[i]);
+	}
+	z[0] = vmulL(x[0], x[0]);
+	for (size_t i = 1; i < n; i++) {
+		z[i*2-1] = vadd(z[i*2-1], vmulH(x[i-1], x[i-1]));
+		z[i*2] = vadd(z[i*2], vmulL(x[i], x[i]));
+	}
+	z[n*2-1] = vmulH(x[n-1], x[n-1]);
+}
+
 // t[n] = c ? a[n] : zero
 template<size_t n=N>
 void vset(Vec *t, const Vmask& c, const Vec a[n])
@@ -471,7 +495,6 @@ void uvmont(Vec z[N], Vec xy[N*2])
 		Vec q = vmulL(xy[i], vrp);
 		xy[N+i] = vadd(xy[N+i], vrawMulUnitAdd(xy+i, vpN, q));
 		xy[i+1] = vadd(xy[i+1], vpsrlq(xy[i], W));
-//		xy[i] = vand(xy[i], vmask); // not used
 	}
 	for (size_t i = N; i < N*2-1; i++) {
 		xy[i+1] = vadd(xy[i+1], vpsrlq(xy[i], W));
@@ -483,9 +506,9 @@ void uvmont(Vec z[N], Vec xy[N*2])
 
 void uvmul(Vec *z, const Vec *x, const Vec *y)
 {
-#if 0
+#if 1
 	Vec xy[N*2];
-	vrawMulK(xy, x, y);
+	vrawMul(xy, x, y);
 	uvmont(z, xy);
 #else
 	Vec t[N*2], q;
@@ -505,6 +528,13 @@ void uvmul(Vec *z, const Vec *x, const Vec *y)
 	Vmask c = vrawSub(z, t+N, vpN);
 	uvselect(z, c, t+N, z);
 #endif
+}
+
+void uvsqr(Vec *z, const Vec *x)
+{
+	Vec xx[N*2];
+	vrawSqr(xx, x);
+	uvmont(z, xx);
 }
 
 // out = c ? a : b
@@ -1155,7 +1185,7 @@ struct FpM {
 	}
 	static void sqr(FpM& z, const FpM& x)
 	{
-		uvmul(z.v, x.v, x.v);
+		uvsqr(z.v, x.v);
 	}
 	void set(const mpz_class& x, size_t i)
 	{
@@ -1830,6 +1860,20 @@ void vtest(const mpz_class& _mx, const mpz_class& _my)
 			putAll(mx[i], my[i], mz, mw);
 		}
 	}
+	// sqr
+	for (size_t i = 0; i < M; i++) {
+		uvsqr(zN+i*N, xN+i*N);
+	}
+	cvt(_z, zN);
+	for (size_t i = 0; i < M; i++) {
+		g_mont.mul(mz, mx[i], mx[i]);
+		mw = fromArray<N>(_z + i*N);
+		if (mz != mw) {
+			printf("uvsqr err %zd\n", i);
+			putAll(mx[i], my[i], mz, mw);
+			exit(1);
+		}
+	}
 }
 
 void testMont(const mpz_class& mx, const mpz_class& my)
@@ -1991,6 +2035,7 @@ void ecTest()
 		CYBOZU_BENCH_C("uvmont  ", 1000, uvmont, xy, xy);
 		CYBOZU_BENCH_C("uvmul   ", 1000, uvmul, xy, xy, xy);
 		CYBOZU_BENCH_C("FpM::mul", C, FpM::mul, R2.x, R2.x, Q2.x);
+		CYBOZU_BENCH_C("FpM::sqr", C, FpM::sqr, R2.x, R2.x);
 	}
 	CYBOZU_BENCH_C("FpM::inv", 1000, FpM::inv, R2.x, R2.x);
 }
@@ -2544,9 +2589,24 @@ int main(int argc, char *argv[])
 		CYBOZU_BENCH_C("vrawMul", 1000, vrawMul, xy2, x, y);
 	}
 #endif
+#if 1
+	{
+		cybozu::XorShift rg;
+		Vec x[N], xy1[N*2], xy2[N*2];
+		for (size_t i = 0; i < N*8; i++) {
+			((Unit*)x)[i] = rg.get64();
+		}
+		vrawMul(xy1, x, x);
+		vrawSqr(xy2, x);
+		if (memcmp(xy1, xy2, sizeof(xy1)) != 0) {
+			puts("vrawSqr err");
+			put(xy1, "xy1", N*2);
+			put(xy2, "xy2", N*2);
+		}
+	}
+#endif
 	init(g_mont);
 
-	ecTest();
 	if (onlyBench) return 0;
 
 	g_mont.put();
@@ -2566,6 +2626,7 @@ int main(int argc, char *argv[])
 		mpz_class my = mpz_rand(rg);
 		testAll(mx, my);
 	}
+	ecTest();
 	cvtEcTest();
 	cvtFpTest();
 	split52bitTest();
