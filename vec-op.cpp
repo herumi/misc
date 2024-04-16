@@ -2000,8 +2000,11 @@ void ecTest()
 	}
 	EcM::dbl(R2, R2);
 	cmpEc(R2, R1, "R2");
-	CYBOZU_BENCH_C("EcM::add", C, EcM::add, R2, R2, Q2);
-	CYBOZU_BENCH_C("EcM::dbl", C, EcM::dbl, R2, R2);
+	CYBOZU_BENCH_C("EcM::add P", C, EcM::add, R2, R2, Q2);
+	CYBOZU_BENCH_C("EcM::dbl P", C, EcM::dbl, R2, R2);
+	CYBOZU_BENCH_C("EcM::add J", C, EcM::add<false>, R2, R2, Q2);
+	CYBOZU_BENCH_C("EcM::dbl J", C, EcM::dbl<false>, R2, R2);
+	// REMARK : R2 is destroyed by Jacobi
 	CYBOZU_BENCH_C("FpM::add", C, FpM::add, R2.x, R2.x, Q2.x);
 	CYBOZU_BENCH_C("FpM::sub", C, FpM::sub, R2.x, R2.x, Q2.x);
 	{
