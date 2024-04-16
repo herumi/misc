@@ -404,8 +404,37 @@ Vec vrawMulUnitAdd(Vec *z, const Vec *x, const Vec& y)
 	return H;
 }
 
+void vrawMul(Vec z[N*2], const Vec x[N], const Vec y[N])
+{
+	vrawMulUnit(z, x, y[0]);
+	for (size_t i = 1; i < N; i++) {
+		z[N+i] = vrawMulUnitAdd(z+i, x, y[i]);
+	}
+}
+
+void uvmont(Vec z[N], Vec xy[N*2])
+{
+	for (size_t i = 0; i < N; i++) {
+		Vec q = vmulL(xy[i], vrp);
+		xy[N+i] = vadd(xy[N+i], vrawMulUnitAdd(xy+i, vpN, q));
+		xy[i+1] = vadd(xy[i+1], vpsrlq(xy[i], W));
+		xy[i] = vand(xy[i], vmask);
+	}
+	for (size_t i = N; i < N*2-1; i++) {
+		xy[i+1] = vadd(xy[i+1], vpsrlq(xy[i], W));
+		xy[i] = vand(xy[i], vmask);
+	}
+	Vmask c = vrawSub(z, xy+N, vpN);
+	uvselect(z, c, xy+N, z);
+}
+
 void uvmul(Vec *z, const Vec *x, const Vec *y)
 {
+#if 0
+	Vec xy[N*2];
+	vrawMul(xy, x, y);
+	uvmont(z, xy);
+#else
 	Vec t[N*2], q;
 	vrawMulUnit(t, x, y[0]);
 	q = vmulL(t[0], vrp);
@@ -422,6 +451,7 @@ void uvmul(Vec *z, const Vec *x, const Vec *y)
 	}
 	Vmask c = vrawSub(z, t+N, vpN);
 	uvselect(z, c, t+N, z);
+#endif
 }
 
 // out = c ? a : b
@@ -1299,41 +1329,20 @@ struct EcM {
 	template<bool isProj=true>
 	static void add(EcM& z, const EcM& x, const EcM& y)
 	{
-#if 0
-		EcM tx, ty;
-		Vmask c = isZero(y);
-		EcM saveX = x;
-		mcl::ec::ProjToJacobi(tx, x);
-		mcl::ec::ProjToJacobi(ty, y);
-		addJacobiNoCheck(z, tx, ty);
-		mcl::ec::JacobiToProj(z, z);
-		z.cset(c, saveX);
-#else
 		if (isProj) {
 			mcl::ec::addCTProj(z, x, y);
 		} else {
 			addJacobiNoCheck(z, x, y);
 		}
-#endif
 	}
 	template<bool isProj=true>
 	static void dbl(EcM& z, const EcM& x)
 	{
-#if 0
-		EcM t;
-		Vmask c = isZero(x);
-		EcM saveX = x;
-		mcl::ec::ProjToJacobi(t, x);
-		dblJacobiNoCheck(t, t);
-		mcl::ec::JacobiToProj(z, t);
-		z.cset(c, saveX);
-#else
 		if (isProj) {
 			mcl::ec::dblCTProj(z, x);
 		} else {
 			dblJacobiNoCheck(z, x);
 		}
-#endif
 	}
 	static void init(Montgomery& mont)
 	{
@@ -1919,7 +1928,17 @@ void ecTest()
 	CYBOZU_BENCH_C("EcM::dbl", C, EcM::dbl, R2, R2);
 	CYBOZU_BENCH_C("FpM::add", C, FpM::add, R2.x, R2.x, Q2.x);
 	CYBOZU_BENCH_C("FpM::sub", C, FpM::sub, R2.x, R2.x, Q2.x);
-	CYBOZU_BENCH_C("FpM::mul", C, FpM::mul, R2.x, R2.x, Q2.x);
+	{
+		Vec xy[N];
+		for (size_t i = 0; i < N; i++) {
+			xy[i] = R2.x.v[i];
+			xy[N+i] = R2.y.v[i];
+		}
+		CYBOZU_BENCH_C("vrawMul ", 1000, vrawMul, xy, xy, xy);
+		CYBOZU_BENCH_C("uvmont  ", 1000, uvmont, xy, xy);
+		CYBOZU_BENCH_C("uvmul   ", 1000, uvmul, xy, xy, xy);
+		CYBOZU_BENCH_C("FpM::mul", C, FpM::mul, R2.x, R2.x, Q2.x);
+	}
 	CYBOZU_BENCH_C("FpM::inv", 1000, FpM::inv, R2.x, R2.x);
 }
 
@@ -2456,7 +2475,7 @@ int main(int argc, char *argv[])
 	mcl::bn::initPairing(mcl::BLS12_381);
 	init(g_mont);
 
-	mtTest(xn, onlyBench);
+	ecTest();
 	if (onlyBench) return 0;
 
 	g_mont.put();
@@ -2484,6 +2503,6 @@ int main(int argc, char *argv[])
 	powTest();
 	GLVtest();
 	mulTest();
-	ecTest();
+	mtTest(xn, onlyBench);
 	puts("ok");
 }
