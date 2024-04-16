@@ -418,7 +418,7 @@ void uvmont(Vec z[N], Vec xy[N*2])
 		Vec q = vmulL(xy[i], vrp);
 		xy[N+i] = vadd(xy[N+i], vrawMulUnitAdd(xy+i, vpN, q));
 		xy[i+1] = vadd(xy[i+1], vpsrlq(xy[i], W));
-		xy[i] = vand(xy[i], vmask);
+//		xy[i] = vand(xy[i], vmask); // not used
 	}
 	for (size_t i = N; i < N*2-1; i++) {
 		xy[i+1] = vadd(xy[i+1], vpsrlq(xy[i], W));
