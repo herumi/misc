@@ -462,33 +462,6 @@ void vset(Vec *t, const Vmask& c, const Vec a[n])
 	}
 }
 
-#if 0
-// HAS A BUG
-template<size_t n=N>
-void vrawMulK(Vec z[n*2], const Vec x[n], const Vec y[n])
-{
-//	assert(z != x && z != y);
-	// (a+bM)(c+dM)=ac+(ad+bc)M+bdM^2=ac+((a+b)(c+d)-ac-bd)M+bdM^2
-	const size_t h = n/2;
-	Vec t[n];
-	vrawAdd<h>(z, x, x+h); // a+b
-	vrawAdd<h>(z+n, y, y+h); // c+d
-	vrawMul<h>(t, z, z+n); // (a+b)(c+d)
-	Vmask c1 = vcmpgt(z[h], vmask);
-	Vmask c2 = vcmpgt(z[n+h], vmask);
-	Vec tt[h];
-	vset(tt, c1, z+n);
-	vrawAdd<h>(t+h, t+h, tt); // add c+d if a+b has CF
-	vset(tt, c2, z);
-	vrawAdd<h>(t+h, t+h, tt); // add a+b if c+d has CF
-	vrawMul<h>(z, x, y); // ac
-	vrawMul<h>(z+n, x+h, y+h); // bd
-	vrawSub<n>(t, t, z);
-	vrawSub<n>(t, t, z+n);
-	vrawAdd<n>(z+h, z+h, t);
-}
-#endif
-
 void uvmont(Vec z[N], Vec xy[N*2])
 {
 	for (size_t i = 0; i < N; i++) {
@@ -2571,24 +2544,6 @@ int main(int argc, char *argv[])
 	}
 	printf("xn=%zd\n", xn);
 	mcl::bn::initPairing(mcl::BLS12_381);
-#if 0
-	{
-		Vec x[N], y[N], xy1[N*2], xy2[N*2];
-		for (size_t i = 0; i < N*8; i++) {
-			((Unit*)x)[i] = i;
-			((Unit*)y)[i] = i+100;
-		}
-		vrawMul(xy1, x, y);
-		vrawMulK(xy2, x, y);
-		if (memcmp(xy1, xy2, sizeof(xy1)) != 0) {
-			puts("vramulK err");
-			put(xy1, "xy1", N*2);
-			put(xy2, "xy2", N*2);
-		}
-		CYBOZU_BENCH_C("kara   ", 1000, vrawMulK, xy1, x, y);
-		CYBOZU_BENCH_C("vrawMul", 1000, vrawMul, xy2, x, y);
-	}
-#endif
 #if 1
 	{
 		cybozu::XorShift rg;
