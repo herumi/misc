@@ -438,6 +438,7 @@ void vset(Vec *t, const Vmask& c, const Vec a[n])
 	}
 }
 
+#if 0
 // HAS A BUG
 template<size_t n=N>
 void vrawMulK(Vec z[n*2], const Vec x[n], const Vec y[n])
@@ -462,6 +463,7 @@ void vrawMulK(Vec z[n*2], const Vec x[n], const Vec y[n])
 	vrawSub<n>(t, t, z+n);
 	vrawAdd<n>(z+h, z+h, t);
 }
+#endif
 
 void uvmont(Vec z[N], Vec xy[N*2])
 {
