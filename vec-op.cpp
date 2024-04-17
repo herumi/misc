@@ -1317,6 +1317,44 @@ Vmask isZero(const E& P)
 
 // 12M+4S+7A
 // assume P.x != Q.x, P != Q
+// asseume all Q are normalized
+template<class E>
+void addJacobiMixedNoCheck(E& R, const E& P, const E& Q)
+{
+	typedef typename E::Fp F;
+	Vmask c = isZero(Q);
+	E saveP = P;
+	F r, U1, S1, H, H3;
+	F::sqr(r, P.z);
+//	F::sqr(S1, Q.z);
+	S1 = Q.z;
+	F::mul(U1, P.x, S1);
+	F::mul(H, Q.x, r);
+	F::sub(H, H, U1);
+//	F::mul(S1, S1, Q.z);
+	F::mul(S1, S1, P.y);
+	F::mul(r, r, P.z);
+	F::mul(r, r, Q.y);
+	F::sub(r, r, S1);
+//	F::mul(R.z, P.z, Q.z);
+	R.z = P.z;
+	F::mul(R.z, R.z, H);
+	F::sqr(H3, H); // H^2
+	F::sqr(R.y, r); // r^2
+	F::mul(U1, U1, H3); // U1 H^2
+	F::mul(H3, H3, H); // H^3
+	F::sub(R.y, R.y, U1);
+	F::sub(R.y, R.y, U1);
+	F::sub(R.x, R.y, H3);
+	F::sub(U1, U1, R.x);
+	F::mul(U1, U1, r);
+	F::mul(H3, H3, S1);
+	F::sub(R.y, U1, H3);
+	R.cset(c, saveP);
+}
+
+// 12M+4S+7A
+// assume P.x != Q.x, P != Q
 template<class E>
 void addJacobiNoCheck(E& R, const E& P, const E& Q)
 {
@@ -1390,11 +1428,15 @@ struct EcM {
 	static EcM zeroProj_;
 	static EcM zeroJacobi_;
 	FpM x, y, z;
-	template<bool isProj=true>
+	template<bool isProj=true, bool mixed=false>
 	static void add(EcM& z, const EcM& x, const EcM& y)
 	{
 		if (isProj) {
-			mcl::ec::addCTProj(z, x, y);
+			if (mixed) {
+				addJacobiMixedNoCheck(z, x, y);
+			} else {
+				mcl::ec::addCTProj(z, x, y);
+			}
 		} else {
 			addJacobiNoCheck(z, x, y);
 		}
@@ -1552,14 +1594,14 @@ struct EcM {
 		z = FpM::one_;
 #endif
 	}
-	template<bool isProj=true>
+	template<bool isProj=true, bool mixed=false>
 	static void makeTable(EcM *tbl, const EcM& P)
 	{
 		tbl[0].clear();
 		tbl[1] = P;
 		dbl<isProj>(tbl[2], P);
 		for (size_t i = 3; i < tblN; i++) {
-			add<isProj>(tbl[i], tbl[i-1], P);
+			add<isProj, mixed>(tbl[i], tbl[i-1], P);
 		}
 	}
 	void gather(const EcM *tbl, Vec idx)
@@ -1604,14 +1646,14 @@ struct EcM {
 		Q.y = P.y;
 		Q.z = P.z;
 	}
-	template<bool isProj=true>
+	template<bool isProj=true, bool mixed=false>
 	static void mulGLV(EcM& Q, const EcM& _P, const Vec y[4])
 	{
 		EcM P = _P;
 		if (!isProj) mcl::ec::ProjToJacobi(P, _P);
 		Vec a[2], b[2];
 		EcM tbl1[tblN], tbl2[tblN];
-		makeTable<isProj>(tbl1, P);
+		makeTable<isProj, mixed>(tbl1, P);
 		for (size_t i = 0; i < tblN; i++) {
 			mulLambda(tbl2[i], tbl1[i]);
 		}
@@ -1655,6 +1697,16 @@ struct EcM {
 		add(Q, Q, T);
 #endif
 		if (!isProj) mcl::ec::JacobiToProj(Q, Q);
+	}
+	static void mulGLVbn(mcl::bn::G1 _Q[8], mcl::bn::G1 _P[8], const Vec y[4])
+	{
+		const bool isProj = true;
+		const bool mixed = false;
+		mcl::ec::normalizeVec(_P, _P, 8);
+		EcM P, Q;
+		P.setG1(_P, isProj);
+		mulGLV<isProj, mixed>(Q, P, y);
+		Q.getG1(_Q);
 	}
 	void cset(const Vmask& c, const EcM& v)
 	{
@@ -2172,6 +2224,18 @@ void mulTest()
 		bn::Fp a = xa.x, b = xa.y;
 		CYBOZU_BENCH_C("Fp::mul", 10000, bn::Fp::mul, a, b, a);
 		CYBOZU_BENCH_C("Fp::inv", 10000, bn::Fp::inv, a, a);
+		bn::G1 P[8], Q[8];
+		P2.getG1(P);
+		CYBOZU_BENCH_C("EcM::mulGLV:mcl", 10000, EcM::mulGLVbn, Q, P, yv);
+		for (size_t i = 0; i < 8; i++) {
+			bn::G1 R;
+			mpz_class t;
+			mcl::gmp::setArray(t, y+i*w, w);
+			bn::G1::mul(R, P[i], t);
+			if (Q[i] != R) {
+				printf("err TTT i=%zd\n", i);
+			}
+		}
 	}
 }
 
@@ -2375,6 +2439,7 @@ inline void *AlignedMalloc(size_t size, size_t alignment = 64)
 
 
 // xVec[n], yVec[n * maxBitSize/64]
+// assume xVec[] is normalized
 void mulVecAVX512_inner(mcl::bn::G1& P, const EcM *xVec, const Vec *yVec, size_t n, size_t maxBitSize)
 {
 	size_t c = mcl::ec::argminForMulVec(n);
@@ -2416,11 +2481,12 @@ void mulVecAVX512_inner(mcl::bn::G1& P, const EcM *xVec, const Vec *yVec, size_t
 	free(tbl);
 }
 
-void mulVecAVX512(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n)
+void mulVecAVX512(mcl::bn::G1& P, mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n)
 {
 	assert(n % 8 == 0);
 	const size_t n8 = n/8;
 #if 1
+	mcl::ec::normalizeVec(x, x, n);
 	EcM *xVec = (EcM*)AlignedMalloc(sizeof(EcM) * n8 * 2);
 	for (size_t i = 0; i < n8; i++) {
 		xVec[i*2].setG1(x+i*8);
