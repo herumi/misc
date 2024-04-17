@@ -1432,13 +1432,13 @@ struct EcM {
 	static void add(EcM& z, const EcM& x, const EcM& y)
 	{
 		if (isProj) {
+			mcl::ec::addCTProj(z, x, y);
+		} else {
 			if (mixed) {
 				addJacobiMixedNoCheck(z, x, y);
 			} else {
-				mcl::ec::addCTProj(z, x, y);
+				addJacobiNoCheck(z, x, y);
 			}
-		} else {
-			addJacobiNoCheck(z, x, y);
 		}
 	}
 	template<bool isProj=true>
@@ -1700,8 +1700,8 @@ struct EcM {
 	}
 	static void mulGLVbn(mcl::bn::G1 _Q[8], mcl::bn::G1 _P[8], const Vec y[4])
 	{
-		const bool isProj = true;
-		const bool mixed = false;
+		const bool isProj = false;
+		const bool mixed = true;
 		mcl::ec::normalizeVec(_P, _P, 8);
 		EcM P, Q;
 		P.setG1(_P, isProj);
