@@ -1345,7 +1345,7 @@ void normalizeJacobiVec(E P[n])
 	}
 }
 
-// 12M+4S+7A
+// 8M+3S+7A
 // assume P.x != Q.x, P != Q
 // asseume all Q are normalized
 template<class E>
@@ -2512,7 +2512,7 @@ void mulVecAVX512(mcl::bn::G1& P, mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n
 	assert(n % 8 == 0);
 	const size_t n8 = n/8;
 #if 1
-	mcl::ec::normalizeVec(x, x, n);
+//	mcl::ec::normalizeVec(x, x, n);
 	EcM *xVec = (EcM*)AlignedMalloc(sizeof(EcM) * n8 * 2);
 	for (size_t i = 0; i < n8; i++) {
 		xVec[i*2].setG1(x+i*8);
