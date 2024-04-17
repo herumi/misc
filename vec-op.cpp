@@ -6,7 +6,6 @@ uvadd  18.70 clk
 uvsub  15.70 clk
 uvmul 145.23 clk
 */
-#define MCL_USE_GMP
 #include <stdint.h>
 #include <stdio.h>
 #include <iostream>
@@ -76,7 +75,7 @@ void toArray(Unit x[N], mpz_class mx)
 	const Unit mask = getMask(w);
 	for (size_t i = 0; i < N; i++) {
 		mpz_class a = mx & mask;
-		x[i] = a.get_ui();
+		x[i] = mcl::gmp::getUnit(a)[0];
 		mx >>= w;
 	}
 }
@@ -573,9 +572,10 @@ public:
 	}
 	void put() const
 	{
-		std::cout << "p=0x" << mp.get_str(16) << std::endl;
-		std::cout << "R=0x" << mR.get_str(16) << std::endl;
-		std::cout << "R2=0x" << mR2.get_str(16) << std::endl;
+		std::cout << std::hex;
+		std::cout << "p=0x" << mp << std::endl;
+		std::cout << "R=0x" << mR << std::endl;
+		std::cout << "R2=0x" << mR2 << std::endl;
 		printf("rp=0x%lx\n", rp);
 	}
 	void set(const mpz_class& _p)
@@ -1007,15 +1007,15 @@ struct Fp {
 	{
 		pow(z, x, g_mpM2, sizeof(g_mpM2)/sizeof(g_mpM2[0]));
 	}
-	void put(const char *msg = nullptr, int base = 16) const
+	void put(const char *msg = nullptr) const
 	{
 		if (msg) printf("%s ", msg);
-		printf("%s\n", get().get_str(base).c_str());
+		std::cout << get() << std::endl;
 	}
 	void putRaw(const char *msg = nullptr) const
 	{
 		if (msg) printf("%s ", msg);
-		printf("%s\n", v.get_str(16).c_str());
+		std::cout << v << std::endl;
 	}
 };
 Fp Fp::one_;
@@ -1217,18 +1217,20 @@ struct FpM {
 		}
 		return vcmpeq(t, vzero());
 	}
-	void put(const char *msg = nullptr, int base = 16) const
+	void put(const char *msg = nullptr) const
 	{
 		if (msg) printf("%s\n", msg);
 		for (size_t i = 0; i < M; i++) {
-			printf("% 2zd %s\n", i, get(i).get_str(base).c_str());
+			printf("% 2zd ", i);
+			std::cout << get(i) << std::endl;
 		}
 	}
 	void putRaw(const char *msg = nullptr) const
 	{
 		if (msg) printf("%s\n", msg);
 		for (size_t i = 0; i < M; i++) {
-			printf("% 2zd %s\n", i, getRaw(i).get_str(16).c_str());
+			printf("% 2zd ", i);
+			std::cout << getRaw(i) << std::endl;
 		}
 	}
 	friend std::ostream& operator<<(std::ostream& os, const FpM& x)
@@ -1766,8 +1768,8 @@ void init(Montgomery& mont)
 {
 	const char *pStr = "1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab";
 	const char *rStr = "73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001";
-	g_mp.set_str(pStr, 16);
-	g_mr.set_str(rStr, 16);
+	mcl::gmp::setStr(g_mp, pStr, 16);
+	mcl::gmp::setStr(g_mr, rStr, 16);
 	mont.set(g_mp);
 	toArray<N>(g_p, g_mp);
 	toArray<6, 64>(g_mpM2, g_mp-2);
@@ -1788,8 +1790,9 @@ void init(Montgomery& mont)
 	expandN(FpM::rawOne_.v, mpz_class(1));
 	expandN(FpM::mR2_.v, g_mont.mR2);
 	{
-		mpz_class t;
-		FpM::m64to52_.set(mpz_class(0x100000000));
+		mpz_class t(1);
+		t <<= 32;
+		FpM::m64to52_.set(t);
 //		FpM::inv(FpM::m52to64_, FpM::m64to52_);
 		puts("init m52to64_");
 		FpM::pow(FpM::m52to64_, FpM::m64to52_, g_vmpM2, 6);
@@ -1803,13 +1806,13 @@ void init(Montgomery& mont)
 	EcM::zeroProj_.set(Ec::zero());
 	const char *rwStr = "1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac";
 	mpz_class rw;
-	rw.set_str(rwStr, 16);
+	mcl::gmp::setStr(rw, rwStr, 16);
 	Fp::rw_.set(rw);
 	FpM::rw_.set(rw);
 
-	g_mx.set_str("17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb", 16);
-	g_my.set_str("08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1", 16);
-	g_mr.set_str("73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001", 16);
+	mcl::gmp::setStr(g_mx, "17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb", 16);
+	mcl::gmp::setStr(g_my, "08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1", 16);
+	mcl::gmp::setStr(g_mr, "73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001", 16);
 //	printf("(mx, my) is on %d\n", (g_mx * g_mx * g_mx + 4 - g_my * g_my) % g_mp == 0);
 }
 
@@ -2018,7 +2021,7 @@ void powTest()
 		FpM xm, zm;
 		Vec ym;
 		for (int i = 0; i < 8; i++) {
-			x[i].set(i+0x98765432);
+			x[i].set(i+0x78765432);
 			y[i] = i+0x12345678;
 			xm.set(x[i].get(), i);
 		}
@@ -2133,8 +2136,11 @@ void GLVtest()
 {
 	puts("GLVtest");
 	Ec P, Q, R;
-	P.x.set(mpz_class("13400cd4fe26471eef602b91432ac4180e12519b68e7b7efa081fc8a20654e215ef7eb439a622e21466a3dd6add55fac", 16));
-	P.y.set(mpz_class("b81cd9a01198e1ea3ba3d94aaf4036750f84537fa5d2a9a6fa917b8a1d264b7c513f4dcef866142bd33094107404452", 16));
+	mpz_class t;
+	mcl::gmp::setStr(t, "13400cd4fe26471eef602b91432ac4180e12519b68e7b7efa081fc8a20654e215ef7eb439a622e21466a3dd6add55fac" , 16);
+	P.x.set(t);
+	mcl::gmp::setStr(t, "b81cd9a01198e1ea3ba3d94aaf4036750f84537fa5d2a9a6fa917b8a1d264b7c513f4dcef866142bd33094107404452", 16);
+	P.y.set(t);
 //	P.x.set(g_mx);
 //	P.y.set(g_my);
 	P.z.set(1);
@@ -2145,7 +2151,8 @@ void GLVtest()
 			puts("ERR");
 		}
 	}
-	mpz_class y("2ac00f2c9af814438db241461ec7825ed88d00b0951049aa1b5116e6dca345ea", 16);
+	mpz_class y;
+	mcl::gmp::setStr(y, "2ac00f2c9af814438db241461ec7825ed88d00b0951049aa1b5116e6dca345ea", 16);
 	Unit ya[4];
 	toArray<4, 64>(ya, y);
 	Ec::mul(Q, P, ya, 4);
@@ -2697,7 +2704,7 @@ int main(int argc, char *argv[])
 	g_mont.put();
 
 	const mpz_class tbl[] = {
-		0xaabbccdd, 0x11223344, 0, 1, 2, g_mask-1, g_mask, g_mask+1, g_mp-1, g_mp>>2, 0x12345, g_mp-0x1111,
+		0x1abbccdd, 0x11223344, 0, 1, 2, g_mask-1, g_mask, g_mask+1, g_mp-1, g_mp>>2, 0x12345, g_mp-0x1111,
 	};
 	for (const auto& mx : tbl) {
 		for (const auto& my : tbl) {
