@@ -1326,13 +1326,15 @@ void addJacobiMixedNoCheck(E& R, const E& P, const E& Q)
 	E saveP = P;
 	F r, U1, S1, H, H3;
 	F::sqr(r, P.z);
-//	F::sqr(S1, Q.z);
+//	F::sqr(S1, Q.z); // assume S1 = 1
 	S1 = Q.z;
-	F::mul(U1, P.x, S1);
+//	F::mul(U1, P.x, S1);
+	U1 = P.x;
 	F::mul(H, Q.x, r);
 	F::sub(H, H, U1);
 //	F::mul(S1, S1, Q.z);
-	F::mul(S1, S1, P.y);
+//	F::mul(S1, S1, P.y);
+	S1 = P.y;
 	F::mul(r, r, P.z);
 	F::mul(r, r, Q.y);
 	F::sub(r, r, S1);
@@ -2226,7 +2228,7 @@ void mulTest()
 		CYBOZU_BENCH_C("Fp::inv", 10000, bn::Fp::inv, a, a);
 		bn::G1 P[8], Q[8];
 		P2.getG1(P);
-		CYBOZU_BENCH_C("EcM::mulGLV:mcl", 10000, EcM::mulGLVbn, Q, P, yv);
+		CYBOZU_BENCH_C("EcM::mulGLVbn", 10000, EcM::mulGLVbn, Q, P, yv);
 		for (size_t i = 0; i < 8; i++) {
 			bn::G1 R;
 			mpz_class t;
