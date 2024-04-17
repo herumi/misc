@@ -1315,6 +1315,36 @@ Vmask isZero(const E& P)
 	return vcmpeq(v, vzero());
 }
 
+template<class E, size_t n>
+void normalizeJacobiVec(E P[n])
+{
+	assert(n >= 2);
+	typedef typename E::Fp F;
+	F tbl[n];
+	tbl[0] = P[0].z;
+	for (size_t i = 1; i < n; i++) {
+		F::mul(tbl[i], tbl[i-1], P[i].z);
+	}
+	F r;
+	F::inv(r, tbl[n-1]);
+	for (size_t i = 0; i < n; i++) {
+		size_t pos = n-1-i;
+		F t = P[pos].z;
+		F rz, rz2;
+		if (pos > 0) {
+			F::mul(rz, r, tbl[pos-1]);
+			F::mul(r, r, t);
+		} else {
+			rz = r;
+		}
+		F::sqr(rz2, rz);
+		F::mul(P[pos].x, P[pos].x, rz2); // xz^-2
+		F::mul(rz2, rz2, rz);
+		F::mul(P[pos].y, P[pos].y, rz2); // yz^-3
+		P[pos].z = F::one_;
+	}
+}
+
 // 12M+4S+7A
 // assume P.x != Q.x, P != Q
 // asseume all Q are normalized
@@ -1656,6 +1686,7 @@ struct EcM {
 		Vec a[2], b[2];
 		EcM tbl1[tblN], tbl2[tblN];
 		makeTable<isProj, mixed>(tbl1, P);
+		if (!isProj) normalizeJacobiVec<EcM, tblN-1>(tbl1+1);
 		for (size_t i = 0; i < tblN; i++) {
 			mulLambda(tbl2[i], tbl1[i]);
 		}
@@ -1686,11 +1717,11 @@ struct EcM {
 					first = false;
 				} else {
 					T.gather(tbl1, idx);
-					add<isProj>(Q, Q, T);
+					add<isProj, mixed>(Q, Q, T);
 				}
 				idx = vand(vpsrlq(v2, bitLen-w-j*w), g_vmask4);
 				T.gather(tbl2, idx);
-				add<isProj>(Q, Q, T);
+				add<isProj, mixed>(Q, Q, T);
 			}
 		}
 #else
