@@ -1356,21 +1356,14 @@ void addJacobiMixedNoCheck(E& R, const E& P, const E& Q)
 	E saveP = P;
 	F r, U1, S1, H, H3;
 	F::sqr(r, P.z);
-//	F::sqr(S1, Q.z); // assume S1 = 1
-	S1 = Q.z;
-//	F::mul(U1, P.x, S1);
 	U1 = P.x;
 	F::mul(H, Q.x, r);
 	F::sub(H, H, U1);
-//	F::mul(S1, S1, Q.z);
-//	F::mul(S1, S1, P.y);
 	S1 = P.y;
 	F::mul(r, r, P.z);
 	F::mul(r, r, Q.y);
 	F::sub(r, r, S1);
-//	F::mul(R.z, P.z, Q.z);
-	R.z = P.z;
-	F::mul(R.z, R.z, H);
+	F::mul(R.z, P.z, H);
 	F::sqr(H3, H); // H^2
 	F::sqr(R.y, r); // r^2
 	F::mul(U1, U1, H3); // U1 H^2
