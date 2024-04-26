@@ -533,6 +533,7 @@ Vec getUnitAt(const Vec *x, size_t xN, size_t bitPos)
 	return vor(vpsrlq(x[q], r), vpsllq(x[q+1], bitSize - r));
 }
 
+#if 1
 static inline void split(Unit a[2], Unit b[2], const Unit x[4])
 {
 	/*
@@ -553,6 +554,10 @@ static inline void split(Unit a[2], Unit b[2], const Unit x[4])
 	mcl::bint::mulT<n>(t, t, (const Unit*)Lv);
 	mcl::bint::subT<n>(a, x, t);
 }
+#define SPLIT split
+#else
+#define SPLIT mcl::ec::local::optimizedSplit
+#endif
 
 
 class Montgomery {
@@ -624,7 +629,7 @@ public:
 	}
 };
 
-Montgomery g_mont;
+static Montgomery g_mont;
 
 void rawAdd(Unit *z, const Unit *x, const Unit *y)
 {
@@ -1127,7 +1132,7 @@ struct Ec {
 		Unit a[2], b[2];
 		Ec T;
 		mulLambda(T, P);
-		split(a, b, y);
+		SPLIT(a, b, y);
 		mul(Q, P, a, 2);
 		mul(T, T, b, 2);
 		add(Q, Q, T);
@@ -1300,12 +1305,14 @@ struct FpM {
 	}
 };
 
+#if 0
 FpM FpM::one_;
 FpM FpM::rawOne_;
 FpM FpM::rw_;
 FpM FpM::mR2_;
 FpM FpM::m64to52_;
 FpM FpM::m52to64_;
+#endif
 
 template<class E>
 Vmask isZero(const E& P)
@@ -1691,7 +1698,7 @@ struct EcM {
 		for (size_t i = 0; i < M; i++) {
 			Unit buf[4] = { src[i+M*0], src[i+M*1], src[i+M*2], src[i+M*3] };
 			Unit aa[2], bb[2];
-			split(aa, bb, buf);
+			SPLIT(aa, bb, buf);
 			pa[i+M*0] = aa[0]; pa[i+M*1] = aa[1];
 			pb[i+M*0] = bb[0]; pb[i+M*1] = bb[1];
 		}
@@ -1760,9 +1767,9 @@ struct EcM {
 	}
 };
 
-FpM EcM::b3_;
-EcM EcM::zeroProj_;
-EcM EcM::zeroJacobi_;
+//FpM EcM::b3_;
+//EcM EcM::zeroProj_;
+//EcM EcM::zeroJacobi_;
 
 void init(Montgomery& mont)
 {
@@ -2532,7 +2539,7 @@ void mulVecAVX512(mcl::bn::G1& P, mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n
 			Unit ya[4];
 			mcl::bn::Fr::getOp().fromMont(ya, y[i*8+j].getUnit());
 			Unit a[2], b[2];
-			split(a, b, ya);
+			SPLIT(a, b, ya);
 			py[j+0] = a[0];
 			py[j+8] = a[1];
 			py[j+16] = b[0];
@@ -2558,7 +2565,7 @@ void mulVecAVX512(mcl::bn::G1& P, mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n
 
 void mulVec_naive(mcl::bn::G1& P, const mcl::bn::G1 *x, const mcl::bn::Fr *y, size_t n)
 {
-#if 0
+#if 1
 	using namespace mcl::bn;
 	G1::mul(P, x[0], y[0]);
 	for (size_t i = 1; i < n; i++) {
