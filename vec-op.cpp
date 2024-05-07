@@ -533,32 +533,7 @@ Vec getUnitAt(const Vec *x, size_t xN, size_t bitPos)
 	return vor(vpsrlq(x[q], r), vpsllq(x[q+1], bitSize - r));
 }
 
-#if 1
-static inline void split(Unit a[2], Unit b[2], const Unit x[4])
-{
-	/*
-		z = -0xd201000000010000
-		L = z^2-1 = 0xac45a4010001a40200000000ffffffff
-		r = L^2+L+1 = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
-		s=255
-		v = 0xbe35f678f00fd56eb1fb72917b67f718
-	*/
-	static const uint64_t Lv[] = { 0x00000000ffffffff, 0xac45a4010001a402 };
-	static const uint64_t vv[] = { 0xb1fb72917b67f718, 0xbe35f678f00fd56e };
-	static const size_t n = 128 / mcl::UnitBitSize;
-	Unit t[n*3];
-	mcl::bint::mulNM(t, x, n*2, (const Unit*)vv, n);
-	mcl::bint::shrT<n+1>(t, t+n*2-1, mcl::UnitBitSize-1); // >>255
-	b[0] = t[0];
-	b[1] = t[1];
-	mcl::bint::mulT<n>(t, t, (const Unit*)Lv);
-	mcl::bint::subT<n>(a, x, t);
-}
-#define SPLIT split
-#else
-#define SPLIT mcl::ec::local::optimizedSplit
-#endif
-
+#define SPLIT mcl::ec::local::optimizedSplitRawForBLS12_381
 
 class Montgomery {
 	Unit v_[N];
@@ -2192,7 +2167,8 @@ void mulTest()
 	Ec P1[M], Q1[M];
 	EcM P2, Q2, Q3;
 	const int w = 4;
-	Unit y[w*M];
+	mcl::bn::Fr y[M];
+	Unit ya[w*M];
 	Vec yv[w];
 	P1[0].x.set(g_mx);
 	P1[0].y.set(g_my);
@@ -2216,17 +2192,18 @@ void mulTest()
 	{
 		cybozu::XorShift rg;
 		for (size_t i = 0; i < M; i++) {
-			(*(mcl::bn::Fr*)&y[i*w]).setByCSPRNG(rg);
+			y[i].setByCSPRNG(rg);
+			y[i].getUnitArray(ya+i*w);
 		}
 	}
 //	for (size_t i = 0; i < w*M; i++) {
 //		y[i] = i * 0x123456 + 0x345678;
 //	}
-	cvt4Ux8to8Ux4(yv, y);
+	cvt4Ux8to8Ux4(yv, ya);
 	for (size_t i = 0; i < M; i++) {
-		Ec::mul(Q1[i], P1[i], y+i*w, w);
+		Ec::mul(Q1[i], P1[i], ya+i*w, w);
 		Ec t;
-		Ec::mulGLV(t, P1[i], y+i*w);
+		Ec::mulGLV(t, P1[i], ya+i*w);
 		if (Q1[i] != t) {
 			printf("ERRRR %zd\n", i);
 			Q1[i].put("Q1");
@@ -2257,25 +2234,33 @@ void mulTest()
 	CYBOZU_BENCH_C("EcM::mulGLV:jacobi", 10000, EcM::mulGLV<false>, P2, P2, yv);
 	{
 		using namespace mcl;
-		const bn::Fr& ya = *(const bn::Fr*)y;
 		bn::G1 xa;
 		bn::hashAndMapToG1(xa, "abc", 3);
-		CYBOZU_BENCH_C("G1::mul", 10000, bn::G1::mul, xa, xa, ya);
+		CYBOZU_BENCH_C("G1::mul", 10000, bn::G1::mul, xa, xa, y[0]);
 		bn::Fp a = xa.x, b = xa.y;
 		CYBOZU_BENCH_C("Fp::mul", 10000, bn::Fp::mul, a, b, a);
 		CYBOZU_BENCH_C("Fp::inv", 10000, bn::Fp::inv, a, a);
-		bn::G1 P[8], Q[8];
+		bn::G1 P[8], Q[8], R[8];
 		P2.getG1(P);
 		CYBOZU_BENCH_C("EcM::mulGLVbn", 10000, EcM::mulGLVbn, Q, P, yv);
 		for (size_t i = 0; i < 8; i++) {
-			bn::G1 R;
-			mpz_class t;
-			mcl::gmp::setArray(t, y+i*w, w);
-			bn::G1::mul(R, P[i], t);
-			if (Q[i] != R) {
-				printf("err TTT i=%zd\n", i);
+			bn::G1 T;
+			bn::G1::mul(T, P[i], y[i]);
+			if (Q[i] != T) {
+				printf("err3 TTT i=%zd\n", i);
 			}
 		}
+		P2.getG1(R);
+		bn::G1::mulEach(R, y, M);
+		for (size_t i = 0; i < M; i++) {
+			if (Q[i] != R[i]) {
+				printf("err4 i=%zd\n", i);
+				printf("Q %s\n", Q[i].getStr(16).c_str());
+				printf("R %s\n", R[i].getStr(16).c_str());
+				exit(1);
+			}
+		}
+		CYBOZU_BENCH_C("G1::mulEach", 10000, bn::G1::mulEach, R, y, M);
 	}
 }
 
@@ -2725,6 +2710,7 @@ int main(int argc, char *argv[])
 		mpz_class my = mpz_rand(rg);
 		testAll(mx, my);
 	}
+	mulTest();
 	ecTest();
 	cvtEcTest();
 	cvtFpTest();
@@ -2733,7 +2719,6 @@ int main(int argc, char *argv[])
 	miscTest();
 	powTest();
 	GLVtest();
-	mulTest();
 	mtTest(xn, onlyBench);
 	puts("ok");
 }
