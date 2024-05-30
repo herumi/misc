@@ -1280,7 +1280,7 @@ struct FpM {
 	}
 };
 
-#if 0
+#if 1
 FpM FpM::one_;
 FpM FpM::rawOne_;
 FpM FpM::rw_;
@@ -1742,9 +1742,11 @@ struct EcM {
 	}
 };
 
-//FpM EcM::b3_;
-//EcM EcM::zeroProj_;
-//EcM EcM::zeroJacobi_;
+#if 1
+FpM EcM::b3_;
+EcM EcM::zeroProj_;
+EcM EcM::zeroJacobi_;
+#endif
 
 void init(Montgomery& mont)
 {

@@ -101,3 +101,65 @@ constexpr auto abs(const basic_simd<fixed_point_16s8, Abi>& v) {
     return /* special-abs-impl */;
 }
 ```
+
+### AVX2による例
+```cpp
+template<typename Abi>
+constexpr auto simd_binary_op(const xvec::basic_simd<saturating_int16, Abi>& lhs,
+                              const xvec::basic_simd<saturating_int16, Abi>& rhs,
+                              std::plus<>)
+{
+    auto r = _mm256_adds_epi16(static_cast<__m256i>(lhs), static_cast<__m256i>(rhs));
+    return basic_simd<saturating_int16, Abi>(r);
+}
+```
+
+```cpp
+auto add(simd<saturating_int16> lhs,
+         simd<saturating_int16> rhs)
+{
+    return lhs + rhs;
+}
+```
+↓
+
+```asm
+add([...]): #
+        vpaddsw ymm0, ymm0, ymm1
+        ret
+```
+
+```cpp
+auto compound_add(simd<saturating_int16> lhs,
+                  simd<saturating_int16> rhs)
+{
+    lhs += rhs;
+    return lhs;
+}
+```
+↓
+```asm
+compound_add([...]): #
+        vpaddsw ymm0, ymm0, ymm1
+        ret
+```
+
+```cpp
+auto reduce_add(simd<saturating_int16> v)
+{
+    return reduce(v, std::plus<>{});
+}
+```
+↓
+```asm
+reduce_add([...]):
+        vextracti128    xmm1, ymm0, 1
+        vpaddsw xmm0, xmm0, xmm1
+        vpshufd xmm1, xmm0, 238
+        vpaddsw xmm0, xmm0, xmm1
+        vpshufd xmm1, xmm0, 85
+        vpaddsw xmm0, xmm0, xmm1
+        vpextrw ecx, xmm0, 1
+        vmovd   eax, xmm0
+        ret
+```
