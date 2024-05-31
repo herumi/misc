@@ -5,6 +5,7 @@
 ## [std::simd](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p1928r8.pdf)
 - 2018年 `std::experimental::simd<T>`の提案(TS)
 - 2019 TS2のフィードバック(様々な議論)
+- C++26にむけて進められている
 - 算術型, 複素数型などに対応
 
 ## 拡張
