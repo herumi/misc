@@ -1,4 +1,4 @@
-CFLAGS=-g -Wall -Wextra -mavx512f -mavx512ifma
+CFLAGS=-g -Wall -Wextra -mavx512f -mavx512ifma -I ../../mcl/include
 
 test: test.exe
 	./$<

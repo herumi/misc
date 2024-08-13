@@ -13,12 +13,19 @@ def gen_select(mode):
       vmovups(zm1, ptr(py))
       vpcmpeqq(k1, zm0, zm1)
       if mode == 0:
+        # faster
         for i in range(N):
           vmovdqu64(zm0, ptr(px + 64*i))
           vmovdqu64(zm0|k1, ptr(py + 64*i))
           vmovdqu64(ptr(pz + 64*i), zm0)
       else:
-        vpxorq(zm0, zm0, zm0)
+        vpternlogq(zm2|k1|T_z, zm2, zm2, 0xff)
+        for i in range(N):
+          vmovdqu64(zm0, ptr(px + 64*i))
+          vpandq(zm0, zm0, zm2)
+          vpandq(zm1, zm2, ptr(py + 64*i))
+          vporq(zm0, zm0, zm1)
+          vmovdqu64(ptr(px + 64*i), zm0)
 
       vzeroupper()
       ret()
@@ -33,7 +40,7 @@ def gen_misc():
       vmovups(zm0, ptr(px))
       vmovups(zm1, ptr(py))
       vpcmpeqq(k1, zm0, zm1)
-      vpternlogq(zm0|k1|T_z, zm0, zm0, 0xff)
+      vpternlogq(zm0|k1|T_z, zm0, zm0, 0xff) # zm0 = k1 ? -1 : 0
       vmovups(ptr(sf.p[0]), zm0)
       ret()
 
