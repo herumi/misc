@@ -1,11 +1,11 @@
 #!/bin/sh
 #objdump -CS -M intel --no-show-raw-insn ./a.out > a.asm
-PYTHON=python
+PYTHON=python3
 g++ t.cpp -m32
 ./a.out t.cpp > a.txt
 $PYTHON embed-str.py a.out
 
-$PYTHON embed-str.py a.out -o emb -s hello
+$PYTHON embed-str.py a.out -o emb -s 'BinaryHacksRebooted'
 $PYTHON embed-str.py emb
 
 chmod +x emb
