@@ -220,5 +220,5 @@ pub fn main() void {
     const sig = sk.sign(msg);
     std.debug.print("verify={}\n", .{pk.verify(&sig, msg)});
     std.debug.print("verify={}\n", .{pk.verify(&sig, "abc")});
-	multiSig();
+    multiSig();
 }
