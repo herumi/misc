@@ -7,6 +7,11 @@ const bls = @cImport({
     @cInclude("bls/bls384_256.h");
 });
 
+pub fn init() bool {
+    const res = bls.blsInit(bls.MCL_BLS12_381, bls.MCLBN_COMPILED_TIME_VAR);
+    return res == 0;
+}
+
 const SecretKey = struct {
     v_: bls.blsSecretKey,
     pub fn setByCSPRNG(self: *SecretKey) void {
