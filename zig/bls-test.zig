@@ -8,39 +8,80 @@ const bls = @cImport({
 });
 
 const SecretKey = struct {
-    _v: bls.blsSecretKey,
+    v_: bls.blsSecretKey,
     pub fn setByCSPRNG(self: *SecretKey) void {
-        const ret = bls.mclBnFr_setByCSPRNG(&self._v.v);
+        const ret = bls.mclBnFr_setByCSPRNG(&self.v_.v);
         if (ret != 0) @panic("mclBnFr_setByCSPRNG");
     }
     // Returns a zero-length slice if the function fails.
-    pub fn serialize(self: *SecretKey, buf: *[]u8) []u8 {
-        const len: usize = @intCast(bls.blsSecretKeySerialize(buf.*.ptr, buf.*.len, &self._v));
+    pub fn serialize(self: *const SecretKey, buf: *[]u8) []u8 {
+        const len: usize = @intCast(bls.blsSecretKeySerialize(buf.*.ptr, buf.*.len, &self.v_));
         return buf.*[0..len];
     }
     pub fn deserialize(self: *SecretKey, buf: []const u8) bool {
-        const len: usize = @intCast(bls.blsSecretKeyDeserialize(&self._v, buf.ptr, buf.len));
+        const len: usize = @intCast(bls.blsSecretKeyDeserialize(&self.v_, buf.ptr, buf.len));
         std.debug.print("len={} buf.len={}\n", .{ len, buf.len });
         return len > 0 and len == buf.len;
     }
     // set (buf[] as littleEndian) % r
     pub fn setLittleEndianMod(self: *SecretKey, buf: []const u8) void {
-        const r = bls.mclBnFr_setLittleEndianMod(&self._v.v, buf.ptr, buf.len);
+        const r = bls.mclBnFr_setLittleEndianMod(&self.v_.v, buf.ptr, buf.len);
         if (r < 0) @panic("mclBnFr_setLittleEndianMod");
     }
     // set (buf[] as bigEndian) % r
     pub fn setBigEndianMod(self: *SecretKey, buf: []const u8) void {
-        const r = bls.mclBnFr_setBigEndianMod(&self._v.v, buf.ptr, buf.len);
+        const r = bls.mclBnFr_setBigEndianMod(&self.v_.v, buf.ptr, buf.len);
         if (r < 0) @panic("mclBnFr_setBigEndianMod");
     }
     pub fn setStr(self: *SecretKey, s: []const u8, base: i32) bool {
-        const r = bls.mclBnFr_setStr(&self._v.v, s.ptr, s.len, base);
+        const r = bls.mclBnFr_setStr(&self.v_.v, s.ptr, s.len, base);
         return r == 0;
     }
-    // return zero size slice if serialize fails.
-    pub fn getStr(self: *SecretKey, s: *[]u8, base: i32) []u8 {
-        const len: usize = @intCast(bls.mclBnFr_getStr(s.*.ptr, s.*.len, &self._v.v, base));
+    // Returns a zero-length slice if the function fails.
+    pub fn getStr(self: *const SecretKey, s: *[]u8, base: i32) []u8 {
+        const len: usize = @intCast(bls.mclBnFr_getStr(s.*.ptr, s.*.len, &self.v_.v, base));
         return s.*[0..len];
+    }
+    pub fn getPublicKey(self: *const SecretKey) PublicKey {
+        var pk: PublicKey = undefined;
+        bls.blsGetPublicKey(&pk.v_, &self.v_);
+        return pk;
+    }
+    pub fn sign(self: *const SecretKey, msg: []const u8) Signature {
+        var sig: Signature = undefined;
+        bls.blsSign(&sig.v_, &self.v_, msg.ptr, msg.len);
+        return sig;
+    }
+};
+
+const PublicKey = struct {
+    v_: bls.blsPublicKey,
+    // Returns a zero-length slice if the function fails.
+    pub fn serialize(self: *const PublicKey, buf: *[]u8) []u8 {
+        const len: usize = @intCast(bls.blsPublicKeySerialize(buf.*.ptr, buf.*.len, &self.v_));
+        return buf.*[0..len];
+    }
+    pub fn deserialize(self: *PublicKey, buf: []const u8) bool {
+        const len: usize = @intCast(bls.blsPublicKeyDeserialize(&self.v_, buf.ptr, buf.len));
+        std.debug.print("len={} buf.len={}\n", .{ len, buf.len });
+        return len > 0 and len == buf.len;
+    }
+    pub fn verify(self: *const PublicKey, sig: *const Signature, msg: []const u8) bool {
+        return bls.blsVerify(&sig.v_, &self.v_, msg.ptr, msg.len) == 1;
+    }
+};
+
+const Signature = struct {
+    v_: bls.blsSignature,
+    // Returns a zero-length slice if the function fails.
+    pub fn serialize(self: *const Signature, buf: *[]u8) []u8 {
+        const len: usize = @intCast(bls.blsSignatureSerialize(buf.*.ptr, buf.*.len, &self.v_));
+        return buf.*[0..len];
+    }
+    pub fn deserialize(self: *Signature, buf: []const u8) bool {
+        const len: usize = @intCast(bls.blsSignatureDeserialize(&self.v_, buf.ptr, buf.len));
+        std.debug.print("len={} buf.len={}\n", .{ len, buf.len });
+        return len > 0 and len == buf.len;
     }
 };
 
@@ -75,4 +116,10 @@ pub fn main() void {
     if (sec.setStr("1234567890123", 10)) {
         std.debug.print("sec={s}\n", .{sec.getStr(&buf, 10)});
     }
+    const pk = sec.getPublicKey();
+    std.debug.print("pk={}\n", .{std.fmt.fmtSliceHexLower(pk.serialize(&buf))});
+    const msg = "abcdefg";
+    const sig = sec.sign(msg);
+    std.debug.print("verify={}\n", .{pk.verify(&sig, msg)});
+    std.debug.print("verify={}\n", .{pk.verify(&sig, "abc")});
 }

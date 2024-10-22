@@ -1,4 +1,4 @@
-CFLAGS=-g -Wall -Wextra -mavx512f -mavx512ifma -I ../../mcl/include
+CFLAGS=-g -Wall -Wextra -mavx512f -mavx512ifma -I ../../mcl/include -Ofast
 
 test: test.exe
 	./$<

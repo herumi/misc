@@ -11,7 +11,7 @@ typedef std::vector<int> IntVec;
 void init(IntVec& v, cybozu::XorShift& rg)
 {
 	for (size_t i = 0; i < v.size(); i++) {
-		v[i] = rg.get32() % 1000;
+		v[i] = rg.get32();
 	}
 }
 

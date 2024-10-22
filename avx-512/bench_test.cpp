@@ -70,6 +70,37 @@ std::ostream& operator<<(std::ostream& os, const Vec& x)
 	return os << toStr(x);
 }
 
+void split52bit(Vec y[8], const Vec x[6])
+{
+#if 1
+	const Vec m = vpbroadcastq((uint64_t(1)<<52)-1);
+	// and(or(A, B), C) = andCorAB = 0xA8
+	const uint8_t imm = 0xA8;
+	y[0] = vpandq(x[0], m);
+	y[1] = vpternlogq<imm>(vpsrlq(x[0], 52), vpsllq(x[1], 12), m);
+	y[2] = vpternlogq<imm>(vpsrlq(x[1], 40), vpsllq(x[2], 24), m);
+	y[3] = vpternlogq<imm>(vpsrlq(x[2], 28), vpsllq(x[3], 36), m);
+	y[4] = vpternlogq<imm>(vpsrlq(x[3], 16), vpsllq(x[4], 48), m);
+	y[5] = vpandq(vpsrlq(x[4], 4), m);
+	y[6] = vpternlogq<imm>(vpsrlq(x[4], 56), vpsllq(x[5], 8), m);
+	y[7] = vpsrlq(x[5], 44);
+#else
+	const Vec m = vpbroadcastq((uint64_t(1)<<52)-1);
+	y[0] = vpandq(x[0], m);
+	y[1] = vpandq(vporq(vpsrlq(x[0], 52), vpsllq(x[1], 12)), m);
+	y[2] = vpandq(vporq(vpsrlq(x[1], 40), vpsllq(x[2], 24)), m);
+	y[3] = vpandq(vporq(vpsrlq(x[2], 28), vpsllq(x[3], 36)), m);
+	y[4] = vpandq(vporq(vpsrlq(x[3], 16), vpsllq(x[4], 48)), m);
+	y[5] = vpandq(vpsrlq(x[4], 4), m);
+	y[6] = vpandq(vporq(vpsrlq(x[4], 56), vpsllq(x[5], 8)), m);
+	y[7] = vpsrlq(x[5], 44);
+#endif
+}
+
+void split52bit2(Vec y[8], const Vec x[6])
+{
+}
+
 CYBOZU_TEST_AUTO(select)
 {
 	Vec z[N], w[N], x[N], y[N];
