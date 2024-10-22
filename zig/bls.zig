@@ -1,5 +1,3 @@
-// mkdir work
-// cd work
 // git clone -b release https://github.com/herumi/bls-eth-go-binary
 // cd bls-eth-go-binary
 // copy this file into bls
