@@ -1,3 +1,10 @@
+// mkdir work
+// cd work
+// git clone -b release https://github.com/herumi/bls-eth-go-binary
+// cd bls-eth-go-binary
+// copy this file into bls
+// zig build-exe bls.zig -I bls/include/ -L bls/lib/linux/amd64/ -l bls384_256 -l stdc++ -femit-bin=bls.exe && ./bls.exe
+
 const std = @import("std");
 const bls = @cImport({
     @cDefine("BLS_ETH", "");
@@ -6,6 +13,8 @@ const bls = @cImport({
     @cDefine("MCLBN_COMPILED_TIME_VAR", "246");
     @cInclude("bls/bls384_256.h");
 });
+
+pub const MSG_SIZE = 32;
 
 pub fn init() bool {
     const res = bls.blsInit(bls.MCL_BLS12_381, bls.MCLBN_COMPILED_TIME_VAR);
@@ -57,6 +66,10 @@ const SecretKey = struct {
         bls.blsSign(&sig.v_, &self.v_, msg.ptr, msg.len);
         return sig;
     }
+	pub fn add(self: *SecretKey, rhs: *const SecretKey) void {
+		bls.blsSecretKeyAdd(&self.v_, &rhs.v_);
+	}
+
 };
 
 const PublicKey = struct {
@@ -74,6 +87,9 @@ const PublicKey = struct {
     pub fn verify(self: *const PublicKey, sig: *const Signature, msg: []const u8) bool {
         return bls.blsVerify(&sig.v_, &self.v_, msg.ptr, msg.len) == 1;
     }
+	pub fn add(self: *PublicKey, rhs: *const PublicKey) void {
+		bls.blsPublicKeyAdd(&self.v_, &rhs.v_);
+	}
 };
 
 const Signature = struct {
@@ -88,7 +104,86 @@ const Signature = struct {
         std.debug.print("len={} buf.len={}\n", .{ len, buf.len });
         return len > 0 and len == buf.len;
     }
+	pub fn add(self: *Signature, rhs: *const Signature) void {
+		bls.blsSignatureAdd(&self.v_, &rhs.v_);
+	}
+	pub fn fastAggregateVerify(self: *const Signature, pubVec: []const PublicKey, msg: []const u8) bool {
+		if (pubVec.len == 0) @panic("fastAggregateVerify zero-size pubVec");
+		return bls.blsFastAggregateVerify(&self.v_, &pubVec[0].v_, pubVec.len, msg.ptr, msg.len) == 1;
+	}
+	pub fn aggregate(self: *Signature, sigVec: []const Signature) bool {
+		if (sigVec.len == 0) return false;
+		bls.blsAggregateSignature(&self.v_, &sigVec[0].v_, sigVec.len);
+		return true;
+	}
+	pub fn aggregateVerifyNocheck(self: *const Signature, pubVec: []const PublicKey, msgVec: []const [MSG_SIZE]u8) bool {
+		const n = pubVec.len;
+		if (n == 0 or n != msgVec.len) return false;
+		return bls.blsAggregateVerifyNoCheck(&self.v_,  &pubVec[0].v_, &msgVec[0][0], MSG_SIZE, n) == 1;
+	}
 };
+
+fn multiSig() void {
+	const N = 30;
+	var skVec: [N]SecretKey = undefined;
+	var pkVec: [N]PublicKey = undefined;
+	var sigVec: [N]Signature = undefined;
+	var sig2Vec: [N]Signature = undefined;
+	var msgVec: [N][MSG_SIZE]u8 = undefined;
+	const msg = "doremifa";
+	for (0..N) |i| {
+		skVec[i].setByCSPRNG();
+		pkVec[i] = skVec[i].getPublicKey();
+		sigVec[i] = skVec[i].sign(msg);
+		if (!pkVec[i].verify(&sigVec[i], msg)) {
+			std.debug.print("ERR verify i={}\n", .{i});
+			return;
+		}
+		msgVec[i][0] = @intCast(i & 255);
+		msgVec[i][1] = @intCast((i>>8) & 255);
+		@memset(msgVec[i][2..], 0);
+		sig2Vec[i] = skVec[i].sign(&msgVec[i]);
+	}
+	var agg: Signature = undefined;
+	if (!agg.aggregate(&sigVec)) {
+		std.debug.print("ERR aggregate\n", .{});
+		return;
+	}
+	// valid
+	if (agg.fastAggregateVerify(&pkVec, msg)) {
+		std.debug.print("OK fastAggregateVerify\n", .{});
+	} else {
+		std.debug.print("ERR fastAggregateVerify\n", .{});
+		return;
+	}
+	// invalid
+	if (!agg.fastAggregateVerify(pkVec[0..N-1], msg)) {
+		std.debug.print("OK fastAggregateVerify for invalid pk\n", .{});
+	} else {
+		std.debug.print("ERR fastAggregateVerify\n", .{});
+		return;
+	}
+
+	if (!agg.aggregate(&sig2Vec)) {
+		std.debug.print("ERR aggregate2\n", .{});
+		return;
+	}
+	// valid
+	if (agg.aggregateVerifyNocheck(&pkVec, &msgVec)) {
+		std.debug.print("OK aggregateVerifyNocheck\n", .{});
+	} else {
+		std.debug.print("ERR aggregateVerifyNocheck\n", .{});
+		return;
+	}
+	// invalid
+	msgVec[0][0] += 1;
+	if (!agg.aggregateVerifyNocheck(&pkVec, &msgVec)) {
+		std.debug.print("OK aggregateVerifyNocheck for invalid msg\n", .{});
+	} else {
+		std.debug.print("ERR aggregateVerifyNocheck\n", .{});
+		return;
+	}
+}
 
 pub fn main() void {
     {
@@ -99,32 +194,33 @@ pub fn main() void {
     std.debug.print("size Fr={}\n", .{bls.MCLBN_FR_UNIT_SIZE});
     std.debug.print("size Fp={}\n", .{bls.MCLBN_FP_UNIT_SIZE});
     std.debug.print("size SecretKey={}\n", .{@sizeOf(bls.blsSecretKey)});
-    var sec: SecretKey = undefined;
-    var sec2: SecretKey = undefined;
-    sec.setByCSPRNG();
+    var sk: SecretKey = undefined;
+    var sk2: SecretKey = undefined;
+    sk.setByCSPRNG();
     var buf128: [128]u8 = undefined;
     var buf: []u8 = &buf128;
 
-    const cbuf: []u8 = sec.serialize(&buf);
-    std.debug.print("sec:serialize={}\n", .{std.fmt.fmtSliceHexLower(cbuf)});
-    if (sec2.deserialize(cbuf)) {
-        std.debug.print("sec2:serialize={}\n", .{std.fmt.fmtSliceHexLower(sec2.serialize(&buf))});
+    const cbuf: []u8 = sk.serialize(&buf);
+    std.debug.print("sk:serialize={}\n", .{std.fmt.fmtSliceHexLower(cbuf)});
+    if (sk2.deserialize(cbuf)) {
+        std.debug.print("sk2:serialize={}\n", .{std.fmt.fmtSliceHexLower(sk2.serialize(&buf))});
     } else {
-        std.debug.print("ERR sec2:serialize\n", .{});
+        std.debug.print("ERR sk2:serialize\n", .{});
     }
-    std.debug.print("sec:getStr(10)={s}\n", .{sec.getStr(&buf, 10)});
-    std.debug.print("sec:getStr(16)=0x{s}\n", .{sec.getStr(&buf, 16)});
-    sec.setLittleEndianMod(@as([]const u8, &.{ 1, 2, 3, 4, 5 }));
-    std.debug.print("sec={s}\n", .{sec.getStr(&buf, 16)});
-    sec.setBigEndianMod(@as([]const u8, &.{ 1, 2, 3, 4, 5 }));
-    std.debug.print("sec={s}\n", .{sec.getStr(&buf, 16)});
-    if (sec.setStr("1234567890123", 10)) {
-        std.debug.print("sec={s}\n", .{sec.getStr(&buf, 10)});
+    std.debug.print("sk:getStr(10)={s}\n", .{sk.getStr(&buf, 10)});
+    std.debug.print("sk:getStr(16)=0x{s}\n", .{sk.getStr(&buf, 16)});
+    sk.setLittleEndianMod(@as([]const u8, &.{ 1, 2, 3, 4, 5 }));
+    std.debug.print("sk={s}\n", .{sk.getStr(&buf, 16)});
+    sk.setBigEndianMod(@as([]const u8, &.{ 1, 2, 3, 4, 5 }));
+    std.debug.print("sk={s}\n", .{sk.getStr(&buf, 16)});
+    if (sk.setStr("1234567890123", 10)) {
+        std.debug.print("sk={s}\n", .{sk.getStr(&buf, 10)});
     }
-    const pk = sec.getPublicKey();
+    const pk = sk.getPublicKey();
     std.debug.print("pk={}\n", .{std.fmt.fmtSliceHexLower(pk.serialize(&buf))});
     const msg = "abcdefg";
-    const sig = sec.sign(msg);
+    const sig = sk.sign(msg);
     std.debug.print("verify={}\n", .{pk.verify(&sig, msg)});
     std.debug.print("verify={}\n", .{pk.verify(&sig, "abc")});
+	multiSig();
 }
