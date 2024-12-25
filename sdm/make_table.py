@@ -65,7 +65,7 @@ cmpTbl = ['eq', 'lt', 'le', 'unord', 'neq', 'nlt', 'nle', 'ord',
   'eq_us', 'nge_uq', 'ngt_uq', 'false_os', 'neq_os', 'ge_oq', 'gt_oq', 'true_us'
 ]
 cmpArgSet = {('k', 'xmm', 'm128'),
-            ('k', 'ymm', 'm256)'),
+            ('k', 'ymm', 'm256'),
             ('k', 'zmm', 'm512'),
             ('xmm', 'xmm', 'm128'),
             ('ymm', 'ymm', 'm256')}
