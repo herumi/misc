@@ -8,6 +8,8 @@ void getmant0(float *, const float *x);
 void getmant1(float *, const float *x);
 void getmant2(float *, const float *x);
 void getmant3(float *, const float *x);
+void vperm1(float *, const float *x, const uint32_t *idx);
+void vperm2(float *, const float *x, const uint32_t *idx);
 
 /*
 out[0] = vrndscaleps(x)
@@ -155,10 +157,30 @@ void vreduce_test()
 	}
 }
 
+void vpermps_test()
+{
+	puts("vpermps_test");
+	const size_t N = 16;
+	float x[N], y1[N], y2[N];
+	uint32_t idx[N];
+	for (size_t i = 0; i < N; i++) {
+		x[i] = float(i);
+		idx[i] = ((i ^ 11) + 13) % N;
+		printf("%d ", idx[i]);
+	}
+	printf("\n");
+	vperm1(y1, x, idx);
+	vperm2(y2, x, idx);
+	for (size_t i = 0; i < 8; i++) {
+		printf("%2zd %4.1f %4.1f %c\n", i, y1[i], y2[i], y1[i] == y2[i] ? 'o' : 'x');
+	}
+}
+
 int main()
 {
 	vreduce_test();
 	getmant_test();
+	vpermps_test();
 	puts("ok");
 }
 
