@@ -1,0 +1,69 @@
+Linux
+./main1.exe
+initMain
+X1 cstr
+X2 cstr
+X3 cstr
+initSub1
+initSub2
+main
+
+./main2.exe
+initMain
+X1 cstr
+X2 cstr
+X3 cstr
+initSub2
+initSub1
+main
+
+./main3.exe
+initSub1
+initSub2
+initMain
+X1 cstr
+X2 cstr
+X3 cstr
+main
+
+./main4.exe
+initSub2
+initSub1
+initMain
+X1 cstr
+X2 cstr
+X3 cstr
+main
+-----------------------------------------------------------------------------
+Windows
+X1 cstr
+X2 cstr
+X3 cstr
+initMain
+initSub1
+initSub2
+main
+
+X1 cstr
+X2 cstr
+X3 cstr
+initMain
+initSub2
+initSub1
+main
+
+initSub1
+initSub2
+X1 cstr
+X2 cstr
+X3 cstr
+initMain
+main
+
+initSub2
+initSub1
+X1 cstr
+X2 cstr
+X3 cstr
+initMain
+main
