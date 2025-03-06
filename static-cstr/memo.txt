@@ -31,28 +31,28 @@ main              main
 
 sub1 sub2 main
 ./main3.exe
-initSub1          sub1 X1 cstr
-sub1 X1 cstr   sub1 X2 cstr
+initSub1          initMain
+sub1 X1 cstr   initSub2
 sub1 X2 cstr   initSub1
-initSub2         sub2 X1 cstr
-sub2 X1 cstr   sub2 X2 cstr
-sub2 X2 cstr   initSub2
-initMain         X1 cstr
-X1 cstr            X2 cstr
-X2 cstr            X3 cstr
-X3 cstr            initMain
+initSub2          X1 cstr
+sub2 X1 cstr   X2 cstr
+sub2 X2 cstr   X3 cstr
+initMain          sub2 X1 cstr
+X1 cstr            sub2 X2 cstr
+X2 cstr            sub1 X1 cstr
+X3 cstr            sub1 X2 cstr
 main               main
 
 sub2 sub1 main
 ./main4.exe
-initSub2         sub2 X1 cstr
-sub2 X1 cstr  sub2 X2 cstr
-sub2 X2 cstr  initSub2
-initSub1         sub1 X1 cstr
-sub1 X1 cstr  sub1 X2 cstr
-sub1 X2 cstr  initSub1
-initMain         X1 cstr
-X1 cstr           X2 cstr
-X2 cstr           X3 cstr
-X3 cstr           initMain
+initSub2         initSub2
+sub2 X1 cstr   initSub1
+sub2 X2 cstr   initMain
+initSub1         sub2 X1 cstr
+sub1 X1 cstr  sub2 X2 cstr
+sub1 X2 cstr  sub1 X1 cstr
+initMain         sub1 X2 cstr
+X1 cstr           X1 cstr
+X2 cstr           X2 cstr
+X3 cstr           X3 cstr
 main              main
