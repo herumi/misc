@@ -6,6 +6,12 @@
 	#define MCL_ATTRIBUTE
 #endif
 
+namespace {
+
+static struct X1 {
+	X1() { puts("sub1 X1 cstr"); }
+} x1;
+
 static void MCL_ATTRIBUTE initSub2()
 {
 	puts("initSub2");
@@ -16,3 +22,9 @@ static void MCL_ATTRIBUTE initSub2()
 __declspec(allocate(".CRT$XCU")) void(*ptr_initSub2)() = initSub2;
 #endif
 
+static struct X2 {
+	X2() { puts("sub2 X2 cstr"); }
+} x2;
+
+
+}

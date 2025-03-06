@@ -1,69 +1,51 @@
-Linux
-./main1.exe
-initMain
-X1 cstr
-X2 cstr
-X3 cstr
-initSub1
-initSub2
-main
+Linux                Windows
+initMain            X1 cstr
+X1 cstr              X2 cstr
+X2 cstr              X3 cstr
+X3 cstr              initMain
+initSub1            sub2 X1 cstr
+sub2 X1 cstr     sub2 X2 cstr
+sub2 X2 cstr     initSub1
+initSub2            sub1 X1 cstr
+sub1 X1 cstr     sub2 X2 cstr
+sub2 X2 cstr     initSub2
+main                 main
 
 ./main2.exe
-initMain
-X1 cstr
-X2 cstr
-X3 cstr
-initSub2
-initSub1
-main
+initMain         X1 cstr
+X1 cstr           X2 cstr
+X2 cstr           X3 cstr
+X3 cstr           initMain
+initSub2         sub1 X1 cstr
+sub1 X1 cstr  sub2 X2 cstr
+sub2 X2 cstr  initSub2
+initSub1         sub2 X1 cstr
+sub2 X1 cstr  sub2 X2 cstr
+sub2 X2 cstr  initSub1
+main              main
 
 ./main3.exe
-initSub1
-initSub2
-initMain
-X1 cstr
-X2 cstr
-X3 cstr
-main
+initSub1          sub2 X1 cstr
+sub2 X1 cstr   sub2 X2 cstr
+sub2 X2 cstr   initSub1
+iinitSub2         sub1 X1 cstr
+sub1 X1 cstr   sub2 X2 cstr
+sub2 X2 cstr   initSub2
+iinitMain         X1 cstr
+X1 cstr            X2 cstr
+X2 cstr            X3 cstr
+X3 cstr            initMain
+main               main
 
 ./main4.exe
-initSub2
-initSub1
-initMain
-X1 cstr
-X2 cstr
-X3 cstr
-main
------------------------------------------------------------------------------
-Windows
-X1 cstr
-X2 cstr
-X3 cstr
-initMain
-initSub1
-initSub2
-main
-
-X1 cstr
-X2 cstr
-X3 cstr
-initMain
-initSub2
-initSub1
-main
-
-initSub1
-initSub2
-X1 cstr
-X2 cstr
-X3 cstr
-initMain
-main
-
-initSub2
-initSub1
-X1 cstr
-X2 cstr
-X3 cstr
-initMain
-main
+initSub2         sub1 X1 cstr
+sub1 X1 cstr  sub2 X2 cstr
+sub2 X2 cstr  initSub2
+initSub1         sub2 X1 cstr
+sub2 X1 cstr  sub2 X2 cstr
+sub2 X2 cstr  initSub1
+initMain         X1 cstr
+X1 cstr           X2 cstr
+X2 cstr           X3 cstr
+X3 cstr           initMain
+main              main
