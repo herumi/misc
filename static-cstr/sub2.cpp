@@ -9,7 +9,7 @@
 namespace {
 
 static struct X1 {
-	X1() { puts("sub1 X1 cstr"); }
+	X1() { puts("sub2 X1 cstr"); }
 } x1;
 
 static void MCL_ATTRIBUTE initSub2()

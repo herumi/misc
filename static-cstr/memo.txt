@@ -1,49 +1,56 @@
-Linux                Windows
+main sub1 sub2
+gcc                   VC
 initMain            X1 cstr
 X1 cstr              X2 cstr
 X2 cstr              X3 cstr
 X3 cstr              initMain
-initSub1            sub2 X1 cstr
+initSub1            sub1 X1 cstr
+sub1 X1 cstr     sub1 X2 cstr
+sub1 X2 cstr     initSub1
+initSub2            sub2 X1 cstr
 sub2 X1 cstr     sub2 X2 cstr
-sub2 X2 cstr     initSub1
-initSub2            sub1 X1 cstr
-sub1 X1 cstr     sub2 X2 cstr
 sub2 X2 cstr     initSub2
 main                 main
 
+gccは(attribute→C++ cstr)をobj順
+VCは(C++ cstr→attribute)をobj順
+
+main sub2 sub1
 ./main2.exe
 initMain         X1 cstr
 X1 cstr           X2 cstr
 X2 cstr           X3 cstr
 X3 cstr           initMain
-initSub2         sub1 X1 cstr
-sub1 X1 cstr  sub2 X2 cstr
-sub2 X2 cstr  initSub2
-initSub1         sub2 X1 cstr
+initSub2         sub2 X1 cstr
 sub2 X1 cstr  sub2 X2 cstr
-sub2 X2 cstr  initSub1
+sub2 X2 cstr  initSub2
+initSub1         sub1 X1 cstr
+sub1 X1 cstr  sub1 X2 cstr
+sub1 X2 cstr  initSub1
 main              main
 
+sub1 sub2 main
 ./main3.exe
-initSub1          sub2 X1 cstr
+initSub1          sub1 X1 cstr
+sub1 X1 cstr   sub1 X2 cstr
+sub1 X2 cstr   initSub1
+initSub2         sub2 X1 cstr
 sub2 X1 cstr   sub2 X2 cstr
-sub2 X2 cstr   initSub1
-iinitSub2         sub1 X1 cstr
-sub1 X1 cstr   sub2 X2 cstr
 sub2 X2 cstr   initSub2
-iinitMain         X1 cstr
+initMain         X1 cstr
 X1 cstr            X2 cstr
 X2 cstr            X3 cstr
 X3 cstr            initMain
 main               main
 
+sub2 sub1 main
 ./main4.exe
-initSub2         sub1 X1 cstr
-sub1 X1 cstr  sub2 X2 cstr
-sub2 X2 cstr  initSub2
-initSub1         sub2 X1 cstr
+initSub2         sub2 X1 cstr
 sub2 X1 cstr  sub2 X2 cstr
-sub2 X2 cstr  initSub1
+sub2 X2 cstr  initSub2
+initSub1         sub1 X1 cstr
+sub1 X1 cstr  sub1 X2 cstr
+sub1 X2 cstr  initSub1
 initMain         X1 cstr
 X1 cstr           X2 cstr
 X2 cstr           X3 cstr
