@@ -18,8 +18,8 @@ static void MCL_ATTRIBUTE initSub2()
 }
 
 #ifdef _MSC_VER
-#pragma section(".CRT$XCU", read)
-__declspec(allocate(".CRT$XCU")) void(*ptr_initSub2)() = initSub2;
+#pragma section(".CRT$XCT", read)
+__declspec(allocate(".CRT$XCT")) void(*ptr_initSub2)() = initSub2;
 #endif
 
 static struct X2 {
