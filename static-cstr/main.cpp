@@ -1,16 +1,5 @@
 #include <stdio.h>
-
-#ifndef PRIORITY
-	#define PRIORITY 101
-#endif
-
-#ifdef __GNUC__
-	#define CSTR __attribute__((constructor(PRIORITY)))
-	#define INIT_PRIORITY(x) __attribute__((init_priority(x)))
-#else
-	#define CSTR
-	#define INIT_PRIORITY(x)
-#endif
+#include "common.h"
 
 namespace {
 
