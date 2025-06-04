@@ -1,0 +1,229 @@
+// -fopenmp
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+
+static const uint64_t one = 1;
+static const uint32_t N = 32;
+static const uint64_t M = (one << N) - 1;
+
+#if !defined(_MSC_VER) || defined(__INTEL_COMPILER) || defined(__clang__)
+typedef __attribute__((mode(TI))) unsigned int uint128_t;
+#define MCL_DEFINED_UINT128_T
+#endif
+
+inline uint64_t mulUnit1(uint64_t *pH, uint64_t x, uint64_t y)
+{
+#ifdef MCL_DEFINED_UINT128_T
+	uint128_t t = uint128_t(x) * y;
+	*pH = uint64_t(t >> 64);
+	return uint64_t(t);
+#else
+	return _umul128(x, y, pH);
+#endif
+}
+
+uint32_t ceil_ilog2(uint32_t p)
+{
+	uint32_t a = 0;
+	while ((one << a) < p) a++;
+	return a;
+}
+
+/*
+p : odd
+2^a = p u - e, 0 <= e <= p-1
+(q, r0) : given, 0 <= r0 < p, 0 <= q <= m
+x := p q + r0
+(v, r) := divmod(x u, 2^a)
+Then x u = p q u + r0 u = (2^a + e) q + r0 u = 2^a q + (e q + r0 u)
+y := q e + r0 u.
+If 0 <= y < 2^a, then q = (x u) >> a.
+To satisfy the condition, max(y) = m e + (p-1) u < 2^a.
+Then m e + (2^a + e) - u < 2^a.
+(m+1) e < u.
+*/
+struct MyAlgo {
+	uint32_t p_;
+	uint32_t a_;
+	uint64_t A_;
+	uint64_t u_;
+	void put() const
+	{
+		printf("p=%u(0x%08x) a=%u u=0x%lx\n", p_, p_, a_, u_);
+	}
+	bool init(uint32_t p)
+	{
+		uint32_t m = M / p;
+		uint32_t rmax = M - m * p;
+		for (uint32_t a = 32; a < 64; a++) {
+			uint64_t A = one << a;
+			uint64_t u = (A + p - 1) / p;
+			if ((u >> 33) != 0) continue;
+			uint64_t e = p * u - A;
+//			if (m * e + (p-1) * u < A) {
+			if ((m-1) * e + (p-1) * u < A && m * e + rmax * u < A) {
+				p_ = p;
+				a_ = a;
+				A_ = A;
+				u_ = u;
+				return true;
+			}
+		}
+		return false;
+	}
+	uint32_t divp(uint32_t x) const
+	{
+		if (u_ > 0xffffffff) {
+#if 0
+			uint64_t v = x * (u & 0xffffffff);
+			v >>= 32;
+			v += x;
+			v >>= a-32;
+			return uint32_t(v);
+#else
+#if 0
+			uint64_t H;
+			uint64_t L = mulUnit1(&H, x, u);
+			L >>= a;
+			H <<= (64 - a);
+			return uint32_t(H | L);
+#else
+			uint128_t v = (x * uint128_t(u_)) >> a_;
+			return uint32_t(v);
+#endif
+#endif
+		} else {
+			uint32_t v = uint32_t((x * u_) >> a_);
+			return v;
+		}
+	}
+};
+
+// Division by Invariant Integers using Multiplication. Granlund, Montgomery
+// https://dl.acm.org/doi/10.1145/178243.178249
+struct GM {
+	uint32_t p_;
+	uint32_t l_;
+	uint64_t mH_;
+	uint32_t sh_;
+	void put() const
+	{
+		printf("p=%u(0x%08x) l=%u mH=0x%lx sh=0x%x a=%u\n", p_, p_, l_, mH_, sh_, N + sh_);
+	}
+	bool init(uint32_t p)
+	{
+		uint32_t l = ceil_ilog2(p);
+		uint32_t sh = l;
+		uint64_t a = one << (N+l);
+		uint64_t L = a / p;
+		uint64_t mH = (a + (one << l)) / p;
+		while ((L>>1) < (mH>>1) && sh > 0) {
+			L >>= 1;
+			mH >>= 1;
+			sh--;
+		}
+		p_ = p;
+		l_ = l;
+		mH_ = mH;
+		sh_ = sh;
+		return true;
+	}
+	uint32_t divp(uint32_t x) const
+	{
+		if (mH_ > 0xffffffff) {
+			uint32_t t1 = uint32_t(((mH_ - (M+1)) * x) >> N);
+			uint32_t q = (t1 + ((x - t1) >> 1)) >> (sh_ - 1);
+			return q;
+		} else {
+			uint32_t q = (mH_ * x) >> (N + sh_);
+			return q;
+		}
+	}
+};
+
+template<class Algo>
+void check(const Algo& algo, uint32_t x)
+{
+	uint32_t q = algo.divp(x);
+	uint32_t r = x - q * algo.p_;
+	if (r >= algo.p_) {
+		algo.put();
+		printf("ERR x=%u\n", x);
+		printf("ok=%u err=%u\n", q / algo.p_, q);
+		exit(1);
+	}
+}
+
+template<class Algo>
+void checkAll(const Algo& algo)
+{
+	printf("check p=%u(0x%08x)\n", algo.p_, algo.p_);
+	#pragma omp parallel for
+	for (uint64_t xx = 0; xx <= M; xx++) {
+		uint32_t x = uint32_t(xx);
+		check(algo, x);
+	}
+}
+
+template<class Algo>
+void checkSomeP(const char *name)
+{
+	printf("%s\n", name);
+	const uint32_t tbl[] = { 3, 7, 10, 13, 0x7ffff, 68641, 6864137, 3037079363 };
+	for (size_t i = 0; i < sizeof(tbl)/sizeof(tbl[0]); i++) {
+		uint32_t p = tbl[i];
+		Algo algo;
+		if (algo.init(p)) {
+			algo.put();
+			checkAll(algo);
+		} else {
+			printf("not found p=%u\n", p);
+		}
+	}
+}
+
+int main()
+{
+	checkSomeP<MyAlgo>("MyAlgo");
+//	checkSomeP<GM>("GM");
+
+#if 0
+	puts("check 7");
+	#pragma omp parallel for
+	for (uint32_t x = 0; x <= 0x7fffffff; x++) {
+		uint32_t q1 = x / 7;
+		uint32_t q2 = divp(x);
+		if (q1 != q2) {
+			printf("ERR7 x=%u q1=%u q2=%u\n", x, q1, q2);
+		}
+	}
+	puts("ok");
+#endif
+
+#if 0
+	puts("find diff");
+//	#pragma omp parallel for
+	for (uint32_t p = 3; p <= 0x7fffffff; p += 2) {
+		uint32_t a1 = GM_chooseMultiplier(p);
+		uint32_t a2 = find_a(p);
+		if (a1 != a2) {
+			printf("p=%u a1=%u a2=%u\n", p, a1, a2);
+		}
+	}
+	puts("ok");
+#endif
+
+
+#if 1
+	puts("all check");
+	#pragma omp parallel for
+	for (uint32_t p = 0x7fffffff; p <= 0xfffffffe; p += 2) {
+		MyAlgo algo;
+		if (algo.init(p)) {
+			checkAll(algo);
+		}
+	}
+	puts("ok");
+#endif
+}
