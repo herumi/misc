@@ -1,13 +1,16 @@
 // -fopenmp
 #include <stdio.h>
-#include <stdint.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <inttypes.h>
 
 static const uint64_t one = 1;
 static const uint32_t N = 32;
 static const uint64_t M = (one << N) - 1;
 
-#if !defined(_MSC_VER) || defined(__INTEL_COMPILER) || defined(__clang__)
+#ifdef _MSC_VER
+#include <intrin.h>
+#elif defined(__INTEL_COMPILER) || defined(__clang__)
 typedef __attribute__((mode(TI))) unsigned int uint128_t;
 #define MCL_DEFINED_UINT128_T
 #endif
@@ -59,7 +62,7 @@ struct MyAlgo {
 	MyAlgo() : p_(0), a_(0), A_(0), u_(0) {}
 	void put() const
 	{
-		printf("My p=%u(0x%08x) a=%u u=0x%lx\n", p_, p_, a_, u_);
+		printf("My p=%u(0x%08x) a=%u u=0x%" PRIx64 "\n", p_, p_, a_, u_);
 	}
 	bool init(uint32_t p)
 	{
@@ -84,22 +87,22 @@ struct MyAlgo {
 	uint32_t divp(uint32_t x) const
 	{
 		if (u_ > 0xffffffff) {
-#if 0
-			uint64_t v = x * (u & 0xffffffff);
-			v >>= 32;
-			v += x;
-			v >>= a-32;
+#ifdef MCL_DEFINED_UINT128_T
+			uint128_t v = (x * uint128_t(u_)) >> a_;
 			return uint32_t(v);
 #else
-#if 0
+#if 1
+			uint64_t v = x * (u_ & 0xffffffff);
+			v >>= 32;
+			v += x;
+			v >>= a_-32;
+			return uint32_t(v);
+#else
 			uint64_t H;
 			uint64_t L = mulUnit1(&H, x, u);
 			L >>= a;
 			H <<= (64 - a);
 			return uint32_t(H | L);
-#else
-			uint128_t v = (x * uint128_t(u_)) >> a_;
-			return uint32_t(v);
 #endif
 #endif
 		} else {
@@ -119,7 +122,7 @@ struct GM {
 	uint32_t a_; // same as MyAlgo
 	void put() const
 	{
-		printf("GM p=%u(0x%08x) l=%u mH=0x%lx sh=0x%x a=%u\n", p_, p_, l_, mH_, sh_, a_);
+		printf("GM p=%u(0x%08x) l=%u mH=0x%" PRIx64 " sh=0x%x a=%u\n", p_, p_, l_, mH_, sh_, a_);
 	}
 	bool init(uint32_t p)
 	{
@@ -148,7 +151,7 @@ struct GM {
 			uint32_t q = (t1 + ((x - t1) >> 1)) >> (sh_ - 1);
 			return q;
 		} else {
-			uint32_t q = (mH_ * x) >> (N + sh_);
+			uint32_t q = uint32_t((mH_ * x) >> (N + sh_));
 			return q;
 		}
 	}
@@ -177,7 +180,7 @@ void checkAll(uint32_t p)
 	}
 	algo.put();
 	#pragma omp parallel for
-	for (uint64_t xx = 0; xx <= M; xx++) {
+	for (int64_t xx = 0; xx <= M; xx++) {
 		uint32_t x = uint32_t(xx);
 		check(algo, x);
 	}
@@ -211,7 +214,8 @@ int main()
 	{
 		puts("find diff");
 		#pragma omp parallel for
-		for (uint32_t p = 3; p <= 0xfffffffe; p += 2) {
+		for (int64_t p_ = 3; p_ <= 0xfffffffe; p_ += 2) {
+			uint32_t p = uint32_t(p_);
 			MyAlgo my;
 			GM gm;
 			bool b1 = my.init(p);
@@ -221,7 +225,7 @@ int main()
 //					printf("p=%08x my=%u gm=%u\n", p, my.a_, gm.a_);
 				}
 				if (my.u_ <= M && gm.mH_ > M) {
-					printf("p=0x%08x my.u=%lx a=%u gm.u=%lx a=%u\n", p, my.u_, my.a_, gm.mH_, gm.a_);
+					printf("p=0x%08x my.u=%" PRIx64 " a=%u gm.u=%" PRIx64 " a=%u\n", p, my.u_, my.a_, gm.mH_, gm.a_);
 				}
 			}
 		}
