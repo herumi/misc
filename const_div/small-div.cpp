@@ -23,6 +23,13 @@ inline uint64_t mulUnit1(uint64_t *pH, uint64_t x, uint64_t y)
 #endif
 }
 
+uint32_t floor_ilog2(uint32_t p)
+{
+	uint32_t a = 0;
+	while ((one << a) <= p) a++;
+	return a - 1;
+}
+
 uint32_t ceil_ilog2(uint32_t p)
 {
 	uint32_t a = 0;
@@ -33,15 +40,17 @@ uint32_t ceil_ilog2(uint32_t p)
 /*
 p : odd
 2^a = p u - e, 0 <= e <= p-1
-(q, r0) : given, 0 <= r0 < p, 0 <= q <= m
+(q, r0) : given, 0 <= r0 < p, 0 <= q <= M
 x := p q + r0
 (v, r) := divmod(x u, 2^a)
 Then x u = p q u + r0 u = (2^a + e) q + r0 u = 2^a q + (e q + r0 u)
 y := q e + r0 u.
 If 0 <= y < 2^a, then q = (x u) >> a.
-To satisfy the condition, max(y) = m e + (p-1) u < 2^a.
-Then m e + (2^a + e) - u < 2^a.
-(m+1) e < u.
+To satisfy the condition, compute max(y).
+m := M//p. r := M%p.
+1-1) q = m and r0 = r then y = m e + r u
+1-2) q = m-1 and r0 = p-1 then y = (m-1)e + (p-1)u
+Then max((M//p)e + (M%p)u, (M//p-1)e + (p-1)u) < 2^a.
 */
 struct MyAlgo {
 	uint32_t p_;
@@ -56,13 +65,13 @@ struct MyAlgo {
 	bool init(uint32_t p)
 	{
 		uint32_t m = M / p;
-		uint32_t rmax = M - m * p;
-		for (uint32_t a = 32; a < 64; a++) {
+		uint32_t rmax = M % p;
+		// u > 0 => A >= p => a >= ilog2(p)
+		for (uint32_t a = floor_ilog2(p); a < 64; a++) {
 			uint64_t A = one << a;
 			uint64_t u = (A + p - 1) / p;
-			if ((u >> 33) != 0) continue;
+			if (u >= (one << 33)) continue;
 			uint64_t e = p * u - A;
-//			if (m * e + (p-1) * u < A) {
 			if ((m-1) * e + (p-1) * u < A && m * e + rmax * u < A) {
 				p_ = p;
 				a_ = a;
@@ -186,29 +195,18 @@ void checkSomeP(const uint32_t *tbl, size_t tblN)
 
 int main()
 {
-	const uint32_t tbl[] = { 3, 7, 10, 13, 0x7ffff, 68641, 6864137, /* 0xffffffff, */ };
-	const size_t tblN = sizeof(tbl) / sizeof(tbl[0]);
-	checkSomeP<MyAlgo>(tbl, tblN);
-	checkSomeP<GM>(tbl, tblN);
-#if 1
 	{
-		const uint32_t p = 0x0c924975;
-		checkAll<MyAlgo>(p);
-		checkAll<GM>(p);
+		const uint32_t tbl[] = { 3, 5, 7, 10, 13, 0x7ffff, 68641, 6864137, /* 0xffffffff, */ };
+		const size_t tblN = sizeof(tbl) / sizeof(tbl[0]);
+		checkSomeP<MyAlgo>(tbl, tblN);
+		checkSomeP<GM>(tbl, tblN);
 	}
-#endif
-#if 1
+	// check MyAlgo
 	{
-		const uint32_t p = 0xffffffff;
-		checkAll<MyAlgo>(p);
+		const uint32_t tbl[] = { 2, 4, 65536, 0xb5062743, 0x7fffffff, 0x80000000, 0x80000001, 0xffffffff, };
+		const size_t tblN = sizeof(tbl) / sizeof(tbl[0]);
+		checkSomeP<MyAlgo>(tbl, tblN);
 	}
-#endif
-#if 1
-	{
-		const uint32_t p = 0xb5062743; // > 0x7fffffff
-		checkAll<MyAlgo>(p);
-	}
-#endif
 
 #if 1
 	{
