@@ -38,11 +38,10 @@ uint32_t ceil_ilog2(uint32_t p)
 }
 
 /*
-p : odd
+M = 2**32 - 1
+p in [1, M]
 2^a = p u - e, 0 <= e <= p-1
-(q, r0) : given, 0 <= r0 < p, 0 <= q <= M
-x := p q + r0
-(v, r) := divmod(x u, 2^a)
+x in [0, M]. (q, r0) := divmod(x, p). x = p q + r0.
 Then x u = p q u + r0 u = (2^a + e) q + r0 u = 2^a q + (e q + r0 u)
 y := q e + r0 u.
 If 0 <= y < 2^a, then q = (x u) >> a.
@@ -65,14 +64,14 @@ struct MyAlgo {
 	bool init(uint32_t p)
 	{
 		uint32_t m = M / p;
-		uint32_t rmax = M % p;
+		uint32_t r0 = M % p;
 		// u > 0 => A >= p => a >= ilog2(p)
 		for (uint32_t a = floor_ilog2(p); a < 64; a++) {
 			uint64_t A = one << a;
 			uint64_t u = (A + p - 1) / p;
-			if (u >= (one << 33)) continue;
+//			if (u >= (one << 33)) continue; // same result if this line is comment out.
 			uint64_t e = p * u - A;
-			if ((m-1) * e + (p-1) * u < A && m * e + rmax * u < A) {
+			if ((m-1) * e + (p-1) * u < A && m * e + r0 * u < A) {
 				p_ = p;
 				a_ = a;
 				A_ = A;
