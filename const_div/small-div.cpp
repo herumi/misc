@@ -74,10 +74,11 @@ struct MyAlgo {
 		for (uint32_t a = floor_ilog2(p); a < 64; a++) {
 			uint64_t A = one << a;
 			uint64_t u = (A + p - 1) / p;
-//			if (u >= (one << 33)) continue; // same result if this line is comment out.
 			assert(u < (one << 33));
+			if (u >= (one << 33)) continue; // same result if this line is comment out.
 			uint64_t e = p * u - A;
-			if ((m-1) * e + (p-1) * u < A && m * e + r0 * u < A) {
+//			if (m * e + (p-1) * u < A) {
+			if ((m-1) * e + (p-1) * u < A && m * e + r0 * u < A) { // better
 				p_ = p;
 				a_ = a;
 				A_ = A;
