@@ -1,7 +1,9 @@
-// -fopenmp
+// gcc, clang : -fopenmp
+// VC : /openmp
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <assert.h>
 #include <inttypes.h>
 
 static const uint64_t one = 1;
@@ -10,7 +12,7 @@ static const uint64_t M = (one << N) - 1;
 
 #ifdef _MSC_VER
 #include <intrin.h>
-#elif defined(__INTEL_COMPILER) || defined(__clang__)
+#elif defined(__GNUC__) || defined(__INTEL_COMPILER) || defined(__clang__)
 typedef __attribute__((mode(TI))) unsigned int uint128_t;
 #define MCL_DEFINED_UINT128_T
 #endif
@@ -73,6 +75,7 @@ struct MyAlgo {
 			uint64_t A = one << a;
 			uint64_t u = (A + p - 1) / p;
 //			if (u >= (one << 33)) continue; // same result if this line is comment out.
+			assert(u < (one << 33));
 			uint64_t e = p * u - A;
 			if ((m-1) * e + (p-1) * u < A && m * e + r0 * u < A) {
 				p_ = p;
@@ -180,7 +183,7 @@ void checkAll(uint32_t p)
 	}
 	algo.put();
 	#pragma omp parallel for
-	for (int64_t xx = 0; xx <= M; xx++) {
+	for (int64_t xx = 0; xx <= int64_t(M); xx++) {
 		uint32_t x = uint32_t(xx);
 		check(algo, x);
 	}
@@ -205,7 +208,7 @@ int main()
 	}
 	// check MyAlgo
 	{
-		const uint32_t tbl[] = { 2, 4, 65536, 0xb5062743, 0x7fffffff, 0x80000000, 0x80000001, 0xffffffff, };
+		const uint32_t tbl[] = { 2, 4, 641, 65536, 0xb5062743, 0x7fffffff, 0x80000000, 0x80000001, 0xffffffff, };
 		const size_t tblN = sizeof(tbl) / sizeof(tbl[0]);
 		checkSomeP<MyAlgo>(tbl, tblN);
 	}
