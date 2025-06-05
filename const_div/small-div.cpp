@@ -48,9 +48,10 @@ struct MyAlgo {
 	uint32_t a_;
 	uint64_t A_;
 	uint64_t u_;
+	MyAlgo() : p_(0), a_(0), A_(0), u_(0) {}
 	void put() const
 	{
-		printf("p=%u(0x%08x) a=%u u=0x%lx\n", p_, p_, a_, u_);
+		printf("My p=%u(0x%08x) a=%u u=0x%lx\n", p_, p_, a_, u_);
 	}
 	bool init(uint32_t p)
 	{
@@ -107,9 +108,10 @@ struct GM {
 	uint32_t l_;
 	uint64_t mH_;
 	uint32_t sh_;
+	uint32_t a_; // same as MyAlgo
 	void put() const
 	{
-		printf("p=%u(0x%08x) l=%u mH=0x%lx sh=0x%x a=%u\n", p_, p_, l_, mH_, sh_, N + sh_);
+		printf("GM p=%u(0x%08x) l=%u mH=0x%lx sh=0x%x a=%u\n", p_, p_, l_, mH_, sh_, a_);
 	}
 	bool init(uint32_t p)
 	{
@@ -117,7 +119,8 @@ struct GM {
 		uint32_t sh = l;
 		uint64_t a = one << (N+l);
 		uint64_t L = a / p;
-		uint64_t mH = (a + (one << l)) / p;
+//		uint64_t mH = (a + (one << l)) / p; // original Figure 6.2 of GM
+		uint64_t mH = (a + (a / (M - (M % p)))) / p; // better parameter
 		while ((L>>1) < (mH>>1) && sh > 0) {
 			L >>= 1;
 			mH >>= 1;
@@ -127,6 +130,7 @@ struct GM {
 		l_ = l;
 		mH_ = mH;
 		sh_ = sh;
+		a_ = N + sh_;
 		return true;
 	}
 	uint32_t divp(uint32_t x) const
@@ -156,9 +160,14 @@ void check(const Algo& algo, uint32_t x)
 }
 
 template<class Algo>
-void checkAll(const Algo& algo)
+void checkAll(uint32_t p)
 {
-	printf("check p=%u(0x%08x)\n", algo.p_, algo.p_);
+	Algo algo;
+	if (!algo.init(p)) {
+		printf("ERR algo.init(%u)\n", p);
+		return;
+	}
+	algo.put();
 	#pragma omp parallel for
 	for (uint64_t xx = 0; xx <= M; xx++) {
 		uint32_t x = uint32_t(xx);
@@ -167,55 +176,64 @@ void checkAll(const Algo& algo)
 }
 
 template<class Algo>
-void checkSomeP(const char *name)
+void checkSomeP(const uint32_t *tbl, size_t tblN)
 {
-	printf("%s\n", name);
-	const uint32_t tbl[] = { 3, 7, 10, 13, 0x7ffff, 68641, 6864137, 3037079363 };
-	for (size_t i = 0; i < sizeof(tbl)/sizeof(tbl[0]); i++) {
+	for (size_t i = 0; i < tblN; i++) {
 		uint32_t p = tbl[i];
-		Algo algo;
-		if (algo.init(p)) {
-			algo.put();
-			checkAll(algo);
-		} else {
-			printf("not found p=%u\n", p);
-		}
+		checkAll<Algo>(p);
 	}
 }
 
 int main()
 {
-	checkSomeP<MyAlgo>("MyAlgo");
-//	checkSomeP<GM>("GM");
-
-#if 0
-	puts("check 7");
-	#pragma omp parallel for
-	for (uint32_t x = 0; x <= 0x7fffffff; x++) {
-		uint32_t q1 = x / 7;
-		uint32_t q2 = divp(x);
-		if (q1 != q2) {
-			printf("ERR7 x=%u q1=%u q2=%u\n", x, q1, q2);
-		}
+	const uint32_t tbl[] = { 3, 7, 10, 13, 0x7ffff, 68641, 6864137, /* 0xffffffff, */ };
+	const size_t tblN = sizeof(tbl) / sizeof(tbl[0]);
+	checkSomeP<MyAlgo>(tbl, tblN);
+	checkSomeP<GM>(tbl, tblN);
+#if 1
+	{
+		const uint32_t p = 0x0c924975;
+		checkAll<MyAlgo>(p);
+		checkAll<GM>(p);
 	}
-	puts("ok");
 #endif
-
-#if 0
-	puts("find diff");
-//	#pragma omp parallel for
-	for (uint32_t p = 3; p <= 0x7fffffff; p += 2) {
-		uint32_t a1 = GM_chooseMultiplier(p);
-		uint32_t a2 = find_a(p);
-		if (a1 != a2) {
-			printf("p=%u a1=%u a2=%u\n", p, a1, a2);
-		}
+#if 1
+	{
+		const uint32_t p = 0xffffffff;
+		checkAll<MyAlgo>(p);
 	}
-	puts("ok");
 #endif
-
+#if 1
+	{
+		const uint32_t p = 0xb5062743; // > 0x7fffffff
+		checkAll<MyAlgo>(p);
+	}
+#endif
 
 #if 1
+	{
+		puts("find diff");
+		#pragma omp parallel for
+		for (uint32_t p = 3; p <= 0xfffffffe; p += 2) {
+			MyAlgo my;
+			GM gm;
+			bool b1 = my.init(p);
+			bool b2 = gm.init(p);
+			if (b1 && b2) {
+				if (my.a_ != gm.a_) {
+//					printf("p=%08x my=%u gm=%u\n", p, my.a_, gm.a_);
+				}
+				if (my.u_ <= M && gm.mH_ > M) {
+					printf("p=0x%08x my.u=%lx a=%u gm.u=%lx a=%u\n", p, my.u_, my.a_, gm.mH_, gm.a_);
+				}
+			}
+		}
+		puts("ok");
+	}
+#endif
+
+
+#if 0
 	puts("all check");
 	#pragma omp parallel for
 	for (uint32_t p = 0x7fffffff; p <= 0xfffffffe; p += 2) {
