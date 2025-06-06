@@ -68,8 +68,9 @@ struct MyAlgo {
 	}
 	bool init(uint32_t p)
 	{
+		assert(p <= M);
 		uint32_t m = M / p;
-		uint32_t r0 = M % p;
+		uint32_t r = M % p;
 		// u > 0 => A >= p => a >= ilog2(p)
 		for (uint32_t a = floor_ilog2(p); a < 64; a++) {
 			uint64_t A = one << a;
@@ -78,7 +79,8 @@ struct MyAlgo {
 			if (u >= (one << 33)) continue; // same result if this line is comment out.
 			uint64_t e = p * u - A;
 //			if (m * e + (p-1) * u < A) {
-			if ((m-1) * e + (p-1) * u < A && m * e + r0 * u < A) { // better
+//			if ((m-1) * e + (p-1) * u < A && m * e + r * u < A) { // better
+			if (m * e < u && (m+1) * e < (p-r) * u) { // equivalent
 				p_ = p;
 				a_ = a;
 				A_ = A;

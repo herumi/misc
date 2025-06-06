@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include <inttypes.h>
 
 #ifdef _MSC_VER
 #include <intrin.h>
@@ -31,6 +31,7 @@ uint32_t div7org(uint32_t x)
 uint32_t div7a(uint32_t x)
 {
 #ifdef MCL_DEFINED_UINT128_T
+	__builtin_assume(a_ >= 32);
 	uint128_t v = (x * uint128_t(u_)) >> a_;
 	return uint32_t(v);
 #else
@@ -51,4 +52,4 @@ uint32_t div7b(uint32_t x)
 	return uint32_t(v);
 }
 
-}
+} // extern "C"
