@@ -81,31 +81,31 @@ void hash_to_scalar(Fr *out, const T& x, size_t n)
 	}
 }
 
-// true if all discIdxs[i] < discIdxs[i+1] < L
-inline bool isValidDiscIdx(size_t L, const uint32_t *discIdxs, size_t R)
+// true if all discIdxs[i] < discIdxs[i+1] < msgN
+inline bool isValidDiscIdx(size_t msgN, const uint32_t *discIdxs, size_t R)
 {
 	if (R == 0) return true;
-	if (discIdxs[0] >= L) return false;
+	if (discIdxs[0] >= msgN) return false;
 	for (size_t i = 1; i < R; i++) {
-		if (!(discIdxs[i - 1] < discIdxs[i]) || discIdxs[i] >= L) return false;
+		if (!(discIdxs[i - 1] < discIdxs[i]) || discIdxs[i] >= msgN) return false;
 	}
 	return true;
 }
 
-// js[0:U] = [0:L] - discIdxs[0:R]
+// js[0:U] = [0:msgN] - discIdxs[0:R]
 inline void setJs(uint32_t *js, size_t U, const uint32_t *discIdxs, size_t R)
 {
-	const size_t L = U + R;
+	const size_t msgN = U + R;
 	size_t v = 0;
 	size_t dPos = 0;
-	uint32_t next = dPos < R ? discIdxs[dPos++] : L;
+	uint32_t next = dPos < R ? discIdxs[dPos++] : msgN;
 
 	size_t jPos = 0;
 	while (jPos < U) {
 		if (v < next) {
 			js[jPos++] = v;
 		} else {
-			next = dPos < R ? discIdxs[dPos++] : L;
+			next = dPos < R ? discIdxs[dPos++] : msgN;
 		}
 		v++;
 	}
@@ -203,9 +203,9 @@ public:
 	const G1& get_A() const { return A; }
 	const Fr& get_e() const { return e; }
 	const Fr& get_s() const { return s; }
-	// L : number of msgs
-	bool sign(const SecretKey& sec, const PublicKey& pub, const Fr *msgs, size_t L);
-	bool verify(const PublicKey& pub, const Fr *msgs, size_t L) const;
+	// msgN : number of msgs
+	bool sign(const SecretKey& sec, const PublicKey& pub, const Fr *msgs, size_t msgN);
+	bool verify(const PublicKey& pub, const Fr *msgs, size_t msgN) const;
 
 	// msgs : concatinate of msg[0], ..., msg[msgN-1]
 	// msgN : amount of msg
@@ -229,18 +229,18 @@ public:
 	B = s_P1 + s_Q1 * s + s_Q2 * dom + sum_i s_H[i] * msgs[i]
 	A = (1/(sec + e))B
 	return (A, e, s)
-	assume L <= s_maxMsgSize
+	assume msgN <= s_maxMsgSize
 */
-inline bool Signature::sign(const SecretKey& sec, const PublicKey& pub, const Fr *msgs, size_t L)
+inline bool Signature::sign(const SecretKey& sec, const PublicKey& pub, const Fr *msgs, size_t msgN)
 {
-	if (L > s_maxMsgSize) {
+	if (msgN > s_maxMsgSize) {
 		return false;
 	}
 	Fr dom;
-	local::calcDom(dom, pub.get_v(), L);
+	local::calcDom(dom, pub.get_v(), msgN);
 	local::Hash hash;
 	hash << sec.get_v() << dom;
-	for (size_t i = 0; i < L; i++) {
+	for (size_t i = 0; i < msgN; i++) {
 		hash << msgs[i];
 	}
 	Fr t;
@@ -250,7 +250,7 @@ inline bool Signature::sign(const SecretKey& sec, const PublicKey& pub, const Fr
 	e = out[0];
 	s = out[1];
 	G1 B;
-	local::calcB(B, s, dom, msgs, L);
+	local::calcB(B, s, dom, msgs, msgN);
 	Fr::add(t, sec.get_v(), e);
 	Fr::inv(t, t);
 	G1::mul(A, B, t);
@@ -261,13 +261,13 @@ inline bool Signature::sign(const SecretKey& sec, const PublicKey& pub, const Fr
 	dom = hash(pk, n, s_Q1, s_Q2, s_H[0:n])
 	e(A, pub + e * s_P2) = e(s_P1 + s_Q1 * s + s_Q2 * dom + sum_i s_H[i] * msgs[i], s_P2)
 */
-inline bool Signature::verify(const PublicKey& pub, const Fr *msgs, size_t L) const
+inline bool Signature::verify(const PublicKey& pub, const Fr *msgs, size_t msgN) const
 {
-	if (L > s_maxMsgSize) return false;
+	if (msgN > s_maxMsgSize) return false;
 	Fr dom;
-	local::calcDom(dom, pub.get_v(), L);
+	local::calcDom(dom, pub.get_v(), msgN);
 	G1 B;
-	local::calcB(B, s, dom, msgs, L);
+	local::calcB(B, s, dom, msgs, msgN);
 	return local::verifyMultiPairing(A, B, pub.get_v() + s_P2 * e);
 }
 
@@ -275,7 +275,7 @@ struct Proof {
 	G1 A_prime, A_bar, D;
 	Fr c, e_hat, r2_hat, r3_hat, s_hat;
 	Fr *m_hat; // m_hat must be U array of Fr
-	uint32_t U; // U = L - R, all msgs are disclosed if U = 0
+	uint32_t U; // U = msgN - R, all msgs are disclosed if U = 0
 	Proof() : m_hat(0), U(0) {}
 	void set(Fr *msg, uint32_t u)
 	{
@@ -315,19 +315,19 @@ inline void addSelectedMulVec(G1& out, const uint32_t *selectedIdx, size_t U, co
 
 } // local
 /*
-	L : number of all msgs
+	msgN : number of all msgs
 	R : number of disclosed msgs
 	discIdxs : accending order
 	msgs[discIdxs[i]] : disclosed messages for i in [0, R)
 */
-inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t L, const uint32_t *discIdxs, size_t R, const uint8_t *nonce = 0, size_t nonceSize = 0)
+inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t msgN, const uint32_t *discIdxs, size_t R, const uint8_t *nonce = 0, size_t nonceSize = 0)
 {
-	if (L > s_maxMsgSize) return false;
-	if (L < R) return false;
-	if (prf.U != L - R) return false;
-	if (!local::isValidDiscIdx(L, discIdxs, R)) return false;
+	if (msgN > s_maxMsgSize) return false;
+	if (msgN < R) return false;
+	if (prf.U != msgN - R) return false;
+	if (!local::isValidDiscIdx(msgN, discIdxs, R)) return false;
 	Fr dom;
-	local::calcDom(dom, pub.get_v(), L);
+	local::calcDom(dom, pub.get_v(), msgN);
 	Fr out[6];
 	local::hash_to_scalar(out, 0, 6);
 	const Fr& r1 = out[0];
@@ -337,7 +337,7 @@ inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, con
 	const Fr& r3_tilde = out[4];
 	const Fr& s_tilde = out[5];
 	G1 B;
-	local::calcB(B, sig.get_s(), dom, msgs, L);
+	local::calcB(B, sig.get_s(), dom, msgs, msgN);
 	Fr r3;
 	Fr::inv(r3, r1);
 	prf.A_prime = sig.get_A() * r1;
@@ -370,14 +370,14 @@ inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, con
 	return true;
 }
 
-bool proofVerify(const PublicKey& pub, const Proof& prf, size_t L, const Fr *discMsgs, const uint32_t *discIdxs, size_t R, const uint8_t *nonce = 0, size_t nonceSize = 0)
+bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const Fr *discMsgs, const uint32_t *discIdxs, size_t R, const uint8_t *nonce = 0, size_t nonceSize = 0)
 {
-	if (L > s_maxMsgSize) return false;
-	if (L < R) return false;
-	if (prf.U != L - R) return false;
-	if (!local::isValidDiscIdx(L, discIdxs, R)) return false;
+	if (msgN > s_maxMsgSize) return false;
+	if (msgN < R) return false;
+	if (prf.U != msgN - R) return false;
+	if (!local::isValidDiscIdx(msgN, discIdxs, R)) return false;
 	Fr dom;
-	local::calcDom(dom, pub.get_v(), L);
+	local::calcDom(dom, pub.get_v(), msgN);
 	G1 C1 = (prf.A_bar - prf.D) * prf.c + prf.A_prime * prf.e_hat + s_Q1 * prf.r2_hat;
 	G1 T = s_P1 + s_Q2 * dom;
 	if (R > 0) {
