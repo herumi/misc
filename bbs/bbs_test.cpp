@@ -4,7 +4,7 @@
 
 const size_t maxMsgSize = 32;
 
-using namespace mcl::bbs;
+using namespace bbs;
 
 CYBOZU_TEST_AUTO(init)
 {
@@ -65,7 +65,7 @@ CYBOZU_TEST_AUTO(setJs)
 		for (size_t j = 0; j < msgN; j++) js[j] = uint32_t(-1);
 		const size_t discN = tbl[i].discN;
 		const size_t undiscN = msgN  - discN;
-		mcl::bbs::local::setJs(js, undiscN, tbl[i].disc, discN);
+		bbs::local::setJs(js, undiscN, tbl[i].disc, discN);
 		IntSet is;
 		for (size_t j = 0; j < discN; j++) is.insert(tbl[i].disc[j]);
 		CYBOZU_TEST_EQUAL(is.size(), discN);

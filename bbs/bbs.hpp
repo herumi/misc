@@ -5,8 +5,9 @@
 #include <mcl/bls12_381.hpp>
 #include <cybozu/sha2.hpp>
 #include <cybozu/serializer.hpp>
+#include <mcl/bn.h>
 
-namespace mcl { namespace bbs {
+namespace bbs {
 
 using namespace mcl;
 
@@ -98,14 +99,14 @@ inline void setJs(uint32_t *js, size_t undiscN, const uint32_t *discIdxs, size_t
 	const size_t msgN = undiscN + discN;
 	size_t v = 0;
 	size_t dPos = 0;
-	uint32_t next = dPos < discN ? discIdxs[dPos++] : msgN;
+	uint32_t next = dPos < discN ? discIdxs[dPos++]: msgN;
 
 	size_t jPos = 0;
 	while (jPos < undiscN) {
 		if (v < next) {
 			js[jPos++] = v;
 		} else {
-			next = dPos < discN ? discIdxs[dPos++] : msgN;
+			next = dPos < discN ? discIdxs[dPos++]: msgN;
 		}
 		v++;
 	}
@@ -137,9 +138,9 @@ inline void msgToFr(Fr& x, const uint8_t *msg, uint32_t msgSize)
 #endif
 }
 
-// x : Fr array of size msgN.
-// msgs : concatenation of all msg[i]. The size is a sum of msgSize[i].
-// msgSize : array of size msgN. msgSize[i] is the size of msg[i].
+// x: Fr array of size msgN.
+// msgs: concatenation of all msg[i]. The size is a sum of msgSize[i].
+// msgSize: array of size msgN. msgSize[i] is the size of msg[i].
 inline void msgsToFr(Fr *x, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN)
 {
 	for (size_t i = 0; i < msgN; i++) {
@@ -148,10 +149,10 @@ inline void msgsToFr(Fr *x, const uint8_t *msgs, const uint32_t *msgSize, size_t
 	}
 }
 
-void init(size_t maxMsgSize)
+bool init(size_t maxMsgSize)
 {
 	if (maxMsgSize > MAX_MSG_SIZE) {
-		throw cybozu::Exception("too large maxMsgSize") << maxMsgSize;
+		return false;
 	}
 	s_maxMsgSize = maxMsgSize;
 	initPairing(BLS12_381);
@@ -172,6 +173,7 @@ void init(size_t maxMsgSize)
 		mapToG1(s_H[i], 3 + i);
 		s_H[i].normalize();
 	}
+	return true;
 }
 
 class PublicKey {
@@ -207,19 +209,37 @@ public:
 	const G1& get_A() const { return A; }
 	const Fr& get_e() const { return e; }
 	const Fr& get_s() const { return s; }
-	// msgN : number of msgs
+	// msgN: number of msgs
 	bool sign(const SecretKey& sec, const PublicKey& pub, const Fr *msgs, size_t msgN);
 	bool verify(const PublicKey& pub, const Fr *msgs, size_t msgN) const;
 
-	// msgs : concatinate of msg[0], ..., msg[msgN-1]
-	// msgN : amount of msg
-	// msgSize : array of each msg[i] size
+	/*
+		BBS+ signature generation function for byte array messages
+		Input:
+			sec: secret key
+			pub: public key
+			msgs: concatenated message byte array (msg[0] || msg[1] || ... || msg[msgN-1])
+			msgSize: array storing size of each message (msgSize[i] is size of msg[i])
+			msgN: number of messages
+		Return:
+			true: success
+	*/
 	bool sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN)
 	{
 		Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
 		msgsToFr(xs, msgs, msgSize, msgN);
 		return sign(sec, pub, xs, msgN);
 	}
+	/*
+		BBS+ signature verification function for byte array messages
+		Input:
+			pub: public key
+			msgs: concatenated message byte array (msg[0] || msg[1] || ... || msg[msgN-1])
+			msgSize: array storing size of each message (msgSize[i] is size of msg[i])
+			msgN: number of messages
+		Return:
+			true: success
+	*/
 	bool verify(const PublicKey& pub, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN) const
 	{
 		Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
@@ -229,7 +249,7 @@ public:
 };
 
 /*
-	e, s : generated from msgs
+	e, s: generated from msgs
 	B = s_P1 + s_Q1 * s + s_Q2 * dom + sum_i s_H[i] * msgs[i]
 	A = (1/(sec + e))B
 	return (A, e, s)
@@ -280,7 +300,7 @@ struct Proof {
 	Fr c, e_hat, r2_hat, r3_hat, s_hat;
 	Fr *m_hat; // m_hat must be undiscN array of Fr
 	uint32_t undiscN; // undiscN = msgN - discN, all msgs are disclosed if undiscN = 0
-	Proof() : m_hat(0), undiscN(0) {}
+	Proof(): m_hat(0), undiscN(0) {}
 	void set(Fr *msg, uint32_t undiscN)
 	{
 		m_hat = msg;
@@ -319,10 +339,10 @@ inline void addSelectedMulVec(G1& out, const uint32_t *selectedIdx, size_t undis
 
 } // local
 /*
-	msgN : number of all msgs
-	discN : number of disclosed msgs
-	discIdxs : accending order
-	msgs[discIdxs[i]] : disclosed messages for i in [0, discN)
+	msgN: number of all msgs
+	discN: number of disclosed msgs
+	discIdxs: accending order
+	msgs[discIdxs[i]]: disclosed messages for i in [0, discN)
 */
 inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t msgN, const uint32_t *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0)
 {
@@ -414,5 +434,97 @@ bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const uint
 	return proofVerify(pub, prf, msgN, xs, discIdxs, discN, nonce, nonceSize);
 }
 
-} } // mcl::bbs
+} // bbs
+
+extern "C" {
+
+struct bbsSecretKey {
+	uint64_t v[sizeof(bbs::SecretKey)/8];
+};
+
+struct bbsPublicKey {
+	uint64_t v[sizeof(bbs::PublicKey)/8];
+};
+
+struct bbsSignature {
+	uint64_t v[sizeof(bbs::Signature)/8];
+};
+
+struct bbsProof; // destructor is need
+
+} // extern "C"
+
+namespace bbs { namespace local {
+
+inline SecretKey *cast(bbsSecretKey *p) { return reinterpret_cast<SecretKey*>(p); }
+inline const SecretKey *cast(const bbsSecretKey *p) { return reinterpret_cast<const SecretKey*>(p); }
+
+inline PublicKey *cast(bbsPublicKey *p) { return reinterpret_cast<PublicKey*>(p); }
+inline const PublicKey *cast(const bbsPublicKey *p) { return reinterpret_cast<const PublicKey*>(p); }
+
+inline Signature *cast(bbsSignature *p) { return reinterpret_cast<Signature*>(p); }
+inline const Signature *cast(const bbsSignature *p) { return reinterpret_cast<const Signature*>(p); }
+
+inline Proof *cast(bbsProof *p) { return reinterpret_cast<Proof*>(p); }
+inline const Proof *cast(const bbsProof *p) { return reinterpret_cast<const Proof*>(p); }
+
+} } // bbs::local
+
+extern "C" {
+
+inline bool bbsInit(uint32_t maxMsgSize)
+{
+	return bbs::init(maxMsgSize);
+}
+
+inline bool bbsInitSecretKey(bbsSecretKey *sec)
+{
+	using namespace bbs::local;
+	cast(sec)->init();
+	return true;
+}
+
+bool bbsGetPublicKey(bbsPublicKey *pub, const bbsSecretKey *sec)
+{
+	using namespace bbs::local;
+	cast(sec)->getPublicKey(*cast(pub));
+	return true;
+}
+/*
+	signature generation function for byte array messages
+	Input:
+		sec: secret key
+		pub: public key
+		msgs: concatenated message byte array (msg[0] || msg[1] || ... || msg[msgN-1])
+		msgSize: array storing size of each message (msgSize[i] is size of msg[i])
+		msgN: number of messages
+	Output:
+		sig: generated signature
+	Return:
+		true: success
+*/
+bool bbsSign(bbsSignature *sig, const bbsSecretKey *sec, const bbsPublicKey *pub, const uint8_t *msgs, const uint32_t *msgSize, uint32_t msgN)
+{
+	using namespace bbs::local;
+	return cast(sig)->sign(*cast(sec), *cast(pub), msgs, msgSize, msgN);
+}
+
+/*
+	signature verification function for byte array messages
+	Input:
+		pub: public key
+		sig: signature
+		msgs: concatenated message byte array (msg[0] || msg[1] || ... || msg[msgN-1])
+		msgSize: array storing size of each message (msgSize[i] is size of msg[i])
+		msgN: number of messages
+	Return:
+		true: success
+*/
+bool bbsVerify(const bbsPublicKey *pub, const bbsSignature *sig, const uint8_t *msgs, const uint32_t *msgSize, uint32_t msgN)
+{
+	using namespace bbs::local;
+	return cast(sig)->verify(*cast(pub), msgs, msgSize, msgN);
+}
+
+} // extern "C"
 
