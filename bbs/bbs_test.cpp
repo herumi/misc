@@ -19,17 +19,21 @@ CYBOZU_TEST_AUTO(sign_verify)
 	PublicKey pub;
 	sec.getPublicKey(pub);
 	const size_t N = 10;
-	Fr msg[N];
-	int v = 123;
-	for (size_t i = 0; i < N; i++) msg[i] = v++;
+	uint32_t msgSize[N];
+	const uint32_t MSG_SIZE = 2;
+	for (size_t i = 0; i < N; i++) msgSize[i] = MSG_SIZE;
+	uint8_t msgs[N*MSG_SIZE];
+	for (size_t i = 0; i < sizeof(msgs); i++) {
+		msgs[i] = uint8_t(i);
+	}
 
 	for (size_t n = 1; n <= N; n++) {
 		Signature sig;
-		sig.sign(sec, pub, msg, n);
-		CYBOZU_TEST_ASSERT(sig.verify(pub, msg, n));
-		CYBOZU_TEST_ASSERT(!sig.verify(pub, msg, n - 1));
-		msg[0] -= 1;
-		CYBOZU_TEST_ASSERT(!sig.verify(pub, msg, n));
+		sig.sign(sec, pub, msgs, msgSize, n);
+		CYBOZU_TEST_ASSERT(sig.verify(pub, msgs, msgSize, n));
+		CYBOZU_TEST_ASSERT(!sig.verify(pub, msgs, msgSize, n - 1));
+		msgs[0] -= 1;
+		CYBOZU_TEST_ASSERT(!sig.verify(pub, msgs, msgSize, n));
 	}
 }
 

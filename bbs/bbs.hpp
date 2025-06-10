@@ -19,6 +19,9 @@ static G1* s_H = &s_gen[2];
 static G1 s_P1;
 static G2 s_P2;
 
+static const uint8_t s_dst[] = "MAP_MSG_TO_SCALAR_AS_HASH_";
+static const size_t s_dstSize = sizeof(s_dst) - 1;
+
 #define PUT(x) std::cout << #x "=" << x << std::endl;
 
 namespace local {
@@ -119,6 +122,26 @@ inline bool verifyMultiPairing(const G1& P1, const G1& P2, const G2& Q)
 	return out.isOne();
 }
 
+inline void msgToFr(Fr& x, const uint8_t *msg, uint32_t msgSize)
+{
+	uint8_t md[64];
+	fp::expand_message_xmd(md, sizeof(md), msg, msgSize, s_dst, s_dstSize);
+	bool b;
+	x.setBigEndianMod(&b, md, sizeof(md));
+	assert(b); (void)b;
+}
+
+// x : Fr array of size msgN.
+// msgs : concatenation of all msg[i]. The size is a sum of msgSize[i].
+// msgSize : array of size msgN. msgSize[i] is the size of msg[i].
+inline void msgsToFr(Fr *x, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN)
+{
+	for (size_t i = 0; i < msgN; i++) {
+		msgToFr(x[i], msgs, msgSize[i]);
+		msgs += msgSize[i];
+	}
+}
+
 } // mcl::bbs::local
 
 void init(size_t maxMsgSize)
@@ -183,6 +206,22 @@ public:
 	// L : number of msgs
 	bool sign(const SecretKey& sec, const PublicKey& pub, const Fr *msgs, size_t L);
 	bool verify(const PublicKey& pub, const Fr *msgs, size_t L) const;
+
+	// msgs : concatinate of msg[0], ..., msg[msgN-1]
+	// msgN : amount of msg
+	// msgSize : array of each msg[i] size
+	bool sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN)
+	{
+		Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
+		local::msgsToFr(xs, msgs, msgSize, msgN);
+		return sign(sec, pub, xs, msgN);
+	}
+	bool verify(const PublicKey& pub, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN) const
+	{
+		Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
+		local::msgsToFr(xs, msgs, msgSize, msgN);
+		return verify(pub, xs, msgN);
+	}
 };
 
 /*
@@ -196,7 +235,6 @@ inline bool Signature::sign(const SecretKey& sec, const PublicKey& pub, const Fr
 {
 	if (L > s_maxMsgSize) {
 		return false;
-		throw cybozu::Exception("too large L") << L;
 	}
 	Fr dom;
 	local::calcDom(dom, pub.get_v(), L);
@@ -247,6 +285,7 @@ struct Proof {
 };
 
 namespace local {
+
 inline void calc_cv(Fr& cv, const Proof& prf, const G1& C1, const G1& C2, size_t R, const uint32_t *discIdxs, const Fr *msgs, bool isDisclosed, const Fr& dom, const uint8_t *nonce = 0, size_t nonceSize = 0)
 {
 	local::Hash hash;
