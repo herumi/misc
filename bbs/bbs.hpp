@@ -8,7 +8,7 @@
 
 namespace mcl { namespace bbs {
 
-using namespace mcl::bn;
+using namespace mcl;
 
 static const size_t MAX_MSG_SIZE = 1024;
 static size_t s_maxMsgSize;
@@ -181,7 +181,7 @@ public:
 	const Fr& get_e() const { return e; }
 	const Fr& get_s() const { return s; }
 	// L : number of msgs
-	void sign(const SecretKey& sec, const PublicKey& pub, const Fr *msgs, size_t L);
+	bool sign(const SecretKey& sec, const PublicKey& pub, const Fr *msgs, size_t L);
 	bool verify(const PublicKey& pub, const Fr *msgs, size_t L) const;
 };
 
@@ -190,10 +190,12 @@ public:
 	B = s_P1 + s_Q1 * s + s_Q2 * dom + sum_i s_H[i] * msgs[i]
 	A = (1/(sec + e))B
 	return (A, e, s)
+	assume L <= s_maxMsgSize
 */
-inline void Signature::sign(const SecretKey& sec, const PublicKey& pub, const Fr *msgs, size_t L)
+inline bool Signature::sign(const SecretKey& sec, const PublicKey& pub, const Fr *msgs, size_t L)
 {
 	if (L > s_maxMsgSize) {
+		return false;
 		throw cybozu::Exception("too large L") << L;
 	}
 	Fr dom;
@@ -214,6 +216,7 @@ inline void Signature::sign(const SecretKey& sec, const PublicKey& pub, const Fr
 	Fr::add(t, sec.get_v(), e);
 	Fr::inv(t, t);
 	G1::mul(A, B, t);
+	return true;
 }
 
 /*
