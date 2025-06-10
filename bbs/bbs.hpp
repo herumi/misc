@@ -82,30 +82,30 @@ void hash_to_scalar(Fr *out, const T& x, size_t n)
 }
 
 // true if all discIdxs[i] < discIdxs[i+1] < msgN
-inline bool isValidDiscIdx(size_t msgN, const uint32_t *discIdxs, size_t R)
+inline bool isValidDiscIdx(size_t msgN, const uint32_t *discIdxs, size_t discN)
 {
-	if (R == 0) return true;
+	if (discN == 0) return true;
 	if (discIdxs[0] >= msgN) return false;
-	for (size_t i = 1; i < R; i++) {
+	for (size_t i = 1; i < discN; i++) {
 		if (!(discIdxs[i - 1] < discIdxs[i]) || discIdxs[i] >= msgN) return false;
 	}
 	return true;
 }
 
-// js[0:U] = [0:msgN] - discIdxs[0:R]
-inline void setJs(uint32_t *js, size_t U, const uint32_t *discIdxs, size_t R)
+// js[0:undiscN] = [0:msgN] - discIdxs[0:discN]
+inline void setJs(uint32_t *js, size_t undiscN, const uint32_t *discIdxs, size_t discN)
 {
-	const size_t msgN = U + R;
+	const size_t msgN = undiscN + discN;
 	size_t v = 0;
 	size_t dPos = 0;
-	uint32_t next = dPos < R ? discIdxs[dPos++] : msgN;
+	uint32_t next = dPos < discN ? discIdxs[dPos++] : msgN;
 
 	size_t jPos = 0;
-	while (jPos < U) {
+	while (jPos < undiscN) {
 		if (v < next) {
 			js[jPos++] = v;
 		} else {
-			next = dPos < R ? discIdxs[dPos++] : msgN;
+			next = dPos < discN ? discIdxs[dPos++] : msgN;
 		}
 		v++;
 	}
@@ -122,13 +122,19 @@ inline bool verifyMultiPairing(const G1& P1, const G1& P2, const G2& Q)
 	return out.isOne();
 }
 
+} // mcl::bbs::local
+
 inline void msgToFr(Fr& x, const uint8_t *msg, uint32_t msgSize)
 {
+#if 0
+	x.setLittleEndianMod(msg, msgSize);
+#else
 	uint8_t md[64];
 	fp::expand_message_xmd(md, sizeof(md), msg, msgSize, s_dst, s_dstSize);
 	bool b;
 	x.setBigEndianMod(&b, md, sizeof(md));
 	assert(b); (void)b;
+#endif
 }
 
 // x : Fr array of size msgN.
@@ -141,8 +147,6 @@ inline void msgsToFr(Fr *x, const uint8_t *msgs, const uint32_t *msgSize, size_t
 		msgs += msgSize[i];
 	}
 }
-
-} // mcl::bbs::local
 
 void init(size_t maxMsgSize)
 {
@@ -213,13 +217,13 @@ public:
 	bool sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN)
 	{
 		Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
-		local::msgsToFr(xs, msgs, msgSize, msgN);
+		msgsToFr(xs, msgs, msgSize, msgN);
 		return sign(sec, pub, xs, msgN);
 	}
 	bool verify(const PublicKey& pub, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN) const
 	{
 		Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
-		local::msgsToFr(xs, msgs, msgSize, msgN);
+		msgsToFr(xs, msgs, msgSize, msgN);
 		return verify(pub, xs, msgN);
 	}
 };
@@ -274,58 +278,58 @@ inline bool Signature::verify(const PublicKey& pub, const Fr *msgs, size_t msgN)
 struct Proof {
 	G1 A_prime, A_bar, D;
 	Fr c, e_hat, r2_hat, r3_hat, s_hat;
-	Fr *m_hat; // m_hat must be U array of Fr
-	uint32_t U; // U = msgN - R, all msgs are disclosed if U = 0
-	Proof() : m_hat(0), U(0) {}
-	void set(Fr *msg, uint32_t u)
+	Fr *m_hat; // m_hat must be undiscN array of Fr
+	uint32_t undiscN; // undiscN = msgN - discN, all msgs are disclosed if undiscN = 0
+	Proof() : m_hat(0), undiscN(0) {}
+	void set(Fr *msg, uint32_t undiscN)
 	{
 		m_hat = msg;
-		U = u;
+		this->undiscN = undiscN;
 	}
 };
 
 namespace local {
 
-inline void calc_cv(Fr& cv, const Proof& prf, const G1& C1, const G1& C2, size_t R, const uint32_t *discIdxs, const Fr *msgs, bool isDisclosed, const Fr& dom, const uint8_t *nonce = 0, size_t nonceSize = 0)
+inline void calc_cv(Fr& cv, const Proof& prf, const G1& C1, const G1& C2, size_t discN, const uint32_t *discIdxs, const Fr *msgs, bool isDisclosed, const Fr& dom, const uint8_t *nonce = 0, size_t nonceSize = 0)
 {
 	local::Hash hash;
 	for (size_t i = 0; i < nonceSize; i++) hash << nonce[i];
-	hash << prf.A_prime << prf.A_bar << prf.D << C1 << C2 << R;
-	for (size_t i = 0; i < R; i++) hash << discIdxs[i];
+	hash << prf.A_prime << prf.A_bar << prf.D << C1 << C2 << discN;
+	for (size_t i = 0; i < discN; i++) hash << discIdxs[i];
 	if (isDisclosed) {
 		// disclosed msg
-		for (size_t i = 0; i < R; i++) hash << msgs[i];
+		for (size_t i = 0; i < discN; i++) hash << msgs[i];
 	} else {
 		// select disclosed msg
-		for (size_t i = 0; i < R; i++) hash << msgs[discIdxs[i]];
+		for (size_t i = 0; i < discN; i++) hash << msgs[discIdxs[i]];
 	}
 	hash << dom;
 	hash.get(cv);
 }
 
-// out += sum_{i=0}^U s_H[selectedIx[i]] * v[i]
-inline void addSelectedMulVec(G1& out, const uint32_t *selectedIdx, size_t U, const Fr *v)
+// out += sum_{i=0}^undiscN s_H[selectedIx[i]] * v[i]
+inline void addSelectedMulVec(G1& out, const uint32_t *selectedIdx, size_t undiscN, const Fr *v)
 {
-	G1 *H = (G1*)CYBOZU_ALLOCA(sizeof(G1) * U);
-	for (size_t i = 0; i < U; i++) H[i] = s_H[selectedIdx[i]];
+	G1 *H = (G1*)CYBOZU_ALLOCA(sizeof(G1) * undiscN);
+	for (size_t i = 0; i < undiscN; i++) H[i] = s_H[selectedIdx[i]];
 	G1 T;
-	G1::mulVec(T, H, v, U);
+	G1::mulVec(T, H, v, undiscN);
 	out += T;
 }
 
 } // local
 /*
 	msgN : number of all msgs
-	R : number of disclosed msgs
+	discN : number of disclosed msgs
 	discIdxs : accending order
-	msgs[discIdxs[i]] : disclosed messages for i in [0, R)
+	msgs[discIdxs[i]] : disclosed messages for i in [0, discN)
 */
-inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t msgN, const uint32_t *discIdxs, size_t R, const uint8_t *nonce = 0, size_t nonceSize = 0)
+inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t msgN, const uint32_t *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0)
 {
 	if (msgN > s_maxMsgSize) return false;
-	if (msgN < R) return false;
-	if (prf.U != msgN - R) return false;
-	if (!local::isValidDiscIdx(msgN, discIdxs, R)) return false;
+	if (msgN < discN) return false;
+	if (prf.undiscN != msgN - discN) return false;
+	if (!local::isValidDiscIdx(msgN, discIdxs, discN)) return false;
 	Fr dom;
 	local::calcDom(dom, pub.get_v(), msgN);
 	Fr out[6];
@@ -349,51 +353,65 @@ inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, con
 	C1 = prf.A_prime * e_tilde + s_Q1 * r2_tilde;
 	C2 = prf.D * (-r3_tilde) + s_Q1 * s_tilde;
 
-	uint32_t *js = (uint32_t*)CYBOZU_ALLOCA(sizeof(uint32_t) * prf.U);
-	local::setJs(js, prf.U, discIdxs, R);
-	Fr *m_tilde = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * prf.U);
-	local::hash_to_scalar(m_tilde, "m_tilde", prf.U);
-	if (prf.U > 0) {
-		local::addSelectedMulVec(C2, js, prf.U, m_tilde);
+	uint32_t *js = (uint32_t*)CYBOZU_ALLOCA(sizeof(uint32_t) * prf.undiscN);
+	local::setJs(js, prf.undiscN, discIdxs, discN);
+	Fr *m_tilde = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * prf.undiscN);
+	local::hash_to_scalar(m_tilde, "m_tilde", prf.undiscN);
+	if (prf.undiscN > 0) {
+		local::addSelectedMulVec(C2, js, prf.undiscN, m_tilde);
 	}
-	local::calc_cv(prf.c, prf, C1, C2, R, discIdxs, msgs, false, dom, nonce, nonceSize);
+	local::calc_cv(prf.c, prf, C1, C2, discN, discIdxs, msgs, false, dom, nonce, nonceSize);
 	prf.e_hat= prf.c * sig.get_e() + e_tilde;
 	prf.r2_hat = prf.c * r2 + r2_tilde;
 	prf.r3_hat = prf.c * r3 + r3_tilde;
 	prf.s_hat = prf.c * s_prime + s_tilde;
 
-	if (prf.U > 0) {
-		for (size_t i = 0; i < prf.U; i++) {
+	if (prf.undiscN > 0) {
+		for (size_t i = 0; i < prf.undiscN; i++) {
 			prf.m_hat[i] = prf.c * msgs[js[i]] + m_tilde[i];
 		}
 	}
 	return true;
 }
 
-bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const Fr *discMsgs, const uint32_t *discIdxs, size_t R, const uint8_t *nonce = 0, size_t nonceSize = 0)
+inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN, const uint32_t *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0)
+{
+	Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
+	msgsToFr(xs, msgs, msgSize, msgN);
+	return proofGen(prf, pub, sig, xs, msgN, discIdxs, discN, nonce, nonceSize);
+}
+
+bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const Fr *discMsgs, const uint32_t *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0)
 {
 	if (msgN > s_maxMsgSize) return false;
-	if (msgN < R) return false;
-	if (prf.U != msgN - R) return false;
-	if (!local::isValidDiscIdx(msgN, discIdxs, R)) return false;
+	if (msgN < discN) return false;
+	if (prf.undiscN != msgN - discN) return false;
+	if (!local::isValidDiscIdx(msgN, discIdxs, discN)) return false;
 	Fr dom;
 	local::calcDom(dom, pub.get_v(), msgN);
 	G1 C1 = (prf.A_bar - prf.D) * prf.c + prf.A_prime * prf.e_hat + s_Q1 * prf.r2_hat;
 	G1 T = s_P1 + s_Q2 * dom;
-	if (R > 0) {
-		local::addSelectedMulVec(T, discIdxs, R, discMsgs);
+	if (discN > 0) {
+		local::addSelectedMulVec(T, discIdxs, discN, discMsgs);
 	}
 	G1 C2 = T * prf.c - prf.D * prf.r3_hat + s_Q1 * prf.s_hat;
-	if (prf.U > 0) {
-		uint32_t *js = (uint32_t*)CYBOZU_ALLOCA(sizeof(uint32_t) * prf.U);
-		local::setJs(js, prf.U, discIdxs, R);
-		local::addSelectedMulVec(C2, js, prf.U, prf.m_hat);
+	if (prf.undiscN > 0) {
+		uint32_t *js = (uint32_t*)CYBOZU_ALLOCA(sizeof(uint32_t) * prf.undiscN);
+		local::setJs(js, prf.undiscN, discIdxs, discN);
+		local::addSelectedMulVec(C2, js, prf.undiscN, prf.m_hat);
 	}
 	Fr cv;
-	local::calc_cv(cv, prf, C1, C2, R, discIdxs, discMsgs, true, dom, nonce, nonceSize);
+	local::calc_cv(cv, prf, C1, C2, discN, discIdxs, discMsgs, true, dom, nonce, nonceSize);
 	if (cv != prf.c) return false;
 	if (prf.A_prime.isZero()) return false;
 	return local::verifyMultiPairing(prf.A_prime, prf.A_bar, pub.get_v());
+}
+
+bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const uint8_t *discMsgs, const uint32_t *discMsgSize, const uint32_t *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0)
+{
+	Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * discN);
+	msgsToFr(xs, discMsgs, discMsgSize, discN);
+	return proofVerify(pub, prf, msgN, xs, discIdxs, discN, nonce, nonceSize);
 }
 
 } } // mcl::bbs
