@@ -46,15 +46,15 @@ uint32_t ceil_ilog2(uint32_t p)
 M = 2**32 - 1
 p in [1, M]
 2^a = p u - e, 0 <= e <= p-1
-x in [0, M]. (q, r0) := divmod(x, p). x = p q + r0.
-Then x u = p q u + r0 u = (2^a + e) q + r0 u = 2^a q + (e q + r0 u)
-y := q e + r0 u.
+x in [0, M]. (q, r) := divmod(x, p). x = p q + r.
+Then x u = p q u + r0 u = (2^a + e) q + r u = 2^a q + (e q + r u)
+y := q e + r u.
 If 0 <= y < 2^a, then q = (x u) >> a.
 To satisfy the condition, compute max(y).
-m := M//p. r := M%p.
-1-1) q = m and r0 = r then y = m e + r u
-1-2) q = m-1 and r0 = p-1 then y = (m-1)e + (p-1)u
-Then max((M//p)e + (M%p)u, (M//p-1)e + (p-1)u) < 2^a.
+q0 := M//p. r0 := M%p.
+1-1) q = q0 and r = r0 then y = q0 e + r0 u
+1-2) q = q0-1 and r0 = p-1 then y = (q0-1)e + (p-1)u
+Then max(q0 e + r0 u, (q0-1)e + (p-1)u) < 2^a.
 */
 struct MyAlgo {
 	uint32_t p_;
@@ -69,8 +69,8 @@ struct MyAlgo {
 	bool init(uint32_t p)
 	{
 		assert(p <= M);
-		uint32_t m = M / p;
-		uint32_t r = M % p;
+		uint32_t q0 = M / p;
+		uint32_t r0 = M % p;
 		// u > 0 => A >= p => a >= ilog2(p)
 		for (uint32_t a = floor_ilog2(p); a < 64; a++) {
 			uint64_t A = one << a;
@@ -78,9 +78,9 @@ struct MyAlgo {
 			assert(u < (one << 33));
 			if (u >= (one << 33)) continue; // same result if this line is comment out.
 			uint64_t e = p * u - A;
-//			if (m * e + (p-1) * u < A) {
-//			if ((m-1) * e + (p-1) * u < A && m * e + r * u < A) { // better
-			if (m * e < u && (m+1) * e < (p-r) * u) { // equivalent
+//			if ((q0-1) * e + (p-1) * u < A && q0 * e + r0 * u < A) { // better
+//			if (q0 * e < u && (q0+1) * e < (p-r0) * u) { // equivalent
+			if (e * (M-((M+1)%p)) < A) { // Integer division by constants: optimal bounds. Theorem 1
 				p_ = p;
 				a_ = a;
 				A_ = A;
