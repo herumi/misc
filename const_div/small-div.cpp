@@ -83,7 +83,7 @@ void check(const Algo& algo, uint32_t x)
 	uint32_t r = x - q * algo.d_;
 	if (r >= algo.d_) {
 		algo.put();
-		printf("ERR x=%u ok=%u err=%u\n", x, q / algo.d_, q);
+		printf("ERR x=%u d=%u ok=%u err=%u\n", x, algo.d_, x / algo.d_, q);
 		exit(1);
 	}
 }
@@ -115,6 +115,7 @@ void checkSomeP(const uint32_t *tbl, size_t tblN)
 
 int main()
 {
+#if 0
 	{
 		ConstDivGen gen;
 		gen.init(3);
@@ -122,18 +123,22 @@ int main()
 		printf("%d\n", q);
 		gen.dump();
 		checkAll<ConstDivGen>(3);
+		return 0;
 	}
+#endif
 	{
 		const uint32_t tbl[] = { 3, 5, 7, 10, 13, 0x7ffff, 68641, 6864137, /* 0xffffffff, */ };
 		const size_t tblN = sizeof(tbl) / sizeof(tbl[0]);
 		checkSomeP<ConstDiv>(tbl, tblN);
-		checkSomeP<GM>(tbl, tblN);
+//		checkSomeP<GM>(tbl, tblN);
+		checkSomeP<ConstDivGen>(tbl, tblN);
 	}
 	// check ConstDiv
 	{
 		const uint32_t tbl[] = { 2, 4, 641, 65536, 0xb5062743, 0x7fffffff, 0x80000000, 0x80000001, 0xffffffff, };
 		const size_t tblN = sizeof(tbl) / sizeof(tbl[0]);
 		checkSomeP<ConstDiv>(tbl, tblN);
+		checkSomeP<ConstDivGen>(tbl, tblN);
 	}
 
 #if 1

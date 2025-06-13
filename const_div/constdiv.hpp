@@ -116,6 +116,10 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 		using namespace Xbyak;
 		using namespace Xbyak::util;
 		{
+			ConstDiv cd;
+			if (!cd.init(d)) return false;
+			d_ = cd.d_;
+			a_ = cd.a_;
 			StackFrame sf(this, 1, UseRDX);
 			const Reg32 x = sf.p[0].cvt32();
 			if (d >= 0x80000000) {
@@ -123,22 +127,18 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 				cmp(x, d);
 				setae(al);
 			} else {
-				ConstDiv cd;
-				if (!cd.init(d)) throw std::runtime_error("internal error");
-				d_ = cd.d_;
-				a_ = cd.a_;
 				if (cd.c_ <= 0xffffffff) {
 					mov(eax, x);
 					if (cd.c_ > 1) {
 						mov(edx, cd.c_);
 						mul(rdx);
 					}
-					shr(eax, cd.a_);
+					shr(rax, cd.a_);
 				} else {
 					mov(eax, x);
 					mov(rdx, cd.c_);
 					mul(rdx);
-					shr(eax, cd.a_);
+					shrd(rax, rdx, cd.a_);
 				}
 			}
 		}
@@ -156,7 +156,7 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 	}
 	void put() const
 	{
-		printf("Gen d=%u(0x%08x) a=%u\n", d_, d_, a_);
+		printf("Gen d=%u(0x%08x) a=%u divp=%p\n", d_, d_, a_, divp);
 	}
 };
 
