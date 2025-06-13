@@ -63,7 +63,7 @@ struct GM {
 		a_ = N + sh_;
 		return true;
 	}
-	uint32_t divp(uint32_t x) const
+	uint32_t divd(uint32_t x) const
 	{
 		if (mH_ > 0xffffffff) {
 			uint32_t t1 = uint32_t(((mH_ - (M+1)) * x) >> N);
@@ -79,7 +79,7 @@ struct GM {
 template<class Algo>
 void check(const Algo& algo, uint32_t x)
 {
-	uint32_t q = algo.divp(x);
+	uint32_t q = algo.divd(x);
 	uint32_t r = x - q * algo.d_;
 	if (r >= algo.d_) {
 		algo.put();
@@ -119,7 +119,7 @@ int main()
 	{
 		ConstDivGen gen;
 		gen.init(3);
-		uint32_t q =gen.divp(15);
+		uint32_t q =gen.divd(15);
 		printf("%d\n", q);
 		gen.dump();
 		checkAll<ConstDivGen>(3);

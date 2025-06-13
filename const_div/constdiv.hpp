@@ -6,6 +6,8 @@ static const uint64_t one = 1;
 static const uint32_t N = 32;
 static const uint64_t M = (one << N) - 1;
 
+extern int g_mode;
+
 inline uint32_t floor_ilog2(uint32_t x)
 {
 	uint32_t a = 0;
@@ -71,7 +73,7 @@ struct ConstDiv {
 		}
 		return false;
 	}
-	uint32_t divp(uint32_t x) const
+	uint32_t divd(uint32_t x) const
 	{
 		if (c_ > 0xffffffff) {
 #ifdef MCL_DEFINED_UINT128_T
@@ -101,18 +103,19 @@ struct ConstDiv {
 
 struct ConstDivGen : Xbyak::CodeGenerator {
 	typedef uint32_t (*DivFunc)(uint32_t);
-	DivFunc divp;
+	DivFunc divd;
 	uint32_t d_;
 	uint32_t a_;
 	ConstDivGen()
 		: Xbyak::CodeGenerator(4096, Xbyak::DontSetProtectRWE)
-		, divp(nullptr)
+		, divd(nullptr)
 		, d_(0)
 		, a_(0)
 	{
 	}
-	bool init(uint32_t d, int /*mode*/ = 0)
+	bool init(uint32_t d, int mode = -1)
 	{
+		if (mode == -1) mode = g_mode;
 		using namespace Xbyak;
 		using namespace Xbyak::util;
 		{
@@ -137,13 +140,24 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 				} else {
 					mov(eax, x);
 					mov(rdx, cd.c_);
-					mul(rdx);
-					shrd(rax, rdx, cd.a_);
+//					mul(rdx);
+					mulx(rdx, rax, rax);
+
+					switch (mode) {
+					case 0:
+						shrd(rax, rdx, cd.a_);
+						break;
+					case 1: // better than shrd
+						shr(rax, cd.a_);
+						shl(edx, 64 - cd.a_);
+						or_(eax, edx);
+						break;
+					}
 				}
 			}
 		}
 		setProtectModeRE();
-		divp = getCode<DivFunc>();
+		divd = getCode<DivFunc>();
 		return true;
 	}
 	void dump() const
@@ -156,7 +170,7 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 	}
 	void put() const
 	{
-		printf("Gen d=%u(0x%08x) a=%u divp=%p\n", d_, d_, a_, divp);
+		printf("Gen d=%u(0x%08x) a=%u divd=%p\n", d_, d_, a_, divd);
 	}
 };
 
