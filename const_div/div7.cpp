@@ -28,6 +28,17 @@ uint32_t div7org(uint32_t x)
 	return x / 7;
 }
 
+uint32_t div7org2(uint32_t x)
+{
+	uint64_t v = x * (u_ & 0xffffffff);
+	v >>= 32;
+	uint32_t xL = uint32_t(x) - uint32_t(v);
+	xL >>= 1;
+	xL += uint32_t(v);
+	xL >>= 2;
+	return xL;
+}
+
 uint32_t div7a(uint32_t x)
 {
 #ifdef MCL_DEFINED_UINT128_T

@@ -1,7 +1,4 @@
 #include <stdint.h>
-#define XBYAK_DISABLE_AVX512
-#include <xbyak/xbyak_util.h>
-
 static const uint64_t one = 1;
 static const uint32_t N = 32;
 static const uint64_t M = (one << N) - 1;
@@ -101,6 +98,12 @@ struct ConstDiv {
 	}
 };
 
+#if defined(_WIN64) || defined(__x86_64__)
+#define CONST_DIV_GEN
+
+#define XBYAK_DISABLE_AVX512
+#include <xbyak/xbyak_util.h>
+
 struct ConstDivGen : Xbyak::CodeGenerator {
 	typedef uint32_t (*DivFunc)(uint32_t);
 	DivFunc divd;
@@ -173,4 +176,6 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 		printf("Gen d=%u(0x%08x) a=%u divd=%p\n", d_, d_, a_, divd);
 	}
 };
+
+#endif
 
