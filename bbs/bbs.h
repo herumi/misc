@@ -8,25 +8,21 @@
 */
 #include <mcl/bn_c384_256.h>
 
-#define BBS_PRIVATE_KEY_SIZE sizeof(mclBnFr)
-#define BBS_PUBLIC_KEY_SIZE sizeof(mclBnG2)
-#define BBS_SIGNATURE_SIZE (sizeof(mclBnG1)+sizeof(mclBnFr)*2)
-#define BBS_PROOF_SIZE (sizeof(mclBnG1)*3+sizeof(mclBnFr)*5+sizeof(mclSize)*2)
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct bbsSecretKey {
-	uint64_t v[BBS_PRIVATE_KEY_SIZE/8];
+	mclBnFr v;
 };
 
 struct bbsPublicKey {
-	uint64_t v[BBS_PUBLIC_KEY_SIZE/8];
+	mclBnG2 v;
 };
 
 struct bbsSignature {
-	uint64_t v[BBS_SIGNATURE_SIZE/8];
+	mclBnG1 A;
+	mclBnFr e, s;
 };
 
 struct bbsProof; // destructor is need

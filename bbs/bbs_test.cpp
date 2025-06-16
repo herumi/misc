@@ -5,6 +5,7 @@
 const size_t maxMsgSize = 32;
 
 using namespace bbs;
+using namespace mcl;
 
 CYBOZU_TEST_AUTO(init)
 {

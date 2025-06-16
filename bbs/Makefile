@@ -7,15 +7,17 @@ TARGET=$(SRC:.cpp=.exe)
 
 all: $(TARGET)
 
-MCL_LIB=-lmcl
-CFLAGS+=-I $(MCL_DIR)/include
-LDFLAGS+=-L $(MCL_DIR)/lib
+CFLAGS+=-I $(MCL_DIR)/include -I ./
+LDFLAGS+=-L $(MCL_DIR)/lib -L ./
+
+libbbs.a: bbs.o
+	$(AR) $(ARFLAGS) $@ $<
 
 %.o: %.cpp
 	$(PRE)$(CXX) $(CFLAGS) -c $< -o $@ -MMD -MP -MF $(@:.o=.d)
 
-%.exe: %.o
-	$(PRE)$(CXX) $< -o $@ $(MCL_LIB) $(LDFLAGS)
+%.exe: %.o libbbs.a
+	$(PRE)$(CXX) $< -o $@ -lmcl -lbbs $(LDFLAGS)
 
 test: $(TARGET)
 	./$(TARGET)
@@ -23,7 +25,7 @@ test: $(TARGET)
 -include $(DEP)
 
 clean:
-	$(RM) $(TARGET) $(OBJ) $(DEP)
+	$(RM) $(TARGET) $(OBJ) $(DEP) *.a
 
 .PHONY: clean
 
