@@ -244,20 +244,6 @@ const Fr& Signature::get_s() const
 	return *cast(&v.s);
 }
 
-bool Signature::sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *msgs, const mclSize *msgSize, size_t msgN)
-{
-	Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
-	msgsToFr(xs, msgs, msgSize, msgN);
-	return sign(sec, pub, xs, msgN);
-}
-
-bool Signature::verify(const PublicKey& pub, const uint8_t *msgs, const mclSize *msgSize, size_t msgN) const
-{
-	Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
-	msgsToFr(xs, msgs, msgSize, msgN);
-	return verify(pub, xs, msgN);
-}
-
 /*
 	e, s: generated from msgs
 	B = s_P1 + s_Q1 * s + s_Q2 * dom + sum_i s_H[i] * msgs[i]
@@ -265,6 +251,64 @@ bool Signature::verify(const PublicKey& pub, const uint8_t *msgs, const mclSize 
 	return (A, e, s)
 	assume msgN <= s_maxMsgSize
 */
+bool Signature::sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *msgs, const mclSize *msgSize, size_t msgN)
+{
+	Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
+	msgsToFr(xs, msgs, msgSize, msgN);
+#if 1
+	G1& A = *cast(&v.A);
+	Fr& e = *cast(&v.e);
+	Fr& s = *cast(&v.s);
+
+	if (msgN > s_maxMsgSize) {
+		return false;
+	}
+	Fr dom;
+	calcDom(dom, pub.get_v(), msgN);
+	Hash hash;
+	hash << sec.get_v() << dom;
+	for (size_t i = 0; i < msgN; i++) {
+		hash << xs[i];
+	}
+	Fr t;
+	hash.get(t);
+	Fr out[2];
+	hash_to_scalar(out, t, 2);
+	e = out[0];
+	s = out[1];
+	G1 B;
+	calcB(B, s, dom, xs, msgN);
+	Fr::add(t, sec.get_v(), e);
+	Fr::inv(t, t);
+	G1::mul(A, B, t);
+	return true;
+#else
+	return sign(sec, pub, xs, msgN);
+#endif
+}
+
+/*
+	dom = hash(pk, n, s_Q1, s_Q2, s_H[0:n])
+	e(A, pub + e * s_P2) = e(s_P1 + s_Q1 * s + s_Q2 * dom + sum_i s_H[i] * msgs[i], s_P2)
+*/
+bool Signature::verify(const PublicKey& pub, const uint8_t *msgs, const mclSize *msgSize, size_t msgN) const
+{
+	const G1& A = get_A();
+	const Fr& e = get_e();
+	const Fr& s = get_s();
+	if (msgN > s_maxMsgSize) return false;
+
+	Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
+	msgsToFr(xs, msgs, msgSize, msgN);
+
+	Fr dom;
+	calcDom(dom, pub.get_v(), msgN);
+	G1 B;
+	calcB(B, s, dom, xs, msgN);
+	return verifyMultiPairing(A, B, pub.get_v() + s_P2 * e);
+}
+
+#if 0
 bool Signature::sign(const SecretKey& sec, const PublicKey& pub, const Fr *msgs, size_t msgN)
 {
 	G1& A = *cast(&v.A);
@@ -294,30 +338,18 @@ bool Signature::sign(const SecretKey& sec, const PublicKey& pub, const Fr *msgs,
 	G1::mul(A, B, t);
 	return true;
 }
+#endif
 
-/*
-	dom = hash(pk, n, s_Q1, s_Q2, s_H[0:n])
-	e(A, pub + e * s_P2) = e(s_P1 + s_Q1 * s + s_Q2 * dom + sum_i s_H[i] * msgs[i], s_P2)
-*/
-bool Signature::verify(const PublicKey& pub, const Fr *msgs, size_t msgN) const
-{
-	const G1& A = get_A();
-	const Fr& e = get_e();
-	const Fr& s = get_s();
-	if (msgN > s_maxMsgSize) return false;
-	Fr dom;
-	calcDom(dom, pub.get_v(), msgN);
-	G1 B;
-	calcB(B, s, dom, msgs, msgN);
-	return verifyMultiPairing(A, B, pub.get_v() + s_P2 * e);
-}
-
-bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t msgN, const mclSize *discIdxs, size_t discN, const uint8_t *nonce, size_t nonceSize)
+bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const uint8_t *msgs, const mclSize *msgSize, size_t msgN, const mclSize *discIdxs, size_t discN, const uint8_t *nonce, size_t nonceSize)
 {
 	if (msgN > s_maxMsgSize) return false;
 	if (msgN < discN) return false;
 	if (prf.undiscN != msgN - discN) return false;
 	if (!isValidDiscIdx(msgN, discIdxs, discN)) return false;
+
+	Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
+	msgsToFr(xs, msgs, msgSize, msgN);
+
 	Fr dom;
 	calcDom(dom, pub.get_v(), msgN);
 	Fr out[6];
@@ -329,7 +361,7 @@ bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *
 	const Fr& r3_tilde = out[4];
 	const Fr& s_tilde = out[5];
 	G1 B;
-	calcB(B, sig.get_s(), dom, msgs, msgN);
+	calcB(B, sig.get_s(), dom, xs, msgN);
 	Fr r3;
 	Fr::inv(r3, r1);
 	prf.A_prime = sig.get_A() * r1;
@@ -348,7 +380,7 @@ bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *
 	if (prf.undiscN > 0) {
 		addSelectedMulVec(C2, js, prf.undiscN, m_tilde);
 	}
-	calc_cv(prf.c, prf, C1, C2, discN, discIdxs, msgs, false, dom, nonce, nonceSize);
+	calc_cv(prf.c, prf, C1, C2, discN, discIdxs, xs, false, dom, nonce, nonceSize);
 	prf.e_hat= prf.c * sig.get_e() + e_tilde;
 	prf.r2_hat = prf.c * r2 + r2_tilde;
 	prf.r3_hat = prf.c * r3 + r3_tilde;
@@ -356,31 +388,28 @@ bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *
 
 	if (prf.undiscN > 0) {
 		for (size_t i = 0; i < prf.undiscN; i++) {
-			prf.m_hat[i] = prf.c * msgs[js[i]] + m_tilde[i];
+			prf.m_hat[i] = prf.c * xs[js[i]] + m_tilde[i];
 		}
 	}
 	return true;
 }
 
-bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const uint8_t *msgs, const mclSize *msgSize, size_t msgN, const mclSize *discIdxs, size_t discN, const uint8_t *nonce, size_t nonceSize)
-{
-	Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
-	msgsToFr(xs, msgs, msgSize, msgN);
-	return proofGen(prf, pub, sig, xs, msgN, discIdxs, discN, nonce, nonceSize);
-}
-
-bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const Fr *discMsgs, const mclSize *discIdxs, size_t discN, const uint8_t *nonce, size_t nonceSize)
+bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const uint8_t *discMsgs, const mclSize *discMsgSize, const mclSize *discIdxs, size_t discN, const uint8_t *nonce, size_t nonceSize)
 {
 	if (msgN > s_maxMsgSize) return false;
 	if (msgN < discN) return false;
 	if (prf.undiscN != msgN - discN) return false;
 	if (!isValidDiscIdx(msgN, discIdxs, discN)) return false;
+
+	Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * discN);
+	msgsToFr(xs, discMsgs, discMsgSize, discN);
+
 	Fr dom;
 	calcDom(dom, pub.get_v(), msgN);
 	G1 C1 = (prf.A_bar - prf.D) * prf.c + prf.A_prime * prf.e_hat + s_Q1 * prf.r2_hat;
 	G1 T = s_P1 + s_Q2 * dom;
 	if (discN > 0) {
-		addSelectedMulVec(T, discIdxs, discN, discMsgs);
+		addSelectedMulVec(T, discIdxs, discN, xs);
 	}
 	G1 C2 = T * prf.c - prf.D * prf.r3_hat + s_Q1 * prf.s_hat;
 	if (prf.undiscN > 0) {
@@ -389,17 +418,10 @@ bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const Fr *
 		addSelectedMulVec(C2, js, prf.undiscN, prf.m_hat);
 	}
 	Fr cv;
-	calc_cv(cv, prf, C1, C2, discN, discIdxs, discMsgs, true, dom, nonce, nonceSize);
+	calc_cv(cv, prf, C1, C2, discN, discIdxs, xs, true, dom, nonce, nonceSize);
 	if (cv != prf.c) return false;
 	if (prf.A_prime.isZero()) return false;
 	return verifyMultiPairing(prf.A_prime, prf.A_bar, pub.get_v());
-}
-
-bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const uint8_t *discMsgs, const mclSize *discMsgSize, const mclSize *discIdxs, size_t discN, const uint8_t *nonce, size_t nonceSize)
-{
-	Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * discN);
-	msgsToFr(xs, discMsgs, discMsgSize, discN);
-	return proofVerify(pub, prf, msgN, xs, discIdxs, discN, nonce, nonceSize);
 }
 
 } // bbs
@@ -426,7 +448,7 @@ bool bbsSign(bbsSignature *sig, const bbsSecretKey *sec, const bbsPublicKey *pub
 	return cast(sig)->sign(*cast(sec), *cast(pub), msgs, msgSize, msgN);
 }
 
-bool bbsVerify(const bbsPublicKey *pub, const bbsSignature *sig, const uint8_t *msgs, const mclSize *msgSize, mclSize msgN)
+bool bbsVerify(const bbsSignature *sig, const bbsPublicKey *pub, const uint8_t *msgs, const mclSize *msgSize, mclSize msgN)
 {
 	return cast(sig)->verify(*cast(pub), msgs, msgSize, msgN);
 }

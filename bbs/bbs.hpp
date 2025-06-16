@@ -27,12 +27,8 @@ public:
 class Signature {
 	bbsSignature v;
 public:
-	// msgN: number of msgs
-	bool sign(const SecretKey& sec, const PublicKey& pub, const mcl::Fr *msgs, size_t msgN);
-	bool verify(const PublicKey& pub, const mcl::Fr *msgs, size_t msgN) const;
-
 	/*
-		BBS+ signature generation function for byte array messages
+		Generate signature for byte array messages
 		Input:
 			sec: secret key
 			pub: public key
@@ -44,7 +40,7 @@ public:
 	*/
 	bool sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *msgs, const mclSize *msgSize, size_t msgN);
 	/*
-		BBS+ signature verification function for byte array messages
+		Verify signaturefor byte array messages
 		Input:
 			pub: public key
 			msgs: concatenated message byte array (msg[0] || msg[1] || ... || msg[msgN-1])
@@ -79,11 +75,7 @@ struct Proof {
 	discIdxs: accending order
 	msgs[discIdxs[i]]: disclosed messages for i in [0, discN)
 */
-bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const mcl::Fr *msgs, size_t msgN, const mclSize *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0);
-
 bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const uint8_t *msgs, const mclSize *msgSize, size_t msgN, const mclSize *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0);
-
-bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const mcl::Fr *discMsgs, const mclSize *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0);
 
 bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const uint8_t *discMsgs, const mclSize *discMsgSize, const mclSize *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0);
 

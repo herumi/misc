@@ -51,15 +51,15 @@ MCL_DLL_API bool bbsSign(bbsSignature *sig, const bbsSecretKey *sec, const bbsPu
 /*
 	signature verification function for byte array messages
 	Input:
-		pub: public key
 		sig: signature
+		pub: public key
 		msgs: concatenated message byte array (msg[0] || msg[1] || ... || msg[msgN-1])
 		msgSize: array storing size of each message (msgSize[i] is size of msg[i])
 		msgN: number of messages
 	Return:
 		true: success
 */
-MCL_DLL_API bool bbsVerify(const bbsPublicKey *pub, const bbsSignature *sig, const uint8_t *msgs, const mclSize *msgSize, mclSize msgN);
+MCL_DLL_API bool bbsVerify(const bbsSignature *sig, const bbsPublicKey *pub, const uint8_t *msgs, const mclSize *msgSize, mclSize msgN);
 
 MCL_DLL_API bbsProof *bbsCreateProof(const bbsPublicKey *pub, const bbsSignature *sig, const uint8_t *msgs, const mclSize *msgSize, size_t msgN, const mclSize *discIdxs, size_t discN, const uint8_t *nonce, size_t nonceSize);
 

@@ -19,6 +19,10 @@ CYBOZU_TEST_AUTO(sign_verify)
 	sec.init();
 	PublicKey pub;
 	sec.getPublicKey(pub);
+	bbsSecretKey csec;
+	bbsInitSecretKey(&csec);
+	bbsPublicKey cpub;
+	bbsGetPublicKey(&cpub, &csec);
 	const size_t N = 10;
 	mclSize msgSize[N];
 	const mclSize MSG_SIZE = 2;
@@ -35,6 +39,11 @@ CYBOZU_TEST_AUTO(sign_verify)
 		CYBOZU_TEST_ASSERT(!sig.verify(pub, msgs, msgSize, n - 1));
 		msgs[0] -= 1;
 		CYBOZU_TEST_ASSERT(!sig.verify(pub, msgs, msgSize, n));
+
+		bbsSignature csig;
+		bbsSign(&csig, &csec, &cpub, msgs, msgSize, n);
+		CYBOZU_TEST_ASSERT(bbsVerify(&csig, &cpub, msgs, msgSize, n));
+		CYBOZU_TEST_ASSERT(!bbsVerify(&csig, &cpub, msgs, msgSize, n - 1));
 	}
 }
 
@@ -78,20 +87,24 @@ CYBOZU_TEST_AUTO(setJs)
 	}
 }
 
-void checkProof(const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t msgN, const mclSize *discIdxs, size_t discN)
+void copyMsgsToDisc(uint8_t *discMsgs, mclSize *discMsgSize, const uint8_t *msgs, const mclSize *msgSize, const mclSize *discIdxs, size_t discN)
 {
-	const mclSize undiscN = msgN - discN;
-	Fr *discMsgs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * discN);
-
-	// select disclosed msgs
-	for (size_t i = 0; i < discN; i++) discMsgs[i] = msgs[discIdxs[i]];
-
-	Proof prf;
-	Fr *m_hat = (Fr *)CYBOZU_ALLOCA(sizeof(Fr) * undiscN);
-	prf.set(m_hat, undiscN);
-	const uint8_t nonce[] = { 1, 2, 3, 4, 0x11, 0x22, 0x33 };
-	CYBOZU_TEST_ASSERT(proofGen(prf, pub, sig, msgs, msgN, discIdxs, discN, nonce, sizeof(nonce)));
-	CYBOZU_TEST_ASSERT(proofVerify(pub, prf, msgN, discMsgs, discIdxs, discN, nonce, sizeof(nonce)));
+	const uint8_t *src = msgs;
+	uint8_t *dst = discMsgs;
+	size_t pos = 0;
+	for (size_t i = 0; i < discN; i++) {
+		// skip
+		while (pos < discIdxs[i]) {
+			src += msgSize[pos];
+			pos++;
+		}
+		mclSize size = msgSize[pos];
+		memcpy(dst, src, size);
+		src += size;
+		dst += size;
+		discMsgSize[i] = size;
+		pos++;
+	}
 }
 
 void checkProof(const PublicKey& pub, const Signature& sig, const uint8_t *msgs, const mclSize *msgSize, size_t msgN, const mclSize *discIdxs, size_t discN)
@@ -105,24 +118,7 @@ void checkProof(const PublicKey& pub, const Signature& sig, const uint8_t *msgs,
 	uint8_t *discMsgs = (uint8_t*)CYBOZU_ALLOCA(totalDiscMsgSize);
 	mclSize *discMsgSize = (mclSize*)CYBOZU_ALLOCA(sizeof(mclSize) * discN);
 	// copy msgs to discMsgSize
-	{
-		const uint8_t *src = msgs;
-		uint8_t *dst = discMsgs;
-		size_t pos = 0;
-		for (size_t i = 0; i < discN; i++) {
-			// skip
-			while (pos < discIdxs[i]) {
-				src += msgSize[pos];
-				pos++;
-			}
-			mclSize size = msgSize[pos];
-			memcpy(dst, src, size);
-			src += size;
-			dst += size;
-			discMsgSize[i] = size;
-			pos++;
-		}
-	}
+	copyMsgsToDisc(discMsgs, discMsgSize, msgs, msgSize, discIdxs, discN);
 
 	Proof prf;
 	Fr *m_hat = (Fr *)CYBOZU_ALLOCA(sizeof(Fr) * undiscN);
@@ -130,6 +126,25 @@ void checkProof(const PublicKey& pub, const Signature& sig, const uint8_t *msgs,
 	const uint8_t nonce[] = { 1, 2, 3, 4, 0x11, 0x22, 0x33 };
 	CYBOZU_TEST_ASSERT(proofGen(prf, pub, sig, msgs, msgSize, msgN, discIdxs, discN, nonce, sizeof(nonce)));
 	CYBOZU_TEST_ASSERT(proofVerify(pub, prf, msgN, discMsgs, discMsgSize, discIdxs, discN, nonce, sizeof(nonce)));
+}
+
+void ccheckProof(const bbsPublicKey *cpub, const bbsSignature *csig, const uint8_t *msgs, const mclSize *msgSize, size_t msgN, const mclSize *discIdxs, size_t discN)
+{
+	mclSize totalDiscMsgSize = 0;
+	for (size_t i = 0; i < discN; i++) {
+		totalDiscMsgSize += msgSize[discIdxs[i]];
+	}
+	uint8_t *discMsgs = (uint8_t*)CYBOZU_ALLOCA(totalDiscMsgSize);
+	mclSize *discMsgSize = (mclSize*)CYBOZU_ALLOCA(sizeof(mclSize) * discN);
+	// copy msgs to discMsgSize
+	copyMsgsToDisc(discMsgs, discMsgSize, msgs, msgSize, discIdxs, discN);
+
+	const uint8_t nonce[] = { 1, 2, 3, 4, 0x11, 0x22, 0x33 };
+
+	bbsProof *cprf = bbsCreateProof(cpub, csig, msgs, msgSize, msgN, discIdxs, discN, nonce, sizeof(nonce));
+	CYBOZU_TEST_ASSERT(cprf);
+	CYBOZU_TEST_ASSERT(bbsVerifyProof(cpub, cprf, msgN, discMsgs, discMsgSize, discIdxs, discN, nonce, sizeof(nonce)));
+	bbsDestroyProof(cprf);
 }
 
 CYBOZU_TEST_AUTO(proof)
@@ -157,9 +172,18 @@ CYBOZU_TEST_AUTO(proof)
 		sec.getPublicKey(pub);
 		sig.sign(sec, pub, msgs, msgSize, msgN);
 	}
+	bbsPublicKey cpub;
+	bbsSignature csig;
+	{
+		bbsSecretKey csec;
+		bbsInitSecretKey(&csec);
+		bbsGetPublicKey(&cpub, &csec);
+		bbsSign(&csig, &csec, &cpub, msgs, msgSize, msgN);
+	}
 
 	puts("disclose nothing");
 	checkProof(pub, sig, msgs, msgSize, msgN, 0, 0);
+	ccheckProof(&cpub, &csig, msgs, msgSize, msgN, 0, 0);
 
 	puts("disclose one");
 	{
@@ -167,6 +191,7 @@ CYBOZU_TEST_AUTO(proof)
 		for (size_t i = 0; i < msgN; i++) {
 			discIdxs[0] = i;
 			checkProof(pub, sig, msgs, msgSize, msgN, discIdxs, discN);
+			ccheckProof(&cpub, &csig, msgs, msgSize, msgN, discIdxs, discN);
 		}
 	}
 	puts("disclose two");
@@ -177,6 +202,7 @@ CYBOZU_TEST_AUTO(proof)
 			for (size_t j = i + 1; j < msgN; j++) {
 				discIdxs[1] = j;
 				checkProof(pub, sig, msgs, msgSize, msgN, discIdxs, discN);
+				ccheckProof(&cpub, &csig, msgs, msgSize, msgN, discIdxs, discN);
 			}
 		}
 	}
@@ -190,6 +216,7 @@ CYBOZU_TEST_AUTO(proof)
 				for (size_t k = j + 1; k < msgN; k++) {
 					discIdxs[2] = k;
 					checkProof(pub, sig, msgs, msgSize, msgN, discIdxs, discN);
+					ccheckProof(&cpub, &csig, msgs, msgSize, msgN, discIdxs, discN);
 				}
 			}
 		}
@@ -199,5 +226,6 @@ CYBOZU_TEST_AUTO(proof)
 		const size_t discN = msgN;
 		for (size_t i = 0; i < discN; i++) discIdxs[i] = i;
 		checkProof(pub, sig, msgs, msgSize, msgN, discIdxs, discN);
+		ccheckProof(&cpub, &csig, msgs, msgSize, msgN, discIdxs, discN);
 	}
 }
