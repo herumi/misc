@@ -5,7 +5,7 @@
 #include <mcl/bls12_381.hpp>
 #include <cybozu/sha2.hpp>
 #include <cybozu/serializer.hpp>
-#include <mcl/bn.h>
+#include <mcl/bn_c384_256.h>
 
 namespace bbs {
 
@@ -83,7 +83,7 @@ void hash_to_scalar(Fr *out, const T& x, size_t n)
 }
 
 // true if all discIdxs[i] < discIdxs[i+1] < msgN
-inline bool isValidDiscIdx(size_t msgN, const uint32_t *discIdxs, size_t discN)
+inline bool isValidDiscIdx(size_t msgN, const mclSize *discIdxs, size_t discN)
 {
 	if (discN == 0) return true;
 	if (discIdxs[0] >= msgN) return false;
@@ -94,12 +94,12 @@ inline bool isValidDiscIdx(size_t msgN, const uint32_t *discIdxs, size_t discN)
 }
 
 // js[0:undiscN] = [0:msgN] - discIdxs[0:discN]
-inline void setJs(uint32_t *js, size_t undiscN, const uint32_t *discIdxs, size_t discN)
+inline void setJs(mclSize *js, size_t undiscN, const mclSize *discIdxs, size_t discN)
 {
 	const size_t msgN = undiscN + discN;
 	size_t v = 0;
 	size_t dPos = 0;
-	uint32_t next = dPos < discN ? discIdxs[dPos++]: msgN;
+	mclSize next = dPos < discN ? discIdxs[dPos++]: msgN;
 
 	size_t jPos = 0;
 	while (jPos < undiscN) {
@@ -125,7 +125,7 @@ inline bool verifyMultiPairing(const G1& P1, const G1& P2, const G2& Q)
 
 } // mcl::bbs::local
 
-inline void msgToFr(Fr& x, const uint8_t *msg, uint32_t msgSize)
+inline void msgToFr(Fr& x, const uint8_t *msg, mclSize msgSize)
 {
 #if 0
 	x.setLittleEndianMod(msg, msgSize);
@@ -141,7 +141,7 @@ inline void msgToFr(Fr& x, const uint8_t *msg, uint32_t msgSize)
 // x: Fr array of size msgN.
 // msgs: concatenation of all msg[i]. The size is a sum of msgSize[i].
 // msgSize: array of size msgN. msgSize[i] is the size of msg[i].
-inline void msgsToFr(Fr *x, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN)
+inline void msgsToFr(Fr *x, const uint8_t *msgs, const mclSize *msgSize, size_t msgN)
 {
 	for (size_t i = 0; i < msgN; i++) {
 		msgToFr(x[i], msgs, msgSize[i]);
@@ -224,7 +224,7 @@ public:
 		Return:
 			true: success
 	*/
-	bool sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN)
+	bool sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *msgs, const mclSize *msgSize, size_t msgN)
 	{
 		Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
 		msgsToFr(xs, msgs, msgSize, msgN);
@@ -240,7 +240,7 @@ public:
 		Return:
 			true: success
 	*/
-	bool verify(const PublicKey& pub, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN) const
+	bool verify(const PublicKey& pub, const uint8_t *msgs, const mclSize *msgSize, size_t msgN) const
 	{
 		Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
 		msgsToFr(xs, msgs, msgSize, msgN);
@@ -298,10 +298,10 @@ inline bool Signature::verify(const PublicKey& pub, const Fr *msgs, size_t msgN)
 struct Proof {
 	G1 A_prime, A_bar, D;
 	Fr c, e_hat, r2_hat, r3_hat, s_hat;
+	mclSize undiscN; // undiscN = msgN - discN, all msgs are disclosed if undiscN = 0
 	Fr *m_hat; // m_hat must be undiscN array of Fr
-	uint32_t undiscN; // undiscN = msgN - discN, all msgs are disclosed if undiscN = 0
-	Proof(): m_hat(0), undiscN(0) {}
-	void set(Fr *msg, uint32_t undiscN)
+	Proof(): undiscN(0), m_hat(0) {}
+	void set(Fr *msg, mclSize undiscN)
 	{
 		m_hat = msg;
 		this->undiscN = undiscN;
@@ -310,7 +310,7 @@ struct Proof {
 
 namespace local {
 
-inline void calc_cv(Fr& cv, const Proof& prf, const G1& C1, const G1& C2, size_t discN, const uint32_t *discIdxs, const Fr *msgs, bool isDisclosed, const Fr& dom, const uint8_t *nonce = 0, size_t nonceSize = 0)
+inline void calc_cv(Fr& cv, const Proof& prf, const G1& C1, const G1& C2, size_t discN, const mclSize *discIdxs, const Fr *msgs, bool isDisclosed, const Fr& dom, const uint8_t *nonce = 0, size_t nonceSize = 0)
 {
 	local::Hash hash;
 	for (size_t i = 0; i < nonceSize; i++) hash << nonce[i];
@@ -328,7 +328,7 @@ inline void calc_cv(Fr& cv, const Proof& prf, const G1& C1, const G1& C2, size_t
 }
 
 // out += sum_{i=0}^undiscN s_H[selectedIx[i]] * v[i]
-inline void addSelectedMulVec(G1& out, const uint32_t *selectedIdx, size_t undiscN, const Fr *v)
+inline void addSelectedMulVec(G1& out, const mclSize *selectedIdx, size_t undiscN, const Fr *v)
 {
 	G1 *H = (G1*)CYBOZU_ALLOCA(sizeof(G1) * undiscN);
 	for (size_t i = 0; i < undiscN; i++) H[i] = s_H[selectedIdx[i]];
@@ -344,7 +344,7 @@ inline void addSelectedMulVec(G1& out, const uint32_t *selectedIdx, size_t undis
 	discIdxs: accending order
 	msgs[discIdxs[i]]: disclosed messages for i in [0, discN)
 */
-inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t msgN, const uint32_t *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0)
+inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const Fr *msgs, size_t msgN, const mclSize *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0)
 {
 	if (msgN > s_maxMsgSize) return false;
 	if (msgN < discN) return false;
@@ -373,7 +373,7 @@ inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, con
 	C1 = prf.A_prime * e_tilde + s_Q1 * r2_tilde;
 	C2 = prf.D * (-r3_tilde) + s_Q1 * s_tilde;
 
-	uint32_t *js = (uint32_t*)CYBOZU_ALLOCA(sizeof(uint32_t) * prf.undiscN);
+	mclSize *js = (mclSize*)CYBOZU_ALLOCA(sizeof(mclSize) * prf.undiscN);
 	local::setJs(js, prf.undiscN, discIdxs, discN);
 	Fr *m_tilde = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * prf.undiscN);
 	local::hash_to_scalar(m_tilde, "m_tilde", prf.undiscN);
@@ -394,14 +394,14 @@ inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, con
 	return true;
 }
 
-inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN, const uint32_t *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0)
+inline bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const uint8_t *msgs, const mclSize *msgSize, size_t msgN, const mclSize *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0)
 {
 	Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
 	msgsToFr(xs, msgs, msgSize, msgN);
 	return proofGen(prf, pub, sig, xs, msgN, discIdxs, discN, nonce, nonceSize);
 }
 
-bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const Fr *discMsgs, const uint32_t *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0)
+bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const Fr *discMsgs, const mclSize *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0)
 {
 	if (msgN > s_maxMsgSize) return false;
 	if (msgN < discN) return false;
@@ -416,7 +416,7 @@ bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const Fr *
 	}
 	G1 C2 = T * prf.c - prf.D * prf.r3_hat + s_Q1 * prf.s_hat;
 	if (prf.undiscN > 0) {
-		uint32_t *js = (uint32_t*)CYBOZU_ALLOCA(sizeof(uint32_t) * prf.undiscN);
+		mclSize *js = (mclSize*)CYBOZU_ALLOCA(sizeof(mclSize) * prf.undiscN);
 		local::setJs(js, prf.undiscN, discIdxs, discN);
 		local::addSelectedMulVec(C2, js, prf.undiscN, prf.m_hat);
 	}
@@ -427,7 +427,7 @@ bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const Fr *
 	return local::verifyMultiPairing(prf.A_prime, prf.A_bar, pub.get_v());
 }
 
-bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const uint8_t *discMsgs, const uint32_t *discMsgSize, const uint32_t *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0)
+bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const uint8_t *discMsgs, const mclSize *discMsgSize, const mclSize *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0)
 {
 	Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * discN);
 	msgsToFr(xs, discMsgs, discMsgSize, discN);
@@ -435,96 +435,3 @@ bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const uint
 }
 
 } // bbs
-
-extern "C" {
-
-struct bbsSecretKey {
-	uint64_t v[sizeof(bbs::SecretKey)/8];
-};
-
-struct bbsPublicKey {
-	uint64_t v[sizeof(bbs::PublicKey)/8];
-};
-
-struct bbsSignature {
-	uint64_t v[sizeof(bbs::Signature)/8];
-};
-
-struct bbsProof; // destructor is need
-
-} // extern "C"
-
-namespace bbs { namespace local {
-
-inline SecretKey *cast(bbsSecretKey *p) { return reinterpret_cast<SecretKey*>(p); }
-inline const SecretKey *cast(const bbsSecretKey *p) { return reinterpret_cast<const SecretKey*>(p); }
-
-inline PublicKey *cast(bbsPublicKey *p) { return reinterpret_cast<PublicKey*>(p); }
-inline const PublicKey *cast(const bbsPublicKey *p) { return reinterpret_cast<const PublicKey*>(p); }
-
-inline Signature *cast(bbsSignature *p) { return reinterpret_cast<Signature*>(p); }
-inline const Signature *cast(const bbsSignature *p) { return reinterpret_cast<const Signature*>(p); }
-
-inline Proof *cast(bbsProof *p) { return reinterpret_cast<Proof*>(p); }
-inline const Proof *cast(const bbsProof *p) { return reinterpret_cast<const Proof*>(p); }
-
-} } // bbs::local
-
-extern "C" {
-
-inline bool bbsInit(uint32_t maxMsgSize)
-{
-	return bbs::init(maxMsgSize);
-}
-
-inline bool bbsInitSecretKey(bbsSecretKey *sec)
-{
-	using namespace bbs::local;
-	cast(sec)->init();
-	return true;
-}
-
-bool bbsGetPublicKey(bbsPublicKey *pub, const bbsSecretKey *sec)
-{
-	using namespace bbs::local;
-	cast(sec)->getPublicKey(*cast(pub));
-	return true;
-}
-/*
-	signature generation function for byte array messages
-	Input:
-		sec: secret key
-		pub: public key
-		msgs: concatenated message byte array (msg[0] || msg[1] || ... || msg[msgN-1])
-		msgSize: array storing size of each message (msgSize[i] is size of msg[i])
-		msgN: number of messages
-	Output:
-		sig: generated signature
-	Return:
-		true: success
-*/
-bool bbsSign(bbsSignature *sig, const bbsSecretKey *sec, const bbsPublicKey *pub, const uint8_t *msgs, const uint32_t *msgSize, uint32_t msgN)
-{
-	using namespace bbs::local;
-	return cast(sig)->sign(*cast(sec), *cast(pub), msgs, msgSize, msgN);
-}
-
-/*
-	signature verification function for byte array messages
-	Input:
-		pub: public key
-		sig: signature
-		msgs: concatenated message byte array (msg[0] || msg[1] || ... || msg[msgN-1])
-		msgSize: array storing size of each message (msgSize[i] is size of msg[i])
-		msgN: number of messages
-	Return:
-		true: success
-*/
-bool bbsVerify(const bbsPublicKey *pub, const bbsSignature *sig, const uint8_t *msgs, const uint32_t *msgSize, uint32_t msgN)
-{
-	using namespace bbs::local;
-	return cast(sig)->verify(*cast(pub), msgs, msgSize, msgN);
-}
-
-} // extern "C"
-
