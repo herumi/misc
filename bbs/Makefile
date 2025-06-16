@@ -22,7 +22,7 @@ libbbs.a: bbs.o
 test: $(TARGET)
 	./$(TARGET)
 
-BBS_JS=./bbs_c.js
+BBS_JS=./wasm/bbs_c.js
 EMCC_OPT=-I $(MCL_DIR)/include -I $(MCL_DIR)/src -Wall -Wextra -I ./
 EMCC_OPT+=-O3 -DNDEBUG -std=c++03
 EMCC_OPT+=-fno-threadsafe-statics -fno-rtti
@@ -42,7 +42,7 @@ EMCC_OPT+=-sEXPORTED_RUNTIME_METHODS=HEAP8,HEAP32
 #EMCC_OPT+=-msimd128
 EMCC_OPT+=-flto
 $(BBS_JS):
-	emcc -o $@ $(MCL_DIR)/src/fp.cpp dep.cpp bbs.cpp $(EMCC_OPT) -DMCL_MAX_BIT_SIZE=384 -DMCL_USE_WEB_CRYPTO_API
+	emcc -o $@ $(MCL_DIR)/src/fp.cpp wasm/dep.cpp bbs.cpp $(EMCC_OPT) -DMCL_MAX_BIT_SIZE=384 -DMCL_USE_WEB_CRYPTO_API
 	# disable require fs, path
 	perl -i -pe 's@(.* = require\(.*)@//\1@' $@
 
