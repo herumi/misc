@@ -59,7 +59,7 @@ public:
 struct Proof {
 	mcl::G1 A_prime, A_bar, D;
 	mcl::Fr c, e_hat, r2_hat, r3_hat, s_hat;
-	mclSize undiscN; // undiscN = msgN - discN, all msgs are disclosed if undiscN = 0
+	uint32_t undiscN; // undiscN = msgN - discN, all msgs are disclosed if undiscN = 0
 	mcl::Fr *m_hat; // m_hat must be undiscN array of Fr
 	Proof(): undiscN(0), m_hat(0) {}
 	void set(mcl::Fr *msg, mclSize undiscN)

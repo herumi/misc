@@ -2,6 +2,7 @@
 #include <cybozu/sha2.hpp>
 #include <mcl/bls12_381.hpp>
 #include <cybozu/serializer.hpp>
+#include <cybozu/endian.hpp>
 #include "bbs.hpp"
 #include "bbs.h"
 #include "../../mcl/src/cast.hpp"
@@ -21,6 +22,8 @@ static G2 s_P2;
 static const uint8_t s_dst[] = "MAP_MSG_TO_SCALAR_AS_HASH_";
 static const size_t s_dstSize = sizeof(s_dst) - 1;
 
+const int g_ioMode = mcl::IoSerialize;
+
 inline SecretKey *cast(bbsSecretKey *p) { return reinterpret_cast<SecretKey*>(p); }
 inline const SecretKey *cast(const bbsSecretKey *p) { return reinterpret_cast<const SecretKey*>(p); }
 inline PublicKey *cast(bbsPublicKey *p) { return reinterpret_cast<PublicKey*>(p); }
@@ -29,6 +32,142 @@ inline Signature *cast(bbsSignature *p) { return reinterpret_cast<Signature*>(p)
 inline const Signature *cast(const bbsSignature *p) { return reinterpret_cast<const Signature*>(p); }
 inline Proof *cast(bbsProof *p) { return reinterpret_cast<Proof*>(p); }
 inline const Proof *cast(const bbsProof *p) { return reinterpret_cast<const Proof*>(p); }
+
+mclSize bbsGetSecretKeySerializeByteSize() { return mclBn_getFrByteSize(); }
+mclSize bbsGetPublicKeySerializeByteSize() { return mclBn_getG2ByteSize(); }
+mclSize bbsGetSignatureSerializeByteSize() { return mclBn_getG1ByteSize() + mclBn_getFrByteSize() * 2; }
+
+mclSize getFixedPartOfProofSerializeByteSize()
+{
+	return mclBn_getG1ByteSize() * 3 + mclBn_getFrByteSize() * 5 + sizeof(uint32_t);
+}
+mclSize bbsGetProofSerializeByteSize(const bbsProof *prf)
+{
+	return getFixedPartOfProofSerializeByteSize() + mclBn_getFrByteSize() * cast(prf)->undiscN;
+}
+
+mclSize bbsDeserializeSecretKey(bbsSecretKey *x, const void *buf, mclSize bufSize)
+{
+	return mclBnFr_deserialize(&x->v, buf, bufSize);
+}
+
+mclSize bbsDeserializePublicKey(bbsPublicKey *x, const void *buf, mclSize bufSize)
+{
+	return mclBnG2_deserialize(&x->v, buf, bufSize);
+}
+
+bbsProof* bbsDeserializeProof(const void *buf, mclSize bufSize)
+{
+	if (bufSize <= getFixedPartOfProofSerializeByteSize()) return 0;
+	mclSize n = bufSize - getFixedPartOfProofSerializeByteSize();
+	const mclSize FrSize = mclBn_getFrByteSize();
+	if (n % FrSize) return 0;
+	mclSize undiscN = n / FrSize;
+	uint8_t *const top = (uint8_t*)malloc(sizeof(Proof) + sizeof(Fr) * undiscN);
+	Proof *prf = (Proof*)top;
+	prf->m_hat = (Fr*)(top + sizeof(Proof));
+
+	G1 *G1tbl[] = { &prf->A_prime, &prf->A_bar, &prf->D };
+	Fr *Frtbl[] = { &prf->c, &prf->e_hat, &prf->r2_hat, &prf->r3_hat, &prf->s_hat };
+
+	cybozu::MemoryInputStream is(buf, bufSize);
+	bool b = false;
+	for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(G1tbl); i++) {
+		G1tbl[i]->load(&b, is, g_ioMode);
+		if (!b) goto ERR;
+	}
+	for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(Frtbl); i++) {
+		Frtbl[i]->load(&b, is, g_ioMode);
+		if (!b) goto ERR;
+	}
+	// load undiscN
+	{
+		const size_t an = sizeof(uint32_t);
+		uint8_t a[4];
+		if (is.readSome(a, an) != an) goto ERR;
+		uint32_t v = cybozu::Get32bitAsLE(a);
+		if (v != undiscN) goto ERR;
+		prf->undiscN = v;
+	}
+	// load m_hat[undiscN]
+	for (size_t i = 0; i < undiscN; i++) {
+		prf->m_hat[i].load(&b, is, g_ioMode);
+		if (!b) goto ERR;
+	}
+	return (bbsProof*)prf;
+ERR:;
+	free(prf);
+	return 0;
+}
+
+mclSize bbsSerializeProof(void *buf, mclSize maxBufSize, const bbsProof *x)
+{
+	cybozu::MemoryOutputStream os(buf, maxBufSize);
+	bool b = false;
+
+	const Proof* prf = cast(x);
+	const G1 *G1tbl[] = { &prf->A_prime, &prf->A_bar, &prf->D };
+	const Fr *Frtbl[] = { &prf->c, &prf->e_hat, &prf->r2_hat, &prf->r3_hat, &prf->s_hat };
+
+	for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(G1tbl); i++) {
+		G1tbl[i]->save(&b, os, g_ioMode);
+		if (!b) return 0;
+	}
+	for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(Frtbl); i++) {
+		Frtbl[i]->save(&b, os, g_ioMode);
+		if (!b) return 0;
+	}
+	// save undiscN
+	{
+		const size_t an = sizeof(uint32_t);
+		uint8_t a[4];
+		cybozu::Set32bitAsLE(a, prf->undiscN);
+		os.write(&b, a, an);
+		if (!b) return 0;
+	}
+	// save m_hat[undiscN]
+	for (size_t i = 0; i < prf->undiscN; i++) {
+		prf->m_hat[i].save(&b, os, g_ioMode);
+		if (!b) return 0;
+	}
+	return os.getPos();
+}
+
+mclSize bbsDeserializeSignature(bbsSignature *x, const void *buf, mclSize bufSize)
+{
+	cybozu::MemoryInputStream is(buf, bufSize);
+	bool b;
+	cast(&x->A)->load(&b, is, g_ioMode);
+	if (!b) return 0;
+	cast(&x->e)->load(&b, is, g_ioMode);
+	if (!b) return 0;
+	cast(&x->s)->load(&b, is, g_ioMode);
+	if (!b) return 0;
+	return is.getPos();
+}
+
+mclSize bbsSerializeSecretKey(void *buf, mclSize maxBufSize, const bbsSecretKey *x)
+{
+	return mclBnFr_serialize(buf, maxBufSize, &x->v);
+}
+
+mclSize bbsSerializePublicKey(void *buf, mclSize maxBufSize, const bbsPublicKey *x)
+{
+	return mclBnG2_serialize(buf, maxBufSize, &x->v);
+}
+
+mclSize bbsSerializeSignature(void *buf, mclSize maxBufSize, const bbsSignature *x)
+{
+	cybozu::MemoryOutputStream os(buf, maxBufSize);
+	bool b;
+	cast(&x->A)->save(&b, os, g_ioMode);
+	if (!b) return 0;
+	cast(&x->e)->save(&b, os, g_ioMode);
+	if (!b) return 0;
+	cast(&x->s)->save(&b, os, g_ioMode);
+	if (!b) return 0;
+	return os.getPos();
+}
 
 struct Hash {
 	cybozu::Sha256 h_;
@@ -109,15 +248,11 @@ inline bool verifyMultiPairing(const G1& P1, const G1& P2, const G2& Q)
 
 inline void msgToFr(Fr& x, const uint8_t *msg, mclSize msgSize)
 {
-#if 0
-	x.setLittleEndianMod(msg, msgSize);
-#else
 	uint8_t md[64];
 	fp::expand_message_xmd(md, sizeof(md), msg, msgSize, s_dst, s_dstSize);
 	bool b;
 	x.setBigEndianMod(&b, md, sizeof(md));
 	assert(b); (void)b;
-#endif
 }
 
 // x: Fr array of size msgN.
@@ -253,16 +388,16 @@ const Fr& Signature::get_s() const
 */
 bool Signature::sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *msgs, const mclSize *msgSize, size_t msgN)
 {
+	if (msgN > s_maxMsgSize) {
+		return false;
+	}
 	Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
 	msgsToFr(xs, msgs, msgSize, msgN);
-#if 1
+
 	G1& A = *cast(&v.A);
 	Fr& e = *cast(&v.e);
 	Fr& s = *cast(&v.s);
 
-	if (msgN > s_maxMsgSize) {
-		return false;
-	}
 	Fr dom;
 	calcDom(dom, pub.get_v(), msgN);
 	Hash hash;
@@ -282,9 +417,6 @@ bool Signature::sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *
 	Fr::inv(t, t);
 	G1::mul(A, B, t);
 	return true;
-#else
-	return sign(sec, pub, xs, msgN);
-#endif
 }
 
 /*
@@ -293,10 +425,11 @@ bool Signature::sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *
 */
 bool Signature::verify(const PublicKey& pub, const uint8_t *msgs, const mclSize *msgSize, size_t msgN) const
 {
+	if (msgN > s_maxMsgSize) return false;
+
 	const G1& A = get_A();
 	const Fr& e = get_e();
 	const Fr& s = get_s();
-	if (msgN > s_maxMsgSize) return false;
 
 	Fr *xs = (Fr*)CYBOZU_ALLOCA(sizeof(Fr) * msgN);
 	msgsToFr(xs, msgs, msgSize, msgN);
@@ -307,38 +440,6 @@ bool Signature::verify(const PublicKey& pub, const uint8_t *msgs, const mclSize 
 	calcB(B, s, dom, xs, msgN);
 	return verifyMultiPairing(A, B, pub.get_v() + s_P2 * e);
 }
-
-#if 0
-bool Signature::sign(const SecretKey& sec, const PublicKey& pub, const Fr *msgs, size_t msgN)
-{
-	G1& A = *cast(&v.A);
-	Fr& e = *cast(&v.e);
-	Fr& s = *cast(&v.s);
-
-	if (msgN > s_maxMsgSize) {
-		return false;
-	}
-	Fr dom;
-	calcDom(dom, pub.get_v(), msgN);
-	Hash hash;
-	hash << sec.get_v() << dom;
-	for (size_t i = 0; i < msgN; i++) {
-		hash << msgs[i];
-	}
-	Fr t;
-	hash.get(t);
-	Fr out[2];
-	hash_to_scalar(out, t, 2);
-	e = out[0];
-	s = out[1];
-	G1 B;
-	calcB(B, s, dom, msgs, msgN);
-	Fr::add(t, sec.get_v(), e);
-	Fr::inv(t, t);
-	G1::mul(A, B, t);
-	return true;
-}
-#endif
 
 bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const uint8_t *msgs, const mclSize *msgSize, size_t msgN, const mclSize *discIdxs, size_t discN, const uint8_t *nonce, size_t nonceSize)
 {

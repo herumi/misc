@@ -27,6 +27,35 @@ struct bbsSignature {
 
 struct bbsProof; // destructor is need
 
+MCL_DLL_API mclSize bbsGetSecretKeySerializeByteSize();
+MCL_DLL_API mclSize bbsGetPublicKeySerializeByteSize();
+MCL_DLL_API mclSize bbsGetSignatureSerializeByteSize();
+MCL_DLL_API mclSize bbsGetProofSerializeByteSize(const bbsProof *prf);
+
+/*
+	deserialize
+	return read size if success else 0
+*/
+MCL_DLL_API mclSize bbsDeserializeSecretKey(bbsSecretKey *x, const void *buf, mclSize bufSize);
+MCL_DLL_API mclSize bbsDeserializePublicKey(bbsPublicKey *x, const void *buf, mclSize bufSize);
+MCL_DLL_API mclSize bbsDeserializeSignature(bbsSignature *x, const void *buf, mclSize bufSize);
+
+/*
+	deserialize proof
+	bufSize MUST be bbsGetProofSerializeByteSize(prf)
+	return created bbsProof if success else NULL
+	You MUST call bbsDestroyProof when the bbsProof is no longer needed to prevent memory leaks.
+*/
+MCL_DLL_API bbsProof* bbsDeserializeProof(const void *buf, mclSize bufSize);
+/*
+	serialize
+	return written byte if sucess else 0
+*/
+MCL_DLL_API mclSize bbsSerializeSecretKey(void *buf, mclSize maxBufSize, const bbsSecretKey *x);
+MCL_DLL_API mclSize bbsSerializePublicKey(void *buf, mclSize maxBufSize, const bbsPublicKey *x);
+MCL_DLL_API mclSize bbsSerializeSignature(void *buf, mclSize maxBufSize, const bbsSignature *x);
+MCL_DLL_API mclSize bbsSerializeProof(void *buf, mclSize maxBufSize, const bbsProof *x);
+
 MCL_DLL_API bool bbsInit(mclSize maxMsgSize);
 
 MCL_DLL_API bool bbsInitSecretKey(bbsSecretKey *sec);
