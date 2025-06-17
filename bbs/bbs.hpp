@@ -82,7 +82,7 @@ bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const uint
 namespace local {
 
 // js[0:undiscN] = [0:msgN] - discIdxs[0:discN]
-void setJs(uint32_t *js, size_t undiscN, const uint32_t *discIdxs, uint32_t discN);
+void setJs(uint32_t *js, uint32_t undiscN, const uint32_t *discIdxs, uint32_t discN);
 
 } // bbs::local
 

@@ -336,11 +336,11 @@ namespace bbs {
 
 namespace local {
 
-void setJs(uint32_t *js, size_t undiscN, const uint32_t *discIdxs, uint32_t discN)
+void setJs(uint32_t *js, uint32_t undiscN, const uint32_t *discIdxs, uint32_t discN)
 {
-	const size_t msgN = undiscN + discN;
-	size_t v = 0;
-	size_t dPos = 0;
+	const uint32_t msgN = undiscN + discN;
+	uint32_t v = 0;
+	uint32_t dPos = 0;
 	uint32_t next = dPos < discN ? discIdxs[dPos++]: msgN;
 
 	size_t jPos = 0;
@@ -593,7 +593,7 @@ bool bbsVerify(const bbsSignature *sig, const bbsPublicKey *pub, const uint8_t *
 	return cast(sig)->verify(*cast(pub), msgs, msgSize, msgN);
 }
 
-bbsProof *bbsCreateProof(const bbsPublicKey *pub, const bbsSignature *sig, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN, const uint32_t *discIdxs, uint32_t discN, const uint8_t *nonce, uint32_t nonceSize)
+bbsProof *bbsCreateProof(const bbsPublicKey *pub, const bbsSignature *sig, const uint8_t *msgs, const uint32_t *msgSize, uint32_t msgN, const uint32_t *discIdxs, uint32_t discN, const uint8_t *nonce, uint32_t nonceSize)
 {
 	if (msgN < discN) return 0;
 	const uint32_t undiscN = msgN - discN;

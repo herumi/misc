@@ -95,7 +95,7 @@ MCL_DLL_API bool bbsSign(bbsSignature *sig, const bbsSecretKey *sec, const bbsPu
 */
 MCL_DLL_API bool bbsVerify(const bbsSignature *sig, const bbsPublicKey *pub, const uint8_t *msgs, const uint32_t *msgSize, uint32_t msgN);
 
-MCL_DLL_API bbsProof *bbsCreateProof(const bbsPublicKey *pub, const bbsSignature *sig, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN, const uint32_t *discIdxs, uint32_t discN, const uint8_t *nonce, uint32_t nonceSize);
+MCL_DLL_API bbsProof *bbsCreateProof(const bbsPublicKey *pub, const bbsSignature *sig, const uint8_t *msgs, const uint32_t *msgSize, uint32_t msgN, const uint32_t *discIdxs, uint32_t discN, const uint8_t *nonce, uint32_t nonceSize);
 
 MCL_DLL_API void bbsDestroyProof(bbsProof *proof);
 
