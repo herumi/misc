@@ -7,8 +7,8 @@ TARGET=$(SRC:.cpp=.exe)
 
 all: $(TARGET)
 
-CFLAGS+=-I $(MCL_DIR)/include -I ./
-LDFLAGS+=-L $(MCL_DIR)/lib -L ./
+CFLAGS+=-I $(MCL_DIR)/include -I ./ $(CFLAGS_USER)
+LDFLAGS+=-L $(MCL_DIR)/lib -L ./ $(LDFLAGS_USER)
 
 libbbs.a: bbs.o
 	$(AR) $(ARFLAGS) $@ $<

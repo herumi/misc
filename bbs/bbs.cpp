@@ -58,7 +58,9 @@ mclSize bbsDeserializePublicKey(bbsPublicKey *x, const void *buf, mclSize bufSiz
 
 bbsProof* bbsDeserializeProof(const void *buf, mclSize bufSize)
 {
-	if (bufSize <= getFixedPartOfProofSerializeByteSize()) return 0;
+	if (bufSize < getFixedPartOfProofSerializeByteSize()) {
+		return 0;
+	}
 	mclSize n = bufSize - getFixedPartOfProofSerializeByteSize();
 	const mclSize FrSize = mclBn_getFrByteSize();
 	if (n % FrSize) return 0;
@@ -84,7 +86,8 @@ bbsProof* bbsDeserializeProof(const void *buf, mclSize bufSize)
 	{
 		const size_t an = sizeof(uint32_t);
 		uint8_t a[4];
-		if (is.readSome(a, an) != an) goto ERR;
+		size_t readSize = is.readSome(a, an);
+		if (readSize != an) goto ERR;
 		uint32_t v = cybozu::Get32bitAsLE(a);
 		if (v != undiscN) goto ERR;
 		prf->undiscN = v;
@@ -184,7 +187,25 @@ bool bbsIsEqualSignature(const bbsSignature *lhs, const bbsSignature *rhs)
 	return *cast(&lhs->A) == *cast(&rhs->A) && *cast(&lhs->e) == *cast(&rhs->e) && *cast(&lhs->s) == *cast(&rhs->s);
 }
 
-bool bbsIsEqualProof(const bbsProof *lhs, const bbsProof *rhs);
+bool bbsIsEqualProof(const bbsProof *_lhs, const bbsProof *_rhs)
+{
+	const Proof *lhs = cast(_lhs);
+	const Proof *rhs = cast(_rhs);
+	if (lhs->A_prime != rhs->A_prime) return false;
+	if (lhs->A_bar != rhs->A_bar) return false;
+	if (lhs->D != rhs->D) return false;
+	if (lhs->c != rhs->c) return false;
+	if (lhs->e_hat != rhs->e_hat) return false;
+	if (lhs->r2_hat != rhs->r2_hat) return false;
+	if (lhs->r3_hat != rhs->r3_hat) return false;
+	if (lhs->s_hat != rhs->s_hat) return false;
+	uint32_t n = lhs->undiscN;
+	if (n != rhs->undiscN) return false;
+	for (size_t i = 0; i < n; i++) {
+		if (lhs->m_hat[i] != rhs->m_hat[i]) return false;
+	}
+	return true;
+}
 
 struct Hash {
 	cybozu::Sha256 h_;
@@ -578,7 +599,7 @@ bbsProof *bbsCreateProof(const bbsPublicKey *pub, const bbsSignature *sig, const
 	uint8_t *p = (uint8_t*)malloc(sizeof(bbs::Proof) + sizeof(mcl::Fr) * undiscN);
 	if (p == 0) return 0;
 	bbsProof *proof = (bbsProof*)p;
-	mcl::Fr *fr = (mcl::Fr*)(p + sizeof(bbs::Proof));
+	mcl::Fr *fr = undiscN > 0 ? (mcl::Fr*)(p + sizeof(bbs::Proof)) : 0;
 	cast(proof)->set(fr, undiscN);
 	if (bbs::proofGen(*cast(proof), *cast(pub), *cast(sig), msgs, msgSize, msgN, discIdxs, discN, nonce, nonceSize)) {
 		return proof;

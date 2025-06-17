@@ -144,6 +144,22 @@ void ccheckProof(const bbsPublicKey *cpub, const bbsSignature *csig, const uint8
 	bbsProof *cprf = bbsCreateProof(cpub, csig, msgs, msgSize, msgN, discIdxs, discN, nonce, sizeof(nonce));
 	CYBOZU_TEST_ASSERT(cprf);
 	CYBOZU_TEST_ASSERT(bbsVerifyProof(cpub, cprf, msgN, discMsgs, discMsgSize, discIdxs, discN, nonce, sizeof(nonce)));
+
+	{
+		size_t n1 = bbsGetProofSerializeByteSize(cprf);
+		char *buf = (char *)CYBOZU_ALLOCA(n1);
+
+		size_t n = bbsSerializeProof(buf, n1, cprf);
+		CYBOZU_TEST_ASSERT(n > 0);
+		CYBOZU_TEST_EQUAL(n, n1);
+		bbsProof *cprf2 = bbsDeserializeProof(buf, n);
+		CYBOZU_TEST_ASSERT(cprf2);
+		if (cprf2) {
+			CYBOZU_TEST_ASSERT(bbsIsEqualProof(cprf, cprf2));
+			bbsDestroyProof(cprf2);
+		}
+	}
+
 	bbsDestroyProof(cprf);
 }
 
@@ -189,6 +205,7 @@ CYBOZU_TEST_AUTO(proof)
 	{
 		bbsSecretKey csec2;
 		bbsPublicKey cpub2;
+		bbsSignature csig2;
 		char buf[1024];
 		size_t n, n2;
 
@@ -203,6 +220,12 @@ CYBOZU_TEST_AUTO(proof)
 		n2 = bbsDeserializePublicKey(&cpub2, buf, n);
 		CYBOZU_TEST_EQUAL(n, n2);
 		CYBOZU_TEST_ASSERT(bbsIsEqualPublicKey(&cpub, &cpub2));
+
+		n = bbsSerializeSignature(buf, sizeof(buf), &csig);
+		CYBOZU_TEST_EQUAL(n, bbsGetSignatureSerializeByteSize());
+		n2 = bbsDeserializeSignature(&csig2, buf, n);
+		CYBOZU_TEST_EQUAL(n, n2);
+		CYBOZU_TEST_ASSERT(bbsIsEqualSignature(&csig, &csig2));
 	}
 
 	puts("disclose one");
