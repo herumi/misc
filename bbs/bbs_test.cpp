@@ -174,8 +174,8 @@ CYBOZU_TEST_AUTO(proof)
 	}
 	bbsPublicKey cpub;
 	bbsSignature csig;
+	bbsSecretKey csec;
 	{
-		bbsSecretKey csec;
 		bbsInitSecretKey(&csec);
 		bbsGetPublicKey(&cpub, &csec);
 		bbsSign(&csig, &csec, &cpub, msgs, msgSize, msgN);
@@ -184,6 +184,26 @@ CYBOZU_TEST_AUTO(proof)
 	puts("disclose nothing");
 	checkProof(pub, sig, msgs, msgSize, msgN, 0, 0);
 	ccheckProof(&cpub, &csig, msgs, msgSize, msgN, 0, 0);
+
+	// serialize/deserialize test
+	{
+		bbsSecretKey csec2;
+		bbsPublicKey cpub2;
+		char buf[1024];
+		size_t n, n2;
+
+		n = bbsSerializeSecretKey(buf, sizeof(buf), &csec);
+		CYBOZU_TEST_EQUAL(n, bbsGetSecretKeySerializeByteSize());
+		n2 = bbsDeserializeSecretKey(&csec2, buf, n);
+		CYBOZU_TEST_EQUAL(n, n2);
+		CYBOZU_TEST_ASSERT(bbsIsEqualSecretKey(&csec, &csec2));
+
+		n = bbsSerializePublicKey(buf, sizeof(buf), &cpub);
+		CYBOZU_TEST_EQUAL(n, bbsGetPublicKeySerializeByteSize());
+		n2 = bbsDeserializePublicKey(&cpub2, buf, n);
+		CYBOZU_TEST_EQUAL(n, n2);
+		CYBOZU_TEST_ASSERT(bbsIsEqualPublicKey(&cpub, &cpub2));
+	}
 
 	puts("disclose one");
 	{

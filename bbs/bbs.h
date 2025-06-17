@@ -56,6 +56,11 @@ MCL_DLL_API mclSize bbsSerializePublicKey(void *buf, mclSize maxBufSize, const b
 MCL_DLL_API mclSize bbsSerializeSignature(void *buf, mclSize maxBufSize, const bbsSignature *x);
 MCL_DLL_API mclSize bbsSerializeProof(void *buf, mclSize maxBufSize, const bbsProof *x);
 
+MCL_DLL_API bool bbsIsEqualSecretKey(const bbsSecretKey *lhs, const bbsSecretKey *rhs);
+MCL_DLL_API bool bbsIsEqualPublicKey(const bbsPublicKey *lhs, const bbsPublicKey *rhs);
+MCL_DLL_API bool bbsIsEqualSignature(const bbsSignature *lhs, const bbsSignature *rhs);
+MCL_DLL_API bool bbsIsEqualProof(const bbsProof *lhs, const bbsProof *rhs);
+
 MCL_DLL_API bool bbsInit(mclSize maxMsgSize);
 
 MCL_DLL_API bool bbsInitSecretKey(bbsSecretKey *sec);

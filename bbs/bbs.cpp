@@ -169,6 +169,23 @@ mclSize bbsSerializeSignature(void *buf, mclSize maxBufSize, const bbsSignature 
 	return os.getPos();
 }
 
+bool bbsIsEqualSecretKey(const bbsSecretKey *lhs, const bbsSecretKey *rhs)
+{
+	return *cast(&lhs->v) == *cast(&rhs->v);
+}
+
+bool bbsIsEqualPublicKey(const bbsPublicKey *lhs, const bbsPublicKey *rhs)
+{
+	return *cast(&lhs->v) == *cast(&rhs->v);
+}
+
+bool bbsIsEqualSignature(const bbsSignature *lhs, const bbsSignature *rhs)
+{
+	return *cast(&lhs->A) == *cast(&rhs->A) && *cast(&lhs->e) == *cast(&rhs->e) && *cast(&lhs->s) == *cast(&rhs->s);
+}
+
+bool bbsIsEqualProof(const bbsProof *lhs, const bbsProof *rhs);
+
 struct Hash {
 	cybozu::Sha256 h_;
 	template<class T>
