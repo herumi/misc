@@ -38,7 +38,7 @@ public:
 		Return:
 			true: success
 	*/
-	bool sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *msgs, const mclSize *msgSize, size_t msgN);
+	bool sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN);
 	/*
 		Verify signaturefor byte array messages
 		Input:
@@ -49,7 +49,7 @@ public:
 		Return:
 			true: success
 	*/
-	bool verify(const PublicKey& pub, const uint8_t *msgs, const mclSize *msgSize, size_t msgN) const;
+	bool verify(const PublicKey& pub, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN) const;
 
 	const mcl::G1& get_A() const;
 	const mcl::Fr& get_e() const;
@@ -62,7 +62,7 @@ struct Proof {
 	uint32_t undiscN; // undiscN = msgN - discN, all msgs are disclosed if undiscN = 0
 	mcl::Fr *m_hat; // m_hat must be undiscN array of Fr
 	Proof(): undiscN(0), m_hat(0) {}
-	void set(mcl::Fr *msg, mclSize undiscN)
+	void set(mcl::Fr *msg, uint32_t undiscN)
 	{
 		m_hat = msg;
 		this->undiscN = undiscN;
@@ -75,14 +75,14 @@ struct Proof {
 	discIdxs: accending order
 	msgs[discIdxs[i]]: disclosed messages for i in [0, discN)
 */
-bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const uint8_t *msgs, const mclSize *msgSize, size_t msgN, const mclSize *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0);
+bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN, const uint32_t *discIdxs, uint32_t discN, const uint8_t *nonce = 0, uint32_t nonceSize = 0);
 
-bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const uint8_t *discMsgs, const mclSize *discMsgSize, const mclSize *discIdxs, size_t discN, const uint8_t *nonce = 0, size_t nonceSize = 0);
+bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const uint8_t *discMsgs, const uint32_t *discMsgSize, const uint32_t *discIdxs, uint32_t discN, const uint8_t *nonce = 0, uint32_t nonceSize = 0);
 
 namespace local {
 
 // js[0:undiscN] = [0:msgN] - discIdxs[0:discN]
-void setJs(mclSize *js, size_t undiscN, const mclSize *discIdxs, size_t discN);
+void setJs(uint32_t *js, size_t undiscN, const uint32_t *discIdxs, uint32_t discN);
 
 } // bbs::local
 
