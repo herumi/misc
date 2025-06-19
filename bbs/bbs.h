@@ -99,7 +99,7 @@ MCL_DLL_API bbsProof *bbsCreateProof(const bbsPublicKey *pub, const bbsSignature
 
 MCL_DLL_API void bbsDestroyProof(bbsProof *proof);
 
-MCL_DLL_API bool bbsVerifyProof(const bbsPublicKey *pub, const bbsProof *prf, size_t msgN, const uint8_t *discMsgs, const uint32_t *discMsgSize, const uint32_t *discIdxs, uint32_t discN, const uint8_t *nonce, uint32_t nonceSize);
+MCL_DLL_API bool bbsVerifyProof(const bbsPublicKey *pub, const bbsProof *prf, const uint8_t *discMsgs, const uint32_t *discMsgSize, const uint32_t *discIdxs, uint32_t discN, const uint8_t *nonce, uint32_t nonceSize);
 
 #ifdef __cplusplus
 } // extern "C"

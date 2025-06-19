@@ -481,3 +481,90 @@ export const verify = (sig: Signature, pub: PublicKey, msgs: Uint8Array[]): bool
   mod.stackRestore(stack)
   return r
 }
+
+export class Proof {
+  pos: number
+  constructor () {
+    this.pos = 0
+  }
+
+  deserialize (s: Uint8Array): Proof {
+    const r = new Proof()
+    const size = s.length
+    const stack = mod.stackSave()
+    const pos = mod.stackAlloc(size)
+    mod.HEAP8.set(s, pos)
+    r.pos = mod._bbsDeserializeProof(pos, size)
+    mod.stackRestore(stack)
+    if (r.pos === 0) throw new Error('Proof::deserialize error')
+    return r
+  }
+
+  serialize (): Uint8Array {
+    const size = mod.bbsGetProofSerializeByteSize(this.pos)
+    const stack = mod.stackSave()
+    const pos = mod._salloc(size)
+    mod._bbsSerializeProof(pos, size, this.pos)
+    const a = new Uint8Array(mod.HEAD8.subarray(pos, pos + size))
+    mod.stackRestore(stack)
+    return a
+  }
+}
+
+export const createProof = (pub: PublicKey, sig: Signature, msgs: Uint8Array[], discIdxs: Uint32Array, nonce?: Uint8Array): Proof => {
+  const msgN = msgs.length
+  const totalMsgSize = getTotalSizeOfMsgs(msgs)
+  const discN = discIdxs.length
+  const r = new Proof()
+  const stack = mod.stackSave()
+  const pubPos = pub._sallocAndCopy()
+  const sigPos = sig._sallocAndCopy()
+  const msgsPos = mod.stackAlloc(totalMsgSize)
+  const msgSizePos = mod.stackAlloc(msgN * 4)
+  const discIdxsPos = mod.stackAlloc(discN * 4)
+  concatinateMsgs(msgsPos, msgs)
+  copyMsgSize(msgSizePos, msgs)
+  mod.HEAP32.set(discIdxs, discIdxsPos / 4)
+  let noncePos = 0
+  let nonceLen = 0
+  if (nonce !== null && nonce !== undefined) {
+    noncePos = mod.stackAlloc(nonce.length)
+    mod.HEAP8.set(nonce, noncePos)
+    nonceLen = nonce.length
+  }
+  r.pos = mod._bbsCreateProof(pubPos, sigPos, msgsPos, msgSizePos, msgN, discIdxsPos, discN, noncePos, nonceLen)
+
+  mod.stackRestore(stack)
+  if (r.pos === 0) throw new Error('Proof::createProof error')
+  return r
+}
+
+export const destroyProof = (prf: Proof): void => {
+  mod._bbsDestroyProof(prf.pos)
+}
+
+// discMsgs[i] = msgs[discIdxs[i]]
+export const verifyProof = (pub: PublicKey, prf: Proof, discMsgs: Uint8Array[], discIdxs: Uint32Array, nonce?: Uint8Array): boolean => {
+  const discN = discMsgs.length
+  if (discN !== discIdxs.length) throw new Error(`verifyProof:bad size. discMsgs.length=${discN} !== discIdxs.length=${discIdxs.length}`)
+  const totalDiscMsgSize = getTotalSizeOfMsgs(discMsgs)
+
+  const stack = mod.stackSave()
+  const pubPos = pub._sallocAndCopy()
+  const discMsgPos = mod.stackAlloc(totalDiscMsgSize)
+  const discMsgSizePos = mod.stackAlloc(discN * 4)
+  const discIdxsPos = mod.stackAlloc(discN * 4)
+  concatinateMsgs(discMsgPos, discMsgs)
+  copyMsgSize(discMsgSizePos, discMsgs)
+  mod.HEAP32.set(discIdxs, discIdxsPos / 4)
+  let noncePos = 0
+  let nonceLen = 0
+  if (nonce !== null && nonce !== undefined) {
+    noncePos = mod.stackAlloc(nonce.length)
+    mod.HEAP8.set(nonce, noncePos)
+    nonceLen = nonce.length
+  }
+  const r = mod._bbsVerifyProof(pubPos, prf.pos, discMsgPos, discMsgSizePos, discIdxsPos, discN, noncePos, nonceLen)
+  mod.stackRestore(stack)
+  return r === 1
+}

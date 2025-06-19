@@ -42,7 +42,7 @@ EMCC_OPT+=-sEXPORTED_FUNCTIONS=_malloc,_free,stackAlloc,stackSave,stackRestore
 EMCC_OPT+=-sEXPORTED_RUNTIME_METHODS=HEAP8,HEAP32
 #EMCC_OPT+=-msimd128
 EMCC_OPT+=-flto
-$(BBS_JS):
+$(BBS_JS): bbs.cpp bbs.hpp bbs.h
 	emcc -o $@ $(MCL_DIR)/src/fp.cpp wasm/dep.cpp bbs.cpp $(EMCC_OPT) -DMCL_MAX_BIT_SIZE=384 -DMCL_USE_WEB_CRYPTO_API
 	# disable require fs, path
 	perl -i -pe 's@(.* = require\(.*)@//\1@' $@

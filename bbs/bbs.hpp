@@ -79,7 +79,7 @@ struct Proof {
 */
 bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN, const uint32_t *discIdxs, uint32_t discN, const uint8_t *nonce = 0, uint32_t nonceSize = 0);
 
-bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const uint8_t *discMsgs, const uint32_t *discMsgSize, const uint32_t *discIdxs, uint32_t discN, const uint8_t *nonce = 0, uint32_t nonceSize = 0);
+bool proofVerify(const PublicKey& pub, const Proof& prf, const uint8_t *discMsgs, const uint32_t *discMsgSize, const uint32_t *discIdxs, uint32_t discN, const uint8_t *nonce = 0, uint32_t nonceSize = 0);
 
 namespace local {
 

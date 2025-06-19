@@ -125,7 +125,7 @@ void checkProof(const PublicKey& pub, const Signature& sig, const uint8_t *msgs,
 	prf.set(msgN, undiscN, m_hat);
 	const uint8_t nonce[] = { 1, 2, 3, 4, 0x11, 0x22, 0x33 };
 	CYBOZU_TEST_ASSERT(proofGen(prf, pub, sig, msgs, msgSize, msgN, discIdxs, discN, nonce, sizeof(nonce)));
-	CYBOZU_TEST_ASSERT(proofVerify(pub, prf, msgN, discMsgs, discMsgSize, discIdxs, discN, nonce, sizeof(nonce)));
+	CYBOZU_TEST_ASSERT(proofVerify(pub, prf, discMsgs, discMsgSize, discIdxs, discN, nonce, sizeof(nonce)));
 }
 
 void ccheckProof(const bbsPublicKey *cpub, const bbsSignature *csig, const uint8_t *msgs, const uint32_t *msgSize, uint32_t msgN, const uint32_t *discIdxs, uint32_t discN)
@@ -143,7 +143,7 @@ void ccheckProof(const bbsPublicKey *cpub, const bbsSignature *csig, const uint8
 
 	bbsProof *cprf = bbsCreateProof(cpub, csig, msgs, msgSize, msgN, discIdxs, discN, nonce, sizeof(nonce));
 	CYBOZU_TEST_ASSERT(cprf);
-	CYBOZU_TEST_ASSERT(bbsVerifyProof(cpub, cprf, msgN, discMsgs, discMsgSize, discIdxs, discN, nonce, sizeof(nonce)));
+	CYBOZU_TEST_ASSERT(bbsVerifyProof(cpub, cprf, discMsgs, discMsgSize, discIdxs, discN, nonce, sizeof(nonce)));
 
 	{
 		size_t n1 = bbsGetProofSerializeByteSize(cprf);

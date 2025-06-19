@@ -558,8 +558,9 @@ bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const uint
 	return true;
 }
 
-bool proofVerify(const PublicKey& pub, const Proof& prf, size_t msgN, const uint8_t *discMsgs, const uint32_t *discMsgSize, const uint32_t *discIdxs, uint32_t discN, const uint8_t *nonce, uint32_t nonceSize)
+bool proofVerify(const PublicKey& pub, const Proof& prf, const uint8_t *discMsgs, const uint32_t *discMsgSize, const uint32_t *discIdxs, uint32_t discN, const uint8_t *nonce, uint32_t nonceSize)
 {
+	const uint32_t msgN = prf.msgN;
 	if (msgN > s_maxMsgSize) return false;
 	if (msgN < discN) return false;
 	if (prf.undiscN != msgN - discN) return false;
@@ -638,8 +639,8 @@ void bbsDestroyProof(bbsProof *proof)
 	free(proof);
 }
 
-bool bbsVerifyProof(const bbsPublicKey *pub, const bbsProof *prf, size_t msgN, const uint8_t *discMsgs, const uint32_t *discMsgSize, const uint32_t *discIdxs, uint32_t discN, const uint8_t *nonce, uint32_t nonceSize)
+bool bbsVerifyProof(const bbsPublicKey *pub, const bbsProof *prf, const uint8_t *discMsgs, const uint32_t *discMsgSize, const uint32_t *discIdxs, uint32_t discN, const uint8_t *nonce, uint32_t nonceSize)
 {
-	return bbs::proofVerify(*cast(pub), *cast(prf), msgN, discMsgs, discMsgSize, discIdxs, discN, nonce, nonceSize);
+	return bbs::proofVerify(*cast(pub), *cast(prf), discMsgs, discMsgSize, discIdxs, discN, nonce, nonceSize);
 }
 
