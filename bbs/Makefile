@@ -1,7 +1,8 @@
 MCL_DIR?=../../mcl
 include $(MCL_DIR)/common.mk
 SRC=bbs_test.cpp
-OBJ=$(SRC:.cpp=.o)
+LIB_SRC=bbs.cpp
+OBJ=$(SRC:.cpp=.o) $(LIB_SRC:.cpp=.o)
 DEP=$(SRC:.cpp=.d)
 TARGET=$(SRC:.cpp=.exe)
 
