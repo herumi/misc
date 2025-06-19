@@ -39,7 +39,7 @@ mclSize bbsGetSignatureSerializeByteSize() { return mclBn_getG1ByteSize() + mclB
 
 mclSize getFixedPartOfProofSerializeByteSize()
 {
-	return mclBn_getG1ByteSize() * 3 + mclBn_getFrByteSize() * 5 + sizeof(uint32_t);
+	return mclBn_getG1ByteSize() * 3 + mclBn_getFrByteSize() * 5 + sizeof(uint32_t) * 2;
 }
 
 mclSize bbsGetProofSerializeByteSize(const bbsProof *prf)
@@ -55,6 +55,30 @@ mclSize bbsDeserializeSecretKey(bbsSecretKey *x, const void *buf, mclSize bufSiz
 mclSize bbsDeserializePublicKey(bbsPublicKey *x, const void *buf, mclSize bufSize)
 {
 	return mclBnG2_deserialize(&x->v, buf, bufSize);
+}
+
+template<class OutputStream>
+void write4B(bool *pb, OutputStream& os, uint32_t v)
+{
+	const size_t an = sizeof(v);
+	uint8_t a[4];
+	cybozu::Set32bitAsLE(a, v);
+	os.write(pb, a, an);
+}
+
+template<class InputStream>
+uint32_t read4B(bool *pb, InputStream& is)
+{
+	const size_t an = sizeof(uint32_t);
+	uint8_t a[4];
+	size_t readSize = is.readSome(a, an);
+	if (readSize == an) {
+		uint32_t v = cybozu::Get32bitAsLE(a);
+		*pb = true;
+		return v;
+	}
+	*pb = false;
+	return 0;
 }
 
 bbsProof* bbsDeserializeProof(const void *buf, mclSize bufSize)
@@ -83,16 +107,15 @@ bbsProof* bbsDeserializeProof(const void *buf, mclSize bufSize)
 		Frtbl[i]->load(&b, is, g_ioMode);
 		if (!b) goto ERR;
 	}
+	// load msgN
+	prf->msgN = read4B(&b, is);
+	if (!b) goto ERR;
+
 	// load undiscN
-	{
-		const size_t an = sizeof(uint32_t);
-		uint8_t a[4];
-		size_t readSize = is.readSome(a, an);
-		if (readSize != an) goto ERR;
-		uint32_t v = cybozu::Get32bitAsLE(a);
-		if (v != undiscN) goto ERR;
-		prf->undiscN = v;
-	}
+	prf->undiscN = read4B(&b, is);
+	if (!b) goto ERR;
+	if (prf->undiscN != undiscN) goto ERR;
+
 	// load m_hat[undiscN]
 	for (size_t i = 0; i < undiscN; i++) {
 		prf->m_hat[i].load(&b, is, g_ioMode);
@@ -121,14 +144,14 @@ mclSize bbsSerializeProof(void *buf, mclSize maxBufSize, const bbsProof *x)
 		Frtbl[i]->save(&b, os, g_ioMode);
 		if (!b) return 0;
 	}
+	// save msgN
+	write4B(&b, os, prf->msgN);
+	if (!b) return 0;
+
 	// save undiscN
-	{
-		const size_t an = sizeof(uint32_t);
-		uint8_t a[4];
-		cybozu::Set32bitAsLE(a, prf->undiscN);
-		os.write(&b, a, an);
-		if (!b) return 0;
-	}
+	write4B(&b, os, prf->undiscN);
+	if (!b) return 0;
+
 	// save m_hat[undiscN]
 	for (size_t i = 0; i < prf->undiscN; i++) {
 		prf->m_hat[i].save(&b, os, g_ioMode);
@@ -200,6 +223,7 @@ bool bbsIsEqualProof(const bbsProof *_lhs, const bbsProof *_rhs)
 	if (lhs->r2_hat != rhs->r2_hat) return false;
 	if (lhs->r3_hat != rhs->r3_hat) return false;
 	if (lhs->s_hat != rhs->s_hat) return false;
+	if (lhs->msgN != rhs->msgN) return false;
 	uint32_t n = lhs->undiscN;
 	if (n != rhs->undiscN) return false;
 	for (size_t i = 0; i < n; i++) {
@@ -601,7 +625,7 @@ bbsProof *bbsCreateProof(const bbsPublicKey *pub, const bbsSignature *sig, const
 	if (p == 0) return 0;
 	bbsProof *proof = (bbsProof*)p;
 	mcl::Fr *fr = undiscN > 0 ? (mcl::Fr*)(p + sizeof(bbs::Proof)) : 0;
-	cast(proof)->set(fr, undiscN);
+	cast(proof)->set(msgN, undiscN, fr);
 	if (bbs::proofGen(*cast(proof), *cast(pub), *cast(sig), msgs, msgSize, msgN, discIdxs, discN, nonce, nonceSize)) {
 		return proof;
 	}
