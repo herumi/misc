@@ -399,3 +399,85 @@ export const deserializeHexStrToPublicKey = (s: string): PublicKey => {
   return r
 }
 
+export class Signature extends Common {
+  constructor () {
+    super(BBS_SIGNATURE_SIZE)
+  }
+
+  deserialize (s: Uint8Array): void {
+    this._setter(mod.bbsDeserializeSignature, s)
+  }
+
+  serialize (): Uint8Array {
+    return this._getter(mod.bbsSerializeSignature)
+  }
+  isEqual (rhs: this): boolean {
+    return this._isEqual(mod._bbsIsEqualSignature, rhs)
+  }
+
+  clone (): Signature { return _cloneArray<Signature>(this) }
+}
+
+export const deserializeHexStrToSignature = (s: string): Signature => {
+  const r = new Signature()
+  r.deserializeHexStr(s)
+  return r
+}
+
+const getTotalSizeOfMsgs = (msgs: Uint8Array[]): number => {
+  return msgs.reduce((acc, msg) => acc + msg.length, 0)
+}
+
+// concatinate msgs to mod.HEAP8[pos]
+const concatinateMsgs = (pos: number, msgs: Uint8Array[]): void => {
+  let offset = 0
+  for (let i = 0; i < msgs.length; i++) {
+    mod.HEAP8.set(msgs[i], pos + offset)
+    offset += msgs[i].length
+  }
+}
+
+// copy msgs[i].length to mod.HEAP32[pos/4 + i]
+const copyMsgSize = (pos: number, msgs: Uint8Array[]): void => {
+  for (let i = 0; i < msgs.length; i++) {
+    mod.HEAP32[(pos >> 2) + i] = msgs[i].length
+  }
+}
+
+export const sign = (sec: SecretKey, pub: PublicKey, msgs: Uint8Array[]): Signature => {
+  const msgN = msgs.length
+  const totalMsgSize = getTotalSizeOfMsgs(msgs)
+
+  const sig = new Signature()
+  const stack = mod.stackSave()
+  const sigPos = sig._salloc()
+  const secPos = sec._sallocAndCopy()
+  const pubPos = pub._sallocAndCopy()
+  const msgsPos = mod.stackAlloc(totalMsgSize)
+  const msgSizePos = mod.stackAlloc(msgN * 4)
+  concatinateMsgs(msgsPos, msgs)
+  copyMsgSize(msgSizePos, msgs)
+
+  const r = mod._bbsSign(sigPos, secPos, pubPos, msgsPos, msgSizePos, msgN)
+  sig._save(sigPos)
+  mod.stackRestore(stack)
+  if (!r) throw new Error('SecretKey::sign error')
+  return sig
+}
+
+export const verify = (sig: Signature, pub: PublicKey, msgs: Uint8Array[]): boolean => {
+  const msgN = msgs.length
+  const totalMsgSize = getTotalSizeOfMsgs(msgs)
+
+  const stack = mod.stackSave()
+  const sigPos = sig._sallocAndCopy()
+  const pubPos = pub._sallocAndCopy()
+  const msgsPos = mod.stackAlloc(totalMsgSize)
+  const msgSizePos = mod.stackAlloc(msgN * 4)
+  concatinateMsgs(msgsPos, msgs)
+  copyMsgSize(msgSizePos, msgs)
+
+  const r = mod._bbsVerify(sigPos, pubPos, msgsPos, msgSizePos, msgN)
+  mod.stackRestore(stack)
+  return r
+}
