@@ -85,8 +85,8 @@ const addWrappedMethods = (): void => {
 
   /*
     argNum : n
-    func(x0, ..., x_(n-1), buf, ioMode)
-    => func(x0, ..., x_(n-1), pos, buf.length, ioMode)
+    func(x0, ..., x_(n-1), buf)
+    => func(x0, ..., x_(n-1), pos, buf.length)
   */
   const _wrapInput = (func: Function, argNum: number) => {
     return function (...args: any[]) {
@@ -153,7 +153,7 @@ const addWrappedMethods = (): void => {
     mod._malloc = mod._mallocDebug
     mod._free = mod._freeDebug
   }
-  mod.mclBnFp_setLittleEndianMod = _wrapInput(mod._mclBnFp_setLittleEndianMod, 1)
+  mod.mclBnFr_setLittleEndianMod = _wrapInput(mod._mclBnFr_setLittleEndianMod, 1)
 
   mod.bbsDeserializeSecretKey = _wrapDeserialize(mod._bbsDeserializeSecretKey)
   mod.bbsSerializeSecretKey = _wrapSerialize(mod._bbsSerializeSecretKey)
@@ -337,6 +337,7 @@ export class SecretKey extends Common {
 
   clone (): SecretKey { return _cloneArray<SecretKey>(this) }
 
+  /*
   init (): void {
     const stack = mod.stackSave()
     const pos = this._salloc()
@@ -345,10 +346,12 @@ export class SecretKey extends Common {
     mod.stackRestore(stack)
     if (!r) throw new Error('SecretKey::init error')
   }
+  */
 
-  setByCSPRNG (): void {
+  init (): void {
     const a = new Uint8Array(BBS_SECRETKEY_SIZE)
     getRandomValues(a)
+    console.log(`a=${toHexStr(a)}`)
     this._setter(mod.mclBnFr_setLittleEndianMod, a)
   }
 
