@@ -18,7 +18,7 @@ async function testAll () {
 testAll()
 
 const bbsTest = () => {
-  console.log('BBS signature')
+  console.log('bbsTest')
 
   for (let i = 0; i < 3; i++) {
     console.log(`i=${i}`)
@@ -71,7 +71,7 @@ const getDiscMsgs = (msgs: Uint8Array[], discIdxs: Uint32Array): Uint8Array[] =>
 }
 
 const proofTest = () => {
-  console.log('Proof')
+  console.log('ProofTest')
   const sec = new bbs.SecretKey()
   sec.init()
   const pub = sec.getPublicKey()

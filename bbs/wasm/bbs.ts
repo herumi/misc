@@ -160,8 +160,6 @@ const addWrappedMethods = (): void => {
   mod.bbsSerializePublicKey = _wrapSerialize(mod._bbsSerializePublicKey)
   mod.bbsDeserializeSignature = _wrapDeserialize(mod._bbsDeserializeSignature)
   mod.bbsSerializeSignature = _wrapSerialize(mod._bbsSerializeSignature)
-  mod.bbsDeserializeProof = _wrapDeserialize(mod._bbsDeserializeProof)
-  mod.bbsSerializeProof = _wrapSerialize(mod._bbsSerializeProof)
 }
 
 export const _showDebug = () => {
@@ -351,12 +349,14 @@ export class SecretKey extends Common {
   }
   */
 
+  // initialize secret key with random values
   init (): void {
     const a = new Uint8Array(BBS_SECRETKEY_SIZE)
     getRandomValues(a)
     this._setter(mod.mclBnFr_setLittleEndianMod, a)
   }
 
+  // get public key from secret key
   getPublicKey (): PublicKey {
     const pub = new PublicKey()
     const stack = mod.stackSave()
@@ -446,6 +446,7 @@ const copyMsgSize = (pos: number, msgs: Uint8Array[]): void => {
   }
 }
 
+// sign msgs with secret key and public key
 export const sign = (sec: SecretKey, pub: PublicKey, msgs: Uint8Array[]): Signature => {
   const msgN = msgs.length
   const totalMsgSize = getTotalSizeOfMsgs(msgs)
@@ -467,6 +468,7 @@ export const sign = (sec: SecretKey, pub: PublicKey, msgs: Uint8Array[]): Signat
   return sig
 }
 
+// verify signature of msgs with public key
 export const verify = (sig: Signature, pub: PublicKey, msgs: Uint8Array[]): boolean => {
   const msgN = msgs.length
   const totalMsgSize = getTotalSizeOfMsgs(msgs)
@@ -531,6 +533,15 @@ const dump = (pos: number, n: number, msg = '') => {
   console.log(`${msg} ${n} ${toHexStr(a)}`)
 }
 
+/*
+  create proof
+  pub: public key
+  sig: signature created for msgs
+  msgs: messages
+  discIdxs: indices of messages to be disclosed
+  nonce: optional nonce
+  return: proof
+*/
 export const createProof = (pub: PublicKey, sig: Signature, msgs: Uint8Array[], discIdxs: Uint32Array, nonce?: Uint8Array): Proof => {
   const msgN = msgs.length
   const totalMsgSize = getTotalSizeOfMsgs(msgs)
@@ -559,12 +570,25 @@ export const createProof = (pub: PublicKey, sig: Signature, msgs: Uint8Array[], 
   return r
 }
 
+/*
+  destroy proof
+  you MUST call this function after using proof
+*/
 export const destroyProof = (prf: Proof): void => {
   mod._bbsDestroyProof(prf.pos)
   prf.pos = 0
 }
 
 // discMsgs[i] = msgs[discIdxs[i]]
+/*
+  verify proof
+  pub: public key
+  prf: proof
+  discMsgs: messages to be disclosed (discMsgs[i] = msgs[discIdxs[i]])
+  discIdxs: indices of messages to be disclosed
+  nonce: nonce to be same as the one used in createProof
+  return: true if proof is valid, false otherwise
+*/
 export const verifyProof = (pub: PublicKey, prf: Proof, discMsgs: Uint8Array[], discIdxs: Uint32Array, nonce?: Uint8Array): boolean => {
   const discN = discMsgs.length
   if (discN !== discIdxs.length) throw new Error(`verifyProof:bad size. discMsgs.length=${discN} !== discIdxs.length=${discIdxs.length}`)
