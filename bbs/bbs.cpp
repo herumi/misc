@@ -553,7 +553,18 @@ bool proofGen(Proof& prf, const PublicKey& pub, const Signature& sig, const uint
 	prf.r2_hat = prf.c * r2 + r2_tilde;
 	prf.r3_hat = prf.c * r3 + r3_tilde;
 	prf.s_hat = prf.c * s_prime + s_tilde;
-
+#if 0
+puts("--------------- C++ ----------------");
+printf("prf.A_prime=%s\n", prf.A_prime.serializeToHexStr().c_str());
+printf("prf.A_bar=%s\n", prf.A_bar.serializeToHexStr().c_str());
+printf("prf.D=%s\n", prf.D.serializeToHexStr().c_str());
+printf("prf.c=%s\n", prf.c.serializeToHexStr().c_str());
+printf("prf.e_hat=%s\n", prf.e_hat.serializeToHexStr().c_str());
+printf("prf.r2_hat=%s\n", prf.r2_hat.serializeToHexStr().c_str());
+printf("prf.r3_hat=%s\n", prf.r3_hat.serializeToHexStr().c_str());
+printf("prf.s_hat=%s\n", prf.s_hat.serializeToHexStr().c_str());
+puts("------------------------------------");
+#endif
 	if (prf.undiscN > 0) {
 		for (size_t i = 0; i < prf.undiscN; i++) {
 			prf.m_hat[i] = prf.c * xs[js[i]] + m_tilde[i];
