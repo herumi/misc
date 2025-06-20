@@ -7,6 +7,7 @@
     "build": "npm run build:bbs_c.js && npm run build:dist",
     "build:bbs_c.js": "make",
     "build:dist": "tsc",
+    "build:browser": "webpack",
     "lint": "standard --verbose test/test.ts; ts-standard --verbose wasm/*.ts",
     "lint-fix": "standard --fix test/test.ts; ts-standard --fix wasm/*.ts",
     "test": "tsc && tsc test/test.ts && node test/test.js"
