@@ -108,7 +108,6 @@ const addWrappedMethods = (): void => {
     }
   }
 
-
   mod.g_his = []
   mod.g_ptr = {}
   mod.g_total = 0
@@ -185,6 +184,10 @@ export const init = async (): Promise<void> => {
   })
 
   addWrappedMethods()
+
+  if (BBS_SECRETKEY_SIZE !== mod._bbsSizeofSecretKey()) throw new Error(`BBS_SECRETKEY_SIZE=${BBS_SECRETKEY_SIZE} !== mod._bbsSizeofSecretkey()=${mod._bbsSizeofSecretkey()}`)
+  if (BBS_PUBLICKEY_SIZE !== mod._bbsSizeofPublicKey()) throw new Error(`BBS_PUBLICKEY_SIZE=${BBS_PUBLICKEY_SIZE} !== mod._bbsSizeofPublicKey()=${mod._bbsSizeofPublicKey()}`)
+  if (BBS_SIGNATURE_SIZE !== mod._bbsSizeofSignature()) throw new Error(`BBS_SIGNATURE_SIZE=${BBS_SIGNATURE_SIZE} !== mod._bbsSizeofSignature()=${mod._bbsSizeofSignature()}`)
 
   const r: boolean = mod._bbsInit(128)
   if (!r) throw new Error(`_bbsInit err`)
