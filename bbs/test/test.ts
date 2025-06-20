@@ -111,6 +111,8 @@ const fixedTest = () => {
   const sig = bbs.sign(sec, pub, msgs)
   console.log('sig=', sig.serializeToHexStr())
 
+  assert(bbs.verify(sig, pub, msgs))
+
   const discIdxs = new Uint32Array([1, 4, 5])
   const nonce = new Uint8Array([9, 0x11, 0x22])
   const prf = bbs.createProof(pub, sig, msgs, discIdxs, nonce)
