@@ -354,7 +354,6 @@ export class SecretKey extends Common {
   init (): void {
     const a = new Uint8Array(BBS_SECRETKEY_SIZE)
     getRandomValues(a)
-    console.log(`a=${toHexStr(a)}`)
     this._setter(mod.mclBnFr_setLittleEndianMod, a)
   }
 
@@ -504,14 +503,32 @@ export class Proof {
   }
 
   serialize (): Uint8Array {
-    const size = mod.bbsGetProofSerializeByteSize(this.pos)
+    const size = mod._bbsGetProofSerializeByteSize(this.pos)
     const stack = mod.stackSave()
-    const pos = mod._salloc(size)
+    const pos = mod.stackAlloc(size)
     mod._bbsSerializeProof(pos, size, this.pos)
-    const a = new Uint8Array(mod.HEAD8.subarray(pos, pos + size))
+    const a = new Uint8Array(mod.HEAP8.subarray(pos, pos + size))
     mod.stackRestore(stack)
     return a
   }
+
+  deserializeHexStr (s: string): void {
+    this.deserialize(fromHexStr(s))
+  }
+
+  serializeToHexStr (): string {
+    return toHexStr(this.serialize())
+  }
+
+  dump (msg = ''): void {
+    console.log(msg + this.serializeToHexStr())
+  }
+
+}
+
+const dump = (pos: number, n: number, msg = '') => {
+  const a = mod.HEAP8.subarray(pos, pos + n)
+  console.log(`${msg} ${n} ${toHexStr(a)}`)
 }
 
 export const createProof = (pub: PublicKey, sig: Signature, msgs: Uint8Array[], discIdxs: Uint32Array, nonce?: Uint8Array): Proof => {
