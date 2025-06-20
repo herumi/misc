@@ -496,7 +496,7 @@ export class Proof {
     const stack = mod.stackSave()
     const pos = mod.stackAlloc(size)
     mod.HEAP8.set(s, pos)
-    r.pos = mod._bbsDeserializeProof(pos, size)
+    r.pos = mod._bbsDeserializeProof(pos, size) // malloced memory
     mod.stackRestore(stack)
     if (r.pos === 0) throw new Error('Proof::deserialize error')
     return r
@@ -561,6 +561,7 @@ export const createProof = (pub: PublicKey, sig: Signature, msgs: Uint8Array[], 
 
 export const destroyProof = (prf: Proof): void => {
   mod._bbsDestroyProof(prf.pos)
+  prf.pos = 0
 }
 
 // discMsgs[i] = msgs[discIdxs[i]]
