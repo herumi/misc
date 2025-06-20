@@ -27,6 +27,10 @@ struct bbsSignature {
 
 struct bbsProof; // destructor is need
 
+MCL_DLL_API mclSize bbsSizeofSecretKey();
+MCL_DLL_API mclSize bbsSizeofPublicKey();
+MCL_DLL_API mclSize bbsSizeofSignature();
+
 MCL_DLL_API mclSize bbsGetSecretKeySerializeByteSize();
 MCL_DLL_API mclSize bbsGetPublicKeySerializeByteSize();
 MCL_DLL_API mclSize bbsGetSignatureSerializeByteSize();

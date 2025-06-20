@@ -33,6 +33,10 @@ inline const Signature *cast(const bbsSignature *p) { return reinterpret_cast<co
 inline Proof *cast(bbsProof *p) { return reinterpret_cast<Proof*>(p); }
 inline const Proof *cast(const bbsProof *p) { return reinterpret_cast<const Proof*>(p); }
 
+mclSize bbsSizeofSecretKey() { return sizeof(bbsSecretKey); }
+mclSize bbsSizeofPublicKey() { return sizeof(bbsPublicKey); }
+mclSize bbsSizeofSignature() { return sizeof(bbsSignature); }
+
 mclSize bbsGetSecretKeySerializeByteSize() { return mclBn_getFrByteSize(); }
 mclSize bbsGetPublicKeySerializeByteSize() { return mclBn_getG2ByteSize(); }
 mclSize bbsGetSignatureSerializeByteSize() { return mclBn_getG1ByteSize() + mclBn_getFrByteSize() * 2; }
