@@ -57,7 +57,7 @@ const addWrappedMethods = (): void => {
   const _wrapSerialize = (func: StringReader): ToStrFunc => {
     return (x: number) => {
       const stack = mod.stackSave()
-      const maxBufSize = 4096
+      const maxBufSize = 8192
       const pos: number = mod.stackAlloc(maxBufSize)
       const n = func(pos, maxBufSize, x)
       if (n > 0) {
