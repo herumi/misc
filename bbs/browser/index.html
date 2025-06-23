@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BBS署名デモ - 選択的開示可能な署名</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>BBS署名デモ</h1>
+            <p>選択的開示可能な署名システムのブラウザデモ</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('keygen')">鍵生成</button>
+            <button class="tab" onclick="showTab('sign')">署名生成</button>
+            <button class="tab" onclick="showTab('verify')">署名検証</button>
+            <button class="tab" onclick="showTab('proof')">証明生成</button>
+            <button class="tab" onclick="showTab('proof-verify')">証明検証</button>
+        </div>
+
+        <!-- 鍵生成タブ -->
+        <div id="keygen" class="tab-content active">
+            <h2>鍵生成</h2>
+            <p>BBS署名に必要な秘密鍵と公開鍵を生成します。</p>
+            
+            <button id="generateKeys" class="btn" onclick="generateKeys()">
+                <span id="keygenLoading" class="loading" style="display: none;"></span>
+                鍵を生成
+            </button>
+
+            <div id="keygenResult" class="result" style="display: none;">
+                <h3>生成された鍵</h3>
+                <div class="info-grid">
+                    <div class="info-card">
+                        <h4>秘密鍵 (最初32バイト)</h4>
+                        <div id="secretKeyPreview"></div>
+                    </div>
+                    <div class="info-card">
+                        <h4>公開鍵 (最初32バイト)</h4>
+                        <div id="publicKeyPreview"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 署名生成タブ -->
+        <div id="sign" class="tab-content">
+            <h2>署名生成</h2>
+            <p>個人情報を入力して署名を生成します。</p>
+
+            <form id="signForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="lastName">姓</label>
+                        <input type="text" id="lastName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="firstName">名</label>
+                        <input type="text" id="firstName" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="gender">性別</label>
+                    <select id="gender" required>
+                        <option value="">選択してください</option>
+                        <option value="男">男</option>
+                        <option value="女">女</option>
+                        <option value="その他">その他</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="prefecture">都道府県</label>
+                        <input type="text" id="prefecture" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="city">群市町村</label>
+                        <input type="text" id="city" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="address">住所（その続き）</label>
+                    <input type="text" id="address" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="birthYear">誕生年</label>
+                        <input type="number" id="birthYear" min="1900" max="2100" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="birthMonth">誕生月</label>
+                        <input type="number" id="birthMonth" min="1" max="12" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="birthDay">誕生日</label>
+                        <input type="number" id="birthDay" min="1" max="31" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn" id="signBtn">
+                    <span id="signLoading" class="loading" style="display: none;"></span>
+                    署名を生成
+                </button>
+            </form>
+
+            <div id="signResult" class="result" style="display: none;">
+                <h3>生成された署名</h3>
+                <div class="info-card">
+                    <h4>署名 (最初32バイト)</h4>
+                    <div id="signaturePreview"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 署名検証タブ -->
+        <div id="verify" class="tab-content">
+            <h2>署名検証</h2>
+            <p>生成された署名の検証を行います。メッセージを編集して不正な入力での検証をテストできます。</p>
+
+            <div id="verifyInfo" class="info-grid">
+                <div class="info-card">
+                    <h3>署名対象の個人情報</h3>
+                    <div id="verifyMessages"></div>
+                </div>
+            </div>
+
+            <div id="verifyEditControls" class="edit-controls" style="display: none;">
+                <h3>メッセージ編集（検証テスト用）</h3>
+                <p>以下のフィールドを編集して不正な入力での検証をテストできます：</p>
+                <div id="verifyEditFields"></div>
+                <button id="resetVerifyMessages" class="btn btn-secondary" onclick="resetVerifyMessages()">元のメッセージに戻す</button>
+            </div>
+
+            <button id="verifyBtn" class="btn" onclick="verifySignature()" disabled>
+                <span id="verifyLoading" class="loading" style="display: none;"></span>
+                署名を検証
+            </button>
+
+            <div id="verifyResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- 証明生成タブ -->
+        <div id="proof" class="tab-content">
+            <h2>選択的開示証明生成</h2>
+            <p>個人情報の一部のみを開示する証明を生成します。</p>
+
+            <div id="proofInfo" class="info-grid">
+                <div class="info-card">
+                    <h3>署名対象の個人情報</h3>
+                    <div id="proofMessages"></div>
+                </div>
+            </div>
+
+            <div id="disclosureControls" class="disclosure-controls" style="display: none;">
+                <!-- 動的に生成される開示制御 -->
+            </div>
+
+            <button id="generateProofBtn" class="btn" onclick="generateProof()" disabled>
+                <span id="proofLoading" class="loading" style="display: none;"></span>
+                証明を生成
+            </button>
+
+            <div id="proofResult" class="result" style="display: none;">
+                <h3>生成された証明</h3>
+                <div class="info-card">
+                    <h4>証明 (最初32バイト)</h4>
+                    <div id="proofPreview"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 証明検証タブ -->
+        <div id="proof-verify" class="tab-content">
+            <h2>証明検証</h2>
+            <p>選択的開示証明の検証を行います。開示メッセージを編集して不正な入力での検証をテストできます。</p>
+
+            <div id="proofVerifyInfo" class="info-grid">
+                <div class="info-card">
+                    <h3>開示された個人情報</h3>
+                    <div id="proofVerifyMessages"></div>
+                </div>
+            </div>
+
+            <div id="proofVerifyEditControls" class="edit-controls" style="display: none;">
+                <h3>開示メッセージ編集（検証テスト用）</h3>
+                <p>以下のフィールドを編集して不正な入力での検証をテストできます：</p>
+                <div id="proofVerifyEditFields"></div>
+                <button id="resetProofVerifyMessages" class="btn btn-secondary" onclick="resetProofVerifyMessages()">元のメッセージに戻す</button>
+            </div>
+
+            <button id="verifyProofBtn" class="btn" onclick="verifyProof()" disabled>
+                <span id="proofVerifyLoading" class="loading" style="display: none;"></span>
+                証明を検証
+            </button>
+
+            <div id="proofVerifyResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script src="bbs.js"></script>
+    <script>
+        // bbs.js読み込み直後にライブラリを初期化
+        (async function() {
+            try {
+                console.log('BBSライブラリを初期化中...');
+                await bbs.init();
+                console.log('BBSライブラリの初期化が完了しました');
+            } catch (error) {
+                console.error('BBSライブラリの初期化に失敗しました:', error);
+                alert('BBSライブラリの初期化に失敗しました。ページを再読み込みしてください。');
+            }
+        })();
+    </script>
+    <script src="demo.js"></script>
+</body>
+</html> 
