@@ -12,6 +12,156 @@ let disclosedMessages = [];
 let originalMessages = []; // 元のメッセージを保存
 let originalDisclosedMessages = []; // 元の開示メッセージを保存
 let proofNonce = null; // 証明生成時のnonceを保存
+let currentLanguage = 'ja'; // 現在の言語
+
+// 多言語対応テキスト
+const translations = {
+    ja: {
+        // フィールド名
+        lastName: '姓',
+        firstName: '名',
+        gender: '性別',
+        prefecture: '都道府県',
+        city: '群市町村',
+        address: '住所',
+        birthYear: '誕生年',
+        birthMonth: '誕生月',
+        birthDay: '誕生日',
+        
+        // 性別オプション
+        male: '男',
+        female: '女',
+        other: 'その他',
+        pleaseSelect: '選択してください',
+        
+        // 開示制御
+        disclose: '開示する',
+        hide: '開示しない',
+        
+        // メッセージ
+        keyGenerationComplete: '鍵生成が完了しました',
+        signatureGenerationComplete: '署名生成が完了しました',
+        signatureVerificationComplete: '署名検証が完了しました',
+        proofGenerationComplete: '証明生成が完了しました',
+        proofVerificationComplete: '証明検証が完了しました',
+        keyGenerationFailed: '鍵生成に失敗しました',
+        signatureGenerationFailed: '署名生成に失敗しました',
+        signatureVerificationFailed: '署名検証に失敗しました',
+        proofGenerationFailed: '証明生成に失敗しました',
+        proofVerificationFailed: '証明検証に失敗しました',
+        bbsInitFailed: 'BBSライブラリの初期化に失敗しました。ページを再読み込みしてください。',
+        atLeastOneItemRequired: '少なくとも1つの項目を開示する必要があります。',
+        proofNotGenerated: '証明が生成されていません。先に証明を生成してください。',
+        
+        // 検証結果
+        signatureValid: 'OK - 署名は有効です',
+        signatureInvalid: 'NG - 署名は無効です',
+        proofValid: 'OK - 証明は有効です',
+        proofInvalid: 'NG - 証明は無効です',
+        
+        // タイトル
+        signatureVerificationResult: '署名検証結果',
+        proofVerificationResult: '証明検証結果'
+    },
+    en: {
+        // フィールド名
+        lastName: 'Last Name',
+        firstName: 'First Name',
+        gender: 'Gender',
+        prefecture: 'Prefecture',
+        city: 'City',
+        address: 'Address',
+        birthYear: 'Birth Year',
+        birthMonth: 'Birth Month',
+        birthDay: 'Birth Day',
+        
+        // 性別オプション
+        male: 'Male',
+        female: 'Female',
+        other: 'Other',
+        pleaseSelect: 'Please select',
+        
+        // 開示制御
+        disclose: 'Disclose',
+        hide: 'Hide',
+        
+        // メッセージ
+        keyGenerationComplete: 'Key generation completed',
+        signatureGenerationComplete: 'Signature generation completed',
+        signatureVerificationComplete: 'Signature verification completed',
+        proofGenerationComplete: 'Proof generation completed',
+        proofVerificationComplete: 'Proof verification completed',
+        keyGenerationFailed: 'Key generation failed',
+        signatureGenerationFailed: 'Signature generation failed',
+        signatureVerificationFailed: 'Signature verification failed',
+        proofGenerationFailed: 'Proof generation failed',
+        proofVerificationFailed: 'Proof verification failed',
+        bbsInitFailed: 'BBS library initialization failed. Please reload the page.',
+        atLeastOneItemRequired: 'At least one item must be disclosed.',
+        proofNotGenerated: 'Proof has not been generated. Please generate a proof first.',
+        
+        // 検証結果
+        signatureValid: 'OK - Signature is valid',
+        signatureInvalid: 'NG - Signature is invalid',
+        proofValid: 'OK - Proof is valid',
+        proofInvalid: 'NG - Proof is invalid',
+        
+        // タイトル
+        signatureVerificationResult: 'Signature Verification Result',
+        proofVerificationResult: 'Proof Verification Result'
+    }
+};
+
+// 言語切り替え機能
+function switchLanguage(lang) {
+    currentLanguage = lang;
+    
+    // 言語ボタンの状態を更新
+    document.getElementById('langJa').classList.toggle('active', lang === 'ja');
+    document.getElementById('langEn').classList.toggle('active', lang === 'en');
+    
+    // HTMLのlang属性を更新
+    document.documentElement.lang = lang;
+    
+    // ページタイトルを更新
+    const title = document.querySelector('title');
+    title.textContent = title.getAttribute(`data-${lang}`);
+    
+    // すべてのdata属性を持つ要素のテキストを更新
+    const elements = document.querySelectorAll('[data-ja][data-en]');
+    elements.forEach(element => {
+        const text = element.getAttribute(`data-${lang}`);
+        if (text) {
+            element.textContent = text;
+        }
+    });
+    
+    // 動的に生成されるコンテンツを更新
+    updateDynamicContent();
+}
+
+// 動的コンテンツを更新
+function updateDynamicContent() {
+    // 署名検証タブの情報を更新
+    if (messages.length > 0) {
+        updateVerifyInfo();
+    }
+    
+    // 証明生成タブの情報を更新
+    if (messages.length > 0) {
+        updateProofInfo();
+    }
+    
+    // 証明検証タブの情報を更新
+    if (disclosedMessages.length > 0) {
+        updateProofVerifyInfo();
+    }
+}
+
+// 翻訳テキストを取得
+function t(key) {
+    return translations[currentLanguage][key] || key;
+}
 
 // 初期化
 async function initBBS() {
@@ -22,7 +172,7 @@ async function initBBS() {
         console.log('BBSライブラリの初期化が完了しました');
     } catch (error) {
         console.error('BBSライブラリの初期化に失敗しました:', error);
-        alert('BBSライブラリの初期化に失敗しました。ページを再読み込みしてください。');
+        alert(t('bbsInitFailed'));
     }
 }
 
@@ -75,6 +225,15 @@ function showTab(tabName) {
     // 指定されたタブをアクティブ
     document.getElementById(tabName).classList.add('active');
     event.target.classList.add('active');
+
+    // タブに応じて情報を更新
+    if (tabName === 'verify' && messages.length > 0) {
+        updateVerifyInfo();
+    } else if (tabName === 'proof' && messages.length > 0) {
+        updateProofInfo();
+    } else if (tabName === 'proof-verify' && disclosedMessages.length > 0) {
+        updateProofVerifyInfo();
+    }
 }
 
 // 鍵生成
@@ -102,11 +261,11 @@ async function generateKeys() {
         document.getElementById('publicKeyPreview').textContent = getPreview(publicKeyHex);
 
         result.style.display = 'block';
-        console.log('鍵生成が完了しました');
+        console.log(t('keyGenerationComplete'));
 
     } catch (error) {
-        console.error('鍵生成に失敗しました:', error);
-        alert('鍵生成に失敗しました: ' + error.message);
+        console.error(t('keyGenerationFailed'), error);
+        alert(t('keyGenerationFailed') + ': ' + error.message);
     } finally {
         btn.disabled = false;
         loading.style.display = 'none';
@@ -162,15 +321,18 @@ async function generateSignature(event) {
         document.getElementById('signaturePreview').textContent = getPreview(signatureHex);
 
         result.style.display = 'block';
-        console.log('署名生成が完了しました');
+        console.log(t('signatureGenerationComplete'));
 
         // 他のタブのボタンを有効化
         document.getElementById('verifyBtn').disabled = false;
         document.getElementById('generateProofBtn').disabled = false;
 
+        // 署名検証タブの情報を更新
+        updateVerifyInfo();
+
     } catch (error) {
-        console.error('署名生成に失敗しました:', error);
-        alert('署名生成に失敗しました: ' + error.message);
+        console.error(t('signatureGenerationFailed'), error);
+        alert(t('signatureGenerationFailed') + ': ' + error.message);
     } finally {
         btn.disabled = false;
         loading.style.display = 'none';
@@ -193,18 +355,18 @@ async function verifySignature() {
         // 結果を表示
         result.className = isValid ? 'result success' : 'result error';
         result.innerHTML = `
-            <h3>署名検証結果</h3>
+            <h3>${t('signatureVerificationResult')}</h3>
             <div class="status ${isValid ? 'ok' : 'ng'}">
-                ${isValid ? 'OK - 署名は有効です' : 'NG - 署名は無効です'}
+                ${isValid ? t('signatureValid') : t('signatureInvalid')}
             </div>
         `;
 
         result.style.display = 'block';
-        console.log('署名検証が完了しました:', isValid);
+        console.log(t('signatureVerificationComplete'), isValid);
 
     } catch (error) {
-        console.error('署名検証に失敗しました:', error);
-        alert('署名検証に失敗しました: ' + error.message);
+        console.error(t('signatureVerificationFailed'), error);
+        alert(t('signatureVerificationFailed') + ': ' + error.message);
     } finally {
         btn.disabled = false;
         loading.style.display = 'none';
@@ -235,7 +397,7 @@ async function generateProof() {
         }
 
         if (disclosedIndices.length === 0) {
-            alert('少なくとも1つの項目を開示する必要があります。');
+            alert(t('atLeastOneItemRequired'));
             return;
         }
 
@@ -253,14 +415,20 @@ async function generateProof() {
         document.getElementById('proofPreview').textContent = getPreview(proofHex);
 
         result.style.display = 'block';
-        console.log('証明生成が完了しました');
+        console.log(t('proofGenerationComplete'));
 
         // 証明検証タブのボタンを有効化
         document.getElementById('verifyProofBtn').disabled = false;
 
+        // 証明検証タブの情報を更新
+        updateProofVerifyInfo();
+
+        // 証明生成タブの情報も更新
+        updateProofInfo();
+
     } catch (error) {
-        console.error('証明生成に失敗しました:', error);
-        alert('証明生成に失敗しました: ' + error.message);
+        console.error(t('proofGenerationFailed'), error);
+        alert(t('proofGenerationFailed') + ': ' + error.message);
     } finally {
         btn.disabled = false;
         loading.style.display = 'none';
@@ -279,7 +447,7 @@ async function verifyProof() {
 
         // nonceが存在するかチェック
         if (!proofNonce) {
-            throw new Error('証明が生成されていません。先に証明を生成してください。');
+            throw new Error(t('proofNotGenerated'));
         }
 
         // nonce（証明生成時と同じもの）
@@ -291,18 +459,18 @@ async function verifyProof() {
         // 結果を表示
         result.className = isValid ? 'result success' : 'result error';
         result.innerHTML = `
-            <h3>証明検証結果</h3>
+            <h3>${t('proofVerificationResult')}</h3>
             <div class="status ${isValid ? 'ok' : 'ng'}">
-                ${isValid ? 'OK - 証明は有効です' : 'NG - 証明は無効です'}
+                ${isValid ? t('proofValid') : t('proofInvalid')}
             </div>
         `;
 
         result.style.display = 'block';
-        console.log('証明検証が完了しました:', isValid);
+        console.log(t('proofVerificationComplete'), isValid);
 
     } catch (error) {
-        console.error('証明検証に失敗しました:', error);
-        alert('証明検証に失敗しました: ' + error.message);
+        console.error(t('proofVerificationFailed'), error);
+        alert(t('proofVerificationFailed') + ': ' + error.message);
     } finally {
         btn.disabled = false;
         loading.style.display = 'none';
@@ -313,7 +481,7 @@ async function verifyProof() {
 function updateVerifyInfo() {
     if (messages.length === 0) return;
 
-    const fieldNames = ['姓', '名', '性別', '都道府県', '群市町村', '住所', '誕生年', '誕生月', '誕生日'];
+    const fieldNames = [t('lastName'), t('firstName'), t('gender'), t('prefecture'), t('city'), t('address'), t('birthYear'), t('birthMonth'), t('birthDay')];
     const verifyMessages = document.getElementById('verifyMessages');
     const verifyEditControls = document.getElementById('verifyEditControls');
     const verifyEditFields = document.getElementById('verifyEditFields');
@@ -345,7 +513,7 @@ function updateVerifyInfo() {
 function updateProofInfo() {
     if (messages.length === 0) return;
 
-    const fieldNames = ['姓', '名', '性別', '都道府県', '群市町村', '住所', '誕生年', '誕生月', '誕生日'];
+    const fieldNames = [t('lastName'), t('firstName'), t('gender'), t('prefecture'), t('city'), t('address'), t('birthYear'), t('birthMonth'), t('birthDay')];
     const proofMessages = document.getElementById('proofMessages');
     const disclosureControls = document.getElementById('disclosureControls');
     
@@ -364,11 +532,11 @@ function updateProofInfo() {
             <div class="disclosure-item">
                 <label>
                     <input type="radio" name="disclose_${index}" value="disclose" checked>
-                    開示する
+                    ${t('disclose')}
                 </label>
                 <label>
                     <input type="radio" name="disclose_${index}" value="hide">
-                    開示しない
+                    ${t('hide')}
                 </label>
                 <div class="field-value">${value}</div>
             </div>
@@ -400,7 +568,7 @@ function updateProofInfo() {
 function updateProofVerifyInfo() {
     if (disclosedMessages.length === 0) return;
 
-    const fieldNames = ['姓', '名', '性別', '都道府県', '群市町村', '住所', '誕生年', '誕生月', '誕生日'];
+    const fieldNames = [t('lastName'), t('firstName'), t('gender'), t('prefecture'), t('city'), t('address'), t('birthYear'), t('birthMonth'), t('birthDay')];
     const proofVerifyMessages = document.getElementById('proofVerifyMessages');
     const proofVerifyEditControls = document.getElementById('proofVerifyEditControls');
     const proofVerifyEditFields = document.getElementById('proofVerifyEditFields');
@@ -460,32 +628,14 @@ function resetProofVerifyMessages() {
     }
 }
 
-// イベントリスナーの設定
-document.addEventListener('DOMContentLoaded', async function() {
-    console.log('BBS署名デモを初期化中...');
-    
+// ページ読み込み時の初期化
+document.addEventListener('DOMContentLoaded', function() {
     // BBSライブラリを初期化
-    await initBBS();
+    initBBS();
     
-    // フォームイベントを設定
+    // フォームのイベントリスナーを設定
     document.getElementById('signForm').addEventListener('submit', generateSignature);
     
-    // タブ切り替え時に情報を更新
-    const tabs = document.querySelectorAll('.tab');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            const tabName = this.getAttribute('onclick').match(/'([^']+)'/)[1];
-            
-            // タブに応じて情報を更新
-            if (tabName === 'verify' && messages.length > 0) {
-                updateVerifyInfo();
-            } else if (tabName === 'proof' && messages.length > 0) {
-                updateProofInfo();
-            } else if (tabName === 'proof-verify' && disclosedMessages.length > 0) {
-                updateProofVerifyInfo();
-            }
-        });
-    });
-    
-    console.log('BBS署名デモの初期化が完了しました');
+    // 言語切り替え機能を初期化（デフォルトで日本語）
+    switchLanguage('ja');
 }); 
