@@ -2,7 +2,7 @@ const path = require('path');
 
 module.exports = {
   mode: 'production',
-  entry: './wasm/bbs.ts',
+  entry: './browser/demo.ts',
   target: 'web',
   module: {
     rules: [
@@ -29,17 +29,13 @@ module.exports = {
     extensions: ['.tsx', '.ts', '.js'],
   },
   output: {
-    filename: 'bbs.js',
+    filename: 'demo.js',
     path: path.resolve(__dirname, 'browser'),
-    library: 'bbs',
-    libraryTarget: 'umd',
-    globalObject: 'this',
+    library: 'demo',
+    libraryTarget: 'window',
+    globalObject: 'window',
   },
   optimization: {
     minimize: false,
   },
-  externals: {
-    'fs': 'commonjs fs',
-    'path': 'commonjs path'
-  }
 }; 

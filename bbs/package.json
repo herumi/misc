@@ -7,7 +7,11 @@
     "build": "npm run build:bbs_c.js && npm run build:dist",
     "build:bbs_c.js": "make",
     "build:dist": "tsc",
-    "build:browser": "webpack",
+    "build:browser": "webpack --config webpack.config.js",
+    "build:browser:watch": "webpack --config webpack.config.js --watch",
+    "build:demo": "webpack --config webpack.demo.config.js",
+    "build:demo:watch": "webpack --config webpack.demo.config.js --watch",
+    "build:all": "npm run build && npm run build:browser && npm run build:demo",
     "lint": "standard --verbose test/test.ts; ts-standard --verbose wasm/*.ts",
     "lint-fix": "standard --fix test/test.ts; ts-standard --fix wasm/*.ts",
     "test": "tsc && tsc test/test.ts && node test/test.js"

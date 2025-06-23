@@ -1,17 +1,19 @@
 {
   "compilerOptions": {
     "target": "es2020",
-    "lib": ["es2020"],
-    "module": "commonjs",
-    "rootDir": "./wasm",
+    "lib": ["es2020", "dom"],
+    "module": "es2020",
+    "rootDir": "./",
     "allowJs": true,
-    "declaration": true,
-    "outDir": "./dist",
+    "declaration": false,
+    "outDir": "./browser",
     "stripInternal": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "moduleResolution": "node"
   },
-  "include": ["./wasm/**/*"]
+  "include": ["./wasm/bbs.ts", "./browser/demo.ts"],
+  "exclude": ["./wasm/index.ts", "./wasm/getRandomValues.ts"]
 }

@@ -1,21 +1,29 @@
-// BBS署名デモ - メインJavaScriptファイル
+// @ts-nocheck
+// BBS署名デモ - メインTypeScriptファイル
 
-// グローバル変数
-let bbs = null;
-let secretKey = null;
-let publicKey = null;
-let signature = null;
-let proof = null;
-let messages = [];
-let disclosedIndices = [];
-let disclosedMessages = [];
-let originalMessages = []; // 元のメッセージを保存
-let originalDisclosedMessages = []; // 元の開示メッセージを保存
-let proofNonce = null; // 証明生成時のnonceを保存
-let currentLanguage = 'ja'; // 現在の言語
+// 型定義（必要に応じて拡張）
+declare global {
+    interface Window {
+        bbs: any;
+    }
+}
+
+let bbs: any = null;
+let secretKey: any = null;
+let publicKey: any = null;
+let signature: any = null;
+let proof: any = null;
+let messages: Uint8Array[] = [];
+let disclosedIndices: number[] = [];
+let disclosedMessages: Uint8Array[] = [];
+let originalMessages: Uint8Array[] = [];
+let originalDisclosedMessages: Uint8Array[] = [];
+let proofNonce: Uint8Array | null = null;
+let currentLanguage: 'ja' | 'en' = 'ja';
 
 // 多言語対応テキスト
-const translations = {
+type Translations = Record<string, Record<string, string>>;
+const translations: Translations = {
     ja: {
         // フィールド名
         lastName: '姓',
@@ -113,19 +121,23 @@ const translations = {
 };
 
 // 言語切り替え機能
-function switchLanguage(lang) {
+function switchLanguage(lang: 'ja' | 'en'): void {
     currentLanguage = lang;
     
     // 言語ボタンの状態を更新
-    document.getElementById('langJa').classList.toggle('active', lang === 'ja');
-    document.getElementById('langEn').classList.toggle('active', lang === 'en');
+    const langJa = document.getElementById('langJa');
+    const langEn = document.getElementById('langEn');
+    if (langJa) langJa.classList.toggle('active', lang === 'ja');
+    if (langEn) langEn.classList.toggle('active', lang === 'en');
     
     // HTMLのlang属性を更新
     document.documentElement.lang = lang;
     
     // ページタイトルを更新
     const title = document.querySelector('title');
-    title.textContent = title.getAttribute(`data-${lang}`);
+    if (title) {
+        title.textContent = title.getAttribute(`data-${lang}`);
+    }
     
     // すべてのdata属性を持つ要素のテキストを更新
     const elements = document.querySelectorAll('[data-ja][data-en]');
@@ -141,7 +153,7 @@ function switchLanguage(lang) {
 }
 
 // 動的コンテンツを更新
-function updateDynamicContent() {
+function updateDynamicContent(): void {
     // 署名検証タブの情報を更新
     if (messages.length > 0) {
         updateVerifyInfo();
@@ -159,12 +171,12 @@ function updateDynamicContent() {
 }
 
 // 翻訳テキストを取得
-function t(key) {
+function t(key: string): string {
     return translations[currentLanguage][key] || key;
 }
 
 // 初期化
-async function initBBS() {
+async function initBBS(): Promise<void> {
     try {
         bbs = window.bbs;
         console.log('BBSライブラリを初期化中...');
@@ -177,19 +189,19 @@ async function initBBS() {
 }
 
 // 文字列をUint8Arrayに変換
-function stringToUint8Array(str) {
+function stringToUint8Array(str: string): Uint8Array {
     const encoder = new TextEncoder();
     return encoder.encode(str);
 }
 
 // Uint8Arrayを文字列に変換
-function uint8ArrayToString(arr) {
+function uint8ArrayToString(arr: Uint8Array): string {
     const decoder = new TextDecoder('utf-8');
     return decoder.decode(arr);
 }
 
 // 生成時刻の文字列をnonceとして生成（YYYYMMDDHHMMSS.mmmm形式）
-function generateTimestampNonce() {
+function generateTimestampNonce(): Uint8Array {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -205,7 +217,7 @@ function generateTimestampNonce() {
 }
 
 // データの最初32バイトを表示用に変換
-function getPreview(data) {
+function getPreview(data: string): string {
     if (typeof data === 'string') {
         return data.substring(0, 64) + '...';
     }
@@ -213,7 +225,7 @@ function getPreview(data) {
 }
 
 // タブ切り替え
-function showTab(tabName) {
+function showTab(tabName: string): void {
     // すべてのタブコンテンツを非表示
     const tabContents = document.querySelectorAll('.tab-content');
     tabContents.forEach(content => content.classList.remove('active'));
@@ -223,8 +235,11 @@ function showTab(tabName) {
     tabs.forEach(tab => tab.classList.remove('active'));
 
     // 指定されたタブをアクティブ
-    document.getElementById(tabName).classList.add('active');
-    event.target.classList.add('active');
+    const targetTab = document.getElementById(tabName);
+    if (targetTab) targetTab.classList.add('active');
+    if (event && event.target) {
+        (event.target as HTMLElement).classList.add('active');
+    }
 
     // タブに応じて情報を更新
     if (tabName === 'verify' && messages.length > 0) {
@@ -237,14 +252,14 @@ function showTab(tabName) {
 }
 
 // 鍵生成
-async function generateKeys() {
-    const btn = document.getElementById('generateKeys');
-    const loading = document.getElementById('keygenLoading');
-    const result = document.getElementById('keygenResult');
+async function generateKeys(): Promise<void> {
+    const btn = document.getElementById('generateKeys') as HTMLButtonElement;
+    const loading = document.getElementById('keygenLoading') as HTMLElement;
+    const result = document.getElementById('keygenResult') as HTMLElement;
 
     try {
-        btn.disabled = true;
-        loading.style.display = 'inline-block';
+        if (btn) btn.disabled = true;
+        if (loading) loading.style.display = 'inline-block';
 
         // 秘密鍵を生成
         secretKey = new bbs.SecretKey();
@@ -257,44 +272,46 @@ async function generateKeys() {
         const secretKeyHex = secretKey.serializeToHexStr();
         const publicKeyHex = publicKey.serializeToHexStr();
 
-        document.getElementById('secretKeyPreview').textContent = getPreview(secretKeyHex);
-        document.getElementById('publicKeyPreview').textContent = getPreview(publicKeyHex);
+        const secretKeyPreview = document.getElementById('secretKeyPreview');
+        const publicKeyPreview = document.getElementById('publicKeyPreview');
+        if (secretKeyPreview) secretKeyPreview.textContent = getPreview(secretKeyHex);
+        if (publicKeyPreview) publicKeyPreview.textContent = getPreview(publicKeyHex);
 
-        result.style.display = 'block';
+        if (result) result.style.display = 'block';
         console.log(t('keyGenerationComplete'));
 
     } catch (error) {
         console.error(t('keyGenerationFailed'), error);
-        alert(t('keyGenerationFailed') + ': ' + error.message);
+        alert(t('keyGenerationFailed') + ': ' + (error as Error).message);
     } finally {
-        btn.disabled = false;
-        loading.style.display = 'none';
+        if (btn) btn.disabled = false;
+        if (loading) loading.style.display = 'none';
     }
 }
 
 // 署名生成
-async function generateSignature(event) {
+async function generateSignature(event: Event): Promise<void> {
     event.preventDefault();
 
-    const btn = document.getElementById('signBtn');
-    const loading = document.getElementById('signLoading');
-    const result = document.getElementById('signResult');
+    const btn = document.getElementById('signBtn') as HTMLButtonElement;
+    const loading = document.getElementById('signLoading') as HTMLElement;
+    const result = document.getElementById('signResult') as HTMLElement;
 
     try {
-        btn.disabled = true;
-        loading.style.display = 'inline-block';
+        if (btn) btn.disabled = true;
+        if (loading) loading.style.display = 'inline-block';
 
         // フォームから個人情報を取得
         const formData = {
-            lastName: document.getElementById('lastName').value,
-            firstName: document.getElementById('firstName').value,
-            gender: document.getElementById('gender').value,
-            prefecture: document.getElementById('prefecture').value,
-            city: document.getElementById('city').value,
-            address: document.getElementById('address').value,
-            birthYear: document.getElementById('birthYear').value,
-            birthMonth: document.getElementById('birthMonth').value,
-            birthDay: document.getElementById('birthDay').value
+            lastName: (document.getElementById('lastName') as HTMLInputElement)?.value || '',
+            firstName: (document.getElementById('firstName') as HTMLInputElement)?.value || '',
+            gender: (document.getElementById('gender') as HTMLSelectElement)?.value || '',
+            prefecture: (document.getElementById('prefecture') as HTMLInputElement)?.value || '',
+            city: (document.getElementById('city') as HTMLInputElement)?.value || '',
+            address: (document.getElementById('address') as HTMLInputElement)?.value || '',
+            birthYear: (document.getElementById('birthYear') as HTMLInputElement)?.value || '',
+            birthMonth: (document.getElementById('birthMonth') as HTMLInputElement)?.value || '',
+            birthDay: (document.getElementById('birthDay') as HTMLInputElement)?.value || ''
         };
 
         // メッセージ配列を作成
@@ -318,70 +335,75 @@ async function generateSignature(event) {
 
         // 結果を表示
         const signatureHex = signature.serializeToHexStr();
-        document.getElementById('signaturePreview').textContent = getPreview(signatureHex);
+        const signaturePreview = document.getElementById('signaturePreview');
+        if (signaturePreview) signaturePreview.textContent = getPreview(signatureHex);
 
-        result.style.display = 'block';
+        if (result) result.style.display = 'block';
         console.log(t('signatureGenerationComplete'));
 
         // 他のタブのボタンを有効化
-        document.getElementById('verifyBtn').disabled = false;
-        document.getElementById('generateProofBtn').disabled = false;
+        const verifyBtn = document.getElementById('verifyBtn') as HTMLButtonElement;
+        const generateProofBtn = document.getElementById('generateProofBtn') as HTMLButtonElement;
+        if (verifyBtn) verifyBtn.disabled = false;
+        if (generateProofBtn) generateProofBtn.disabled = false;
 
         // 署名検証タブの情報を更新
         updateVerifyInfo();
 
     } catch (error) {
         console.error(t('signatureGenerationFailed'), error);
-        alert(t('signatureGenerationFailed') + ': ' + error.message);
+        alert(t('signatureGenerationFailed') + ': ' + (error as Error).message);
     } finally {
-        btn.disabled = false;
-        loading.style.display = 'none';
+        if (btn) btn.disabled = false;
+        if (loading) loading.style.display = 'none';
     }
 }
 
 // 署名検証
-async function verifySignature() {
-    const btn = document.getElementById('verifyBtn');
-    const loading = document.getElementById('verifyLoading');
-    const result = document.getElementById('verifyResult');
+async function verifySignature(): Promise<void> {
+    const btn = document.getElementById('verifyBtn') as HTMLButtonElement;
+    const loading = document.getElementById('verifyLoading') as HTMLElement;
+    const result = document.getElementById('verifyResult') as HTMLElement;
 
     try {
-        btn.disabled = true;
-        loading.style.display = 'inline-block';
+        if (btn) btn.disabled = true;
+        if (loading) loading.style.display = 'inline-block';
 
         // 署名を検証
         const isValid = bbs.verify(signature, publicKey, messages);
 
         // 結果を表示
-        result.className = isValid ? 'result success' : 'result error';
-        result.innerHTML = `
-            <h3>${t('signatureVerificationResult')}</h3>
-            <div class="status ${isValid ? 'ok' : 'ng'}">
-                ${isValid ? t('signatureValid') : t('signatureInvalid')}
-            </div>
-        `;
+        if (result) {
+            result.className = isValid ? 'result success' : 'result error';
+            result.innerHTML = `
+                <h3>${t('signatureVerificationResult')}</h3>
+                <div class="status ${isValid ? 'ok' : 'ng'}">
+                    ${isValid ? t('signatureValid') : t('signatureInvalid')}
+                </div>
+            `;
+            result.style.display = 'block';
+        }
 
-        result.style.display = 'block';
         console.log(t('signatureVerificationComplete'), isValid);
 
     } catch (error) {
         console.error(t('signatureVerificationFailed'), error);
-        alert(t('signatureVerificationFailed') + ': ' + error.message);
+        alert(t('signatureVerificationFailed') + ': ' + (error as Error).message);
     } finally {
-        btn.disabled = false;
-        loading.style.display = 'none';
+        if (btn) btn.disabled = false;
+        if (loading) loading.style.display = 'none';
     }
 }
 
 // 証明生成
-async function generateProof() {
-    const btn = document.getElementById('generateProofBtn');
-    const loading = document.getElementById('proofLoading');
-    const result = document.getElementById('proofResult');
+async function generateProof(): Promise<void> {
+    const btn = document.getElementById('generateProofBtn') as HTMLButtonElement;
+    const loading = document.getElementById('proofLoading') as HTMLElement;
+    const result = document.getElementById('proofResult') as HTMLElement;
 
     try {
-        btn.disabled = true;
-        loading.style.display = 'inline-block';
+        if (btn) btn.disabled = true;
+        if (loading) loading.style.display = 'inline-block';
 
         // 開示する項目を取得
         disclosedIndices = [];
@@ -389,7 +411,7 @@ async function generateProof() {
         const fieldNames = ['姓', '名', '性別', '都道府県', '群市町村', '住所', '誕生年', '誕生月', '誕生日'];
 
         for (let i = 0; i < fieldNames.length; i++) {
-            const radio = document.querySelector(`input[name="disclose_${i}"]:checked`);
+            const radio = document.querySelector(`input[name="disclose_${i}"]:checked`) as HTMLInputElement;
             if (radio && radio.value === 'disclose') {
                 disclosedIndices.push(i);
                 disclosedMessages.push(messages[i]);
@@ -412,13 +434,15 @@ async function generateProof() {
 
         // 結果を表示
         const proofHex = proof.serializeToHexStr();
-        document.getElementById('proofPreview').textContent = getPreview(proofHex);
+        const proofPreview = document.getElementById('proofPreview');
+        if (proofPreview) proofPreview.textContent = getPreview(proofHex);
 
-        result.style.display = 'block';
+        if (result) result.style.display = 'block';
         console.log(t('proofGenerationComplete'));
 
         // 証明検証タブのボタンを有効化
-        document.getElementById('verifyProofBtn').disabled = false;
+        const verifyProofBtn = document.getElementById('verifyProofBtn') as HTMLButtonElement;
+        if (verifyProofBtn) verifyProofBtn.disabled = false;
 
         // 証明検証タブの情報を更新
         updateProofVerifyInfo();
@@ -428,22 +452,22 @@ async function generateProof() {
 
     } catch (error) {
         console.error(t('proofGenerationFailed'), error);
-        alert(t('proofGenerationFailed') + ': ' + error.message);
+        alert(t('proofGenerationFailed') + ': ' + (error as Error).message);
     } finally {
-        btn.disabled = false;
-        loading.style.display = 'none';
+        if (btn) btn.disabled = false;
+        if (loading) loading.style.display = 'none';
     }
 }
 
 // 証明検証
-async function verifyProof() {
-    const btn = document.getElementById('verifyProofBtn');
-    const loading = document.getElementById('proofVerifyLoading');
-    const result = document.getElementById('proofVerifyResult');
+async function verifyProof(): Promise<void> {
+    const btn = document.getElementById('verifyProofBtn') as HTMLButtonElement;
+    const loading = document.getElementById('proofVerifyLoading') as HTMLElement;
+    const result = document.getElementById('proofVerifyResult') as HTMLElement;
 
     try {
-        btn.disabled = true;
-        loading.style.display = 'inline-block';
+        if (btn) btn.disabled = true;
+        if (loading) loading.style.display = 'inline-block';
 
         // nonceが存在するかチェック
         if (!proofNonce) {
@@ -457,41 +481,43 @@ async function verifyProof() {
         const isValid = bbs.verifyProof(publicKey, proof, disclosedMessages, new Uint32Array(disclosedIndices), nonce);
 
         // 結果を表示
-        result.className = isValid ? 'result success' : 'result error';
-        result.innerHTML = `
-            <h3>${t('proofVerificationResult')}</h3>
-            <div class="status ${isValid ? 'ok' : 'ng'}">
-                ${isValid ? t('proofValid') : t('proofInvalid')}
-            </div>
-        `;
+        if (result) {
+            result.className = isValid ? 'result success' : 'result error';
+            result.innerHTML = `
+                <h3>${t('proofVerificationResult')}</h3>
+                <div class="status ${isValid ? 'ok' : 'ng'}">
+                    ${isValid ? t('proofValid') : t('proofInvalid')}
+                </div>
+            `;
+            result.style.display = 'block';
+        }
 
-        result.style.display = 'block';
         console.log(t('proofVerificationComplete'), isValid);
 
     } catch (error) {
         console.error(t('proofVerificationFailed'), error);
-        alert(t('proofVerificationFailed') + ': ' + error.message);
+        alert(t('proofVerificationFailed') + ': ' + (error as Error).message);
     } finally {
-        btn.disabled = false;
-        loading.style.display = 'none';
+        if (btn) btn.disabled = false;
+        if (loading) loading.style.display = 'none';
     }
 }
 
 // 署名検証タブの情報を更新
-function updateVerifyInfo() {
+function updateVerifyInfo(): void {
     if (messages.length === 0) return;
 
     const fieldNames = [t('lastName'), t('firstName'), t('gender'), t('prefecture'), t('city'), t('address'), t('birthYear'), t('birthMonth'), t('birthDay')];
-    const verifyMessages = document.getElementById('verifyMessages');
-    const verifyEditControls = document.getElementById('verifyEditControls');
-    const verifyEditFields = document.getElementById('verifyEditFields');
+    const verifyMessages = document.getElementById('verifyMessages') as HTMLElement;
+    const verifyEditControls = document.getElementById('verifyEditControls') as HTMLElement;
+    const verifyEditFields = document.getElementById('verifyEditFields') as HTMLElement;
     
     // メッセージ情報を表示
     let html = '';
     messages.forEach((msg, index) => {
         html += `<div><strong>${fieldNames[index]}:</strong> ${uint8ArrayToString(msg)}</div>`;
     });
-    verifyMessages.innerHTML = html;
+    if (verifyMessages) verifyMessages.innerHTML = html;
 
     // 編集フィールドを生成
     html = '';
@@ -505,24 +531,24 @@ function updateVerifyInfo() {
             </div>
         `;
     });
-    verifyEditFields.innerHTML = html;
-    verifyEditControls.style.display = 'block';
+    if (verifyEditFields) verifyEditFields.innerHTML = html;
+    if (verifyEditControls) verifyEditControls.style.display = 'block';
 }
 
 // 証明生成タブの情報を更新
-function updateProofInfo() {
+function updateProofInfo(): void {
     if (messages.length === 0) return;
 
     const fieldNames = [t('lastName'), t('firstName'), t('gender'), t('prefecture'), t('city'), t('address'), t('birthYear'), t('birthMonth'), t('birthDay')];
-    const proofMessages = document.getElementById('proofMessages');
-    const disclosureControls = document.getElementById('disclosureControls');
+    const proofMessages = document.getElementById('proofMessages') as HTMLElement;
+    const disclosureControls = document.getElementById('disclosureControls') as HTMLElement;
     
     // メッセージ情報を表示
     let html = '';
     messages.forEach((msg, index) => {
         html += `<div><strong>${fieldNames[index]}:</strong> ${uint8ArrayToString(msg)}</div>`;
     });
-    proofMessages.innerHTML = html;
+    if (proofMessages) proofMessages.innerHTML = html;
 
     // 開示制御を生成
     html = '';
@@ -542,22 +568,28 @@ function updateProofInfo() {
             </div>
         `;
     });
-    disclosureControls.innerHTML = html;
-    disclosureControls.style.display = 'grid';
+    if (disclosureControls) {
+        disclosureControls.innerHTML = html;
+        disclosureControls.style.display = 'grid';
+    }
 
     // ラジオボタンの変更イベントを追加
     messages.forEach((msg, index) => {
         const radios = document.querySelectorAll(`input[name="disclose_${index}"]`);
-        const fieldValue = disclosureControls.children[index].querySelector('.field-value');
+        const fieldValue = disclosureControls?.children[index]?.querySelector('.field-value') as HTMLElement;
         
         radios.forEach(radio => {
-            radio.addEventListener('change', function() {
+            radio.addEventListener('change', function(this: HTMLInputElement) {
                 if (this.value === 'hide') {
-                    fieldValue.textContent = '***';
-                    fieldValue.classList.add('hidden');
+                    if (fieldValue) {
+                        fieldValue.textContent = '***';
+                        fieldValue.classList.add('hidden');
+                    }
                 } else {
-                    fieldValue.textContent = uint8ArrayToString(msg);
-                    fieldValue.classList.remove('hidden');
+                    if (fieldValue) {
+                        fieldValue.textContent = uint8ArrayToString(msg);
+                        fieldValue.classList.remove('hidden');
+                    }
                 }
             });
         });
@@ -565,20 +597,20 @@ function updateProofInfo() {
 }
 
 // 証明検証タブの情報を更新
-function updateProofVerifyInfo() {
+function updateProofVerifyInfo(): void {
     if (disclosedMessages.length === 0) return;
 
     const fieldNames = [t('lastName'), t('firstName'), t('gender'), t('prefecture'), t('city'), t('address'), t('birthYear'), t('birthMonth'), t('birthDay')];
-    const proofVerifyMessages = document.getElementById('proofVerifyMessages');
-    const proofVerifyEditControls = document.getElementById('proofVerifyEditControls');
-    const proofVerifyEditFields = document.getElementById('proofVerifyEditFields');
+    const proofVerifyMessages = document.getElementById('proofVerifyMessages') as HTMLElement;
+    const proofVerifyEditControls = document.getElementById('proofVerifyEditControls') as HTMLElement;
+    const proofVerifyEditFields = document.getElementById('proofVerifyEditFields') as HTMLElement;
     
     // 開示メッセージ情報を表示
     let html = '';
     disclosedIndices.forEach((index, i) => {
         html += `<div><strong>${fieldNames[index]}:</strong> ${uint8ArrayToString(disclosedMessages[i])}</div>`;
     });
-    proofVerifyMessages.innerHTML = html;
+    if (proofVerifyMessages) proofVerifyMessages.innerHTML = html;
 
     // 編集フィールドを生成
     html = '';
@@ -592,28 +624,26 @@ function updateProofVerifyInfo() {
             </div>
         `;
     });
-    proofVerifyEditFields.innerHTML = html;
-    proofVerifyEditControls.style.display = 'block';
+    if (proofVerifyEditFields) proofVerifyEditFields.innerHTML = html;
+    if (proofVerifyEditControls) proofVerifyEditControls.style.display = 'block';
 }
 
 // 署名検証用メッセージを更新
-function updateVerifyMessage(index, value) {
+function updateVerifyMessage(index: number, value: string): void {
     if (index >= 0 && index < messages.length) {
         messages[index] = stringToUint8Array(value);
-        updateVerifyInfo(); // 表示を更新
     }
 }
 
 // 証明検証用メッセージを更新
-function updateProofVerifyMessage(index, value) {
+function updateProofVerifyMessage(index: number, value: string): void {
     if (index >= 0 && index < disclosedMessages.length) {
         disclosedMessages[index] = stringToUint8Array(value);
-        updateProofVerifyInfo(); // 表示を更新
     }
 }
 
 // 署名検証メッセージをリセット
-function resetVerifyMessages() {
+function resetVerifyMessages(): void {
     if (originalMessages.length > 0) {
         messages = originalMessages.map(msg => new Uint8Array(msg));
         updateVerifyInfo();
@@ -621,7 +651,7 @@ function resetVerifyMessages() {
 }
 
 // 証明検証メッセージをリセット
-function resetProofVerifyMessages() {
+function resetProofVerifyMessages(): void {
     if (originalDisclosedMessages.length > 0) {
         disclosedMessages = originalDisclosedMessages.map(msg => new Uint8Array(msg));
         updateProofVerifyInfo();
@@ -634,8 +664,21 @@ document.addEventListener('DOMContentLoaded', function() {
     initBBS();
     
     // フォームのイベントリスナーを設定
-    document.getElementById('signForm').addEventListener('submit', generateSignature);
+    const signForm = document.getElementById('signForm');
+    if (signForm) signForm.addEventListener('submit', generateSignature);
     
     // 言語切り替え機能を初期化（デフォルトで日本語）
     switchLanguage('ja');
-}); 
+});
+
+// グローバルスコープに関数を露出（HTMLのonclick属性から呼び出すため）
+(window as any).generateKeys = generateKeys;
+(window as any).showTab = showTab;
+(window as any).verifySignature = verifySignature;
+(window as any).generateProof = generateProof;
+(window as any).verifyProof = verifyProof;
+(window as any).switchLanguage = switchLanguage;
+(window as any).updateVerifyMessage = updateVerifyMessage;
+(window as any).updateProofVerifyMessage = updateProofVerifyMessage;
+(window as any).resetVerifyMessages = resetVerifyMessages;
+(window as any).resetProofVerifyMessages = resetProofVerifyMessages; 

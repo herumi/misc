@@ -1,4 +1,5 @@
-import createModule = require('./bbs_c.js')
+// @ts-nocheck
+import createModule from './bbs_c.js'
 import getRandomValues from './getRandomValues'
 
 const BBS_SECRETKEY_SIZE = 32
