@@ -1,7 +1,6 @@
 // @ts-nocheck
 // BBS署名デモ - メインTypeScriptファイル
 
-// 型定義（必要に応じて拡張）
 declare global {
     interface Window {
         bbs: any;
@@ -9,17 +8,17 @@ declare global {
 }
 
 let bbs: any = null;
-let secretKey: any = null;
-let publicKey: any = null;
-let signature: any = null;
-let proof: any = null;
-let messages: Uint8Array[] = [];
-let disclosedIndices: number[] = [];
-let disclosedMessages: Uint8Array[] = [];
-let originalMessages: Uint8Array[] = [];
-let originalDisclosedMessages: Uint8Array[] = [];
-let proofNonce: Uint8Array | null = null;
-let currentLanguage: 'ja' | 'en' = 'ja';
+let g_sec: any = null;
+let g_pub: any = null;
+let g_sig: any = null;
+let g_prf: any = null;
+let g_msgs: Uint8Array[] = [];
+let g_discIdxs: number[] = [];
+let g_discMsgs: Uint8Array[] = [];
+let g_orgMsgs: Uint8Array[] = [];
+let g_orgDiscMsgs: Uint8Array[] = [];
+let g_nonce: Uint8Array | null = null;
+let g_curLang: 'ja' | 'en' = 'ja';
 
 // 多言語対応テキスト
 type Translations = Record<string, Record<string, string>>;
@@ -35,17 +34,17 @@ const translations: Translations = {
         birthYear: '誕生年',
         birthMonth: '誕生月',
         birthDay: '誕生日',
-        
+
         // 性別オプション
         male: '男',
         female: '女',
         other: 'その他',
         pleaseSelect: '選択してください',
-        
+
         // 開示制御
         disclose: '開示する',
         hide: '開示しない',
-        
+
         // メッセージ
         keyGenerationComplete: '鍵生成が完了しました',
         signatureGenerationComplete: '署名生成が完了しました',
@@ -60,13 +59,13 @@ const translations: Translations = {
         bbsInitFailed: 'BBSライブラリの初期化に失敗しました。ページを再読み込みしてください。',
         atLeastOneItemRequired: '少なくとも1つの項目を開示する必要があります。',
         proofNotGenerated: '証明が生成されていません。先に証明を生成してください。',
-        
+
         // 検証結果
         signatureValid: 'OK - 署名は有効です',
         signatureInvalid: 'NG - 署名は無効です',
         proofValid: 'OK - 証明は有効です',
         proofInvalid: 'NG - 証明は無効です',
-        
+
         // タイトル
         signatureVerificationResult: '署名検証結果',
         proofVerificationResult: '証明検証結果'
@@ -82,17 +81,17 @@ const translations: Translations = {
         birthYear: 'Birth Year',
         birthMonth: 'Birth Month',
         birthDay: 'Birth Day',
-        
+
         // 性別オプション
         male: 'Male',
         female: 'Female',
         other: 'Other',
         pleaseSelect: 'Please select',
-        
+
         // 開示制御
         disclose: 'Disclose',
         hide: 'Hide',
-        
+
         // メッセージ
         keyGenerationComplete: 'Key generation completed',
         signatureGenerationComplete: 'Signature generation completed',
@@ -107,13 +106,13 @@ const translations: Translations = {
         bbsInitFailed: 'BBS library initialization failed. Please reload the page.',
         atLeastOneItemRequired: 'At least one item must be disclosed.',
         proofNotGenerated: 'Proof has not been generated. Please generate a proof first.',
-        
+
         // 検証結果
         signatureValid: 'OK - Signature is valid',
         signatureInvalid: 'NG - Signature is invalid',
         proofValid: 'OK - Proof is valid',
         proofInvalid: 'NG - Proof is invalid',
-        
+
         // タイトル
         signatureVerificationResult: 'Signature Verification Result',
         proofVerificationResult: 'Proof Verification Result'
@@ -122,23 +121,23 @@ const translations: Translations = {
 
 // 言語切り替え機能
 function switchLanguage(lang: 'ja' | 'en'): void {
-    currentLanguage = lang;
-    
+    g_curLang = lang;
+
     // 言語ボタンの状態を更新
     const langJa = document.getElementById('langJa');
     const langEn = document.getElementById('langEn');
     if (langJa) langJa.classList.toggle('active', lang === 'ja');
     if (langEn) langEn.classList.toggle('active', lang === 'en');
-    
+
     // HTMLのlang属性を更新
     document.documentElement.lang = lang;
-    
+
     // ページタイトルを更新
     const title = document.querySelector('title');
     if (title) {
         title.textContent = title.getAttribute(`data-${lang}`);
     }
-    
+
     // すべてのdata属性を持つ要素のテキストを更新
     const elements = document.querySelectorAll('[data-ja][data-en]');
     elements.forEach(element => {
@@ -147,7 +146,7 @@ function switchLanguage(lang: 'ja' | 'en'): void {
             element.textContent = text;
         }
     });
-    
+
     // 動的に生成されるコンテンツを更新
     updateDynamicContent();
 }
@@ -155,24 +154,24 @@ function switchLanguage(lang: 'ja' | 'en'): void {
 // 動的コンテンツを更新
 function updateDynamicContent(): void {
     // 署名検証タブの情報を更新
-    if (messages.length > 0) {
+    if (g_msgs.length > 0) {
         updateVerifyInfo();
     }
-    
+
     // 証明生成タブの情報を更新
-    if (messages.length > 0) {
+    if (g_msgs.length > 0) {
         updateProofInfo();
     }
-    
+
     // 証明検証タブの情報を更新
-    if (disclosedMessages.length > 0) {
+    if (g_discMsgs.length > 0) {
         updateProofVerifyInfo();
     }
 }
 
 // 翻訳テキストを取得
 function t(key: string): string {
-    return translations[currentLanguage][key] || key;
+    return translations[g_curLang][key] || key;
 }
 
 // 初期化
@@ -210,7 +209,7 @@ function generateTimestampNonce(): Uint8Array {
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const seconds = String(now.getSeconds()).padStart(2, '0');
     const milliseconds = String(now.getMilliseconds()).padStart(4, '0');
-    
+
     const timestamp = `${year}${month}${day}${hours}${minutes}${seconds}.${milliseconds}`;
     console.log('生成されたnonce（タイムスタンプ）:', timestamp);
     return stringToUint8Array(timestamp);
@@ -242,11 +241,14 @@ function showTab(tabName: string): void {
     }
 
     // タブに応じて情報を更新
-    if (tabName === 'verify' && messages.length > 0) {
+    if (tabName === 'sign' && g_msgs.length > 0) {
         updateVerifyInfo();
-    } else if (tabName === 'proof' && messages.length > 0) {
         updateProofInfo();
-    } else if (tabName === 'proof-verify' && disclosedMessages.length > 0) {
+    } else if (tabName === 'verify' && g_msgs.length > 0) {
+        updateVerifyInfo();
+    } else if (tabName === 'proof' && g_msgs.length > 0) {
+        updateProofInfo();
+    } else if (tabName === 'proof-verify' && g_discMsgs.length > 0) {
         updateProofVerifyInfo();
     }
 }
@@ -262,15 +264,15 @@ async function generateKeys(): Promise<void> {
         if (loading) loading.style.display = 'inline-block';
 
         // 秘密鍵を生成
-        secretKey = new bbs.SecretKey();
-        secretKey.init();
+        g_sec = new bbs.SecretKey();
+        g_sec.init();
 
         // 公開鍵を取得
-        publicKey = secretKey.getPublicKey();
+        g_pub = g_sec.getPublicKey();
 
         // 結果を表示
-        const secretKeyHex = secretKey.serializeToHexStr();
-        const publicKeyHex = publicKey.serializeToHexStr();
+        const secretKeyHex = g_sec.serializeToHexStr();
+        const publicKeyHex = g_pub.serializeToHexStr();
 
         const secretKeyPreview = document.getElementById('secretKeyPreview');
         const publicKeyPreview = document.getElementById('publicKeyPreview');
@@ -315,7 +317,7 @@ async function generateSignature(event: Event): Promise<void> {
         };
 
         // メッセージ配列を作成
-        messages = [
+        g_msgs = [
             stringToUint8Array(formData.lastName),
             stringToUint8Array(formData.firstName),
             stringToUint8Array(formData.gender),
@@ -328,13 +330,13 @@ async function generateSignature(event: Event): Promise<void> {
         ];
 
         // 元のメッセージを保存
-        originalMessages = messages.map(msg => new Uint8Array(msg));
+        g_orgMsgs = g_msgs.map(msg => new Uint8Array(msg));
 
         // 署名を生成
-        signature = bbs.sign(secretKey, publicKey, messages);
+        g_sig = bbs.sign(g_sec, g_pub, g_msgs);
 
         // 結果を表示
-        const signatureHex = signature.serializeToHexStr();
+        const signatureHex = g_sig.serializeToHexStr();
         const signaturePreview = document.getElementById('signaturePreview');
         if (signaturePreview) signaturePreview.textContent = getPreview(signatureHex);
 
@@ -370,7 +372,7 @@ async function verifySignature(): Promise<void> {
         if (loading) loading.style.display = 'inline-block';
 
         // 署名を検証
-        const isValid = bbs.verify(signature, publicKey, messages);
+        const isValid = bbs.verify(g_sig, g_pub, g_msgs);
 
         // 結果を表示
         if (result) {
@@ -406,34 +408,34 @@ async function generateProof(): Promise<void> {
         if (loading) loading.style.display = 'inline-block';
 
         // 開示する項目を取得
-        disclosedIndices = [];
-        disclosedMessages = [];
+        g_discIdxs = [];
+        g_discMsgs = [];
         const fieldNames = ['姓', '名', '性別', '都道府県', '群市町村', '住所', '誕生年', '誕生月', '誕生日'];
 
         for (let i = 0; i < fieldNames.length; i++) {
             const radio = document.querySelector(`input[name="disclose_${i}"]:checked`) as HTMLInputElement;
             if (radio && radio.value === 'disclose') {
-                disclosedIndices.push(i);
-                disclosedMessages.push(messages[i]);
+                g_discIdxs.push(i);
+                g_discMsgs.push(g_msgs[i]);
             }
         }
 
-        if (disclosedIndices.length === 0) {
+        if (g_discIdxs.length === 0) {
             alert(t('atLeastOneItemRequired'));
             return;
         }
 
         // 元の開示メッセージを保存
-        originalDisclosedMessages = disclosedMessages.map(msg => new Uint8Array(msg));
+        g_orgDiscMsgs = g_discMsgs.map(msg => new Uint8Array(msg));
 
         // nonceを生成（実際のアプリケーションでは適切なnonceを使用）
-        proofNonce = generateTimestampNonce();
+        g_nonce = generateTimestampNonce();
 
         // 証明を生成
-        proof = bbs.createProof(publicKey, signature, messages, new Uint32Array(disclosedIndices), proofNonce);
+        g_prf = bbs.createProof(g_pub, g_sig, g_msgs, new Uint32Array(g_discIdxs), g_nonce);
 
         // 結果を表示
-        const proofHex = proof.serializeToHexStr();
+        const proofHex = g_prf.serializeToHexStr();
         const proofPreview = document.getElementById('proofPreview');
         if (proofPreview) proofPreview.textContent = getPreview(proofHex);
 
@@ -470,15 +472,15 @@ async function verifyProof(): Promise<void> {
         if (loading) loading.style.display = 'inline-block';
 
         // nonceが存在するかチェック
-        if (!proofNonce) {
+        if (!g_nonce) {
             throw new Error(t('proofNotGenerated'));
         }
 
         // nonce（証明生成時と同じもの）
-        const nonce = proofNonce;
+        const nonce = g_nonce;
 
         // 証明を検証
-        const isValid = bbs.verifyProof(publicKey, proof, disclosedMessages, new Uint32Array(disclosedIndices), nonce);
+        const isValid = bbs.verifyProof(g_pub, g_prf, g_discMsgs, new Uint32Array(g_discIdxs), nonce);
 
         // 結果を表示
         if (result) {
@@ -505,28 +507,28 @@ async function verifyProof(): Promise<void> {
 
 // 署名検証タブの情報を更新
 function updateVerifyInfo(): void {
-    if (messages.length === 0) return;
+    if (g_msgs.length === 0) return;
 
     const fieldNames = [t('lastName'), t('firstName'), t('gender'), t('prefecture'), t('city'), t('address'), t('birthYear'), t('birthMonth'), t('birthDay')];
     const verifyMessages = document.getElementById('verifyMessages') as HTMLElement;
     const verifyEditControls = document.getElementById('verifyEditControls') as HTMLElement;
     const verifyEditFields = document.getElementById('verifyEditFields') as HTMLElement;
-    
+
     // メッセージ情報を表示
     let html = '';
-    messages.forEach((msg, index) => {
+    g_msgs.forEach((msg, index) => {
         html += `<div><strong>${fieldNames[index]}:</strong> ${uint8ArrayToString(msg)}</div>`;
     });
     if (verifyMessages) verifyMessages.innerHTML = html;
 
     // 編集フィールドを生成
     html = '';
-    messages.forEach((msg, index) => {
+    g_msgs.forEach((msg, index) => {
         const value = uint8ArrayToString(msg);
         html += `
             <div class="edit-field">
                 <label for="verify_edit_${index}">${fieldNames[index]}</label>
-                <input type="text" id="verify_edit_${index}" value="${value}" 
+                <input type="text" id="verify_edit_${index}" value="${value}"
                        onchange="updateVerifyMessage(${index}, this.value)">
             </div>
         `;
@@ -537,22 +539,22 @@ function updateVerifyInfo(): void {
 
 // 証明生成タブの情報を更新
 function updateProofInfo(): void {
-    if (messages.length === 0) return;
+    if (g_msgs.length === 0) return;
 
     const fieldNames = [t('lastName'), t('firstName'), t('gender'), t('prefecture'), t('city'), t('address'), t('birthYear'), t('birthMonth'), t('birthDay')];
     const proofMessages = document.getElementById('proofMessages') as HTMLElement;
     const disclosureControls = document.getElementById('disclosureControls') as HTMLElement;
-    
+
     // メッセージ情報を表示
     let html = '';
-    messages.forEach((msg, index) => {
+    g_msgs.forEach((msg, index) => {
         html += `<div><strong>${fieldNames[index]}:</strong> ${uint8ArrayToString(msg)}</div>`;
     });
     if (proofMessages) proofMessages.innerHTML = html;
 
     // 開示制御を生成
     html = '';
-    messages.forEach((msg, index) => {
+    g_msgs.forEach((msg, index) => {
         const value = uint8ArrayToString(msg);
         html += `
             <div class="disclosure-item">
@@ -574,10 +576,10 @@ function updateProofInfo(): void {
     }
 
     // ラジオボタンの変更イベントを追加
-    messages.forEach((msg, index) => {
+    g_msgs.forEach((msg, index) => {
         const radios = document.querySelectorAll(`input[name="disclose_${index}"]`);
         const fieldValue = disclosureControls?.children[index]?.querySelector('.field-value') as HTMLElement;
-        
+
         radios.forEach(radio => {
             radio.addEventListener('change', function(this: HTMLInputElement) {
                 if (this.value === 'hide') {
@@ -598,28 +600,28 @@ function updateProofInfo(): void {
 
 // 証明検証タブの情報を更新
 function updateProofVerifyInfo(): void {
-    if (disclosedMessages.length === 0) return;
+    if (g_discMsgs.length === 0) return;
 
     const fieldNames = [t('lastName'), t('firstName'), t('gender'), t('prefecture'), t('city'), t('address'), t('birthYear'), t('birthMonth'), t('birthDay')];
     const proofVerifyMessages = document.getElementById('proofVerifyMessages') as HTMLElement;
     const proofVerifyEditControls = document.getElementById('proofVerifyEditControls') as HTMLElement;
     const proofVerifyEditFields = document.getElementById('proofVerifyEditFields') as HTMLElement;
-    
+
     // 開示メッセージ情報を表示
     let html = '';
-    disclosedIndices.forEach((index, i) => {
-        html += `<div><strong>${fieldNames[index]}:</strong> ${uint8ArrayToString(disclosedMessages[i])}</div>`;
+    g_discIdxs.forEach((index, i) => {
+        html += `<div><strong>${fieldNames[index]}:</strong> ${uint8ArrayToString(g_discMsgs[i])}</div>`;
     });
     if (proofVerifyMessages) proofVerifyMessages.innerHTML = html;
 
     // 編集フィールドを生成
     html = '';
-    disclosedIndices.forEach((index, i) => {
-        const value = uint8ArrayToString(disclosedMessages[i]);
+    g_discIdxs.forEach((index, i) => {
+        const value = uint8ArrayToString(g_discMsgs[i]);
         html += `
             <div class="edit-field">
                 <label for="proof_verify_edit_${i}">${fieldNames[index]}</label>
-                <input type="text" id="proof_verify_edit_${i}" value="${value}" 
+                <input type="text" id="proof_verify_edit_${i}" value="${value}"
                        onchange="updateProofVerifyMessage(${i}, this.value)">
             </div>
         `;
@@ -630,55 +632,55 @@ function updateProofVerifyInfo(): void {
 
 // 署名検証用メッセージを更新
 function updateVerifyMessage(index: number, value: string): void {
-    if (index >= 0 && index < messages.length) {
-        messages[index] = stringToUint8Array(value);
+    if (index >= 0 && index < g_msgs.length) {
+        g_msgs[index] = stringToUint8Array(value);
     }
 }
 
 // 証明検証用メッセージを更新
 function updateProofVerifyMessage(index: number, value: string): void {
-    if (index >= 0 && index < disclosedMessages.length) {
-        disclosedMessages[index] = stringToUint8Array(value);
+    if (index >= 0 && index < g_discMsgs.length) {
+        g_discMsgs[index] = stringToUint8Array(value);
     }
 }
 
 // 署名検証メッセージをリセット
 function resetVerifyMessages(): void {
-    if (originalMessages.length > 0) {
-        messages = originalMessages.map(msg => new Uint8Array(msg));
+    if (g_orgMsgs.length > 0) {
+        g_msgs = g_orgMsgs.map(msg => new Uint8Array(msg));
         updateVerifyInfo();
     }
 }
 
 // 証明検証メッセージをリセット
 function resetProofVerifyMessages(): void {
-    if (originalDisclosedMessages.length > 0) {
-        disclosedMessages = originalDisclosedMessages.map(msg => new Uint8Array(msg));
+    if (g_orgDiscMsgs.length > 0) {
+        g_discMsgs = g_orgDiscMsgs.map(msg => new Uint8Array(msg));
         updateProofVerifyInfo();
     }
 }
 
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', function() {
+    // グローバルスコープに関数を露出（HTMLのonclick属性から呼び出すため）
+    (window as any).generateKeys = generateKeys;
+    (window as any).showTab = showTab;
+    (window as any).verifySignature = verifySignature;
+    (window as any).generateProof = generateProof;
+    (window as any).verifyProof = verifyProof;
+    (window as any).switchLanguage = switchLanguage;
+    (window as any).updateVerifyMessage = updateVerifyMessage;
+    (window as any).updateProofVerifyMessage = updateProofVerifyMessage;
+    (window as any).resetVerifyMessages = resetVerifyMessages;
+    (window as any).resetProofVerifyMessages = resetProofVerifyMessages;
+
     // BBSライブラリを初期化
     initBBS();
-    
+
     // フォームのイベントリスナーを設定
     const signForm = document.getElementById('signForm');
     if (signForm) signForm.addEventListener('submit', generateSignature);
-    
+
     // 言語切り替え機能を初期化（デフォルトで日本語）
     switchLanguage('ja');
 });
-
-// グローバルスコープに関数を露出（HTMLのonclick属性から呼び出すため）
-(window as any).generateKeys = generateKeys;
-(window as any).showTab = showTab;
-(window as any).verifySignature = verifySignature;
-(window as any).generateProof = generateProof;
-(window as any).verifyProof = verifyProof;
-(window as any).switchLanguage = switchLanguage;
-(window as any).updateVerifyMessage = updateVerifyMessage;
-(window as any).updateProofVerifyMessage = updateProofVerifyMessage;
-(window as any).resetVerifyMessages = resetVerifyMessages;
-(window as any).resetProofVerifyMessages = resetProofVerifyMessages; 
