@@ -116,6 +116,40 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 		, a_(0)
 	{
 	}
+	// eax = x/d
+	// use rax, rdx
+	void divRaw(const ConstDiv& cd, int mode, const Xbyak::Reg32& x)
+	{
+		if (d_ >= 0x80000000) {
+			xor_(eax, eax);
+			cmp(x, d_);
+			setae(al);
+			return;
+		}
+		if (cd.c_ <= 0xffffffff) {
+			mov(eax, x);
+			if (cd.c_ > 1) {
+				mov(edx, cd.c_);
+				mul(rdx);
+			}
+			shr(rax, cd.a_);
+			return;
+		}
+		mov(eax, x);
+		mov(rdx, cd.c_);
+//		mul(rdx);
+		mulx(rdx, rax, rax);
+		switch (mode) {
+		case 0:
+			shrd(rax, rdx, cd.a_);
+			break;
+		case 1: // better than shrd
+			shr(rax, cd.a_);
+			shl(edx, 64 - cd.a_);
+			or_(eax, edx);
+			break;
+		}
+	}
 	bool init(uint32_t d, int mode = -1)
 	{
 		if (mode == -1) mode = g_mode;
@@ -128,6 +162,9 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 			a_ = cd.a_;
 			StackFrame sf(this, 1, UseRDX);
 			const Reg32 x = sf.p[0].cvt32();
+#if 1
+			divRaw(cd, mode, x);
+#else
 			if (d >= 0x80000000) {
 				xor_(eax, eax);
 				cmp(x, d);
@@ -158,6 +195,7 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 					}
 				}
 			}
+#endif
 		}
 		setProtectModeRE();
 		divd = getCode<DivFunc>();
