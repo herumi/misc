@@ -13,8 +13,8 @@
     "build:demo": "webpack --config webpack.demo.config.js",
     "build:demo:watch": "webpack --config webpack.demo.config.js --watch",
     "build:all": "npm run build && npm run build:browser && npm run build:demo",
-    "lint": "eslint --ext .ts,.tsx .",
-    "lint-fix": "eslint --ext .ts,.tsx . --fix",
+    "lint": "eslint browser/demo.ts wasm/bbs.ts",
+    "lint-fix": "eslint browser/demo.ts wasm/bbs.ts --fix",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "test": "tsc && tsc test/test.ts && node test/test.js"
   },
