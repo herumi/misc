@@ -1,5 +1,5 @@
 // @ts-nocheck
-// BBS署名デモ
+// BBS signature demo
 
 declare global {
     interface Window {
@@ -19,6 +19,7 @@ let g_orgMsgs: Uint8Array[] = [];
 let g_orgDiscMsgs: Uint8Array[] = [];
 let g_nonce: Uint8Array | null = null;
 let g_curLang: 'ja' | 'en' = 'ja';
+let g_disclosureSelections: boolean[] = []; // 開示選択状態を保存
 
 // 多言語対応テキスト
 type Translations = Record<string, Record<string, string>>;
@@ -158,7 +159,7 @@ function updateDynamicContent(): void {
         updateVerifyInfo();
     }
 
-    // 証明生成タブの情報を更新
+    // 証明生成タブの情報を更新（選択状態は保持）
     if (g_msgs.length > 0) {
         updateProofInfo();
     }
@@ -329,6 +330,9 @@ async function generateSignature(event: Event): Promise<void> {
         // 元のメッセージを保存
         g_orgMsgs = g_msgs.map(msg => new Uint8Array(msg));
 
+        // 開示選択状態を初期化（デフォルトはすべて開示）
+        g_disclosureSelections = new Array(g_msgs.length).fill(true);
+
         // 署名を生成
         g_sig = bbs.sign(g_sec, g_pub, g_msgs);
 
@@ -459,8 +463,8 @@ async function generateProof(): Promise<void> {
         // 証明検証タブの情報を更新
         updateProofVerifyInfo();
 
-        // 証明生成タブの情報も更新
-        updateProofInfo();
+        // 証明生成タブの情報も更新（ラジオボタンの選択状態は保持）
+        // updateProofInfo(); // この行をコメントアウト
 
     } catch (error) {
         console.error(t('proofGenerationFailed'), error);
@@ -562,21 +566,22 @@ function updateProofInfo(): void {
     });
     if (proofMessages) proofMessages.innerHTML = html;
 
-    // 開示制御を生成
+    // 開示制御を生成（選択状態を保持）
     html = '';
     g_msgs.forEach((msg, index) => {
         const value = uint8ArrayToString(msg);
+        const isDisclosed = g_disclosureSelections[index] !== false; // デフォルトは開示
         html += `
             <div class="disclosure-item">
                 <label>
-                    <input type="radio" name="disclose_${index}" value="disclose" checked>
+                    <input type="radio" name="disclose_${index}" value="disclose" ${isDisclosed ? 'checked' : ''}>
                     ${t('disclose')}
                 </label>
                 <label>
-                    <input type="radio" name="disclose_${index}" value="hide">
+                    <input type="radio" name="disclose_${index}" value="hide" ${!isDisclosed ? 'checked' : ''}>
                     ${t('hide')}
                 </label>
-                <div class="field-value">${value}</div>
+                <div class="field-value ${!isDisclosed ? 'hidden' : ''}">${isDisclosed ? value : '***'}</div>
             </div>
         `;
     });
@@ -592,15 +597,16 @@ function updateProofInfo(): void {
 
         radios.forEach(radio => {
             radio.addEventListener('change', function(this: HTMLInputElement) {
-                if (this.value === 'hide') {
-                    if (fieldValue) {
-                        fieldValue.textContent = '***';
-                        fieldValue.classList.add('hidden');
-                    }
-                } else {
-                    if (fieldValue) {
+                const isDisclosed = this.value === 'disclose';
+                g_disclosureSelections[index] = isDisclosed;
+
+                if (fieldValue) {
+                    if (isDisclosed) {
                         fieldValue.textContent = uint8ArrayToString(msg);
                         fieldValue.classList.remove('hidden');
+                    } else {
+                        fieldValue.textContent = '***';
+                        fieldValue.classList.add('hidden');
                     }
                 }
             });
