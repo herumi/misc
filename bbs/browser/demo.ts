@@ -1,5 +1,5 @@
 // @ts-nocheck
-// BBS署名デモ - メインTypeScriptファイル
+// BBS署名デモ
 
 declare global {
     interface Window {
@@ -215,12 +215,9 @@ function generateTimestampNonce(): Uint8Array {
     return stringToUint8Array(timestamp);
 }
 
-// データの最初32バイトを表示用に変換
+// データの最後32バイトを表示用に変換
 function getPreview(data: string): string {
-    if (typeof data === 'string') {
-        return data.substring(0, 64) + '...';
-    }
-    return 'データ形式エラー';
+    return '...' + data.substring(data.length - 64);
 }
 
 // タブ切り替え
@@ -425,19 +422,32 @@ async function generateProof(): Promise<void> {
             return;
         }
 
+        // 前回のnonceをクリア
+        g_nonce = null;
+
         // 元の開示メッセージを保存
         g_orgDiscMsgs = g_discMsgs.map(msg => new Uint8Array(msg));
 
         // nonceを生成（実際のアプリケーションでは適切なnonceを使用）
         g_nonce = generateTimestampNonce();
+        console.log('証明生成用nonce:', uint8ArrayToString(g_nonce));
+        console.log('nonceの長さ:', g_nonce.length, 'bytes');
 
+        // 古い証明を破棄
+        if (g_prf) {
+            bbs.destroyProof(g_prf);
+        }
         // 証明を生成
         g_prf = bbs.createProof(g_pub, g_sig, g_msgs, new Uint32Array(g_discIdxs), g_nonce);
+        console.log('証明生成完了 - 開示インデックス:', g_discIdxs);
 
         // 結果を表示
         const proofHex = g_prf.serializeToHexStr();
         const proofPreview = document.getElementById('proofPreview');
-        if (proofPreview) proofPreview.textContent = getPreview(proofHex);
+        if (proofPreview) {
+            const nonceStr = uint8ArrayToString(g_nonce);
+            proofPreview.textContent = `Nonce: ${nonceStr.substring(0, 20)}... | Proof: ${getPreview(proofHex)}`;
+        }
 
         if (result) result.style.display = 'block';
         console.log(t('proofGenerationComplete'));
