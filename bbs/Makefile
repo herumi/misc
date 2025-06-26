@@ -52,7 +52,7 @@ wasm: $(BBS_JS)
 -include $(DEP)
 
 clean:
-	$(RM) $(TARGET) $(OBJ) $(DEP) *.a $(BBS_JS)
+	$(RM) $(TARGET) $(OBJ) $(DEP) *.a $(BBS_JS) *.d
 
 .PHONY: clean
 

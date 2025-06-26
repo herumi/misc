@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "name": "bbs-wasm",
   "version": "1.0.0",
   "description": "BBS signature",
@@ -12,8 +13,9 @@
     "build:demo": "webpack --config webpack.demo.config.js",
     "build:demo:watch": "webpack --config webpack.demo.config.js --watch",
     "build:all": "npm run build && npm run build:browser && npm run build:demo",
-    "lint": "standard --verbose test/test.ts; ts-standard --verbose wasm/*.ts",
-    "lint-fix": "standard --fix test/test.ts; ts-standard --fix wasm/*.ts",
+    "lint": "eslint --ext .ts,.tsx .",
+    "lint-fix": "eslint --ext .ts,.tsx . --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "test": "tsc && tsc test/test.ts && node test/test.js"
   },
   "types": "dist/index.d.ts",
@@ -41,22 +43,18 @@
   },
   "homepage": "https://github.com/herumi/bbs-wasm#readme",
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.35.0",
+    "@typescript-eslint/parser": "^8.35.0",
     "assert": "^2.0.0",
+    "eslint": "^9.29.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
     "perf_hooks": "^0.0.1",
-    "standard": "^16.0.4",
+    "prettier": "^3.0.0",
     "ts-loader": "^9.2.6",
-    "ts-standard": "^10.0.0",
     "typescript": "^4.9.5",
     "webpack": "^5.64.1",
     "webpack-cli": "^4.9.1"
-  },
-  "standard": {
-    "ignore": [
-      "wasm/bbs_c.js"
-    ]
-  },
-  "ts-standard": {
-    "project": "./tsconfig.json"
   },
   "dependencies": {
     "@types/node": "^20.2.5"
