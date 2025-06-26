@@ -189,7 +189,7 @@ export const init = async (): Promise<void> => {
   if (BBS_SIGNATURE_SIZE !== mod._bbsSizeofSignature()) throw new Error(`BBS_SIGNATURE_SIZE=${BBS_SIGNATURE_SIZE} !== mod._bbsSizeofSignature()=${mod._bbsSizeofSignature()}`)
 
   const r: boolean = mod._bbsInit(128)
-  if (!r) throw new Error(`_bbsInit err`)
+  if (!r) throw new Error('_bbsInit err')
 }
 
 abstract class Common {
@@ -529,6 +529,7 @@ export class Proof {
 
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const dump = (pos: number, n: number, msg = '') => {
   const a = mod.HEAP8.subarray(pos, pos + n)
   console.log(`${msg} ${n} ${toHexStr(a)}`)

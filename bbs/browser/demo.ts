@@ -1,17 +1,37 @@
 // @ts-nocheck
 // BBS signature demo
 
+// BBSライブラリの型定義
+interface BBSLibrary {
+  init(): Promise<void>;
+  generateKeyPair(): Promise<{ secretKey: Uint8Array; publicKey: Uint8Array }>;
+  sign(secretKey: Uint8Array, messages: Uint8Array[], nonce: Uint8Array): Promise<Uint8Array>;
+  verify(publicKey: Uint8Array, messages: Uint8Array[], signature: Uint8Array): Promise<boolean>;
+  createProof(publicKey: Uint8Array, signature: Uint8Array, messages: Uint8Array[], disclosedIndexes: number[], nonce: Uint8Array): Promise<Uint8Array>;
+  verifyProof(publicKey: Uint8Array, proof: Uint8Array, disclosedMessages: Uint8Array[], disclosedIndexes: number[]): Promise<boolean>;
+}
+
 declare global {
     interface Window {
-        bbs: any;
+        bbs: BBSLibrary;
+        generateKeys: typeof generateKeys;
+        showTab: typeof showTab;
+        verifySignature: typeof verifySignature;
+        generateProof: typeof generateProof;
+        verifyProof: typeof verifyProof;
+        switchLanguage: typeof switchLanguage;
+        updateVerifyMessage: typeof updateVerifyMessage;
+        updateProofVerifyMessage: typeof updateProofVerifyMessage;
+        resetVerifyMessages: typeof resetVerifyMessages;
+        resetProofVerifyMessages: typeof resetProofVerifyMessages;
     }
 }
 
-let bbs: any = null
-let g_sec: any = null
-let g_pub: any = null
-let g_sig: any = null
-let g_prf: any = null
+let bbs: BBSLibrary | null = null
+let g_sec: Uint8Array | null = null
+let g_pub: Uint8Array | null = null
+let g_sig: Uint8Array | null = null
+let g_prf: Uint8Array | null = null
 let g_msgs: Uint8Array[] = []
 let g_discIdxs: number[] = []
 let g_discMsgs: Uint8Array[] = []
@@ -679,16 +699,16 @@ function resetProofVerifyMessages (): void {
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', function () {
   // グローバルスコープに関数を露出（HTMLのonclick属性から呼び出すため）
-  (window as any).generateKeys = generateKeys;
-  (window as any).showTab = showTab;
-  (window as any).verifySignature = verifySignature;
-  (window as any).generateProof = generateProof;
-  (window as any).verifyProof = verifyProof;
-  (window as any).switchLanguage = switchLanguage;
-  (window as any).updateVerifyMessage = updateVerifyMessage;
-  (window as any).updateProofVerifyMessage = updateProofVerifyMessage;
-  (window as any).resetVerifyMessages = resetVerifyMessages;
-  (window as any).resetProofVerifyMessages = resetProofVerifyMessages
+  window.generateKeys = generateKeys
+  window.showTab = showTab
+  window.verifySignature = verifySignature
+  window.generateProof = generateProof
+  window.verifyProof = verifyProof
+  window.switchLanguage = switchLanguage
+  window.updateVerifyMessage = updateVerifyMessage
+  window.updateProofVerifyMessage = updateProofVerifyMessage
+  window.resetVerifyMessages = resetVerifyMessages
+  window.resetProofVerifyMessages = resetProofVerifyMessages
 
   // BBSライブラリを初期化
   initBBS()
