@@ -1,14 +1,10 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
-#ifndef _MSC_VER
-#define CYBOZU_BENCH_USE_GETTIMEOFDAY
-#endif
+#define CYBOZU_BENCH_CHRONO
 #include <cybozu/benchmark.hpp>
 #include <cybozu/option.hpp>
 #include "constdiv.hpp"
-
-int g_mode;
 
 extern "C" {
 
@@ -20,18 +16,16 @@ uint32_t div7b(uint32_t x);
 
 } // extern "C"
 
-typedef uint32_t (*DivFunc)(uint32_t);
-
-uint64_t loop1(DivFunc f, uint32_t n)
+uint32_t loop1(DivFunc f, uint32_t n)
 {
-	uint64_t sum = 0;
+	uint32_t sum = 0;
 	for (uint32_t x = 0; x < n; x++) {
 		sum += f(x);
 	}
 	return sum;
 }
 
-uint64_t loop2(DivFunc f, uint32_t n)
+uint32_t loop2(DivFunc f, uint32_t n)
 {
 	uint32_t x = 123;
 	for (uint32_t i = 0; i < n; i++) {
@@ -40,55 +34,52 @@ uint64_t loop2(DivFunc f, uint32_t n)
 	return x;
 }
 
-void loopTest(const char *msg, uint64_t (*loop)(DivFunc f, uint32_t n), DivFunc gen)
+DivFunc gen = 0;
+
+void loopTest(const char *msg, uint32_t (*loop)(DivFunc f, uint32_t n), const DivFunc *divLp)
 {
-	const uint32_t n = 10000000;
+	const uint32_t n = 20000000;
 	const int C = 100;
 
-	uint64_t r0 = 0, r1 = 0, r2 = 0, r3 = 0, r4 = 0;
+	uint32_t r0 = 0, r1 = 0;;
 	puts(msg);
-	CYBOZU_BENCH_C("org", C, r0 += loop, div7org, n);
+	CYBOZU_BENCH_C("org ", C, r0 += loop, div7org, n);
 	CYBOZU_BENCH_C("org2", C, r1 += loop, div7org2, n);
-	CYBOZU_BENCH_C("a  ", C, r2 += loop, div7a, n);
-	CYBOZU_BENCH_C("b  ", C, r3 += loop, div7b, n);
+	uint32_t rs[FUNC_N] = {};
 	if (gen) {
-		CYBOZU_BENCH_C("gen", C, r4 += loop, gen, n);
+		for (size_t i = 0; i < FUNC_N; i++) {
+			DivFunc f = divLp[i];
+			char buf[100];
+			snprintf(buf, sizeof(buf), "lp%zu ", i);
+			CYBOZU_BENCH_C(buf, C, rs[i] += f, n);
+		}
 	}
-	CYBOZU_BENCH_C("org", C, r0 += loop, div7org, n);
-	CYBOZU_BENCH_C("org2", C, r1 += loop, div7org2, n);
-	CYBOZU_BENCH_C("a  ", C, r2 += loop, div7a, n);
-	CYBOZU_BENCH_C("b  ", C, r3 += loop, div7b, n);
-	if (gen) {
-		CYBOZU_BENCH_C("gen", C, r4 += loop, gen, n);
-	}
-	printf("sum=%" PRIx64 " %" PRIx64 " %" PRIx64 " %" PRIx64 " %" PRIx64 "\n", r0, r1, r2, r3, r4);
-	if ((r0 ^ r1) | (r0 ^ r2) | (r0 ^ r3) | (gen && (r0 ^ r4))) {
-		puts("ERR");
-	} else {
-		puts("ok");
+	printf("org  =0x%08x\n", r0);
+	printf("org2 =0x%08x\n", r1);
+	for (size_t i = 0; i < FUNC_N; i++) {
+		printf("rs[%zd]=0x%08x\n", i, rs[i]);
 	}
 }
 
 int main(int argc, char *argv[])
 {
 	cybozu::Option opt;
-	opt.appendOpt(&g_mode, 0, "m", "mode");
+//	opt.appendOpt(&g_mode, 0, "m", "mode");
 	opt.appendHelp("h");
 	if (opt.parse(argc, argv)) {
 		opt.put();
 	} else {
 		opt.usage();
 	}
-	DivFunc gen = 0;
 
 #ifdef CONST_DIV_GEN
 	ConstDivGen cdg;
 	cdg.init(7);
+	cdg.put();
 	cdg.dump();
 	gen = cdg.divd;
 #endif
-	loopTest("loop1", loop1, gen);
-	loopTest("loop2", loop2, gen);
+	loopTest("loop1", loop1, cdg.divLp);
 #if 0
 	#pragma omp parallel for
 	for (uint64_t x_ = 0; x_ <= 0xffffffff; x_++) {

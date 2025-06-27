@@ -3,8 +3,6 @@ static const uint64_t one = 1;
 static const uint32_t N = 32;
 static const uint64_t M = (one << N) - 1;
 
-extern int g_mode;
-
 inline uint32_t floor_ilog2(uint32_t x)
 {
 	uint32_t a = 0;
@@ -104,14 +102,20 @@ struct ConstDiv {
 #define XBYAK_DISABLE_AVX512
 #include <xbyak/xbyak_util.h>
 
+typedef uint32_t (*DivFunc)(uint32_t);
+typedef uint64_t (*DivFuncRet64)(uint32_t);
+
+static const size_t FUNC_N = 1 + 4;
+
 struct ConstDivGen : Xbyak::CodeGenerator {
-	typedef uint32_t (*DivFunc)(uint32_t);
 	DivFunc divd;
+	DivFunc divLp[FUNC_N];
 	uint32_t d_;
 	uint32_t a_;
 	ConstDivGen()
 		: Xbyak::CodeGenerator(4096, Xbyak::DontSetProtectRWE)
 		, divd(nullptr)
+		, divLp{}
 		, d_(0)
 		, a_(0)
 	{
@@ -135,70 +139,69 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 			shr(rax, cd.a_);
 			return;
 		}
+		if (mode < 0) {
+			// generated asm code by gcc/clang
+			mov(edx, x);
+			mov(eax, edx);
+			imul(rax, rax, cd.c_ & 0xffffffff);
+			shr(rax, 32);
+			sub(edx, eax);
+			shr(edx, 1);
+			add(eax, edx);
+			shr(eax, cd.a_ - 33);
+			return;
+		}
 		mov(eax, x);
 		mov(rdx, cd.c_);
-//		mul(rdx);
-		mulx(rdx, rax, rax);
-		switch (mode) {
-		case 0:
+		if (mode & (1<<1)) {
+			mulx(rdx, rax, rax);
+		} else {
+			mul(rdx);
+		}
+		if (mode & (1<<2)) {
 			shrd(rax, rdx, cd.a_);
-			break;
-		case 1: // better than shrd
+		} else {
 			shr(rax, cd.a_);
 			shl(edx, 64 - cd.a_);
 			or_(eax, edx);
-			break;
 		}
 	}
 	bool init(uint32_t d, int mode = -1)
 	{
-		if (mode == -1) mode = g_mode;
 		using namespace Xbyak;
 		using namespace Xbyak::util;
+
+		ConstDiv cd;
+		if (!cd.init(d)) return false;
+		d_ = cd.d_;
+		a_ = cd.a_;
 		{
-			ConstDiv cd;
-			if (!cd.init(d)) return false;
-			d_ = cd.d_;
-			a_ = cd.a_;
+			align(32);
+			divd = getCurr<DivFunc>();
 			StackFrame sf(this, 1, UseRDX);
 			const Reg32 x = sf.p[0].cvt32();
-#if 1
 			divRaw(cd, mode, x);
-#else
-			if (d >= 0x80000000) {
-				xor_(eax, eax);
-				cmp(x, d);
-				setae(al);
-			} else {
-				if (cd.c_ <= 0xffffffff) {
-					mov(eax, x);
-					if (cd.c_ > 1) {
-						mov(edx, cd.c_);
-						mul(rdx);
-					}
-					shr(rax, cd.a_);
-				} else {
-					mov(eax, x);
-					mov(rdx, cd.c_);
-//					mul(rdx);
-					mulx(rdx, rax, rax);
-
-					switch (mode) {
-					case 0:
-						shrd(rax, rdx, cd.a_);
-						break;
-					case 1: // better than shrd
-						shr(rax, cd.a_);
-						shl(edx, 64 - cd.a_);
-						or_(eax, edx);
-						break;
-					}
-				}
-			}
-#endif
+		}
+		for (size_t i = 0; i < FUNC_N; i++) {
+			align(32);
+			divLp[i] = getCurr<DivFunc>();
+			StackFrame sf(this, 1, 2|UseRDX);
+			const Reg32 n = sf.p[0].cvt32();
+			const Reg64& sum = sf.t[0];
+			const Reg32 x = sf.t[1].cvt32();
+			xor_(sum, sum);
+			xor_(x, x);
+			align(32);
+			Label lpL;
+			L(lpL);
+			divRaw(cd, i, x);
+			add(sum, rax);
+			add(x, 1);
+			dec(n);
+			jnz(lpL);
+			mov(rax, sum);
 		}
 		setProtectModeRE();
-		divd = getCode<DivFunc>();
 		return true;
 	}
 	void dump() const
