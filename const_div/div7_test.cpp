@@ -64,7 +64,8 @@ void loopTest(const char *msg, uint32_t (*loop)(DivFunc f, uint32_t n), const Di
 int main(int argc, char *argv[])
 {
 	cybozu::Option opt;
-//	opt.appendOpt(&g_mode, 0, "m", "mode");
+	uint32_t d;
+	opt.appendOpt(&d, 7, "d", "divisor");
 	opt.appendHelp("h");
 	if (opt.parse(argc, argv)) {
 		opt.put();
@@ -74,21 +75,20 @@ int main(int argc, char *argv[])
 
 #ifdef CONST_DIV_GEN
 	ConstDivGen cdg;
-	cdg.init(7);
+	cdg.init(d);
 	cdg.put();
 	cdg.dump();
 	gen = cdg.divd;
 #endif
 	loopTest("loop1", loop1, cdg.divLp);
-#if 0
+#if 1
 	#pragma omp parallel for
 	for (uint64_t x_ = 0; x_ <= 0xffffffff; x_++) {
 		uint32_t x = uint32_t(x_);
-		uint32_t o = div7org(x);
-		uint32_t a = div7a(x);
-		uint32_t b = div7b(x);
-		if (o != a || o != b) {
-			printf("ERR x=%u o=%u a=%u b=%u\n", x, o, a, b);
+		uint32_t o = x / d;
+		uint32_t a =cdg.divd(x);
+		if (o != a) {
+			printf("ERR x=%u o=%u a=%u\n", x, o, a);
 		}
 	}
 	puts("ok");
