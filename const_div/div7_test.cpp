@@ -38,8 +38,8 @@ DivFunc gen = 0;
 
 void loopTest(const char *msg, uint32_t (*loop)(DivFunc f, uint32_t n), const DivFunc *divLp)
 {
-	const uint32_t n = 20000000;
-	const int C = 100;
+	const uint32_t n = 100000000;
+	const int C = 10;
 
 	uint32_t r0 = 0, r1 = 0;;
 	puts(msg);

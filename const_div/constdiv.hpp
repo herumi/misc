@@ -1,15 +1,5 @@
 #include <stdint.h>
-static const uint64_t one = 1;
-static const uint32_t N = 32;
-static const uint64_t M = (one << N) - 1;
-
-inline uint32_t floor_ilog2(uint32_t x)
-{
-	uint32_t a = 0;
-	while ((one << a) <= x) a++;
-	return a - 1;
-}
-
+#include <fstream>
 /*
 M: integer >= 1.
 d in [1, M]
@@ -36,6 +26,17 @@ This condition is the assumption of Thereom 1 in
 "Integer division by constants: optimal bounds", Daniel Lemire, Colin Bartlett, Owen Kaser. 2021
 */
 struct ConstDiv {
+	static const uint64_t one = 1;
+	static const uint32_t N = 32;
+	static const uint64_t M = (one << N) - 1;
+
+	static inline uint32_t floor_ilog2(uint32_t x)
+	{
+		uint32_t a = 0;
+		while ((one << a) <= x) a++;
+		return a - 1;
+	}
+
 	uint32_t d_;
 	uint32_t a_;
 	uint64_t A_;
@@ -105,7 +106,7 @@ struct ConstDiv {
 typedef uint32_t (*DivFunc)(uint32_t);
 typedef uint64_t (*DivFuncRet64)(uint32_t);
 
-static const size_t FUNC_N = 1 + 4;
+static const size_t FUNC_N = 1 + 5;
 
 struct ConstDivGen : Xbyak::CodeGenerator {
 	DivFunc divd;
@@ -122,7 +123,7 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 	}
 	// eax = x/d
 	// use rax, rdx
-	void divRaw(const ConstDiv& cd, int mode, const Xbyak::Reg32& x)
+	void divRaw(const ConstDiv& cd, uint32_t mode, const Xbyak::Reg32& x)
 	{
 		if (d_ >= 0x80000000) {
 			xor_(eax, eax);
@@ -139,7 +140,7 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 			shr(rax, cd.a_);
 			return;
 		}
-		if (mode < 0) {
+		if (mode == FUNC_N-1) {
 			// generated asm code by gcc/clang
 			mov(edx, x);
 			mov(eax, edx);
@@ -151,6 +152,13 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 			shr(eax, cd.a_ - 33);
 			return;
 		}
+		if (mode == FUNC_N-2) {
+			imul(rax, x.cvt64(), cd.c_ & 0xffffffff);
+			shr(rax, 32);
+			add(rax, x.cvt64());
+			shr(rax, cd.a_ - 32);
+			return;
+		}
 		mov(eax, x);
 		mov(rdx, cd.c_);
 		if (mode & (1<<1)) {
@@ -159,7 +167,7 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 			mul(rdx);
 		}
 		if (mode & (1<<2)) {
-			shrd(rax, rdx, cd.a_);
+			shrd(rax, rdx, uint8_t(cd.a_));
 		} else {
 			shr(rax, cd.a_);
 			shl(edx, 64 - cd.a_);
@@ -182,12 +190,12 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 			const Reg32 x = sf.p[0].cvt32();
 			divRaw(cd, mode, x);
 		}
-		for (size_t i = 0; i < FUNC_N; i++) {
+		for (uint32_t i = 0; i < FUNC_N; i++) {
 			align(32);
 			divLp[i] = getCurr<DivFunc>();
 			StackFrame sf(this, 1, 2|UseRDX);
 			const Reg32 n = sf.p[0].cvt32();
-			const Reg64& sum = sf.t[0];
+			const Reg32 sum = sf.t[0].cvt32();
 			const Reg32 x = sf.t[1].cvt32();
 			xor_(sum, sum);
 			xor_(x, x);
@@ -195,22 +203,19 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 			Label lpL;
 			L(lpL);
 			divRaw(cd, i, x);
-			add(sum, rax);
+			add(sum, eax);
 			add(x, 1);
 			dec(n);
 			jnz(lpL);
-			mov(rax, sum);
+			mov(eax, sum);
 		}
 		setProtectModeRE();
 		return true;
 	}
 	void dump() const
 	{
-		FILE *fp = fopen("bin", "wb");
-		if (fp) {
-			fwrite(getCode(), 1, getSize(), fp);
-			fclose(fp);
-		}
+		std::ofstream ofs("bin", std::ios::binary);
+		ofs.write(reinterpret_cast<const char*>(getCode()), getSize());
 	}
 	void put() const
 	{
