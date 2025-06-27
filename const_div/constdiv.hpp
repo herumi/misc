@@ -15,7 +15,7 @@ Then x c = d q c + r c = (A + e) q + r c = A q + (q e + r c).
 y := q e + r c.
 If 0 <= y < A, then q = (x c) >> a.
 So we prove that y < A if and only if e M0 < A.
-y d = q e d + r c d = e q d + r (e + A) = e(d q + r) + r A = e x + r A.
+y d = q e d + r c d = e q d + r (e + A) = e x + r A.
 Consider max(y d).
 if r0 = d-1, then max(y d) (at x=M) = e M + (d-1) A = e M0 + (d-1) A.
 if r0 < d-1, then max(y d) (at x=M0) = e M0 + (d-1) A because e < A.
@@ -97,14 +97,13 @@ struct ConstDiv {
 	}
 };
 
+typedef uint32_t (*DivFunc)(uint32_t);
+
 #if defined(_WIN64) || defined(__x86_64__)
 #define CONST_DIV_GEN
 
 #define XBYAK_DISABLE_AVX512
 #include <xbyak/xbyak_util.h>
-
-typedef uint32_t (*DivFunc)(uint32_t);
-typedef uint64_t (*DivFuncRet64)(uint32_t);
 
 static const size_t FUNC_N = 1 + 5;
 
@@ -210,6 +209,116 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 			mov(eax, sum);
 		}
 		setProtectModeRE();
+		return true;
+	}
+	void dump() const
+	{
+		std::ofstream ofs("bin", std::ios::binary);
+		ofs.write(reinterpret_cast<const char*>(getCode()), getSize());
+	}
+	void put() const
+	{
+		printf("Gen d=%u(0x%08x) a=%u divd=%p\n", d_, d_, a_, divd);
+	}
+};
+
+#elif defined(__arm64__)
+
+#define CONST_DIV_GEN
+
+#include <xbyak_aarch64/xbyak_aarch64.h>
+
+static const size_t FUNC_N = 1;
+
+struct ConstDivGen : Xbyak_aarch64::CodeGenerator {
+	DivFunc divd;
+	DivFunc divLp[FUNC_N];
+	uint32_t d_;
+	uint32_t a_;
+	ConstDivGen()
+		: divd(nullptr)
+		, divLp{}
+		, d_(0)
+		, a_(0)
+	{
+	}
+
+	// input x
+	// output x = x/d
+	// use w9, w10
+	void divRaw(const ConstDiv& cd, uint32_t mode, const Xbyak_aarch64::WReg& wx)
+	{
+		using namespace Xbyak_aarch64;
+		const XReg x = XReg(wx.getIdx());
+		if (d_ >= 0x80000000) {
+			uint32_t dL = uint32_t(d_ & 0xffff);
+			uint32_t dH = uint32_t(d_ >> 16);
+			mov(w9, dL);
+			movk(w9, dH, 16);
+			cmp(x, x9);
+			cset(x, HS); // Higher or Same
+			return;
+		}
+		uint32_t cL = uint32_t(cd.c_ & 0xffff);
+		uint32_t cH = uint32_t(cd.c_ >> 16);
+		if (cd.c_ > 1) {
+			mov(w9, cL);
+			movk(w9, cH, 16);
+		}
+		if (cd.c_ <= 0xffffffff) {
+			if (cd.c_ > 1) {
+				umull(x, wx, w9);
+			}
+			lsr(x, x, cd.a_);
+			return;
+		}
+		if (mode == 0) {
+			umull(x9, wx, w9);
+			add(x, x, x9, LSR);
+			lsr(x, x, cd.a_ - 32);
+			return;
+		} else {
+			umull(x9, wx, w9);
+			lsr(x9, x9, 32);
+			sub(w10, wx, w9);
+			add(w9, w9, w10, LSR);
+			lsr(wx, w9, cd.a_ - 33);
+			return;
+		}
+	}
+	bool init(uint32_t d, int mode = -1)
+	{
+		using namespace Xbyak_aarch64;
+		ConstDiv cd;
+		if (!cd.init(d)) return false;
+		d_ = cd.d_;
+		a_ = cd.a_;
+		{
+			align(32);
+			divd = getCurr<DivFunc>();
+			divRaw(cd, mode, w0);
+			ret();
+		}
+		for (uint32_t i = 0; i < FUNC_N; i++) {
+			align(32);
+			divLp[i] = getCurr<DivFunc>();
+			const auto n = w0;
+			const auto sum = w1;
+			const auto x = w2;
+			mov(sum, 0);
+			mov(x, 0);
+			align(32);
+			Label lpL;
+			L(lpL);
+			divRaw(cd, i, x);
+			add(sum, sum, w0);
+			add(x, x, 1);
+			subs(n, n, 1);
+			bne(lpL);
+			mov(w0, sum);
+			ret();
+		}
+		ready();
 		return true;
 	}
 	void dump() const
