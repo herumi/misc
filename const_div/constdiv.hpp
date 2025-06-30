@@ -134,6 +134,7 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 	void divRaw(const ConstDiv& cd, uint32_t mode, const Xbyak::Reg32& x)
 	{
 		if (d_ >= 0x80000000) {
+			name[mode] = "cmp";
 			xor_(eax, eax);
 			cmp(x, d_);
 			setae(al);
@@ -142,13 +143,17 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 		if (cd.c_ <= 0xffffffff) {
 			mov(eax, x);
 			if (cd.c_ > 1) {
+				name[mode] = "mul+shr";
 				mov(edx, cd.c_);
 				mul(rdx);
+			} else {
+				name[mode] = "shr";
 			}
 			shr(rax, cd.a_);
 			return;
 		}
 		if (mode == FUNC_N-1) {
+			name[FUNC_N-1] = "gcc";
 			// generated asm code by gcc/clang
 			mov(edx, x);
 			mov(eax, edx);
@@ -161,6 +166,7 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 			return;
 		}
 		if (mode == FUNC_N-2) {
+			name[FUNC_N-2] = "my";
 			imul(rax, x.cvt64(), cd.c_ & 0xffffffff);
 			shr(rax, 32);
 			add(rax, x.cvt64());
@@ -169,6 +175,13 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 		}
 		mov(eax, x);
 		mov(rdx, cd.c_);
+		static const char *nameTbl[] = {
+			"mul/mixed",
+			"mulx/mixed",
+			"mul/shrd",
+			"mulx/shrd",
+		};
+		name[mode] = nameTbl[mode];
 		if (mode & (1<<1)) {
 			mulx(rdx, rax, rax);
 		} else {
@@ -182,7 +195,7 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 			or_(eax, edx);
 		}
 	}
-	bool init(uint32_t d, int mode = -1)
+	bool init(uint32_t d, int mode = 0)
 	{
 		using namespace Xbyak;
 		using namespace Xbyak::util;
@@ -262,6 +275,7 @@ struct ConstDivGen : Xbyak_aarch64::CodeGenerator {
 		using namespace Xbyak_aarch64;
 		const XReg x = XReg(wx.getIdx());
 		if (d_ >= 0x80000000) {
+			name[mode] = "cmp";
 			uint32_t dL = uint32_t(d_ & 0xffff);
 			uint32_t dH = uint32_t(d_ >> 16);
 			mov(w9, dL);
@@ -278,7 +292,10 @@ struct ConstDivGen : Xbyak_aarch64::CodeGenerator {
 		}
 		if (cd.c_ <= 0xffffffff) {
 			if (cd.c_ > 1) {
+				name[mode] = "mul+shr";
 				umull(x, wx, w9);
+			} else {
+				name[mode] = "shr";
 			}
 			lsr(x, x, cd.a_);
 			return;
@@ -308,7 +325,7 @@ struct ConstDivGen : Xbyak_aarch64::CodeGenerator {
 			return;
 		}
 	}
-	bool init(uint32_t d, int mode = -1)
+	bool init(uint32_t d, int mode = 0)
 	{
 		using namespace Xbyak_aarch64;
 		ConstDiv cd;
