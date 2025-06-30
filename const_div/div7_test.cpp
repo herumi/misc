@@ -78,6 +78,7 @@ void loopTest(const char *msg, uint32_t d, uint32_t (*loop)(DivFunc f, uint32_t 
 }
 
 int main(int argc, char *argv[])
+	try
 {
 	cybozu::Option opt;
 	uint32_t d;
@@ -92,9 +93,13 @@ int main(int argc, char *argv[])
 
 #ifdef CONST_DIV_GEN
 	ConstDivGen cdg;
-	cdg.init(d);
-	cdg.put();
-	cdg.dump();
+	if (cdg.init(d)) {
+		cdg.put();
+		cdg.dump();
+	} else {
+		printf("err cdg d=%u\n", d);
+		return 1;
+	}
 	gen = cdg.divd;
 	loopTest("loop1", d, loop1, cdg.divLp);
 #else
@@ -115,4 +120,7 @@ int main(int argc, char *argv[])
 	}
 	puts("ok");
 #endif
+} catch (std::exception& e) {
+	printf("err e=%s\n", e.what());
+	return 1;
 }
