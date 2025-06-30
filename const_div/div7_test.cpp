@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
-#define CYBOZU_BENCH_CHRONO
+//#define CYBOZU_BENCH_CHRONO
 #include <cybozu/benchmark.hpp>
 #include <cybozu/option.hpp>
 #include "constdiv.hpp"
@@ -15,12 +15,15 @@ uint32_t div7org2(uint32_t x);
 
 const uint32_t N = 100000000;
 const int C = 10;
+uint32_t LP_N = 3;
 
 uint32_t loop1(DivFunc f)
 {
 	uint32_t sum = 0;
 	for (uint32_t x = 0; x < N; x++) {
-		sum += f(x);
+		for (uint32_t i = 0; i < LP_N; i++) {
+			sum += f(x);
+		}
 	}
 	return sum;
 }
@@ -72,6 +75,7 @@ int main(int argc, char *argv[])
 	cybozu::Option opt;
 	uint32_t d;
 	opt.appendOpt(&d, 7, "d", "divisor");
+	opt.appendOpt(&LP_N, 3, "lp", "loop counter");
 	opt.appendHelp("h");
 	if (opt.parse(argc, argv)) {
 		opt.put();
@@ -83,7 +87,7 @@ int main(int argc, char *argv[])
 	uint32_t r0 = loopOrg(d);
 #ifdef CONST_DIV_GEN
 	ConstDivGen cdg;
-	if (!cdg.init(d)) {
+	if (!cdg.init(d, LP_N)) {
 		printf("err cdg d=%u\n", d);
 		return 1;
 	}

@@ -195,7 +195,7 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 			or_(eax, edx);
 		}
 	}
-	bool init(uint32_t d, int mode = 0)
+	bool init(uint32_t d, uint32_t lpN)
 	{
 		using namespace Xbyak;
 		using namespace Xbyak::util;
@@ -210,7 +210,7 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 			divd = getCurr<DivFunc>();
 			StackFrame sf(this, 1, UseRDX);
 			const Reg32 x = sf.p[0].cvt32();
-			divRaw(cd, mode, x);
+			divRaw(cd, FUNC_N-2, x);
 		}
 		for (uint32_t i = 0; i < FUNC_N; i++) {
 			align(32);
@@ -224,8 +224,10 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 			align(32);
 			Label lpL;
 			L(lpL);
-			divRaw(cd, i, x);
-			add(sum, eax);
+			for (uint32_t j = 0; j < lpN; j++) {
+				divRaw(cd, i, x);
+				add(sum, eax);
+			}
 			add(x, 1);
 			dec(n);
 			jnz(lpL);
@@ -325,7 +327,7 @@ struct ConstDivGen : Xbyak_aarch64::CodeGenerator {
 			return;
 		}
 	}
-	bool init(uint32_t d, int mode = 0)
+	bool init(uint32_t d, uint32_t lpN)
 	{
 		using namespace Xbyak_aarch64;
 		ConstDiv cd;
@@ -336,7 +338,7 @@ struct ConstDivGen : Xbyak_aarch64::CodeGenerator {
 		{
 			align(32);
 			divd = getCurr<DivFunc>();
-			divRaw(cd, mode, w0);
+			divRaw(cd, 0, w0);
 			ret();
 		}
 		for (uint32_t mode = 0; mode < FUNC_N; mode++) {
@@ -350,9 +352,11 @@ struct ConstDivGen : Xbyak_aarch64::CodeGenerator {
 			mov(i, 0);
 			Label lpL;
 			L(lpL);
-			mov(x, i);
-			divRaw(cd, mode, x);
-			add(sum, sum, x);
+			for (uint32_t j = 0; j < lpN; j++) {
+				mov(x, i);
+				divRaw(cd, mode, x);
+				add(sum, sum, x);
+			}
 			add(i, i, 1);
 			subs(n, n, 1);
 			bne(lpL);
