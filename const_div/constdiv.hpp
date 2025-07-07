@@ -6,22 +6,22 @@ d in [1, M]
 take a. A := 2^a >= d. c := (A + d - 1) // d.
 e = d c - A. 0 <= e <= d-1 < A.
 (q0, r0) = divmod(M, d). M = q0 d + r0.
-M0 := M - ((M+1)%d). Then M0%d = d-1.
+M_d := M - ((M+1)%d). Then M_d%d = d-1.
 Theorem
-if e M0 < A, then (x c)//A = x//d. for x in [0, M].
+if e M_d < A, then (x c)//A = x//d. for x in [0, M].
 Proof
 (q, r) := divmod(x, d). x = d q + r.
 Then x c = d q c + r c = (A + e) q + r c = A q + (q e + r c).
 y := q e + r c.
 If 0 <= y < A, then q = (x c) >> a.
-So we prove that y < A if and only if e M0 < A.
+So we prove that y < A if and only if e M_d < A.
 y d = q e d + r c d = e q d + r (e + A) = e x + r A.
 Consider max(y d).
-if r0 = d-1, then max(y d) (at x=M) = e M + (d-1) A = e M0 + (d-1) A.
-if r0 < d-1, then max(y d) (at x=M0) = e M0 + (d-1) A because e < A.
-Then max (y d) = e M0 + (d-1)A.
-max(y) < A iff max(y d) < d A iff e M0 + (d-1) A < d A iff e M0 < A.
-e M0 < A iff c/A < (1 + 1/M0)/d.
+if r0 = d-1, then max(y d) (at x=M) = e M + (d-1) A = e M_d + (d-1) A.
+if r0 < d-1, then max(y d) (at x=M_d) = e M_d + (d-1) A because e < A.
+Then max (y d) = e M_d + (d-1)A.
+max(y) < A iff max(y d) < d A iff e M_d + (d-1) A < d A iff e M_d < A.
+e M_d < A iff c/A < (1 + 1/M_d)/d.
 This condition is the assumption of Thereom 1 in
 "Integer division by constants: optimal bounds", Daniel Lemire, Colin Bartlett, Owen Kaser. 2021
 */
@@ -55,7 +55,7 @@ struct ConstDiv {
 			cmp_ = true;
 			return true;
 		}
-		uint32_t M0 = M - ((M+1)%d);
+		uint32_t M_d = M - ((M+1)%d);
 		// u > 0 => A >= d => a >= ilog2(d)
 		for (uint32_t a = floor_ilog2(d); a < 64; a++) {
 			uint64_t A = one << a;
@@ -64,7 +64,7 @@ struct ConstDiv {
 			if (c >= (one << 33)) continue; // same result if this line is comment out.
 			uint64_t e = d * c - A;
 			assert(e < A);
-			if (e * M0 < A) {
+			if (e * M_d < A) {
 				assert(e < c);
 				a_ = a;
 				A_ = A;
