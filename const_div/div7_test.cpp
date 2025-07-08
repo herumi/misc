@@ -74,8 +74,10 @@ int main(int argc, char *argv[])
 {
 	cybozu::Option opt;
 	uint32_t d;
+	bool alld;
 	opt.appendOpt(&d, 7, "d", "divisor");
 	opt.appendOpt(&LP_N, 3, "lp", "loop counter");
+	opt.appendBoolOpt(&alld, "alld", "check all d");
 	opt.appendHelp("h");
 	if (opt.parse(argc, argv)) {
 		opt.put();
@@ -83,6 +85,18 @@ int main(int argc, char *argv[])
 		opt.usage();
 	}
 	g_d = d;
+	if (alld) {
+		puts("check alld");
+#pragma omp parallel for
+		for (int d = 1; d <= 0x7fffffff; d++) {
+			ConstDiv cd;
+			if (!cd.init(d)) {
+				printf("err d=%d\n", d); exit(1);
+			}
+		}
+		puts("ok");
+		return 0;
+	}
 
 	uint32_t r0 = loopOrg(d);
 #ifdef CONST_DIV_GEN
@@ -96,7 +110,7 @@ int main(int argc, char *argv[])
 	loopGen(cdg, r0);
 
 	printf("test x/%u for all x\n", d);
-	#pragma omp parallel for
+#pragma omp parallel for
 	for (int64_t x_ = 0; x_ <= 0xffffffff; x_++) {
 		uint32_t x = uint32_t(x_);
 		uint32_t o = x / d;

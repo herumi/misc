@@ -65,6 +65,9 @@ struct ConstDiv {
 			uint64_t e = d * c - A;
 			assert(e < A);
 			if (e * M_d < A) {
+if (c < e) {
+printf("ERR c=%lx e=%lx\n", c, e);exit(1);
+}
 				assert(e < c);
 				a_ = a;
 				A_ = A;
