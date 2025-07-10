@@ -88,7 +88,8 @@ int main(int argc, char *argv[])
 	if (alld) {
 		puts("check alld");
 #pragma omp parallel for
-		for (int d = 1; d <= 0x7fffffff; d++) {
+		for (int64_t d_ = 1; d_ <= 0xffffffff; d_++) {
+			uint32_t d = uint32_t(d_);
 			ConstDiv cd;
 			if (!cd.init(d)) {
 				printf("err d=%d\n", d); exit(1);
