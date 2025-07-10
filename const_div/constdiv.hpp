@@ -1,5 +1,7 @@
 #include <stdint.h>
 #include <fstream>
+#include "uint128_t.hpp"
+
 /*
 M: integer >= 1.
 d in [1, M]
@@ -99,7 +101,12 @@ struct ConstDiv {
 	uint32_t divd(uint32_t x) const
 	{
 		if (cmp_) {
+#if 0 // #ifdef MCL_DEFINED_UINT128_T
+			uint128_t v = (x * uint128_t(c_)) >> a_;
+			return uint32_t(v);
+#else
 			return x >= d_;
+#endif
 		}
 		if (c_ > 0xffffffff) {
 #ifdef MCL_DEFINED_UINT128_T
