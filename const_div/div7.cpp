@@ -10,6 +10,11 @@ uint32_t div7org(uint32_t x)
 	return x / 7;
 }
 
+uint32_t div19org(uint32_t x)
+{
+	return x / 19;
+}
+
 uint32_t div7org2(uint32_t x)
 {
 	uint64_t v = x * (u_ & 0xffffffff);

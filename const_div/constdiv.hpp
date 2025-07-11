@@ -48,7 +48,7 @@ struct ConstDiv {
 	static const uint32_t N = 32;
 	static const uint64_t M = (one << N) - 1;
 
-	static inline uint32_t floor_ilog2(uint32_t x)
+	static inline uint32_t ceil_ilog2(uint32_t x)
 	{
 		uint32_t a = 0;
 		while ((one << a) <= x) a++;
@@ -83,11 +83,11 @@ struct ConstDiv {
 			return true;
 		}
 		// u > 0 => A >= d => a >= ilog2(d)
-		for (uint32_t a = floor_ilog2(d); a < 64; a++) {
+		for (uint32_t a = ceil_ilog2(d); a < 64; a++) {
 			uint64_t A = one << a;
 			uint64_t c = (A + d - 1) / d;
 			assert(c < (one << 33));
-			if (c >= (one << 33)) continue; // same result if this line is comment out.
+			if (c >= (one << 33)) return false;
 			uint64_t e = d * c - A;
 			if (e * M_d < A) {
 				a_ = a;
@@ -185,8 +185,8 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 			name[FUNC_N-1] = "gcc";
 			// generated asm code by gcc/clang
 			mov(edx, x);
-			mov(eax, edx);
-			imul(rax, rax, cd.c_ & 0xffffffff);
+			mov(eax, cd.c_ & 0xffffffff);
+			imul(rax, rdx);
 			shr(rax, 32);
 			sub(edx, eax);
 			shr(edx, 1);
@@ -196,7 +196,8 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 		}
 		if (mode == FUNC_N-2) {
 			name[FUNC_N-2] = "my";
-			imul(rax, x.cvt64(), cd.c_ & 0xffffffff);
+			mov(eax, cd.c_ & 0xffffffff);
+			imul(rax, x.cvt64());
 			shr(rax, 32);
 			add(rax, x.cvt64());
 			shr(rax, cd.a_ - 32);
