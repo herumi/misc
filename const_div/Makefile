@@ -2,7 +2,7 @@ MCL_USE_OMP=1
 MCL_USE_GMP_LIB=0
 include ../../mcl/common.mk
 INC_DIR= -I ./ -I ../../xbyak -I ../../cybozulib/include
-ifeq ($(ARCH),arm64)
+ifeq ($(arch),$(filter $(arch),arm64 aarch64))
 INC_DIR+= -I ../../xbyak_aarch64/
 LDFLAGS+= -L ../../xbyak_aarch64/lib -lxbyak_aarch64
 endif

@@ -277,7 +277,7 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 	}
 };
 
-#elif defined(__arm64__)
+#elif defined(__arm64__) || defined(__aarch64__)
 
 #define CONST_DIV_GEN
 
