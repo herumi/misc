@@ -50,9 +50,12 @@ struct ConstDiv {
 
 	static inline uint32_t ceil_ilog2(uint32_t x)
 	{
+		assert(x > 0);
 		uint32_t a = 0;
-		while ((one << a) <= x) a++;
-		return a - 1;
+		for (;;) {
+			if (x <= (one << a)) return a;
+			a++;
+		}
 	}
 
 	uint32_t d_;
@@ -225,7 +228,7 @@ struct ConstDivGen : Xbyak::CodeGenerator {
 			or_(eax, edx);
 		}
 	}
-	bool init(uint32_t d, uint32_t lpN)
+	bool init(uint32_t d, uint32_t lpN = 1)
 	{
 		using namespace Xbyak;
 		using namespace Xbyak::util;
