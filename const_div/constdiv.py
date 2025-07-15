@@ -5,6 +5,7 @@ class ConstDiv:
     self.d = d
     self.M = M
     M_d = M - ((M+1)%d)
+    self.M_d = M_d
     a = math.ceil(math.log2(d))
     while True:
       A = 1 << a
@@ -22,10 +23,9 @@ class ConstDiv:
     return (x * self.c) >> self.a
 
   def __str__(self):
-    return f'd={self.d} c={self.c} c.len={self.c.bit_length()} a={self.a} e={self.e}'
+    t = self.A - self.e * self.M_d
+    return f'd={self.d} c={self.c} c.len={self.c.bit_length()} a={self.a} e={self.e} A={self.A} M_d={self.M_d} A-e M_d={t}'
 
-
-M=2**9-1
 
 def findMax(M):
   print(f'{M=} len={M.bit_length()}')
@@ -39,7 +39,6 @@ def findMax(M):
 
   print(f'{maxcd}')
 
-
-for i in range(8, 18):
+for i in range(8, 20):
   M=2**i-1
   findMax(M)  
