@@ -360,7 +360,7 @@ struct ConstDivGen : Xbyak_aarch64::CodeGenerator {
 			return;
 		}
 	}
-	bool init(uint32_t d, uint32_t lpN)
+	bool init(uint32_t d, uint32_t lpN = 1)
 	{
 		using namespace Xbyak_aarch64;
 		ConstDiv cd;
