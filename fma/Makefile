@@ -19,5 +19,5 @@ fma.S: gen.py
 	python3 gen.py -m gas -op $(OP) > $@
 
 clean:
-	rm -f *.S *.o *.exe
+	rm -f *.S *.o *.exe func.h
 
