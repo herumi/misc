@@ -142,11 +142,9 @@ void test3()
 			}
 		}
 		#pragma omp critical
-		{
-			if (local_m > m) {
-				m = local_m;
-				mi = local_mi;
-			}
+		if (local_m > m) {
+			m = local_m;
+			mi = local_mi;
 		}
 	}
 	printf("m=%d mi=%d v=%d\n", m, mi, get(mi));
