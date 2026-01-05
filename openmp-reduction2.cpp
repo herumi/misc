@@ -8,7 +8,6 @@ clang++ openmp-reduction2.cpp -O3 -Xpreprocessor -fopenmp -lomp -L /opt/homebrew
 Windows: MSVC does not support custom reduction (OpenMP 4.0 or later).
 clang-cl openmp-reduction2.cpp -O3 -openmp
 cl /Ox /openmp:llvm openmp-reduction2.cpp
-
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,6 +16,10 @@ cl /Ox /openmp:llvm openmp-reduction2.cpp
 
 #include <atomic>
 #include <chrono>
+
+#ifndef _MSC_VER
+	#define USE_OPENMP_CUSTOM_REDUCTION
+#endif
 
 typedef std::chrono::high_resolution_clock::time_point TimePoint;
 TimePoint getNow()
@@ -205,7 +208,7 @@ void test5()
 	printf("m=%d mi=%d v=%d\n", m, mi, get(mi));
 }
 
-#ifndef _MSC_VER
+#ifdef USE_OPENMP_CUSTOM_REDUCTION
 /*
 m=3878506 mi=1000023228 v=3878506
 time=1767.110 msec
@@ -238,7 +241,7 @@ int main(int argc, char *argv[])
 	case 3: test3(); break;
 	case 4: test4(); break;
 	case 5: test5(); break;
-#ifndef _MSC_VER
+#ifdef USE_OPENMP_CUSTOM_REDUCTION
 	case 6: test6(); break;
 #endif
 	default: puts("not supported"); return 1;
