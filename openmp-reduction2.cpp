@@ -42,7 +42,28 @@ int get(int x)
 	for (int i = 0; i < 5; i++) {
 		v += sin(v);
 	}
-	return (int)(v*1234567);
+	return (int)(v*1234567) + 1;
+}
+
+void check1()
+{
+	for (int i = 0; i < MAX; i++) {
+		if (get(i) == 0) {
+			printf("i=%d\n", i); exit(1);
+		}
+	}
+	puts("ok");
+}
+
+void check2()
+{
+	#pragma omp parallel for
+	for (int i = 0; i < MAX; i++) {
+		if (get(i) == 0) {
+			printf("i=%d\n", i); exit(1);
+		}
+	}
+	puts("ok");
 }
 
 /*
@@ -235,6 +256,8 @@ int main(int argc, char *argv[])
 	printf("mode=%d\n", mode);
 	TimePoint start = getNow();
 	switch (mode) {
+	case -2: check2(); break;
+	case -1: check1(); break;
 	case 0: test0(); break;
 	case 1: test1(); break;
 	case 2: test2(); break;
