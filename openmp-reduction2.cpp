@@ -1,6 +1,13 @@
 /*
-on Windows; MSVC does not support custom reduction (OpenMP 4.0 or later).
-clang-cl -Ox -openmp openmp-reduction2.cpp
+Linx:
+g++ openmp-reduction2.cpp -O3 -fopenmp
+
+Mac
+clang++ openmp-reduction2.cpp -O3 -Xpreprocessor -fopenmp -lomp -L /opt/homebrew/opt/libomp/lib/
+
+Windows: MSVC does not support custom reduction (OpenMP 4.0 or later).
+clang-cl openmp-reduction2.cpp -O3 -openmp
+cl /Ox /openmp:llvm openmp-reduction2.cpp
 
 */
 #include <stdio.h>
