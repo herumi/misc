@@ -58,8 +58,7 @@ struct Quantize : CodeGenerator {
 
 	// input: eax
 	// output: eax / d
-	// assume: eax < 256
-	// destroy: edx
+	// assume: eax < 256, 0 < d < 256
 	void rawDiv(uint8_t d)
 	{
 		assert(d > 0);
@@ -72,7 +71,7 @@ struct Quantize : CodeGenerator {
 			if (shift > 0) shr(eax, shift);
 		} else if (d > 128) {
 			cmp(eax, d);
-			setge(al);
+			setge(al); // eax >= d ? 1 : 0
 		} else {
 			uint8_t shift = 15;
 			uint32_t c = ((1u << shift) + d - 1) / d;
