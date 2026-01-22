@@ -1,3 +1,6 @@
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#endif
 #include <xbyak/xbyak.h>
 #include <xbyak/xbyak_util.h>
 
@@ -6,8 +9,28 @@ using namespace Xbyak::util;
 
 const size_t N = 64;
 
-typedef uint8_t (*DivFunc)(uint8_t);
-typedef void (*QuantizerFunc)(uint8_t *tbl);
+typedef int (*DivFunc)(int);
+typedef void (*QuantizerFunc)(int *tbl);
+
+//#define DIV_C
+#define DIV_ROUND
+
+#ifdef DIV_C
+int divRef(int x, int d)
+{
+	return x / d;
+}
+#endif
+#ifdef DIV_ROUND
+int divRef(int x, int d)
+{
+	if (x > 0) {
+		return (x + (d/2)) / d;
+	} else {
+		return (x - (d/2)) / d;
+	}
+}
+#endif
 
 void setTable(uint8_t *qTbl, int q)
 {
@@ -21,87 +44,108 @@ void setTable(uint8_t *qTbl, int q)
 		49, 64, 78, 87, 103, 121, 120, 101,
 		72, 92, 95, 98, 112, 100, 103, 99
 	};
+	int scale;
+	if (q < 50) {
+		scale = 5000 / q;
+	} else {
+		scale = 200 - 2 * q;
+	}
 	for (size_t i = 0; i < N; i++) {
-		int v = orgTbl[i] / q;
+		int v = (orgTbl[i] * scale + 50) / 100;
 		if (v == 0) v = 1;
+		if (v >= 255) v = 255;
 		qTbl[i] = uint8_t(v);
 	}
 }
 
-bool is2power(uint8_t d)
+bool is2power(int d)
 {
 	return d && (d & (d - 1)) == 0;
 }
 
 struct Quantize : CodeGenerator {
+	static const int a = 19;
+	int c_;
+	int d2_;
+	int udiv(int x)
+	{
+		int mask = x >> 31;
+		x = (x ^ mask) - mask;
+		int y = ((x + d2_) * c_) >> a;
+		y = (y ^ mask) - mask;
+		return y;
+	}
 	explicit Quantize(const uint8_t *qTbl)
 		: CodeGenerator(8192, Xbyak::DontSetProtectRWE)
 	{
-		StackFrame sf(this, 1);
+		StackFrame sf(this, 1, UseRDX);
 		const Reg64& src = sf.p[0];
 		for (size_t i = 0; i < N; i++) {
 			const uint8_t d = qTbl[i];
 			if (d == 1) continue;
-			movzx(eax, byte[src + i]);
+			mov(eax, ptr[src + i * 4]);
 			rawDiv(d);
-			mov(ptr[src + i], al);
+			mov(ptr[src + i * 4], eax);
 		}
 	}
-	explicit Quantize(uint8_t q)
+	explicit Quantize(int q)
 		: CodeGenerator(4096, Xbyak::DontSetProtectRWE)
 	{
-		StackFrame sf(this, 1);
+		StackFrame sf(this, 1, UseRDX);
 		const Reg64& x = sf.p[0];
-		movzx(eax, x.cvt8());
+		mov(eax, x.cvt32());
 		rawDiv(q);
 	}
 
 	// input: eax
 	// output: eax / d
-	// assume: eax < 256, 0 < d < 256
-	void rawDiv(uint8_t d)
+	// destroy: edx
+	void rawDiv(int d)
 	{
-		assert(d > 0);
-		if (is2power(d)) {
-			int shift = -1;
-			while (d) {
-				shift++;
-				d >>= 1;
-			}
-			if (shift > 0) shr(eax, shift);
-		} else if (d > 128) {
-			cmp(eax, d);
-			setge(al); // eax >= d ? 1 : 0
-		} else {
-			uint8_t shift = 15;
-			uint32_t c = ((1u << shift) + d - 1) / d;
-			imul(eax, eax, c);
-			shr(eax, shift);
-		}
+		const int c = ((1 << a) + d - 1) / d;
+		c_ = c;
+		d2_ = d/2;
+		mov(edx, eax);
+		sar(edx, 31); // edx = mask = (eax < 0) ? 0xffffffff : 0
+		xor_(eax, edx);
+		sub(eax, edx);
+#ifdef DIV_ROUND
+		add(eax, d/2);
+#endif
+		imul(eax, eax, c);
+		shr(eax, a);
+		xor_(eax, edx);
+		sub(eax, edx);
 	}
 };
 
-void test(const uint8_t *src, const uint8_t *qTbl, QuantizerFunc f)
+void test(const int *src, const uint8_t *qTbl, QuantizerFunc f)
 {
-	uint8_t dst[N];
-	memcpy(dst, src, N);
+	puts("test");
+	int dst[N];
+	memcpy(dst, src, sizeof(dst));
 	f(dst);
 	for (size_t i = 0; i < N; i++) {
-		int e = src[i] / qTbl[i];
+		int e = divRef(src[i], qTbl[i]);
 		if (dst[i] != e) {
 			printf("ERR i=%zd src[i]/qTbl[i]=%d/%d=%d dst[i]=%d\n", i, src[i], qTbl[i], e, dst[i]);
 		}
 	}
+	puts("test ok");
 }
 
-void testDiv(uint8_t d)
+void testDiv(int d)
 {
 	Quantize quant(d);
 	const auto f = quant.getCode<DivFunc>();
 	quant.setProtectModeRE();
-	for (int i = 0; i < 256; i++) {
-		int e = i / d;
-		int v = f(uint8_t(i));
+	for (int i = -2048; i <= 2048; i++) {
+		int e = divRef(i, d);
+		int e2 = quant.udiv(i);
+		if (e != e2) {
+			printf("ERR2 div %d/%d=%d v=%d\n", i, d, e, e2);
+		}
+		int v = f(i);
 		if (v != e) {
 			printf("ERR div %d/%d=%d v=%d\n", i, d, e, v);
 		}
@@ -110,21 +154,24 @@ void testDiv(uint8_t d)
 
 void testAll()
 {
+	puts("testAll");
 	for (int d = 1; d <= 255; d++) {
-		testDiv(uint8_t(d));
+		testDiv(d);
 	}
+	puts("testAll ok");
 }
 
-void saveFile(const char *name, const uint8_t *ptr, size_t size)
+void saveFile(const char *name, const uint8_t *buf, size_t size)
 {
 	FILE *fp = fopen(name, "wb");
 	if (fp) {
-		fwrite(ptr, 1, size, fp);
+		fwrite(buf, 1, size, fp);
 		fclose(fp);
 	}
 }
 
 int main(int argc, char *argv[])
+	try
 {
 	const int q = argc > 1 ? atoi(argv[1]) : 50;
 	printf("q=%d\n", q);
@@ -139,13 +186,17 @@ int main(int argc, char *argv[])
 	quant.setProtectModeRE();
 	const auto f = quant.getCode<QuantizerFunc>();
 	saveFile("bin", quant.getCode(), quant.getSize());
+	puts("saved");
 
-	uint8_t src[N];
+	int src[N];
+	puts("src");
 	for (size_t i = 0; i < N; i++) {
-		src[i] = uint8_t(rand());
+		src[i] = (rand() % 4097) - 2048;
+		printf("%d ", src[i]);
 	}
+	puts("");
 	test(src, qTbl, f);
-	puts("ok");
 	testAll();
-	puts("all div ok");
+} catch (std::exception& e) {
+	printf("exception %s\n", e.what());
 }
