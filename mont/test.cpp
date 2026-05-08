@@ -29,6 +29,10 @@ const int M = 32767;//p*9;
 
 int maskL(int x) { return x & (R-1); }
 
+int psubw(int x, int y) {
+	return short(x - y);
+}
+
 int pmullw(int x, int y) {
 	// avoid overflow
 	return maskL(int64_t(x) * y);
@@ -93,7 +97,7 @@ int mont1(int x, int y, int yqL) {
 	int t1 = pmullw(x, yqL);
 	int t2 = pmulhw(t1, p);
 	int t3 = pmulhw(x, y);
-	int r = t3 - t2;
+	int r = psubw(t3, t2);
 	return r;
 }
 
@@ -103,7 +107,7 @@ int modp1(int x, int y, int y_aux) {
 	int t1 = vpmulhrsw(x, y_aux);
 	int t2 = pmullw(t1, p);
 	int t3 = pmullw(x, y);
-	int r = int16_t(t3 - t2);
+	int r = psubw(t3, t2);
 	return r;
 }
 
