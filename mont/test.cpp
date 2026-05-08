@@ -29,13 +29,13 @@ const int M = 32767;//p*9;
 
 int maskL(int x) { return x & (R-1); }
 
-int mull(int x, int y) {
+int pmullw(int x, int y) {
 	// avoid overflow
 	return maskL(int64_t(x) * y);
 //	return maskL(x * y);
 }
 
-int mulh(int x, int y) {
+int pmulhw(int x, int y) {
 	return (x * y) >> shift;
 }
 
@@ -68,7 +68,7 @@ void putParam()
 
 int MR(int x) { // MR(x) = x R'
 //	int m = (x * int64_t(p_inv)) & (R-1);
-	int m = mull(x, p_inv);
+	int m = pmullw(x, p_inv);
 	int r = (x - m * p)>>shift;
 	if (r >= p) r -= p;
 	if (r < 0) r += p;
@@ -87,12 +87,12 @@ int toMont(int a) { // mont(a, RR) = MR(aRR) = aR
 	return mont(a, RR);
 }
 
-// yqL = mull(y, p_inv)
+// yqL = pmullw(y, p_inv)
 // return mont(x, y)
 int mont1(int x, int y, int yqL) {
-	int t1 = mull(x, yqL);
-	int t2 = mulh(t1, p);
-	int t3 = mulh(x, y);
+	int t1 = pmullw(x, yqL);
+	int t2 = pmulhw(t1, p);
+	int t3 = pmulhw(x, y);
 	int r = t3 - t2;
 	return r;
 }
@@ -101,8 +101,8 @@ int mont1(int x, int y, int yqL) {
 // return (x * y) % p_inv
 int modp1(int x, int y, int y_aux) {
 	int t1 = vpmulhrsw(x, y_aux);
-	int t2 = mull(t1, p);
-	int t3 = mull(x, y);
+	int t2 = pmullw(t1, p);
+	int t3 = pmullw(x, y);
 	int r = int16_t(t3 - t2);
 	return r;
 }
@@ -177,7 +177,7 @@ void mont1Test()
 	printf("a in [%d, %d]\n", -(p-1), p-1);
 	printf("b in [%d, %d]\n", -M, M);
 	for (int a = -(p-1); a < p; a++) {
-		int aqL = mull(a, p_inv);
+		int aqL = pmullw(a, p_inv);
 		for (int b = -M; b < M; b++) {
 			int y = mont1(b, a, aqL);
 			range.update(y);
