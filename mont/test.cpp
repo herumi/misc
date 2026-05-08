@@ -7,13 +7,13 @@
 // assume 0 <= x && 0 < m < 32768
 constexpr int powMod(int x, int n, int m)
 {
-	int64_t q = x;
+	int64_t p_inv = x;
 	int64_t r = 1;
 	while (n > 0) {
 		if (n & 1) {
-			r = (r * q) % m;
+			r = (r * p_inv) % m;
 		}
-		q = (q * q) % m;
+		p_inv = (p_inv * p_inv) % m;
 		n >>= 1;
 	}
 	return int(r);
@@ -22,30 +22,61 @@ constexpr int powMod(int x, int n, int m)
 const int p = 3329;
 const int shift = 16;
 const int R = 1<< shift;
-const int Q = powMod(R, p-2, p); // R^(-1) % p=169
-const int q = (1 - R * Q)/p; // q^(-1) % R = (1 - R * Q)/p=-3327
+const int R_inv = powMod(R, p-2, p); // R^(-1) % p=169
+const int p_inv = (1 - R * R_inv)/p; // p_inv^(-1) % R = (1 - R * R_inv)/p=-3327
 const int RR = ((R%p)*(R%p))%p;
 const int M = 32767;//p*9;
+
+int maskL(int x) { return x & (R-1); }
+
+int mull(int x, int y) {
+	// avoid overflow
+	return maskL(int64_t(x) * y);
+//	return maskL(x * y);
+}
+
+int mulh(int x, int y) {
+	return (x * y) >> shift;
+}
+
+int vpmulhrsw(int x, int y) {
+	int prod = (x * y) + (R/4);
+	return prod >> 15;
+}
+/*
+int vpmulhrsw2(int a, int b) {
+	int prod = a * b;
+	int tmp  = (prod >> 14) + 1;
+	return (tmp >> 1);
+}
+*/
+
+int modp(int x) {
+	int r = x % p;
+	if (r < 0) r += p;
+	return r;
+}
 
 void putParam()
 {
 	printf("p=%d\n", p);
 	printf("R=%d\n", R);
-	printf("Q=%d\n", Q);
-	printf("q=%d\n", q);
+	printf("R_inv=%d\n", R_inv);
+	printf("p_inv=%d\n", p_inv);
 	printf("RR=%d\n", RR);
 }
 
 int MR(int x) { // MR(x) = x R'
-    int m = (x * int64_t(q)) & (R-1);
-    int r = (x - m * p)>>shift;
-    if (r >= p) r -= p;
-    if (r < 0) r += p;
-    return r;
+//	int m = (x * int64_t(p_inv)) & (R-1);
+	int m = mull(x, p_inv);
+	int r = (x - m * p)>>shift;
+	if (r >= p) r -= p;
+	if (r < 0) r += p;
+	return r;
 }
 
 int mont(int x, int y) {
-    return MR(x * y);
+	return MR(x * y);
 }
 
 int fromMont(int aR) { // mont(aR, 1) = MR(aR) = a
@@ -56,25 +87,23 @@ int toMont(int a) { // mont(a, RR) = MR(aRR) = aR
 	return mont(a, RR);
 }
 
-int modp(int x) {
-	int r = x % p;
-	if (r < 0) r += p;
+// yqL = mull(y, p_inv)
+// return mont(x, y)
+int mont1(int x, int y, int yqL) {
+	int t1 = mull(x, yqL);
+	int t2 = mulh(t1, p);
+	int t3 = mulh(x, y);
+	int r = t3 - t2;
 	return r;
 }
 
-int mull(int x, int y) {
-	return (x * y) & (R - 1);
-}
-
-int mulh(int x, int y) {
-	return (x * y) >> shift;
-}
-
-int mont1(int x, int y, int y_aux) {
-	int t1 = mull(x, y_aux);
-	int t2 = mulh(t1, p);
-	int h = mulh(x, y);
-	int r = h - t2;
+// y_aux = (y * (R/2)) / p_inv
+// return (x * y) % p_inv
+int modp1(int x, int y, int y_aux) {
+	int t1 = vpmulhrsw(x, y_aux);
+	int t2 = mull(t1, p);
+	int t3 = mull(x, y);
+	int r = int16_t(t3 - t2);
 	return r;
 }
 
@@ -144,11 +173,13 @@ void mont1Test()
 	puts("mont1Test");
 //#pragma omp parallel for
 	Range range;
-	printf("a, b in [%d, %d]\n", -M, M);
-	for (int a = -M; a < M; a++) {
-		int aq = mull(a, q);
+	// a: coeff of NTT, b:var
+	printf("a in [%d, %d]\n", -(p-1), p-1);
+	printf("b in [%d, %d]\n", -M, M);
+	for (int a = -(p-1); a < p; a++) {
+		int aqL = mull(a, p_inv);
 		for (int b = -M; b < M; b++) {
-			int y = mont1(b, a, aq);
+			int y = mont1(b, a, aqL);
 			range.update(y);
 			int z = mont(a, b);
 			if ((y - z) % p) {
@@ -162,12 +193,39 @@ void mont1Test()
 	puts("ok");
 }
 
+void modp1Test()
+{
+	puts("modp1Test");
+//#pragma omp parallel for
+	Range range;
+	// a: coeff of NTT, b: var
+	printf("a in [%d, %d]\n", -(p-1), p-1);
+	printf("b in [%d, %d]\n", -M, M);
+	for (int a = -(p-1); a < p; a++) {
+		int a_aux = (a * (R/2)) / p;
+		for (int b = -M; b < M; b++) {
+			int y = modp1(b, a, a_aux);
+			range.update(y);
+			int z = modp(a * b);
+			if ((y - z) % p) {
+				printf("ERR4 a=%d b=%d\n", a, b);
+				printf("y = %d, z = %d\n", y, z);
+				exit(1);
+			}
+		}
+	}
+	range.put("y");
+	puts("ok");
+}
+
+
 int main()
 {
-//	printf("Q=%d\n", powMod(R, p-2,p));
-//	printf("R=%d\n", (1-R*Q)/p);
+//	printf("R_inv=%d\n", powMod(R, p-2,p));
+//	printf("R=%d\n", (1-R*R_inv)/p);
 	putParam();
 	toMontTest();
 	montTest();
 	mont1Test();
+	modp1Test();
 }
