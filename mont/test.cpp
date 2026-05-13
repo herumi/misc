@@ -91,20 +91,20 @@ int toMont(int a) { // mont(a, RR) = MR(aRR) = aR
 	return mont(a, RR);
 }
 
-// yqL = pmullw(y, p_inv)
+// z = pmullw(y, p_inv)
 // return mont(x, y)
-int mont1(int x, int y, int yqL) {
-	int t1 = pmullw(x, yqL);
+int mont1(int x, int y, int z) {
+	int t1 = pmullw(x, z);
 	int t2 = pmulhw(t1, p);
 	int t3 = pmulhw(x, y);
 	int r = psubw(t3, t2);
 	return r;
 }
 
-// y_aux = (y * (R/2)) / p_inv
+// z = (y * (R/2)) / p_inv
 // return (x * y) % p_inv
-int modp1(int x, int y, int y_aux) {
-	int t1 = vpmulhrsw(x, y_aux);
+int modp1(int x, int y, int z) {
+	int t1 = vpmulhrsw(x, z);
 	int t2 = pmullw(t1, p);
 	int t3 = pmullw(x, y);
 	int r = psubw(t3, t2);
@@ -181,9 +181,9 @@ void mont1Test()
 	printf("a in [%d, %d]\n", -(p-1), p-1);
 	printf("b in [%d, %d]\n", -M, M);
 	for (int a = -(p-1); a < p; a++) {
-		int aqL = pmullw(a, p_inv);
+		int z = pmullw(a, p_inv);
 		for (int b = -M; b < M; b++) {
-			int y = mont1(b, a, aqL);
+			int y = mont1(b, a, z);
 			range.update(y);
 			int z = mont(a, b);
 			if ((y - z) % p) {
@@ -206,9 +206,9 @@ void modp1Test()
 	printf("a in [%d, %d]\n", -(p-1), p-1);
 	printf("b in [%d, %d]\n", -M, M);
 	for (int a = -(p-1); a < p; a++) {
-		int a_aux = (a * (R/2)) / p;
+		int z = (a * (R/2)) / p;
 		for (int b = -M; b < M; b++) {
-			int y = modp1(b, a, a_aux);
+			int y = modp1(b, a, z);
 			range.update(y);
 			int z = modp(a * b);
 			if ((y - z) % p) {
