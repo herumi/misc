@@ -25,7 +25,8 @@ const int R = 1<< shift;
 const int R_inv = powMod(R, p-2, p); // R^(-1) % p=169
 const int p_inv = (1 - R * R_inv)/p; // p_inv^(-1) % R = (1 - R * R_inv)/p=-3327
 const int RR = ((R%p)*(R%p))%p;
-const int M = 32767;//p*9;
+const int M0 = 32767;
+const int M1 = 32767;//p*9;
 
 int maskL(int x) { return x & (R-1); }
 
@@ -135,7 +136,7 @@ struct Range {
 void toMontTest()
 {
 	puts("toMontTest");
-	for (int a = -M; a < M; a++) {
+	for (int a = -M0; a < M0; a++) {
 		int aR = toMont(a);
 		if ((aR - (a * R)) % p != 0) {
 			printf("ERR0 a=%d aR=%d\n", a, aR);
@@ -155,9 +156,9 @@ void montTest()
 {
 	puts("montTest");
 #pragma omp parallel for
-	for (int a = -M; a < M; a++) {
+	for (int a = -M0; a < M0; a++) {
 		int aR = toMont(a);
-		for (int b = -M; b < M; b++) {
+		for (int b = -M0; b < M0; b++) {
 			int bR = toMont(b);
 			int cR = mont(aR, bR);
 			int c = fromMont(cR);
@@ -178,11 +179,11 @@ void mont1Test()
 //#pragma omp parallel for
 	Range range;
 	// a: coeff of NTT, b:var
-	printf("a in [%d, %d]\n", -(p-1), p-1);
-	printf("b in [%d, %d]\n", -M, M);
-	for (int a = -(p-1); a < p; a++) {
+	printf("a in [%d, %d]\n", -M1, M1);
+	printf("b in [%d, %d]\n", -M0, M0);
+	for (int a = -M1; a < M1; a++) {
 		int z = pmullw(a, p_inv);
-		for (int b = -M; b < M; b++) {
+		for (int b = -M0; b < M0; b++) {
 			int y = mont1(b, a, z);
 			range.update(y);
 			int z = mont(a, b);
@@ -203,11 +204,11 @@ void modp1Test()
 //#pragma omp parallel for
 	Range range;
 	// a: coeff of NTT, b: var
-	printf("a in [%d, %d]\n", -(p-1), p-1);
-	printf("b in [%d, %d]\n", -M, M);
-	for (int a = -(p-1); a < p; a++) {
+	printf("a in [%d, %d]\n", -M1, M1);
+	printf("b in [%d, %d]\n", -M0, M0);
+	for (int a = -M1; a < M1; a++) {
 		int z = (a * (R/2)) / p;
-		for (int b = -M; b < M; b++) {
+		for (int b = -M0; b < M0; b++) {
 			int y = modp1(b, a, z);
 			range.update(y);
 			int z = modp(a * b);
