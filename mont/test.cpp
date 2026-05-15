@@ -196,10 +196,10 @@ void mont1Test()
 		for (int b = -M0; b < M0; b++) {
 			int y = mont1(b, a, z);
 			range.update(y);
-			int z = mont(a, b);
-			if ((y - z) % p) {
+			int w = mont(a, b);
+			if ((y - w) % p) {
 				printf("ERR3 a=%d b=%d\n", a, b);
-				printf("y = %d, z = %d\n", y, z);
+				printf("y = %d, w = %d\n", y, w);
 				exit(1);
 			}
 		}
@@ -221,10 +221,67 @@ void modp1Test()
 		for (int b = -M0; b < M0; b++) {
 			int y = modp1(b, a, z);
 			range.update(y);
-			int z = modp(a * b);
-			if ((y - z) % p) {
+			int w = modp(a * b);
+			if ((y - w) % p) {
 				printf("ERR4 a=%d b=%d\n", a, b);
-				printf("y = %d, z = %d\n", y, z);
+				printf("y = %d, w = %d\n", y, w);
+				exit(1);
+			}
+		}
+	}
+	range.put("y");
+	puts("ok");
+}
+
+
+/*
+	Improved Plantard Arithmetic for Lattice-based Cryptography 2022-956.pdf
+	Algorithm 10:
+	x: variable (a)
+	y: constant (b) - not used
+	z: precomputed 32-bit constant: (b * p_inv_32) mod 2^32
+*/
+int modp_plantard(int x, int /*y*/, uint32_t z) {
+	const int alpha = 3;
+	// 1. [[abq']_{2l}]^l
+	// get low 32-bit value of multiplication x (16bit) and z (32bit)
+	uint32_t t1 = (uint32_t)x * z;
+
+	// arithmetic shift as signed integer
+	int t2 = (int)t1 >> shift;
+
+	// 2. [(t2 + 2^alpha) * q]^l
+	int t3 = t2 + (1 << alpha);
+
+	// multiply by q (i.e. p) and arithmetic right shift by 16 bits
+	int r = (t3 * p) >> shift;
+
+	return r;
+}
+
+// Improved Plantard Arithmetic for Lattice-based Cryptography
+// 2022-956.pdf
+// for Cortex-M4
+void modp_plantardTest()
+{
+	puts("modp_plantardTest");
+	// inv = pow(p, -1, 2**32)
+	const uint32_t inv = 1806234369;
+//#pragma omp parallel for
+	Range range;
+	// a: coeff of NTT, b: var
+	printf("a in [%d, %d]\n", -M1, M1);
+	printf("b in [%d, %d]\n", -M0, M0);
+	for (int a = -M1; a < M1; a++) {
+		uint32_t z = uint32_t(a) * inv;
+		for (int b = -M0; b < M0; b++) {
+			int y = modp_plantard(b, a, z);
+			range.update(y);
+			int w = modp(a * b);
+			int y_org = modp(-y * RR);
+			if ((y_org - w) % p) {
+				printf("ERR5 a=%d b=%d\n", a, b);
+				printf("y_org = %d, w = %d\n", y_org, w);
 				exit(1);
 			}
 		}
@@ -237,9 +294,11 @@ int main()
 {
 //	printf("R_inv=%d\n", powMod(R, p-2,p));
 //	printf("R=%d\n", (1-R*R_inv)/p);
+	printf("p_inv=%u\n", p_inv);
 	putParam();
 	toMontTest();
 	montTest();
 	mont1Test();
 	modp1Test();
+	modp_plantardTest();
 }
