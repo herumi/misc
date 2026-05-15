@@ -106,8 +106,8 @@ int mont1(int x, int y, int z) {
 
 // Faster AVX2 optimized NTT multiplication for Ring-LWE lattice cryptography
 // 2018-039.pdf
-// z = (y * (R/2)) / p_inv
-// return (x * y) % p_inv
+// z = (y * (R/2)) / p
+// return (x * y) % p
 int modp1(int x, int y, int z) {
 	int t1 = vpmulhrsw(x, z);
 	int t2 = pmullw(t1, p);
