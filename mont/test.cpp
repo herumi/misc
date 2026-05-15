@@ -48,13 +48,15 @@ int vpmulhrsw(int x, int y) {
 	int prod = (x * y) + (R/4);
 	return prod >> 15;
 }
-/*
-int vpmulhrsw2(int a, int b) {
-	int prod = a * b;
-	int tmp  = (prod >> 14) + 1;
-	return (tmp >> 1);
+// AArch64
+
+int sqrdmulh(int x, int y) {
+	return vpmulhrsw(x, y);
 }
-*/
+
+int mls(int acc, int x, int y) {
+	return psubw(acc, pmullw(x, y));
+}
 
 int modp(int x) {
 	int r = x % p;
@@ -102,6 +104,8 @@ int mont1(int x, int y, int z) {
 	return r;
 }
 
+// Faster AVX2 optimized NTT multiplication for Ring-LWE lattice cryptography
+// 2018-039.pdf
 // z = (y * (R/2)) / p_inv
 // return (x * y) % p_inv
 int modp1(int x, int y, int z) {
@@ -110,6 +114,12 @@ int modp1(int x, int y, int z) {
 	int t3 = pmullw(x, y);
 	int r = psubw(t3, t2);
 	return r;
+}
+
+int modp1_aarch64(int x, int y, int z) {
+	int t1 = sqrdmulh(x, z);
+	int t2 = pmullw(x, y);
+	return mls(t2, t1, p);
 }
 
 struct Range {
@@ -222,7 +232,6 @@ void modp1Test()
 	range.put("y");
 	puts("ok");
 }
-
 
 int main()
 {
