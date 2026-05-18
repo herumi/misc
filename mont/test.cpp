@@ -26,9 +26,14 @@ const int R_inv = powMod(R, p-2, p); // R^(-1) % p=169
 const int p_inv = (1 - R * R_inv)/p; // p_inv^(-1) % R = (1 - R * R_inv)/p=-3327
 const int RR = ((R%p)*(R%p))%p;
 const int M0 = 32767;
-const int M1 = 32767;//p*9;
+const int M1 = p-1;
 
 int maskL(int x) { return x & (R-1); }
+
+int round(float x) {
+	if (x >= 0) return int(x + 0.5);
+	return int(x - 0.5);
+}
 
 int psubw(int x, int y) {
 	return short(x - y);
@@ -152,7 +157,7 @@ struct Range {
 void toMontTest()
 {
 	puts("toMontTest");
-	for (int a = -M0; a < M0; a++) {
+	for (int a = -M0; a <= M0; a++) {
 		int aR = toMont(a);
 		if ((aR - (a * R)) % p != 0) {
 			printf("ERR0 a=%d aR=%d\n", a, aR);
@@ -172,9 +177,9 @@ void montTest()
 {
 	puts("montTest");
 #pragma omp parallel for
-	for (int a = -M0; a < M0; a++) {
+	for (int a = -M0; a <= M0; a++) {
 		int aR = toMont(a);
-		for (int b = -M0; b < M0; b++) {
+		for (int b = -M0; b <= M0; b++) {
 			int bR = toMont(b);
 			int cR = mont(aR, bR);
 			int c = fromMont(cR);
@@ -197,9 +202,9 @@ void mont1Test()
 	// a: coeff of NTT, b:var
 	printf("a in [%d, %d]\n", -M1, M1);
 	printf("b in [%d, %d]\n", -M0, M0);
-	for (int a = -M1; a < M1; a++) {
+	for (int a = -M1; a <= M1; a++) {
 		int z = pmullw(a, p_inv);
-		for (int b = -M0; b < M0; b++) {
+		for (int b = -M0; b <= M0; b++) {
 			int y = mont1(b, a, z);
 			range.update(y);
 			int w = mont(a, b);
@@ -222,9 +227,14 @@ void modp1Test()
 	// a: coeff of NTT, b: var
 	printf("a in [%d, %d]\n", -M1, M1);
 	printf("b in [%d, %d]\n", -M0, M0);
-	for (int a = -M1; a < M1; a++) {
-		int z = (a * (R/2)) / p;
-		for (int b = -M0; b < M0; b++) {
+	for (int a = -M1; a <= M1; a++) {
+//		int z = (a * (R/2)) / p;
+		int z = round(a * (R/2) / float(p)); // better
+		if (abs(z) > 32767) {
+			printf("abx ERR z=%d\n", z);
+			exit(1);
+		}
+		for (int b = -M0; b <= M0; b++) {
 			int y = modp1(b, a, z);
 			range.update(y);
 			int w = modp(a * b);
@@ -278,9 +288,9 @@ void modp_plantardTest()
 	// a: coeff of NTT, b: var
 	printf("a in [%d, %d]\n", -M1, M1);
 	printf("b in [%d, %d]\n", -M0, M0);
-	for (int a = -M1; a < M1; a++) {
+	for (int a = -M1; a <= M1; a++) {
 		uint32_t z = uint32_t(a) * inv;
-		for (int b = -M0; b < M0; b++) {
+		for (int b = -M0; b <= M0; b++) {
 			int y = modp_plantard(b, a, z);
 			range.update(y);
 			int w = modp(a * b);
