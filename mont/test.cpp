@@ -94,8 +94,10 @@ int toMont(int a) { // mont(a, RR) = MR(aRR) = aR
 	return mont(a, RR);
 }
 
-// z = pmullw(y, p_inv)
-// return mont(x, y)
+/*
+	z = pmullw(y, p_inv)
+	return mont(x, y)
+*/
 int mont1(int x, int y, int z) {
 	int t1 = pmullw(x, z);
 	int t2 = pmulhw(t1, p);
@@ -104,10 +106,14 @@ int mont1(int x, int y, int z) {
 	return r;
 }
 
-// Faster AVX2 optimized NTT multiplication for Ring-LWE lattice cryptography
-// 2018-039.pdf
-// z = (y * (R/2)) / p
-// return (x * y) % p
+/*
+	Faster AVX2 optimized NTT multiplication for Ring-LWE lattice cryptography
+	https://eprint.iacr.org/2018/039
+	NTTRU: Truly Fast NTRU Using NTT
+	https://tches.iacr.org/index.php/TCHES/article/view/8293
+	z = (y * (R/2)) / p
+	return (x * y) % p
+*/
 int modp1(int x, int y, int z) {
 	int t1 = vpmulhrsw(x, z);
 	int t2 = pmullw(t1, p);
