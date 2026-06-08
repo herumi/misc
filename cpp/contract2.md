@@ -214,7 +214,8 @@ assert(a + b > a); // オーバーフローなしで成立するか検証
 解として出力（--trace で確認）
 ```
 
-[数独を解くサンプル](../cbmc/sudoku.cpp)
+- [square root](../cbmc/square.c)
+- [数独を解くサンプル](../cbmc/sudoku.cpp)
 
 
 
