@@ -1,22 +1,25 @@
 MCL_DIR?=../../mcl
 CLANG?=clang++
 CXX=$(CLANG)
-CFLAGS=-g -Wall -Wextra -O2 -DNDEBUG
+CFLAGS=-g -Wall -Wextra -DNDEBUG -O2 -mbmi2
 CFLAGS+=-I $(MCL_DIR)/include
 LDFLAGS+=-L $(MCL_DIR)/lib -lmcl
 
 SRC=inv_test.cpp
 LL=inv.ll inv-org.ll
 LL_OBJ=$(LL:.ll=.o)
-OBJ=$(SRC:.cpp=.o) $(LL)
+OBJ=$(SRC:.cpp=.o) $(LL_OBJ)
 
 test: inv_test.exe
 	./$<
 
-%.exe: %.o $(LL)
+%.exe: %.o $(OBJ)
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
 %.o: %.cpp
+	$(CXX) -c -o $@ $< $(CFLAGS)
+
+%.o: %.ll
 	$(CXX) -c -o $@ $< $(CFLAGS)
 
 %.o: %.S
