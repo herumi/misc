@@ -1,6 +1,6 @@
 /*
 make CFLAGS_USER=-DMCL_USE_GMP=1 lib/libmcl.a
-clang++-15 -O2 vec-op.cpp -lgmp -lgmpxx -I ../cybozulib/include/ -mavx512f -mavx512ifma -Wall -Wextra -I ../mcl/include/ ../mcl/lib/libmcl.a && ./a.out
+clang++-15 -O2 vec-op.cpp -lgmp -lgmpxx -mavx512f -mavx512ifma -Wall -Wextra -I ../mcl/include/ ../mcl/lib/libmcl.a && ./a.out
 Xeon w9-3495X
 uvadd  18.70 clk
 uvsub  15.70 clk

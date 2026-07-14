@@ -1,5 +1,5 @@
 all: gen-lp.exe
-CXX=clang-14
+CXX=clang-20
 
 a.ll: gen_lp.py
 	python3 gen_lp.py > a.ll
