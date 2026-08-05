@@ -88,10 +88,22 @@ machine_clears.memory_ordering                372    0.000 /loop
 uops_dispatched.port_2_3_10            2003443366    1.002 /loop
 uops_dispatched.port_4_9              11109949422    5.555 /loop
 uops_dispatched.port_7_8               2001881705    1.001 /loop
+
+-DRMW=0
+// Xeon 8280
+split rmw
+w/call  2.86 clk/loop counter=-243309312
+wo/call 3.70 clk/loop counter=-243309312
+w/call  2.78 clk/loop counter=-243309312
+wo/call 3.69 clk/loop counter=-243309312
+
+// Xeon w9-3495
+split rmw
+w/call  1.65 clk/loop counter=-243309312
+wo/call 0.45 clk/loop counter=-243309312
+w/call  1.88 clk/loop counter=-243309312
+wo/call 0.44 clk/loop counter=-243309312
 */
-#include <string.h>
-#define XBYAK_NO_OP_NAMES
-#include <xbyak/xbyak.h>
 #include <xbyak/xbyak_util.h>
 
 const int  N = 100 * 1000 * 1000 * 10;
@@ -99,6 +111,10 @@ int counter = 0;
 
 void (*loopCall)();
 void (*loopNoCall)();
+
+#ifndef RMW
+#define RMW 1
+#endif
 
 struct Code : Xbyak::CodeGenerator {
 	Code()
@@ -118,7 +134,7 @@ struct Code : Xbyak::CodeGenerator {
 		Xbyak::Label Loop, JustRet;
 	L(Loop);
 		if (doCall) call(JustRet);
-#if 1
+#if RMW == 1
 		add(ptr [rcx], rax);
 #else
 		mov(rdx, ptr [rcx]);
@@ -153,6 +169,11 @@ void test(const char *msg, void (*f)())
 */
 int main(int argc, char *argv[])
 {
+#if RMW == 1
+	puts("rmw");
+#else
+	puts("split rmw");
+#endif
 	const char *mode = argc > 1 ? argv[1] : "";
 	bool runCall = strcmp(mode, "nocall") != 0;
 	bool runNoCall = strcmp(mode, "call") != 0;
