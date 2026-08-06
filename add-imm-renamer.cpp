@@ -47,6 +47,7 @@ add 100+37i   core cycles/iter=3.02
 add 3 / sub 2 core cycles/iter=1.61
 inc x8        core cycles/iter=1.62
 add/sub 1000  core cycles/iter=1.58
+lea regs      core cycles/iter=1.56
 
 // w9-3495X
 calib8(=8.0)  core cycles/iter=7.90
@@ -78,7 +79,7 @@ add 100+37i   core cycles/iter=3.03
 add 3 / sub 2 core cycles/iter=1.94
 inc x8        core cycles/iter=1.92
 add/sub 1000  core cycles/iter=1.93
-
+lea regs      core cycles/iter=1.96
 
 Core i7-1255U E-core (Gracemont): every pattern is ~7.2-8.0, no folding
 at all, matching addi x8 = 8.0 in latency.cpp.
@@ -123,7 +124,8 @@ enum Kind {
 	VARY37,    // add rax, 100 + i*37
 	ADDSUB,    // add rax, 3 / sub rax, 2 alternating
 	INC,       // inc rax
-	ADDSUB1000 // add rax, 1000 / sub rax, 1000 alternating
+	ADDSUB1000,// add rax, 1000 / sub rax, 1000 alternating
+	LEA_REGS,  // lea reg, [reg2+1] ; use more than one reg
 };
 
 struct Test {
@@ -161,6 +163,7 @@ static const Test tests[] = {
 	{ "add 3 / sub 2", ADDSUB, 0 },
 	{ "inc x8       ", INC, 0 },
 	{ "add/sub 1000 ", ADDSUB1000, 0 },
+	{ "lea regs     ", LEA_REGS, 0 },
 };
 static const int numTests = sizeof(tests) / sizeof(tests[0]);
 
@@ -199,6 +202,12 @@ struct Code : Xbyak::CodeGenerator {
 			case ADDSUB: if (i & 1) sub(rax, 2); else add(rax, 3); break;
 			case INC: inc(rax); break;
 			case ADDSUB1000: if (i & 1) sub(rax, 1000); else add(rax, 1000); break;
+			case LEA_REGS: switch (i & 3) {
+				case 0: lea(rcx, ptr[rax+i]); break;
+				case 1: lea(r8, ptr[rcx+i]); break;
+				case 2: lea(r9, ptr[r8+i]); break;
+				case 3: lea(rax, ptr[r9+i]); break;
+				}
 			}
 		}
 		sub(rdx, 1);
@@ -223,13 +232,18 @@ int main(int argc, char *argv[])
 	DWORD_PTR mask = argc > 1 ? (DWORD_PTR)strtoull(argv[1], 0, 0) : 1;
 	SetThreadAffinityMask(GetCurrentThread(), mask);
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+#else
+	(void)argc;
+	(void)argv;
 #endif
 	// warm up to reach a steady clock
 	for (int i = 0; i < 3; i++) measure(s_code.calib);
 	// take the best (min) ratio of 5 runs, re-calibrating around each test
 	double best[numTests + 1];
 	for (int i = 0; i <= numTests; i++) best[i] = 1e9;
-	for (int r = 0; r < 5; r++) {
+	const int TRY_N = 5;
+	for (int r = 0; r < TRY_N; r++) {
+		printf("try=%d/%d\n", r, TRY_N);
 		for (int i = 0; i <= numTests; i++) {
 			double c = measure(s_code.calib) / calibUnroll;
 			double t = measure(i == 0 ? s_code.calib : s_code.func[i - 1]);
