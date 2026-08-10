@@ -85,10 +85,48 @@ lea regs      core cycles/iter=1.96
 Core i7-1255U E-core (Gracemont): every pattern is ~7.2-8.0, no folding
 at all, matching addi x8 = 8.0 in latency.cpp.
 
+Core Ultra 7 255H (Arrow Lake-H): see add-imm-bench.txt for the raw data.
+Note the logical CPU order is interleaved, not P-first: CPU0-1 P, CPU2-9 E,
+CPU10-13 P, CPU14-15 E (the low-power island, no L3). Three behaviours:
+
+- P-core (Lion Cove, CPU0/CPU10): the Golden Cove mechanism with the range
+  halved. The foldable range is exactly [-512, 511] (cliffs at 511/512 and
+  -512/-513), a 10-bit signed field against Golden Cove's 11-bit, and within
+  the range it degrades twice as fast (127 -> 3.12, 255 -> 4.34, 511 -> 4.45,
+  matching Golden Cove at 255/511/1023), so the accumulated-sum field looks
+  one bit narrower too. Everything else behaves as on Golden Cove: add 1..8,
+  add 3/sub 2, inc, sub x8, sub@0..7 and the forced imm32 encoding all fold.
+- E-core (Skymont, CPU3/CPU6): a different mechanism. Flat ~2.1 for every
+  immediate in [-2048, 2047] with cliffs at 2048 and -2049 (a 12-bit signed
+  field) and NO dependence on the accumulated sum at all (add 100+37i is
+  2.09, as fast as imm=1, even though the running total grows without bound).
+  Gracemont folded nothing, so this is a new capability rather than an
+  inherited one. sub folds too (sub x8 is 2.17, and a single sub anywhere in
+  an all-add chain stays ~2.1), but some mixtures of add and sub break it and
+  the rule is not yet pinned down: 4 adds then 4 subs of ~1000 costs 5.26 and
+  alternating add/sub collapses to ~7.9. Neither the number of subs (8 is
+  fine, 4 is not) nor the number of direction changes (sub@1 and 4-adds-then-
+  4-subs both change twice, yet score 2.23 and 5.26) explains it, and it is
+  not immediate magnitude alone either (add 3/sub 2 is small and still 7.82).
+  The ALTK/RUNS/RUNS4M tests below are there to separate these.
+  inc x8 is 4.00, only half folded.
+- low-power island (CPU14): no folding at all, every pattern 7.95-8.00,
+  same as Gracemont. inc x8 is 8.47, slightly worse than 8. Together with
+  the L2 layout (2MB shared by 2 here vs 4MB shared by 4 on CPU2-9) this
+  suggests the island is the Meteor Lake era Crestmont rather than Skymont.
+  CPUID leaf 0x1A reports Atom for both, so it cannot tell them apart.
+
+lea reg,[reg2+disp] chains do not fold on any 255H core (~7.9), a clear
+regression from Golden Cove's 1.56.
+
 summary (Golden Cove):
-- hard boundary between 1023 and 1024: an immediate outside ~[-1024, 1023]
-  is never folded (straight 8.0 cycles/iter). Consistent with the renamer
+- hard boundary between 1023 and 1024 on the positive side and between
+  -1024 and -1025 on the negative side, i.e. the foldable range is exactly
+  [-1024, 1023] (a plain 11-bit signed field); an immediate outside it is
+  never folded (straight 8.0 cycles/iter). Consistent with the renamer
   tracking "physical register + offset" with a small signed offset field
+- sub folds as well as add: sub x8 is 1.65 and a single sub anywhere in an
+  otherwise all-add chain (sub@0..sub@7) stays at ~1.5, unlike Skymont
 - identical immediates are NOT required: varying values (1..8), add/sub
   mixes, and inc fold just as well (~1.5). The renamer only tracks the
   running sum of offsets against the last materialized base register
@@ -127,6 +165,11 @@ enum Kind {
 	INC,       // inc rax
 	ADDSUB1000,// add rax, 1000 / sub rax, 1000 alternating
 	ADDSUB2,// add rax, 1000+i / sub rax, 1000+i alternating
+	SUBALL,    // sub rax, 1 (does sub fold at all?)
+	SUBAT,     // add rax, 1 x8 except position `imm`, which is sub rax, 1
+	ALTK,      // add rax, imm / sub rax, imm alternating (same magnitude)
+	RUNS,      // `imm` add rax, 1 followed by 8-imm sub rax, 1
+	RUNS4M,    // 4 add rax, imm followed by 4 sub rax, imm
 	LEA_REGS,  // lea reg, [reg2+1] ; use more than one reg
 };
 
@@ -159,6 +202,18 @@ static const Test tests[] = {
 	{ "imm=-1       ", UNIFORM, -1 },
 	{ "imm=-128     ", UNIFORM, -128 },
 	{ "imm=-129     ", UNIFORM, -129 },
+	// negative side of the boundary: Golden Cove folds down to -1024, Lion
+	// Cove is expected to stop at -512 and Skymont at -2048
+	{ "imm=-255     ", UNIFORM, -255 },
+	{ "imm=-511     ", UNIFORM, -511 },
+	{ "imm=-512     ", UNIFORM, -512 },
+	{ "imm=-513     ", UNIFORM, -513 },
+	{ "imm=-1023    ", UNIFORM, -1023 },
+	{ "imm=-1024    ", UNIFORM, -1024 },
+	{ "imm=-1025    ", UNIFORM, -1025 },
+	{ "imm=-2047    ", UNIFORM, -2047 },
+	{ "imm=-2048    ", UNIFORM, -2048 },
+	{ "imm=-2049    ", UNIFORM, -2049 },
 	{ "imm32enc 1   ", IMM32ENC, 1 }, // value 1 but 4-byte immediate encoding
 	{ "add 1..8     ", VARY1TO8, 0 },
 	{ "add 100+37i  ", VARY37, 0 },
@@ -166,6 +221,31 @@ static const Test tests[] = {
 	{ "inc x8       ", INC, 0 },
 	{ "add/sub 1000 ", ADDSUB1000, 0 },
 	{ "add/sub 1000+i ", ADDSUB2, 0 },
+	// Skymont folds add but not sub. Put a single sub at position k of an
+	// otherwise all-add chain to see how many of the k+1..7 adds after it
+	// still fold: fully folded is ~2 (one real sub), fully broken is ~8.
+	{ "sub x8       ", SUBALL, 0 },
+	{ "sub@0 add x7 ", SUBAT, 0 },
+	{ "sub@1 add x7 ", SUBAT, 1 },
+	{ "sub@2 add x7 ", SUBAT, 2 },
+	{ "sub@4 add x7 ", SUBAT, 4 },
+	{ "sub@7 add x7 ", SUBAT, 7 },
+	// Skymont folds all-add and all-sub chains and tolerates a single sub
+	// among adds, yet 4 adds then 4 subs of ~1000 costs 5.26 and alternating
+	// add/sub collapses to 8. Separate the two candidate causes: how often
+	// the direction changes (ALTK vs RUNS) and how large the immediates are
+	// (RUNS4M). ALTK uses the same magnitude for add and sub so that the
+	// running value stays bounded.
+	{ "alt a/s im=1 ", ALTK, 1 },
+	{ "alt a/s im=2 ", ALTK, 2 },
+	{ "alt a/s im=64", ALTK, 64 },
+	{ "runs 1a7s    ", RUNS, 1 },
+	{ "runs 2a6s    ", RUNS, 2 },
+	{ "runs 4a4s    ", RUNS, 4 },
+	{ "runs 6a2s    ", RUNS, 6 },
+	{ "runs 7a1s    ", RUNS, 7 },
+	{ "4a4s im=100  ", RUNS4M, 100 },
+	{ "4a4s im=1000 ", RUNS4M, 1000 },
 	{ "lea regs     ", LEA_REGS, 0 },
 };
 static const int numTests = sizeof(tests) / sizeof(tests[0]);
@@ -206,6 +286,15 @@ struct Code : Xbyak::CodeGenerator {
 			case INC: inc(rax); break;
 			case ADDSUB1000: if (i & 1) sub(rax, 1000); else add(rax, 1000); break;
 			case ADDSUB2: if (i < 4) add(rax, 1000+i); else sub(rax, 1000+i); break;
+			case SUBALL: sub(rax, 1); break;
+			case SUBAT: if (i == (int)t.imm) sub(rax, 1); else add(rax, 1); break;
+			case ALTK:
+				if (i & 1) sub(rax, (uint32_t)t.imm); else add(rax, (uint32_t)t.imm);
+				break;
+			case RUNS: if (i < (int)t.imm) add(rax, 1); else sub(rax, 1); break;
+			case RUNS4M:
+				if (i < 4) add(rax, (uint32_t)t.imm); else sub(rax, (uint32_t)t.imm);
+				break;
 			case LEA_REGS: switch (i & 3) {
 				case 0: lea(rcx, ptr[rax+i]); break;
 				case 1: lea(r8, ptr[rcx+i]); break;
