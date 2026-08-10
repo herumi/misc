@@ -47,6 +47,7 @@ add 100+37i   core cycles/iter=3.02
 add 3 / sub 2 core cycles/iter=1.61
 inc x8        core cycles/iter=1.62
 add/sub 1000  core cycles/iter=1.58
+add/sub 1000+i  core cycles/iter=1.49
 lea regs      core cycles/iter=1.56
 
 // w9-3495X
@@ -125,6 +126,7 @@ enum Kind {
 	ADDSUB,    // add rax, 3 / sub rax, 2 alternating
 	INC,       // inc rax
 	ADDSUB1000,// add rax, 1000 / sub rax, 1000 alternating
+	ADDSUB2,// add rax, 1000+i / sub rax, 1000+i alternating
 	LEA_REGS,  // lea reg, [reg2+1] ; use more than one reg
 };
 
@@ -163,6 +165,7 @@ static const Test tests[] = {
 	{ "add 3 / sub 2", ADDSUB, 0 },
 	{ "inc x8       ", INC, 0 },
 	{ "add/sub 1000 ", ADDSUB1000, 0 },
+	{ "add/sub 1000+i ", ADDSUB2, 0 },
 	{ "lea regs     ", LEA_REGS, 0 },
 };
 static const int numTests = sizeof(tests) / sizeof(tests[0]);
@@ -202,6 +205,7 @@ struct Code : Xbyak::CodeGenerator {
 			case ADDSUB: if (i & 1) sub(rax, 2); else add(rax, 3); break;
 			case INC: inc(rax); break;
 			case ADDSUB1000: if (i & 1) sub(rax, 1000); else add(rax, 1000); break;
+			case ADDSUB2: if (i < 4) add(rax, 1000+i); else sub(rax, 1000+i); break;
 			case LEA_REGS: switch (i & 3) {
 				case 0: lea(rcx, ptr[rax+i]); break;
 				case 1: lea(r8, ptr[rcx+i]); break;
