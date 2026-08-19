@@ -35,7 +35,7 @@ struct Code : Xbyak::CodeGenerator {
 			for (int i = 0; i < UNROLL * 2; i++) add(rax, i + 1);
 			break;
 		}
-		sub(ecx, 1);
+		dec(ecx);
 		jnz(lpL);
 		ret();
 		return func;
