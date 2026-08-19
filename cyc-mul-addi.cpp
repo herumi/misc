@@ -3,23 +3,32 @@
 using namespace Xbyak;
 using namespace Xbyak::util;
 
-typedef void (*Func)();
-
 static const uint64_t N = 1000000000;
 static const int UNROLL = 8;
 static double g_rate;
 
+typedef void (*Func)();
+
+struct Table {
+	const char *name;
+	Func f;
+} g_tbl[] = {
+	{ "base", 0 },
+	{ "imul", 0 },
+	{ "mulx", 0 },
+	{ "addix8", 0 },
+	{ "addix16", 0 },
+};
+static const size_t tblN = sizeof(g_tbl) / sizeof(g_tbl[0]);
+
 struct Code : Xbyak::CodeGenerator {
 	Code()
-		: f0(gen(0))
-		, f1(gen(1))
-		, f2(gen(2))
-		, f3(gen(3))
 	{
-
+		for (size_t mode = 0; mode < tblN; mode++) {
+			g_tbl[mode].f = gen(mode);
+		}
 	}
-	Func f0, f1, f2, f3;
-	Func gen(int mode)
+	Func gen(size_t mode)
 	{
 		Func func = getCurr<Func>();
 		align(16);
@@ -34,10 +43,13 @@ struct Code : Xbyak::CodeGenerator {
 			imul(rax, rax);
 			break;
 		case 2:
-			for (int i = 0; i < UNROLL * 2; i++) add(rax, i + 1);
+			mulx(rax, rax, rax);
 			break;
 		case 3:
-			mulx(rax, rax, rax);
+			for (int i = 0; i < 8; i++) add(rax, i + 1);
+			break;
+		case 4:
+			for (int i = 0; i < 16; i++) add(rax, i + 1);
 			break;
 		}
 		dec(ecx);
@@ -45,9 +57,9 @@ struct Code : Xbyak::CodeGenerator {
 		ret();
 		return func;
 	}
-} s_c;
+} s_code;
 
-double measureBase(Func f)
+double measure(Func f)
 {
 	Clock clk;
 	clk.begin();
@@ -58,28 +70,23 @@ double measureBase(Func f)
 
 double getCycleRate()
 {
-	Func f = s_c.f0;
+	Func f = g_tbl[0].f;
 	const int n = 5;
 	fprintf(stderr, "warming up\n");
-	measureBase(f);
+	measure(f);
 	fprintf(stderr, "calc rate\n");
 	double sum = 0;
 	for (int i = 0; i < n; i++) {
-		sum += measureBase(f) / UNROLL;
+		sum += measure(f) / UNROLL;
 	}
 	return sum / n;
-}
-
-void measure(const char *msg, Func f)
-{
-	printf("%s %.2f\n", msg, measureBase(f) / g_rate);
 }
 
 int main()
 {
 	g_rate = getCycleRate();
 	fprintf(stderr, "rate=%f\n", g_rate);
-	measure("mul", s_c.f1);
-	measure("addi", s_c.f2);
-	measure("mulx", s_c.f3);
+	for (size_t i = 0; i < tblN; i++) {
+		printf("%s %.2f\n", g_tbl[i].name, measure(g_tbl[i].f) / g_rate);
+	}
 }
