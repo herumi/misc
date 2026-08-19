@@ -248,16 +248,16 @@ static const Test tests[] = {
 	{ "4a4s im=1000 ", RUNS4M, 1000 },
 	{ "lea regs     ", LEA_REGS, 0 },
 };
-static const int numTests = sizeof(tests) / sizeof(tests[0]);
+static const int testsN = sizeof(tests) / sizeof(tests[0]);
 
 struct Code : Xbyak::CodeGenerator {
 	typedef void (*F)();
 	F calib;
-	F func[numTests];
+	F func[testsN];
 	Code() : Xbyak::CodeGenerator(4096 * 8)
 	{
 		calib = gen(-1);
-		for (int i = 0; i < numTests; i++) func[i] = gen(i);
+		for (int i = 0; i < testsN; i++) func[i] = gen(i);
 	}
 	F gen(int idx)
 	{
@@ -332,12 +332,12 @@ int main(int argc, char *argv[])
 	// warm up to reach a steady clock
 	for (int i = 0; i < 3; i++) measure(s_code.calib);
 	// take the best (min) ratio of 5 runs, re-calibrating around each test
-	double best[numTests + 1];
-	for (int i = 0; i <= numTests; i++) best[i] = 1e9;
+	double best[testsN + 1];
+	for (int i = 0; i <= testsN; i++) best[i] = 1e9;
 	const int TRY_N = 5;
 	for (int r = 0; r < TRY_N; r++) {
 		printf("try=%d/%d\n", r, TRY_N);
-		for (int i = 0; i <= numTests; i++) {
+		for (int i = 0; i <= testsN; i++) {
 			double c = measure(s_code.calib) / calibUnroll;
 			double t = measure(i == 0 ? s_code.calib : s_code.func[i - 1]);
 			double c2 = measure(s_code.calib) / calibUnroll;
@@ -346,7 +346,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	printf("calib8(=8.0)  core cycles/iter=%.2f\n", best[0]);
-	for (int i = 0; i < numTests; i++) {
+	for (int i = 0; i < testsN; i++) {
 		printf("%s core cycles/iter=%.2f\n", tests[i].name, best[i + 1]);
 	}
 }
