@@ -55,11 +55,12 @@ double getCycleRate()
 {
 	Func f = s_c.f0;
 	const int n = 5;
+	measure(f);
 	double sum = 0;
 	for (int i = 0; i < n; i++) {
 		sum += measure(f) / UNROLL;
 	}
-	return sum / 5;
+	return sum / n;
 }
 
 int main()
