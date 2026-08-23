@@ -1,48 +1,6 @@
 /*
 perf stat -e '{instructions,uops_issued.any,uops_executed.thread,uops_retired.slots,inst_retired.macro_fused}:u'
 g++ -O2 -I ../xbyak cyc-mul-addi.cpp
-misc% perf stat -e '{instructions,uops_issued.any,uops_executed.thread,uops_retired.slots,inst_retired.macro_fused}:u' ./a.out 0
-WARNING: events were regrouped to match PMUs
-mode=0
-warming up
-calc rate
-rate=0.411231
-0 base 7.94
-
- Performance counter stats for './a.out 0':
-
-       70001837791      instructions
-       63002218069      uops_retired.slots
-       63004854655      uops_issued.any
-       63002942882      uops_executed.thread
-        7000247851      inst_retired.macro_fused
-
-      12.133653256 seconds time elapsed
-
-      12.133252000 seconds user
-       0.000000000 seconds sys
-
-
-misc% perf stat -e '{instructions,uops_issued.any,uops_executed.thread,uops_retired.slots,inst_retired.macro_fused}:u' ./a.out 4
-WARNING: events were regrouped to match PMUs
-mode=4
-warming up
-calc rate
-rate=0.411474
-4 addix16 3.02
-
- Performance counter stats for './a.out 4':
-
-       78001837738      instructions
-       71030991032      uops_retired.slots
-       71033292546      uops_issued.any
-       59074736773      uops_executed.thread
-        7000247895      inst_retired.macro_fused
-
-      11.087078074 seconds time elapsed
-
-      11.086695000 seconds user
-       0.000000000 seconds sys
 */
 #include <xbyak/xbyak_util.h>
 
@@ -59,11 +17,14 @@ struct Table {
 	const char *name;
 	Func f;
 } g_tbl[] = {
-	{ "base", 0 },
-	{ "imul", 0 },
-	{ "mulx", 0 },
-	{ "addix8", 0 },
-	{ "addix16", 0 },
+	{ "base", 0 }, // 0
+	{ "imul", 0 }, // 1
+	{ "mulx", 0 }, // 2
+	{ "addix8", 0 }, // 3
+	{ "addix16", 0 }, // 4
+	{ "add32ix8", 0 }, // 5
+	{ "addrix8", 0 }, // 6
+	{ "addix5", 0 }, // 7
 };
 static const int tblN = int(sizeof(g_tbl) / sizeof(g_tbl[0]));
 
@@ -76,7 +37,9 @@ struct Code : Xbyak::CodeGenerator {
 	}
 	Func gen(int mode)
 	{
+		const int regN = 8;
 		Func func = getCurr<Func>();
+		StackFrame sf(this, 0, regN|UseRCX);
 		align(16);
 		Label lpL;
 		mov(ecx, N);
@@ -97,10 +60,21 @@ struct Code : Xbyak::CodeGenerator {
 		case 4:
 			for (int i = 0; i < 16; i++) add(rax, 1);
 			break;
+		case 5:
+			for (int i = 0; i < regN; i++) add(eax, 1);
+			break;
+		case 6:
+			for (int i = 0; i < regN; i++) add(sf.t[i], 1);
+			break;
+		case 7:
+			for (int i = 0; i < 5; i++) add(rax, 1);
+			break;
+		default:
+			fprintf(stderr, "ERR bad mode=%d\n", mode);
+			exit(1);
 		}
 		dec(ecx);
 		jnz(lpL);
-		ret();
 		return func;
 	}
 } s_code;

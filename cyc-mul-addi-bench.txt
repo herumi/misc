@@ -1,0 +1,120 @@
+% perf stat -e '{instructions,uops_issued.any,uops_executed.thread,uops_retired.slots,inst_retired.macro_fused}:u' ./a.out 0
+mode=0
+warming up
+calc rate
+rate=0.411231
+0 base 7.94
+
+ Performance counter stats for './a.out 0':
+
+       70001837791      instructions
+       63002218069      uops_retired.slots
+       63004854655      uops_issued.any
+       63002942882      uops_executed.thread
+        7000247851      inst_retired.macro_fused
+
+      12.133653256 seconds time elapsed
+
+      12.133252000 seconds user
+       0.000000000 seconds sys
+
+% sudo perf stat -e '{instructions,uops_issued.any,uops_executed.thread,uops_retired.slots,inst_retired.macro_fused}:u' ./a.out 3
+mode=3
+warming up
+calc rate
+rate=0.421851
+3 addix8 2.03
+
+ Performance counter stats for './a.out 3':
+
+       70001831769      instructions
+       63004161981      uops_retired.slots
+       63021402620      uops_issued.any
+       57034987738      uops_executed.thread
+        7000246144      inst_retired.macro_fused
+
+      11.130714899 seconds time elapsed
+
+      11.130491000 seconds user
+       0.000000000 seconds sys
+
+% perf stat -e '{instructions,uops_issued.any,uops_executed.thread,uops_retired.slots,inst_retired.macro_fused}:u' ./a.out 4
+mode=4
+warming up
+calc rate
+rate=0.411474
+4 addix16 3.02
+
+ Performance counter stats for './a.out 4':
+
+       78001837738      instructions
+       71030991032      uops_retired.slots
+       71033292546      uops_issued.any
+       59074736773      uops_executed.thread
+        7000247895      inst_retired.macro_fused
+
+      11.087078074 seconds time elapsed
+
+      11.086695000 seconds user
+       0.000000000 seconds sys
+
+% sudo perf stat -e '{instructions,uops_issued.any,uops_executed.thread,uops_retired.slots,inst_retired.macro_fused}:u' ./a.out 5
+mode=5
+warming up
+calc rate
+rate=0.409312
+5 add32ix8 7.98
+
+ Performance counter stats for './a.out 5':
+
+       70001832441      instructions
+       63002213266      uops_retired.slots
+       63005310292      uops_issued.any
+       63002872148      uops_executed.thread
+        7000246206      inst_retired.macro_fused
+
+      12.110979052 seconds time elapsed
+
+      12.110542000 seconds user
+       0.000000000 seconds sys
+
+% sudo perf stat -e '{instructions,uops_issued.any,uops_executed.thread,uops_retired.slots,inst_retired.macro_fused}:u' ./a.out 6
+mode=6
+warming up
+calc rate
+rate=0.419211
+6 addrix8 2.03
+
+ Performance counter stats for './a.out 6':
+
+       70001831824      instructions
+       63002419089      uops_retired.slots
+       63006165105      uops_issued.any
+       57314882262      uops_executed.thread
+        7000246154      inst_retired.macro_fused
+
+      11.025098595 seconds time elapsed
+
+      11.024991000 seconds user
+       0.000000000 seconds sys
+
+% sudo perf stat -e '{instructions,uops_issued.any,uops_executed.thread,uops_retired.slots,inst_retired.macro_fused}:u' ./a.out 7
+WARNING: events were regrouped to match PMUs
+mode=7
+warming up
+calc rate
+rate=0.406597
+7 addix5 1.02
+
+ Performance counter stats for './a.out 7':
+
+       67001837873      instructions
+       60003389838      uops_retired.slots
+       60014879966      uops_issued.any
+       56031520475      uops_executed.thread
+        7000246954      inst_retired.macro_fused
+
+      10.544372943 seconds time elapsed
+
+      10.540347000 seconds user
+       0.003998000 seconds sy
