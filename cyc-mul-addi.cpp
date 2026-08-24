@@ -3,13 +3,14 @@ perf stat -e '{instructions,uops_issued.any,uops_executed.thread,uops_retired.sl
 g++ -O2 -I ../xbyak cyc-mul-addi.cpp
 */
 #include <xbyak/xbyak_util.h>
+#include <string_view>
 
 using namespace Xbyak;
 using namespace Xbyak::util;
 
 static const uint64_t N = 1000000000;
 static const int UNROLL = 8;
-static double g_rate;
+static double g_rate = 1;
 
 typedef void (*Func)();
 
@@ -104,12 +105,24 @@ double getCycleRate()
 
 int main(int argc, char *argv[])
 {
+	const std::string_view nowarm = "-nowarm";
+	bool warm = true;
+	const char *unit = "tsc";
+	if (argc > 1 && nowarm == argv[1]) {
+		warm = false;
+		argc--, argv++;
+	}
 	int mode = argc == 1 ? -1 : atoi(argv[1]);
 	fprintf(stderr, "mode=%d\n", mode);
-	g_rate = getCycleRate();
-	fprintf(stderr, "rate=%f\n", g_rate);
+	if (warm) {
+		g_rate = getCycleRate();
+		unit = "cyc";
+		fprintf(stderr, "rate=%f\n", g_rate);
+	} else {
+		fprintf(stderr, "nowarm\n");
+	}
 	for (int i = 0; i < tblN; i++) {
 		if (mode >= 0 && mode != i) continue;
-		printf("%d %s %.2f\n", i, g_tbl[i].name, measure(g_tbl[i].f) / g_rate);
+		printf("%d %s %.2f %s\n", i, g_tbl[i].name, measure(g_tbl[i].f) / g_rate, unit);
 	}
 }
