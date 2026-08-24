@@ -1,0 +1,361 @@
+% sudo perf stat -e '{instructions,uops_issued.any,uops_executed.thread,uops_retired.slots,inst_retired.macro_fused}:u' ./a.out 0
+mode=0 lpN=1
+warming up
+calc rate
+rate=0.404816
+0 base 7.99 cyc
+
+ Performance counter stats for './a.out 0':
+
+       70001836807      instructions
+       63002208078      uops_retired.slots
+       63004397878      uops_issued.any
+       63002922437      uops_executed.thread
+        7000246903      inst_retired.macro_fused
+
+      11.959260192 seconds time elapsed
+
+      11.958892000 seconds user
+       0.000000000 seconds sys
+
+// for i ({0..16}) sudo perf stat -e '{instructions,uops_issued.any,uops_executed.thread,uops_retired.slots,inst_retired.macro_fused}:u' ./a.out -lp $i >>& out.txt
+mode=7 lpN=0
+warming up
+calc rate
+rate=0.404672
+7 addixlpN 1.03 cyc
+
+ Performance counter stats for './a.out -lp 0':
+
+       62001836405      instructions
+       55002155883      uops_retired.slots
+       55004231301      uops_issued.any
+       55002861798      uops_executed.thread
+        7000246940      inst_retired.macro_fused
+
+      10.485658598 seconds time elapsed
+
+      10.485363000 seconds user
+       0.000000000 seconds sys
+
+
+mode=7 lpN=1
+warming up
+calc rate
+rate=0.410510
+7 addixlpN 0.98 cyc
+
+ Performance counter stats for './a.out -lp 1':
+
+       63001835805      instructions                                                          
+       56002410664      uops_retired.slots                                                    
+       56005397029      uops_issued.any                                                       
+       56002875559      uops_executed.thread                                                  
+        7000246792      inst_retired.macro_fused                                              
+
+      10.611485219 seconds time elapsed
+
+      10.611004000 seconds user
+       0.000000000 seconds sys
+
+
+mode=7 lpN=2
+warming up
+calc rate
+rate=0.408473
+7 addixlpN 1.00 cyc
+
+ Performance counter stats for './a.out -lp 2':
+
+       64001836227      instructions                                                          
+       57002646965      uops_retired.slots                                                    
+       57004983803      uops_issued.any                                                       
+       56005774815      uops_executed.thread                                                  
+        7000246856      inst_retired.macro_fused                                              
+
+      10.569090755 seconds time elapsed
+
+      10.568705000 seconds user
+       0.000000000 seconds sys
+
+
+mode=7 lpN=3
+warming up
+calc rate
+rate=0.409270
+7 addixlpN 1.02 cyc
+
+ Performance counter stats for './a.out -lp 3':
+
+       65001836446      instructions                                                          
+       58002884450      uops_retired.slots                                                    
+       58004903670      uops_issued.any                                                       
+       56012314323      uops_executed.thread                                                  
+        7000246850      inst_retired.macro_fused                                              
+
+      10.601621410 seconds time elapsed
+
+      10.601143000 seconds user
+       0.000000000 seconds sys
+
+
+mode=7 lpN=4
+warming up
+calc rate
+rate=0.408025
+7 addixlpN 1.00 cyc
+
+ Performance counter stats for './a.out -lp 4':
+
+       66001837006      instructions                                                          
+       59003147602      uops_retired.slots                                                    
+       59020967115      uops_issued.any                                                       
+       56023162866      uops_executed.thread                                                  
+        7000246953      inst_retired.macro_fused                                              
+
+      10.554499743 seconds time elapsed
+
+      10.554289000 seconds user
+       0.000000000 seconds sys
+
+
+mode=7 lpN=5
+warming up
+calc rate
+rate=0.406070
+7 addixlpN 1.01 cyc
+
+ Performance counter stats for './a.out -lp 5':
+
+       67001837199      instructions                                                          
+       60003357933      uops_retired.slots                                                    
+       60005307413      uops_issued.any                                                       
+       56031681600      uops_executed.thread                                                  
+        7000246925      inst_retired.macro_fused                                              
+
+      10.514432310 seconds time elapsed
+
+      10.510051000 seconds user
+       0.003999000 seconds sys
+
+
+mode=7 lpN=6
+warming up
+calc rate
+rate=0.404862
+7 addixlpN 1.17 cyc
+
+ Performance counter stats for './a.out -lp 6':
+
+       68001837616      instructions                                                          
+       61003603484      uops_retired.slots                                                    
+       61006279238      uops_issued.any                                                       
+       56868388517      uops_executed.thread                                                  
+        7000246994      inst_retired.macro_fused                                              
+
+      10.524962638 seconds time elapsed
+
+      10.524471000 seconds user
+       0.000000000 seconds sys
+
+
+mode=7 lpN=7
+warming up
+calc rate
+rate=0.407113
+7 addixlpN 1.34 cyc
+
+ Performance counter stats for './a.out -lp 7':
+
+       69001838010      instructions                                                          
+       62003853146      uops_retired.slots                                                    
+       62009545425      uops_issued.any                                                       
+       57040556269      uops_executed.thread                                                  
+        7000247046      inst_retired.macro_fused                                              
+
+      10.601804946 seconds time elapsed
+
+      10.601461000 seconds user
+       0.000000000 seconds sys
+
+
+mode=7 lpN=8
+warming up
+calc rate
+rate=0.408449
+7 addixlpN 1.99 cyc
+
+ Performance counter stats for './a.out -lp 8':
+
+       70001838402      instructions                                                          
+       63004124353      uops_retired.slots                                                    
+       63012449850      uops_issued.any                                                       
+       57031274838      uops_executed.thread                                                  
+        7000247096      inst_retired.macro_fused                                              
+
+      10.786528953 seconds time elapsed
+
+      10.786295000 seconds user
+       0.000000000 seconds sys
+
+
+mode=7 lpN=9
+warming up
+calc rate
+rate=0.407494
+7 addixlpN 2.00 cyc
+
+ Performance counter stats for './a.out -lp 9':
+
+       71001838886      instructions                                                          
+       64004363535      uops_retired.slots                                                    
+       64013352863      uops_issued.any                                                       
+       57052717851      uops_executed.thread                                                  
+        7000247137      inst_retired.macro_fused                                              
+
+      10.771973323 seconds time elapsed
+
+      10.771655000 seconds user
+       0.000000000 seconds sys
+
+
+mode=7 lpN=10
+warming up
+calc rate
+rate=0.408765
+7 addixlpN 2.00 cyc
+
+ Performance counter stats for './a.out -lp 10':
+
+       72001839319      instructions                                                          
+       65004600563      uops_retired.slots                                                    
+       65012982774      uops_issued.any                                                       
+       57067835413      uops_executed.thread                                                  
+        7000247181      inst_retired.macro_fused                                              
+
+      10.790433203 seconds time elapsed
+
+      10.790032000 seconds user
+       0.000000000 seconds sys
+
+
+mode=7 lpN=11
+warming up
+calc rate
+rate=0.405184
+7 addixlpN 2.01 cyc
+
+ Performance counter stats for './a.out -lp 11':
+
+       73001839618      instructions                                                          
+       66004818728      uops_retired.slots                                                    
+       66010555248      uops_issued.any                                                       
+       57080026659      uops_executed.thread                                                  
+        7000247233      inst_retired.macro_fused                                              
+
+      10.696470882 seconds time elapsed
+
+      10.695866000 seconds user
+       0.000000000 seconds sys
+
+
+mode=7 lpN=12
+warming up
+calc rate
+rate=0.405169
+7 addixlpN 2.21 cyc
+
+ Performance counter stats for './a.out -lp 12':
+
+       74001840027      instructions                                                          
+       67005063579      uops_retired.slots                                                    
+       67011487779      uops_issued.any                                                       
+       57921143231      uops_executed.thread                                                  
+        7000247281      inst_retired.macro_fused                                              
+
+      10.766280960 seconds time elapsed
+
+      10.765550000 seconds user
+       0.000000000 seconds sys
+
+
+mode=7 lpN=13
+warming up
+calc rate
+rate=0.407626
+7 addixlpN 2.46 cyc
+
+ Performance counter stats for './a.out -lp 13':
+
+       75001840438      instructions                                                          
+       68005304712      uops_retired.slots                                                    
+       68020228372      uops_issued.any                                                       
+       58104308886      uops_executed.thread                                                  
+        7000247311      inst_retired.macro_fused                                              
+
+      10.866456609 seconds time elapsed
+
+      10.862177000 seconds user
+       0.003999000 seconds sys
+
+
+mode=7 lpN=14
+warming up
+calc rate
+rate=0.408256
+7 addixlpN 2.62 cyc
+
+ Performance counter stats for './a.out -lp 14':
+
+       76001840812      instructions                                                          
+       69005549293      uops_retired.slots                                                    
+       69025052744      uops_issued.any                                                       
+       58158488153      uops_executed.thread                                                  
+        7000247346      inst_retired.macro_fused                                              
+
+      10.917307593 seconds time elapsed
+
+      10.917071000 seconds user
+       0.000000000 seconds sys
+
+
+mode=7 lpN=15
+warming up
+calc rate
+rate=0.407558
+7 addixlpN 2.76 cyc
+
+ Performance counter stats for './a.out -lp 15':
+
+       77001841251      instructions                                                          
+       70005780132      uops_retired.slots                                                    
+       70023936073      uops_issued.any                                                       
+       58409469717      uops_executed.thread                                                  
+        7000247419      inst_retired.macro_fused                                              
+
+      10.927781058 seconds time elapsed
+
+      10.927198000 seconds user
+       0.000000000 seconds sys
+
+
+mode=7 lpN=16
+warming up
+calc rate
+rate=0.405866
+7 addixlpN 2.98 cyc
+
+ Performance counter stats for './a.out -lp 16':
+
+       78001841589      instructions                                                          
+       71006032256      uops_retired.slots                                                    
+       71013125830      uops_issued.any                                                       
+       58114182444      uops_executed.thread                                                  
+        7000247437      inst_retired.macro_fused                                              
+
+      10.948116548 seconds time elapsed
+
+      10.947831000 seconds user
+       0.000000000 seconds sys
+
+
