@@ -11,6 +11,7 @@ using namespace Xbyak::util;
 static const uint64_t N = 1000000000;
 static const int UNROLL = 8;
 static double g_rate = 1;
+static int g_lpN = 1;
 
 typedef void (*Func)();
 
@@ -25,7 +26,7 @@ struct Table {
 	{ "addix16", 0 }, // 4
 	{ "add32ix8", 0 }, // 5
 	{ "addrix8", 0 }, // 6
-	{ "addix5", 0 }, // 7
+	{ "addixlpN", 0 }, // 7
 };
 static const int tblN = int(sizeof(g_tbl) / sizeof(g_tbl[0]));
 
@@ -68,7 +69,7 @@ struct Code : Xbyak::CodeGenerator {
 			for (int i = 0; i < regN; i++) add(sf.t[i], 1);
 			break;
 		case 7:
-			for (int i = 0; i < 5; i++) add(rax, 1);
+			for (int i = 0; i < g_lpN; i++) add(rax, 1);
 			break;
 		default:
 			fprintf(stderr, "ERR bad mode=%d\n", mode);
@@ -78,7 +79,7 @@ struct Code : Xbyak::CodeGenerator {
 		jnz(lpL);
 		return func;
 	}
-} s_code;
+};
 
 double measure(Func f)
 {
@@ -105,15 +106,22 @@ double getCycleRate()
 
 int main(int argc, char *argv[])
 {
-	const std::string_view nowarm = "-nowarm";
+	using namespace std::string_view_literals;
 	bool warm = true;
 	const char *unit = "tsc";
-	if (argc > 1 && nowarm == argv[1]) {
+	if (argc > 1 && argv[1] == "-nowarm"sv) {
 		warm = false;
 		argc--, argv++;
 	}
-	int mode = argc == 1 ? -1 : atoi(argv[1]);
-	fprintf(stderr, "mode=%d\n", mode);
+	int mode = -1;
+	if (argc > 2 && argv[1] == "-lp"sv) {
+		mode = 7;
+		g_lpN = atoi(argv[2]);
+	} else if (argc > 1) {
+		mode = atoi(argv[1]);
+	}
+	fprintf(stderr, "mode=%d lpN=%d\n", mode, g_lpN);
+	Code c;
 	if (warm) {
 		g_rate = getCycleRate();
 		unit = "cyc";
