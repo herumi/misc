@@ -1,6 +1,8 @@
 /*
 perf stat -e '{instructions,uops_issued.any,uops_executed.thread,uops_retired.slots,inst_retired.macro_fused}:u'
-g++ -O2 -I ../xbyak cyc-mul-addi.cpp
+
+git clone https://github.com/herumi/xbyak
+g++ -O2 -I ./xbyak cyc-mul-addi.cpp
 */
 #include <xbyak/xbyak_util.h>
 #include <string_view>
@@ -10,6 +12,7 @@ using namespace Xbyak::util;
 
 static const uint64_t N = 1000000000;
 static const int UNROLL = 8;
+static bool g_mul = false;
 static double g_rate = 1;
 static int g_lpN = 1;
 
@@ -69,6 +72,7 @@ struct Code : Xbyak::CodeGenerator {
 			for (int i = 0; i < regN; i++) add(sf.t[i], 1);
 			break;
 		case 7:
+			if (g_mul) imul(rax, rax);
 			for (int i = 0; i < g_lpN; i++) add(rax, 1);
 			break;
 		default:
@@ -113,6 +117,10 @@ int main(int argc, char *argv[])
 		warm = false;
 		argc--, argv++;
 	}
+	if (argc > 1 && argv[1] == "-mul"sv) {
+		g_mul = true;
+		argc--, argv++;
+	}
 	int mode = -1;
 	if (argc > 2 && argv[1] == "-lp"sv) {
 		mode = 7;
@@ -120,7 +128,7 @@ int main(int argc, char *argv[])
 	} else if (argc > 1) {
 		mode = atoi(argv[1]);
 	}
-	fprintf(stderr, "mode=%d lpN=%d\n", mode, g_lpN);
+	fprintf(stderr, "mode=%d mul=%d lpN=%d\n", mode, g_mul, g_lpN);
 	Code c;
 	if (warm) {
 		g_rate = getCycleRate();
