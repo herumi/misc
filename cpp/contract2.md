@@ -242,3 +242,36 @@ Paper | 日 | 種類 | 主題 | 位置づけ
 [P3290R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3290r4.pdf) | 2026-05-02 | Practical | assertとの統合 | 既存コード移行を支援
 [P3850R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3850r0.pdf) | 2026-05-12 | Strategy | C++29に向けた契約ロードマップ | 今後の方向性を提示
 [P4208R0](https://wg21.link/P4208) | 2026-05-12 | Review | P2900への批判的評価 | 設計上の論点を整理
+
+## GCCの場合
+
+共有ライブラリにおけるcontractについて基本は処理系定義。
+
+gccの場合、大きく次のオプションがある。
+(1)は規格が定める4種類の評価セマンティクスの選択、(2)(3)は規格が評価場所を規定しないためGCC独自のオプション。
+
+(1) -fcontract-evaluation-semantic=  ignore/observe/enforce/quick_enforce (既定enforce)
+共有ライブラリに関わらず、違反したときに何をするかの規格にしたがったオプション(その翻訳単位でコード生成される契約評価に適用する)
+
+(2) -fcontracts-client-check=none/pre/all (既定none)
+ 呼び出しをラッパ関数に差し替え、その中で検査する。preは事前条件、allは事前+事後条件。
+ ラッパはクライアント側の翻訳単位で生成されるので対象関数は宣言だけあればよく、共有ライブラリの関数でもallは機能する。
+ 非仮想関数のみが対象。
+
+(3) -fcontracts-definition-check=on/off (既定on)
+チェックコードを呼ばれる側(関数定義)に生成する
+
+.soを-fcontract-evaluation-semantic=ignoreでbuildした場合、そこで定義された非inline関数のチェックは完全に消える(既定の-fcontracts-client-check=noneのとき)。
+.soを-fcontract-evaluation-semantic=enforceでbuildした場合はクライアントをignoreでbuildしてもチェックは残る。
+-fcontracts-client-check=preはクライアント側に付けるオプションで、そのセマンティクスはクライアントの-fcontract-evaluation-semanticに従う。
+.so側に付けても.so内部の呼び出しにしか効果がない。
+
+既定は-fcontracts-definition-check=onなので、-fcontracts-client-check=preを足すと定義側と呼び出し側で二重にチェックされうる(規格は繰り返し評価を許す)。
+呼び出し側だけにしたければdefinition-check=offにする。
+
+違反ハンドラが置換可能かどうかは処理系定義。置換可能な場合にどのハンドラが呼ばれるかは通常のシンボル解決次第で規格の外。
+
+リンカは(設定に不整合があっても)チェックしない。契約表明はABIに影響しないのでリンクは通る。ビルドしたどれかの設定が選ばれ、基本的にODR違反にはならない。
+inline関数はインライン展開された箇所は展開先の翻訳単位の設定になる。展開されずweakシンボルになった場合は、どれが採用されるか未規定(テンプレートの実体化がどの翻訳単位のものになるか分からないのと同じ)。
+
+ignoreでも述語はコンパイルされodr-useされる(assert+NDEBUGと違って式が消えない)。preやpostから呼ぶ関数はヘッダから見える形で提供する必要がある。
