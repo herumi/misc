@@ -423,25 +423,18 @@ export const deserializeHexStrToSignature = (s: string): Signature => {
   return r
 }
 
-const getTotalSizeOfMsgs = (msgs: Uint8Array[]): number => {
-  return msgs.reduce((acc, msg) => acc + msg.length, 0)
-}
+/*
+  message
+  Uint8Array : octet string. it is hashed to a scalar (the same as the spec)
+  bigint : integer in [0, 2^64). it is used as a scalar without hashing (not defined in the spec)
+           a predicate of proofGenEx requires an integer message
+*/
+export type Msg = Uint8Array | bigint
 
-// concatinate msgs to mod.HEAP8[pos]
-const concatinateMsgs = (pos: number, msgs: Uint8Array[]): void => {
-  let offset = 0
-  for (let i = 0; i < msgs.length; i++) {
-    mod.HEAP8.set(msgs[i], pos + offset)
-    offset += msgs[i].length
-  }
-}
-
-// copy msgs[i].length to mod.HEAP32[pos/4 + i]
-const copyMsgSize = (pos: number, msgs: Uint8Array[]): void => {
-  for (let i = 0; i < msgs.length; i++) {
-    mod.HEAP32[(pos >> 2) + i] = msgs[i].length
-  }
-}
+// size of mclBnFr in the wasm memory
+const BBS_FR_SIZE = 32
+// size of bbsPredicate in the wasm memory
+const BBS_PREDICATE_SIZE = 24
 
 // copy a to the stack and return [pos, size]. [0, 0] if a is not specified
 const sallocBytes = (a?: Uint8Array): [number, number] => {
@@ -451,29 +444,46 @@ const sallocBytes = (a?: Uint8Array): [number, number] => {
   return [pos, a.length]
 }
 
-// copy msgs to the stack and return [msgsPos, msgSizePos]
-const sallocMsgs = (msgs: Uint8Array[]): [number, number] => {
-  const msgsPos = mod.stackAlloc(getTotalSizeOfMsgs(msgs))
-  const msgSizePos = mod.stackAlloc(msgs.length * 4)
-  concatinateMsgs(msgsPos, msgs)
-  copyMsgSize(msgSizePos, msgs)
-  return [msgsPos, msgSizePos]
+// make the scalars of msgs on the stack and return the position
+const sallocMsgs = (msgs: Msg[]): number => {
+  const pos = mod.stackAlloc(msgs.length * BBS_FR_SIZE)
+  for (let i = 0; i < msgs.length; i++) {
+    const m = msgs[i]
+    const p = pos + i * BBS_FR_SIZE
+    if (typeof m === 'bigint') {
+      if (m < 0n || m >= (1n << 64n)) throw new Error(`bad integer message ${m}`)
+      mod._bbsUint64ToFr(p, m)
+    } else {
+      const stack = mod.stackSave()
+      const [msgPos, msgSize] = sallocBytes(m)
+      mod._bbsMsgToFr(p, msgPos, msgSize)
+      mod.stackRestore(stack)
+    }
+  }
+  return pos
+}
+
+// copy idxs to the stack and return the position
+const sallocIdxs = (idxs: Uint32Array): number => {
+  const pos = mod.stackAlloc(idxs.length * 4)
+  mod.HEAP32.set(idxs, pos / 4)
+  return pos
 }
 
 /*
   sign msgs with secret key and public key
   header: optional
 */
-export const sign = (sec: SecretKey, pub: PublicKey, msgs: Uint8Array[], header?: Uint8Array): Signature => {
+export const sign = (sec: SecretKey, pub: PublicKey, msgs: Msg[], header?: Uint8Array): Signature => {
   const sig = new Signature()
   const stack = mod.stackSave()
   const sigPos = sig._salloc()
   const secPos = sec._sallocAndCopy()
   const pubPos = pub._sallocAndCopy()
   const [headerPos, headerSize] = sallocBytes(header)
-  const [msgsPos, msgSizePos] = sallocMsgs(msgs)
+  const msgsPos = sallocMsgs(msgs)
 
-  const r = mod._bbsSign(sigPos, secPos, pubPos, headerPos, headerSize, msgsPos, msgSizePos, msgs.length)
+  const r = mod._bbsSignFr(sigPos, secPos, pubPos, headerPos, headerSize, msgsPos, msgs.length)
   sig._save(sigPos)
   mod.stackRestore(stack)
   if (!r) throw new Error('SecretKey::sign error')
@@ -484,14 +494,14 @@ export const sign = (sec: SecretKey, pub: PublicKey, msgs: Uint8Array[], header?
   verify signature of msgs with public key
   header: header used in sign
 */
-export const verify = (sig: Signature, pub: PublicKey, msgs: Uint8Array[], header?: Uint8Array): boolean => {
+export const verify = (sig: Signature, pub: PublicKey, msgs: Msg[], header?: Uint8Array): boolean => {
   const stack = mod.stackSave()
   const sigPos = sig._sallocAndCopy()
   const pubPos = pub._sallocAndCopy()
   const [headerPos, headerSize] = sallocBytes(header)
-  const [msgsPos, msgSizePos] = sallocMsgs(msgs)
+  const msgsPos = sallocMsgs(msgs)
 
-  const r = mod._bbsVerify(sigPos, pubPos, headerPos, headerSize, msgsPos, msgSizePos, msgs.length)
+  const r = mod._bbsVerifyFr(sigPos, pubPos, headerPos, headerSize, msgsPos, msgs.length)
   mod.stackRestore(stack)
   return r === 1
 }
@@ -517,7 +527,7 @@ export const getProofSize = (undiscN: number): number => {
   ph: optional presentation header
   return: proof
 */
-export const proofGen = (pub: PublicKey, sig: Signature, msgs: Uint8Array[], discIdxs: Uint32Array, header?: Uint8Array, ph?: Uint8Array): Uint8Array => {
+export const proofGen = (pub: PublicKey, sig: Signature, msgs: Msg[], discIdxs: Uint32Array, header?: Uint8Array, ph?: Uint8Array): Uint8Array => {
   const msgN = msgs.length
   const discN = discIdxs.length
   if (discN > msgN) throw new Error(`proofGen:bad size. discIdxs.length=${discN} > msgs.length=${msgN}`)
@@ -528,10 +538,9 @@ export const proofGen = (pub: PublicKey, sig: Signature, msgs: Uint8Array[], dis
   const sigPos = sig._sallocAndCopy()
   const [headerPos, headerSize] = sallocBytes(header)
   const [phPos, phSize] = sallocBytes(ph)
-  const [msgsPos, msgSizePos] = sallocMsgs(msgs)
-  const discIdxsPos = mod.stackAlloc(discN * 4)
-  mod.HEAP32.set(discIdxs, discIdxsPos / 4)
-  const n = mod._bbsProofGen(proofPos, proofSize, pubPos, sigPos, headerPos, headerSize, phPos, phSize, msgsPos, msgSizePos, msgN, discIdxsPos, discN)
+  const msgsPos = sallocMsgs(msgs)
+  const discIdxsPos = sallocIdxs(discIdxs)
+  const n = mod._bbsProofGenFr(proofPos, proofSize, pubPos, sigPos, headerPos, headerSize, phPos, phSize, msgsPos, msgN, discIdxsPos, discN)
   const proof = new Uint8Array(mod.HEAP8.subarray(proofPos, proofPos + n))
   mod.stackRestore(stack)
   if (n === 0) throw new Error('proofGen error')
@@ -548,7 +557,7 @@ export const proofGen = (pub: PublicKey, sig: Signature, msgs: Uint8Array[], dis
   ph: presentation header used in proofGen
   return: true if proof is valid, false otherwise
 */
-export const proofVerify = (pub: PublicKey, proof: Uint8Array, discMsgs: Uint8Array[], discIdxs: Uint32Array, header?: Uint8Array, ph?: Uint8Array): boolean => {
+export const proofVerify = (pub: PublicKey, proof: Uint8Array, discMsgs: Msg[], discIdxs: Uint32Array, header?: Uint8Array, ph?: Uint8Array): boolean => {
   const discN = discMsgs.length
   if (discN !== discIdxs.length) throw new Error(`proofVerify:bad size. discMsgs.length=${discN} !== discIdxs.length=${discIdxs.length}`)
 
@@ -557,10 +566,104 @@ export const proofVerify = (pub: PublicKey, proof: Uint8Array, discMsgs: Uint8Ar
   const [proofPos, proofSize] = sallocBytes(proof)
   const [headerPos, headerSize] = sallocBytes(header)
   const [phPos, phSize] = sallocBytes(ph)
-  const [discMsgPos, discMsgSizePos] = sallocMsgs(discMsgs)
-  const discIdxsPos = mod.stackAlloc(discN * 4)
-  mod.HEAP32.set(discIdxs, discIdxsPos / 4)
-  const r = mod._bbsProofVerify(pubPos, proofPos, proofSize, headerPos, headerSize, phPos, phSize, discMsgPos, discMsgSizePos, discIdxsPos, discN)
+  const discMsgsPos = sallocMsgs(discMsgs)
+  const discIdxsPos = sallocIdxs(discIdxs)
+  const r = mod._bbsProofVerifyFr(pubPos, proofPos, proofSize, headerPos, headerSize, phPos, phSize, discMsgsPos, discIdxsPos, discN)
+  mod.stackRestore(stack)
+  return r === 1
+}
+
+/*
+  extension which is not defined in the spec
+  predicate for an undisclosed integer message m = msgs[idx]
+  PRED_GE : 0 <= m - bound < 2^bitN
+  PRED_LE : 0 <= bound - m < 2^bitN
+  1 <= bitN <= 64
+*/
+export const PRED_GE = 0
+export const PRED_LE = 1
+
+export interface Predicate {
+  idx: number
+  type: number
+  bound: bigint
+  bitN: number
+}
+
+// copy preds to the stack as an array of bbsPredicate and return the position
+const sallocPreds = (preds: Predicate[]): number => {
+  const pos = mod.stackAlloc(preds.length * BBS_PREDICATE_SIZE)
+  for (let i = 0; i < preds.length; i++) {
+    const p = preds[i]
+    if (p.bound < 0n || p.bound >= (1n << 64n)) throw new Error(`bad bound ${p.bound}`)
+    // struct { uint64_t bound; uint32_t idx, type, bitN, reserved; }
+    const q = (pos + i * BBS_PREDICATE_SIZE) >> 2
+    const H = mod.HEAP32
+    H[q] = Number(p.bound & 0xffffffffn)
+    H[q + 1] = Number(p.bound >> 32n)
+    H[q + 2] = p.idx
+    H[q + 3] = p.type
+    H[q + 4] = p.bitN
+    H[q + 5] = 0
+  }
+  return pos
+}
+
+// size of a proof of proofGenEx. 0 if preds is invalid
+export const getProofExSize = (undiscN: number, preds: Predicate[]): number => {
+  const stack = mod.stackSave()
+  const predsPos = sallocPreds(preds)
+  const n = mod._bbsGetProofExSize(undiscN, predsPos, preds.length)
+  mod.stackRestore(stack)
+  return n
+}
+
+/*
+  generate proof with predicates
+  preds: predicates sorted by idx. idx must be an index of an undisclosed message
+  the other parameters are the same as proofGen
+  an exception is thrown if a predicate does not hold
+*/
+export const proofGenEx = (pub: PublicKey, sig: Signature, msgs: Msg[], discIdxs: Uint32Array, preds: Predicate[], header?: Uint8Array, ph?: Uint8Array): Uint8Array => {
+  const msgN = msgs.length
+  const discN = discIdxs.length
+  if (discN > msgN) throw new Error(`proofGenEx:bad size. discIdxs.length=${discN} > msgs.length=${msgN}`)
+  const proofSize = getProofExSize(msgN - discN, preds)
+  if (proofSize === 0) throw new Error('proofGenEx:bad predicates')
+  const stack = mod.stackSave()
+  const proofPos = mod.stackAlloc(proofSize)
+  const pubPos = pub._sallocAndCopy()
+  const sigPos = sig._sallocAndCopy()
+  const [headerPos, headerSize] = sallocBytes(header)
+  const [phPos, phSize] = sallocBytes(ph)
+  const msgsPos = sallocMsgs(msgs)
+  const discIdxsPos = sallocIdxs(discIdxs)
+  const predsPos = sallocPreds(preds)
+  const n = mod._bbsProofGenEx(proofPos, proofSize, pubPos, sigPos, headerPos, headerSize, phPos, phSize, msgsPos, msgN, discIdxsPos, discN, predsPos, preds.length)
+  const proof = new Uint8Array(mod.HEAP8.subarray(proofPos, proofPos + n))
+  mod.stackRestore(stack)
+  if (n === 0) throw new Error('proofGenEx error')
+  return proof
+}
+
+/*
+  verify proof with predicates
+  preds: the same predicates as those of proofGenEx
+  the other parameters are the same as proofVerify
+*/
+export const proofVerifyEx = (pub: PublicKey, proof: Uint8Array, discMsgs: Msg[], discIdxs: Uint32Array, preds: Predicate[], header?: Uint8Array, ph?: Uint8Array): boolean => {
+  const discN = discMsgs.length
+  if (discN !== discIdxs.length) throw new Error(`proofVerifyEx:bad size. discMsgs.length=${discN} !== discIdxs.length=${discIdxs.length}`)
+
+  const stack = mod.stackSave()
+  const pubPos = pub._sallocAndCopy()
+  const [proofPos, proofSize] = sallocBytes(proof)
+  const [headerPos, headerSize] = sallocBytes(header)
+  const [phPos, phSize] = sallocBytes(ph)
+  const discMsgsPos = sallocMsgs(discMsgs)
+  const discIdxsPos = sallocIdxs(discIdxs)
+  const predsPos = sallocPreds(preds)
+  const r = mod._bbsProofVerifyEx(pubPos, proofPos, proofSize, headerPos, headerSize, phPos, phSize, discMsgsPos, discIdxsPos, discN, predsPos, preds.length)
   mod.stackRestore(stack)
   return r === 1
 }

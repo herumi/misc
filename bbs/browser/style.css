@@ -206,9 +206,64 @@ body {
     margin: 0;
 }
 
+/* an item which uses a whole row */
+.disclosure-item.wide {
+    grid-column: 1 / -1;
+}
+
+.disclosure-item h4 {
+    margin-bottom: 8px;
+    color: #495057;
+}
+
 .disclosure-item .field-value {
     font-weight: 600;
     color: #495057;
+    margin-top: 8px;
+}
+
+/* condition of the age for the range proof */
+.age-cond {
+    margin: 8px 0 0 24px;
+    padding: 10px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 0.9em;
+    color: #495057;
+}
+
+.age-cond label {
+    margin-bottom: 6px;
+}
+
+.age-cond input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+.age-cond input[type="number"] {
+    width: 70px;
+    padding: 4px 6px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+.age-cond .age-statement {
+    font-weight: 600;
+    margin-left: 10px;
+}
+
+.note {
+    color: #6c757d;
+    font-size: 0.9em;
+    margin-bottom: 20px;
+}
+
+.stats {
+    margin-top: 12px;
+    font-size: 0.9em;
 }
 
 .disclosure-item .field-value.hidden {

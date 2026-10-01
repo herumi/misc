@@ -109,6 +109,7 @@
                         <input type="number" id="birthDay" min="1" max="31" required>
                     </div>
                 </div>
+                <p class="note" data-ja="生年月日は整数 YYYYMMDD (例: 19960320) として署名されます。年齢条件の証明に使うためです。" data-en="The birth date is signed as an integer YYYYMMDD (e.g. 19960320) so that a condition of the age can be proven.">生年月日は整数 YYYYMMDD (例: 19960320) として署名されます。年齢条件の証明に使うためです。</p>
 
                 <button type="submit" class="btn" id="signBtn">
                     <span id="signLoading" class="loading" style="display: none;"></span>
@@ -155,7 +156,7 @@
         <!-- 証明生成タブ -->
         <div id="proof" class="tab-content">
             <h2 data-ja="選択的開示証明生成" data-en="Selective Disclosure Proof Generation">選択的開示証明生成</h2>
-            <p data-ja="個人情報の一部のみを開示する証明を生成します。" data-en="Generate a proof that discloses only a portion of personal information.">個人情報の一部のみを開示する証明を生成します。</p>
+            <p data-ja="個人情報の一部のみを開示する証明を生成します。生年月日は、開示せずに年齢条件 (18歳以上など) だけを証明することもできます。" data-en="Generate a proof that discloses only a portion of personal information. For the birth date, only a condition of the age (e.g. at least 18) can be proven without disclosing it.">個人情報の一部のみを開示する証明を生成します。生年月日は、開示せずに年齢条件 (18歳以上など) だけを証明することもできます。</p>
 
             <div id="proofInfo" class="info-grid">
                 <div class="info-card">
@@ -179,24 +180,29 @@
                     <h4 data-ja="証明 (最初32バイト)" data-en="Proof (first 32 bytes)">証明 (最初32バイト)</h4>
                     <div id="proofPreview"></div>
                 </div>
+                <div id="proofStats" class="stats"></div>
             </div>
         </div>
 
         <!-- 証明検証タブ -->
         <div id="proof-verify" class="tab-content">
             <h2 data-ja="証明検証" data-en="Proof Verification">証明検証</h2>
-            <p data-ja="選択的開示証明の検証を行います。開示メッセージを編集して不正な入力での検証をテストできます。" data-en="Verify the selective disclosure proof. You can edit disclosed messages to test verification with invalid inputs.">選択的開示証明の検証を行います。開示メッセージを編集して不正な入力での検証をテストできます。</p>
+            <p data-ja="選択的開示証明の検証を行います。検証者が知るのは、開示された項目と証明された条件だけです。" data-en="Verify the selective disclosure proof. The verifier learns only the disclosed items and the proven condition.">選択的開示証明の検証を行います。検証者が知るのは、開示された項目と証明された条件だけです。</p>
 
             <div id="proofVerifyInfo" class="info-grid">
                 <div class="info-card">
                     <h3 data-ja="開示された個人情報" data-en="Disclosed Personal Information">開示された個人情報</h3>
                     <div id="proofVerifyMessages"></div>
                 </div>
+                <div class="info-card">
+                    <h3 data-ja="証明された条件" data-en="Proven Condition">証明された条件</h3>
+                    <div id="proofVerifyPreds"></div>
+                </div>
             </div>
 
             <div id="proofVerifyEditControls" class="edit-controls" style="display: none;">
                 <h3 data-ja="開示メッセージ編集（検証テスト用）" data-en="Disclosed Message Editing (for verification testing)">開示メッセージ編集（検証テスト用）</h3>
-                <p data-ja="以下のフィールドを編集して不正な入力での検証をテストできます：" data-en="You can edit the following fields to test verification with invalid inputs:">以下のフィールドを編集して不正な入力での検証をテストできます：</p>
+                <p data-ja="以下のフィールドを編集して不正な入力での検証をテストできます。年齢のしきい値を変えても検証は失敗します (証明は生成時の条件に対するものなので、本人が新しい条件を満たしていても通りません)。" data-en="You can edit the following fields to test verification with invalid inputs. The verification also fails if a threshold of the age is changed (the proof is for the condition at the generation, so it is rejected even if the person satisfies the new condition).">以下のフィールドを編集して不正な入力での検証をテストできます。年齢のしきい値を変えても検証は失敗します (証明は生成時の条件に対するものなので、本人が新しい条件を満たしていても通りません)。</p>
                 <div id="proofVerifyEditFields"></div>
                 <button id="resetProofVerifyMessages" class="btn btn-secondary" onclick="resetProofVerifyMessages()" data-ja="元のメッセージに戻す" data-en="Restore Original Messages">元のメッセージに戻す</button>
             </div>

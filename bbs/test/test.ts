@@ -9,6 +9,7 @@ async function testAll () {
     keyGenTest()
     fixedTest()
     proofTest()
+    predicateTest()
     bbs.term()
   } catch (e) {
     console.log(`TEST FAIL ${e}`)
@@ -194,6 +195,79 @@ const proofTest = () => {
   // bad index
   assert.throws(() => { bbs.proofGen(pub, sig2, msgs, new Uint32Array([2, 0])) })
   assert.throws(() => { bbs.proofGen(pub, sig2, msgs, new Uint32Array([0, 3])) })
+}
+
+// range predicates for undisclosed integer messages (extension)
+const predicateTest = () => {
+  console.log('predicateTest')
+  const sec = new bbs.SecretKey()
+  sec.init()
+  const pub = sec.getPublicKey()
+  const header = strToUint8Array('header')
+  const ph = strToUint8Array('ph')
+  // name, birthday (YYYYMMDD), age, address
+  const msgs: bbs.Msg[] = [strToUint8Array('alice'), 19960320n, 30n, strToUint8Array('tokyo')]
+  const sig = bbs.sign(sec, pub, msgs, header)
+  assert(bbs.verify(sig, pub, msgs, header))
+  // an integer message is different from the octet string
+  assert(!bbs.verify(sig, pub, [msgs[0], strToUint8Array('19960320'), msgs[2], msgs[3]], header))
+  assert(!bbs.verify(sig, pub, [msgs[0], 19960321n, msgs[2], msgs[3]], header))
+
+  // an integer message can be disclosed by a proof of the spec
+  {
+    const discIdxs = new Uint32Array([0, 2])
+    const prf = bbs.proofGen(pub, sig, msgs, discIdxs, header, ph)
+    assert(bbs.proofVerify(pub, prf, [msgs[0], 30n], discIdxs, header, ph))
+    assert(!bbs.proofVerify(pub, prf, [msgs[0], 31n], discIdxs, header, ph))
+  }
+
+  // disclose the name and show that birthday <= 2008/10/01 and 18 <= age <= 65
+  const discIdxs = new Uint32Array([0])
+  const discMsgs = [msgs[0]]
+  const preds: bbs.Predicate[] = [
+    { idx: 1, type: bbs.PRED_LE, bound: 20081001n, bitN: 25 },
+    { idx: 2, type: bbs.PRED_GE, bound: 18n, bitN: 8 },
+    { idx: 2, type: bbs.PRED_LE, bound: 65n, bitN: 8 }
+  ]
+  const prf = bbs.proofGenEx(pub, sig, msgs, discIdxs, preds, header, ph)
+  assert.equal(prf.length, bbs.getProofExSize(3, preds))
+  assert.equal(prf.length, bbs.getProofSize(3) + 80 * 2 + 144 * (25 + 8 + 8) - 48 * 3)
+  assert(bbs.proofVerifyEx(pub, prf, discMsgs, discIdxs, preds, header, ph))
+
+  // different predicates
+  const wrong = preds.map(p => ({ ...p }))
+  wrong[0].bound = 20081002n
+  assert(!bbs.proofVerifyEx(pub, prf, discMsgs, discIdxs, wrong, header, ph))
+  assert(!bbs.proofVerifyEx(pub, prf, discMsgs, discIdxs, preds.slice(0, 2), header, ph))
+  // wrong ph, header, message
+  assert(!bbs.proofVerifyEx(pub, prf, discMsgs, discIdxs, preds, header))
+  assert(!bbs.proofVerifyEx(pub, prf, discMsgs, discIdxs, preds, undefined, ph))
+  assert(!bbs.proofVerifyEx(pub, prf, [strToUint8Array('bob')], discIdxs, preds, header, ph))
+  // modified proof
+  const prf2 = new Uint8Array(prf)
+  prf2[prf2.length - 1] ^= 1
+  assert(!bbs.proofVerifyEx(pub, prf2, discMsgs, discIdxs, preds, header, ph))
+  // it is not a proof of the spec
+  assert(!bbs.proofVerify(pub, prf, discMsgs, discIdxs, header, ph))
+
+  // a predicate does not hold
+  assert.throws(() => { bbs.proofGenEx(pub, sig, msgs, discIdxs, [{ idx: 2, type: bbs.PRED_GE, bound: 31n, bitN: 8 }], header, ph) })
+  // the message of a predicate is disclosed
+  assert.throws(() => { bbs.proofGenEx(pub, sig, msgs, new Uint32Array([2]), [{ idx: 2, type: bbs.PRED_GE, bound: 18n, bitN: 8 }], header, ph) })
+  // bad bitN
+  assert.throws(() => { bbs.proofGenEx(pub, sig, msgs, discIdxs, [{ idx: 2, type: bbs.PRED_GE, bound: 18n, bitN: 65 }], header, ph) })
+  // bad integer
+  assert.throws(() => { bbs.sign(sec, pub, [-1n]) })
+  assert.throws(() => { bbs.sign(sec, pub, [1n << 64n]) })
+  // the max integer
+  {
+    const max = (1n << 64n) - 1n
+    const sig2 = bbs.sign(sec, pub, [max])
+    const p = [{ idx: 0, type: bbs.PRED_GE, bound: max - 1n, bitN: 1 }]
+    const none = new Uint32Array([])
+    const prf3 = bbs.proofGenEx(pub, sig2, [max], none, p)
+    assert(bbs.proofVerifyEx(pub, prf3, [], none, p))
+  }
 }
 
 // generate Uint8Array from ascii string

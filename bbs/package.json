@@ -14,7 +14,7 @@
     "build:all": "pnpm run build && pnpm run build:browser && pnpm run build:demo",
     "lint": "eslint browser/demo.ts wasm/bbs.ts",
     "lint-fix": "eslint browser/demo.ts wasm/bbs.ts --fix",
-    "test": "make wasm && tsc -p tsconfig.dist.json && tsc test/test.ts && node test/test.js"
+    "test": "make wasm && tsc -p tsconfig.dist.json && tsc --target es2020 --module commonjs test/test.ts && node test/test.js"
   },
   "types": "dist/index.d.ts",
   "repository": {
