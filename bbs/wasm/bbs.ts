@@ -155,13 +155,12 @@ export const _showDebug = () => {
 */
 export const init = async (maxMsgN = 128): Promise<void> => {
   mod = await createModule({
-    cryptoGetRandomValues: (p: number, n: number) => {
-      const a = new Uint8Array(n)
+    // fill a with random values. the glue copies it into the wasm memory
+    cryptoGetRandomValues: (a: Uint8Array) => {
       getRandomValues(a)
-      for (let i = 0; i < n; i++) {
-        mod.HEAP8[p + i] = a[i]
-      }
-    }
+    },
+    // export bbs* functions as mod._bbs*
+    prefix: 'bbs'
   })
 
   addWrappedMethods()
