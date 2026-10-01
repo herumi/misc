@@ -41,9 +41,12 @@ static const Str s_apiId = BBS_STR(BBS_API_ID);
 static const Str s_keyGenDst = BBS_STR(BBS_CIPHERSUITE_ID "KEYGEN_DST_");
 static const Str s_h2sDst = BBS_STR(BBS_API_ID "H2S_");
 static const Str s_mapDst = BBS_STR(BBS_API_ID "MAP_MSG_TO_SCALAR_AS_HASH_");
-static const Str s_seedDst = BBS_STR(BBS_API_ID "SIG_GENERATOR_SEED_");
-static const Str s_generatorDst = BBS_STR(BBS_API_ID "SIG_GENERATOR_DST_");
-static const Str s_generatorSeed = BBS_STR(BBS_API_ID "MESSAGE_GENERATOR_SEED");
+// api_id of the generators (Y_0, Y_1) for the commitments of the extension
+static const Str s_comDisApiId = BBS_STR("COM_DIS_" BBS_API_ID);
+// prefix of the extended presentation header
+static const Str s_extTag = BBS_STR("BBS_EXT_V1_");
+static const size_t MAX_PRED_BIT = 64;
+static const size_t MAX_PRED_N = 4096;
 
 // P1 of BLS12-381-SHA-256
 static const char s_P1Hex[] = "a8ce256102840821a3e94ea9025e4662b205762f9776b3a766c872b948f1fd225e7c59698588e70d11406d161b4e28c9";
@@ -60,6 +63,8 @@ static size_t s_genN;
 static uint8_t s_genV[EXPAND_LEN];
 static G1 s_P1;
 static G2 s_BP2;
+// (Y_0, Y_1) = create_generators(2, "COM_DIS_" || api_id). Both points are normalized.
+static G1 s_Y[2];
 
 inline SecretKey *cast(bbsSecretKey *p) { return reinterpret_cast<SecretKey*>(p); }
 inline const SecretKey *cast(const bbsSecretKey *p) { return reinterpret_cast<const SecretKey*>(p); }
@@ -135,28 +140,54 @@ static bool setRandomScalar(Fr& x)
 	return false;
 }
 
+// out = a || b. return the size of out or 0 if it is larger than MAX_DST_SIZE
+template<size_t N>
+size_t concatStr(char out[MAX_DST_SIZE], const Str& a, const char (&b)[N])
+{
+	const size_t bSize = N - 1;
+	if (a.size + bSize > MAX_DST_SIZE) return 0;
+	memcpy(out, a.p, a.size);
+	memcpy(out + a.size, b, bSize);
+	return a.size + bSize;
+}
+
 /*
 	create_generators of the spec
-	extend s_gen to n generators
+	compute gen[begin], ..., gen[end - 1] for apiId
+	v is the intermediate value of the spec. It is initialized if begin is zero.
 */
+static bool createGenerators(G1 *gen, size_t begin, size_t end, uint8_t v[EXPAND_LEN], const Str& apiId)
+{
+	char seedDst[MAX_DST_SIZE];
+	char generatorDst[MAX_DST_SIZE];
+	char generatorSeed[MAX_DST_SIZE];
+	const size_t seedDstSize = concatStr(seedDst, apiId, "SIG_GENERATOR_SEED_");
+	const size_t generatorDstSize = concatStr(generatorDst, apiId, "SIG_GENERATOR_DST_");
+	const size_t generatorSeedSize = concatStr(generatorSeed, apiId, "MESSAGE_GENERATOR_SEED");
+	if (seedDstSize == 0 || generatorDstSize == 0 || generatorSeedSize == 0) return false;
+	if (begin == 0) {
+		fp::expand_message_xmd(v, EXPAND_LEN, generatorSeed, generatorSeedSize, seedDst, seedDstSize);
+	}
+	for (size_t i = begin; i < end; i++) {
+		// v = expand_message(v || I2OSP(i + 1, 8), seed_dst, expand_len)
+		uint8_t buf[EXPAND_LEN + 8];
+		memcpy(buf, v, EXPAND_LEN);
+		cybozu::Set64bitAsBE(buf + EXPAND_LEN, uint64_t(i + 1));
+		fp::expand_message_xmd(v, EXPAND_LEN, buf, sizeof(buf), seedDst, seedDstSize);
+		hashAndMapToG1(gen[i], v, EXPAND_LEN, generatorDst, generatorDstSize);
+		gen[i].normalize();
+	}
+	return true;
+}
+
+// extend s_gen to n generators
 static bool extendGenerators(size_t n)
 {
 	if (n <= s_genN) return true;
 	G1 *p = (G1*)realloc((void*)s_gen, sizeof(G1) * n);
 	if (p == 0) return false;
 	s_gen = p;
-	if (s_genN == 0) {
-		fp::expand_message_xmd(s_genV, EXPAND_LEN, s_generatorSeed.p, s_generatorSeed.size, s_seedDst.p, s_seedDst.size);
-	}
-	for (size_t i = s_genN; i < n; i++) {
-		// v = expand_message(v || I2OSP(i + 1, 8), seed_dst, expand_len)
-		uint8_t buf[EXPAND_LEN + 8];
-		memcpy(buf, s_genV, EXPAND_LEN);
-		cybozu::Set64bitAsBE(buf + EXPAND_LEN, uint64_t(i + 1));
-		fp::expand_message_xmd(s_genV, EXPAND_LEN, buf, sizeof(buf), s_seedDst.p, s_seedDst.size);
-		hashAndMapToG1(s_gen[i], s_genV, EXPAND_LEN, s_generatorDst.p, s_generatorDst.size);
-		s_gen[i].normalize();
-	}
+	if (!createGenerators(s_gen, s_genN, n, s_genV, s_apiId)) return false;
 	s_genN = n;
 	return true;
 }
@@ -274,65 +305,94 @@ inline bool getFr(Fr& x, const uint8_t *buf)
 	return x.deserialize(buf, FR_SIZE) == FR_SIZE && !x.isZero();
 }
 
-namespace bbs {
-
-namespace local {
-
-void setJs(uint32_t *js, size_t undiscN, const uint32_t *discIdxs, size_t discN)
+// fill rs[0..n) with random scalars
+static bool setRandomScalars(Array<Fr, true>& rs, size_t n)
 {
-	const size_t msgN = undiscN + discN;
-	uint32_t v = 0;
-	size_t dPos = 0;
-	size_t next = dPos < discN ? discIdxs[dPos++]: msgN;
-
-	size_t jPos = 0;
-	while (jPos < undiscN) {
-		if (v < next) {
-			js[jPos++] = v;
-		} else {
-			next = dPos < discN ? discIdxs[dPos++]: msgN;
-		}
-		v++;
+	if (!rs.resize(n)) return false;
+	for (size_t i = 0; i < n; i++) {
+		if (!setRandomScalar(rs[i])) return false;
 	}
+	return true;
 }
 
-void hashToScalar(Fr& out, const void *msg, size_t msgSize, const void *dst, size_t dstSize)
+/*
+	CoreSign of the spec
+	domain = calculate_domain(PK, Q_1, (H_1, ..., H_L), header, api_id)
+	e = hash_to_scalar(serialize((SK, msg_1, ..., msg_L, domain)))
+	B = P1 + Q_1 * domain + H_1 * msg_1 + ... + H_L * msg_L
+	A = B * (1 / (SK + e))
+	return (A, e)
+*/
+static bool coreSign(G1& A, Fr& e, const Fr& sk, const G2& W, const uint8_t *header, size_t headerSize, const Fr *msgs, size_t L)
 {
-	uint8_t md[EXPAND_LEN];
-	fp::expand_message_xmd(md, sizeof(md), msg, msgSize, dst, dstSize);
-	bool b;
-	out.setBigEndianMod(&b, md, sizeof(md));
-	assert(b); (void)b;
-	secureZero(md, sizeof(md));
+	if (!isValidMsgN(L)) return false;
+	if (sk.isZero()) return false;
+
+	// x[0] = domain, x[1 + i] = msgs[i]
+	Array<Fr, true> x;
+	if (!x.resize(L + 1)) return false;
+	for (size_t i = 0; i < L; i++) x[1 + i] = msgs[i];
+	if (!calcDomain(x[0], W, L, header, headerSize)) return false;
+
+	{
+		Octets os;
+		if (!os.init(FR_SIZE * (L + 2))) return false;
+		os.put(sk);
+		for (size_t i = 0; i < L; i++) {
+			os.put(x[1 + i]);
+		}
+		os.put(x[0]);
+		bbs::local::hashToScalar(e, os.data(), os.size(), s_h2sDst.p, s_h2sDst.size);
+	}
+	if (e.isZero()) return false;
+	G1 B;
+	calcB(B, x.data(), L);
+	Fr t;
+	Fr::add(t, sk, e);
+	if (t.isZero()) return false;
+	Fr::inv(t, t);
+	G1::mulCT(A, B, t);
+	secureZero(&t, sizeof(t));
+	return !A.isZero();
 }
 
-void msgToFr(Fr& out, const uint8_t *msg, size_t msgSize)
+/*
+	CoreVerify of the spec
+	B = P1 + Q_1 * domain + H_1 * msg_1 + ... + H_L * msg_L
+	e(A, W) * e(A * e - B, BP2) == 1
+*/
+static bool coreVerify(const G1& A, const Fr& e, const G2& W, const uint8_t *header, size_t headerSize, const Fr *msgs, size_t L)
 {
-	hashToScalar(out, msg, msgSize, s_mapDst.p, s_mapDst.size);
-}
+	if (!isValidMsgN(L)) return false;
+	if (A.isZero() || e.isZero() || W.isZero()) return false;
 
-const G1 *getGenerators()
-{
-	return s_gen;
+	// x[0] = domain, x[1 + i] = msgs[i]
+	Array<Fr> x;
+	if (!x.resize(L + 1)) return false;
+	for (size_t i = 0; i < L; i++) x[1 + i] = msgs[i];
+	if (!calcDomain(x[0], W, L, header, headerSize)) return false;
+
+	G1 B;
+	calcB(B, x.data(), L);
+	G1 T;
+	G1::mul(T, A, e);
+	T -= B;
+	return isPairingProductOne(A, W, T, s_BP2);
 }
 
 /*
 	CoreProofGen of the spec
 	(r1, r2, e~, r1~, r3~, m~_1, ..., m~_U) = rs
 */
-size_t proofGenWithRandomScalars(uint8_t *proof, size_t maxProofSize, const PublicKey& pub, const Signature& sig, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN, const uint32_t *discIdxs, size_t discN, const Fr *rs)
+static size_t coreProofGen(uint8_t *proof, size_t maxProofSize, const G2& W, const G1& A, const Fr& e, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const Fr *msgs, size_t L, const uint32_t *discIdxs, size_t discN, const Fr *rs)
 {
-	if (!isValidMsgN(msgN)) return 0;
-	if (discN > msgN) return 0;
-	const size_t L = msgN;
+	if (!isValidMsgN(L)) return 0;
+	if (discN > L) return 0;
 	const size_t U = L - discN;
 	const size_t proofSize = getProofSize(U);
 	if (maxProofSize < proofSize) return 0;
 	if (!isValidDiscIdx(L, discIdxs, discN)) return 0;
-
-	const G1& A = sig.get_A();
-	const Fr& e = sig.get_e();
-	if (A.isZero() || e.isZero() || pub.get_v().isZero()) return 0;
+	if (A.isZero() || e.isZero() || W.isZero()) return 0;
 
 	const Fr& r1 = rs[0];
 	const Fr& r2 = rs[1];
@@ -342,16 +402,16 @@ size_t proofGenWithRandomScalars(uint8_t *proof, size_t maxProofSize, const Publ
 	const Fr *m_tilde = rs + FIXED_RANDOM_SCALAR_N;
 	if (r1.isZero() || r2.isZero()) return 0;
 
-	// v[0] = domain, v[1 + i] = scalar of msg[i]
+	// v[0] = domain, v[1 + i] = msgs[i]
 	// the scalars of the undisclosed messages are secret
 	Array<Fr, true> v;
 	Array<uint32_t> js;
 	if (!v.resize(L + 1) || !js.resize(U)) return 0;
-	msgsToFr(v.data() + 1, msgs, msgSize, L);
-	if (!calcDomain(v[0], pub.get_v(), L, header, headerSize)) return 0;
+	for (size_t i = 0; i < L; i++) v[1 + i] = msgs[i];
+	if (!calcDomain(v[0], W, L, header, headerSize)) return 0;
 	const Fr& domain = v[0];
 	const Fr *m = v.data() + 1;
-	setJs(js.data(), U, discIdxs, discN);
+	bbs::local::setJs(js.data(), U, discIdxs, discN);
 
 	// ProofInit
 	G1 B;
@@ -394,6 +454,256 @@ size_t proofGenWithRandomScalars(uint8_t *proof, size_t maxProofSize, const Publ
 	return proofSize;
 }
 
+/*
+	CoreProofVerify of the spec
+	(Abar, Bbar, D, e^, r1^, r3^, (m^_1, ..., m^_U), c) = proof
+	T1 = Bbar * c + Abar * e^ + D * r1^
+	Bv = P1 + Q_1 * domain + sum_{i in disclosed} H_i * msg_i
+	T2 = Bv * c + D * r3^ + sum_{j in undisclosed} H_j * m^_j
+	c == challenge and e(Abar, W) * e(Bbar, -BP2) == 1
+*/
+static bool coreProofVerify(const G2& W, const uint8_t *proof, size_t proofSize, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const Fr *discMsgs, const uint32_t *discIdxs, size_t discN)
+{
+	if (!isInitialized()) return false;
+	if (proofSize < FIXED_PROOF_SIZE) return false;
+	if ((proofSize - FIXED_PROOF_SIZE) % FR_SIZE) return false;
+	const size_t U = (proofSize - FIXED_PROOF_SIZE) / FR_SIZE;
+	const size_t R = discN;
+	// L = U + R <= s_maxMsgN
+	if (U > s_maxMsgN || R > s_maxMsgN - U) return false;
+	const size_t L = U + R;
+	if (!isValidDiscIdx(L, discIdxs, R)) return false;
+	if (W.isZero()) return false;
+
+	// octets_to_proof
+	G1 Abar, Bbar, D;
+	Fr e_hat, r1_hat, r3_hat, c;
+	Array<Fr> m_hat;
+	if (!m_hat.resize(U)) return false;
+	const uint8_t *p = proof;
+	G1 *G1tbl[] = { &Abar, &Bbar, &D };
+	for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(G1tbl); i++) {
+		if (!getG1(*G1tbl[i], p)) return false;
+		p += G1_SIZE;
+	}
+	Fr *Frtbl[] = { &e_hat, &r1_hat, &r3_hat };
+	for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(Frtbl); i++) {
+		if (!getFr(*Frtbl[i], p)) return false;
+		p += FR_SIZE;
+	}
+	for (size_t i = 0; i < U; i++) {
+		if (!getFr(m_hat[i], p)) return false;
+		p += FR_SIZE;
+	}
+	if (!getFr(c, p)) return false;
+
+	Fr domain;
+	Array<uint32_t> js;
+	if (!js.resize(U)) return false;
+	if (!calcDomain(domain, W, L, header, headerSize)) return false;
+	bbs::local::setJs(js.data(), U, discIdxs, R);
+
+	// ProofVerifyInit
+	G1 T1 = Bbar * c + Abar * e_hat + D * r1_hat;
+	G1 Bv = s_P1 + s_gen[0] * domain;
+	if (!addSelectedMulVec(Bv, discIdxs, R, discMsgs)) return false;
+	G1 T2 = Bv * c + D * r3_hat;
+	if (!addSelectedMulVec(T2, js.data(), U, m_hat.data())) return false;
+
+	Fr c2;
+	if (!calcChallenge(c2, Abar, Bbar, D, T1, T2, domain, discIdxs, R, discMsgs, true, ph, phSize)) return false;
+	if (c2 != c) return false;
+	// e(Abar, W) * e(Bbar, -BP2) = e(Abar, W) * e(-Bbar, BP2)
+	G1 negBbar;
+	G1::neg(negBbar, Bbar);
+	return isPairingProductOne(Abar, W, negBbar, s_BP2);
+}
+
+/*
+	extension which is not defined in the spec
+	proof with range predicates for undisclosed integer messages
+*/
+inline void setUint64(Fr& x, uint64_t v)
+{
+	bool b;
+	x.setArray(&b, &v, 1);
+	assert(b); (void)b;
+}
+
+/*
+	check the predicates
+	- sorted by idx in ascending order
+	- type is BBS_PRED_GE or BBS_PRED_LE, 1 <= bitN <= MAX_PRED_BIT and reserved is 0
+	*pK : the number of the distinct idx
+	*pBitN : the sum of bitN
+*/
+static bool checkPreds(size_t *pK, size_t *pBitN, const bbsPredicate *preds, size_t predN)
+{
+	if (predN > MAX_PRED_N) return false;
+	size_t K = 0;
+	size_t bitN = 0;
+	for (size_t i = 0; i < predN; i++) {
+		const bbsPredicate& p = preds[i];
+		if (p.type != BBS_PRED_GE && p.type != BBS_PRED_LE) return false;
+		if (p.bitN == 0 || p.bitN > MAX_PRED_BIT) return false;
+		if (p.reserved != 0) return false;
+		if (i == 0 || preds[i - 1].idx != p.idx) {
+			if (i > 0 && preds[i - 1].idx > p.idx) return false;
+			K++;
+		}
+		bitN += p.bitN;
+	}
+	*pK = K;
+	*pBitN = bitN;
+	return true;
+}
+
+/*
+	size of the extended part of a proof
+	(C, s^) for each commitment
+	(E_1, ..., E_(n-1)) and (c_0, z_0, z_1) for each bit for each predicate of n bits
+*/
+inline size_t getExtSize(size_t K, size_t bitN, size_t predN)
+{
+	return (G1_SIZE + FR_SIZE) * K + G1_SIZE * (bitN - predN) + FR_SIZE * 3 * bitN;
+}
+
+// return the position of idx in the sorted array js[0..n) or n if not found
+static size_t findIdx(const uint32_t *js, size_t n, uint32_t idx)
+{
+	size_t lo = 0;
+	size_t hi = n;
+	while (lo < hi) {
+		const size_t mid = lo + (hi - lo) / 2;
+		if (js[mid] < idx) {
+			lo = mid + 1;
+		} else {
+			hi = mid;
+		}
+	}
+	return (lo < n && js[lo] == idx) ? lo : n;
+}
+
+/*
+	public values and the first messages of the sigma protocols of the extension
+	They are bound to the challenge of the BBS proof through the presentation header.
+*/
+struct ExtTranscript {
+	Array<uint32_t> cidx; // idx of the committed messages
+	Array<G1> C; // C = Y_0 * s + Y_1 * m
+	Array<G1> Ct; // C~ = Y_0 * s~ + Y_1 * m~
+	// for all bits of all predicates
+	Array<G1> E; // E = Y_0 * t + Y_1 * bit
+	Array<G1> a0; // the first message of the OR-proof for bit = 0
+	Array<G1> a1; // the first message of the OR-proof for bit = 1
+	bool init(size_t K, size_t bitN)
+	{
+		return cidx.resize(K) && C.resize(K) && Ct.resize(K) && E.resize(bitN) && a0.resize(bitN) && a1.resize(bitN);
+	}
+	/*
+		ph' = tag || K || (idx, C, C~) * K || predN || (idx, type, bound, bitN, E * bitN, (a0, a1) * bitN) * predN || I2OSP(phSize, 8) || ph
+	*/
+	bool makePh(Octets& os, const bbsPredicate *preds, size_t predN, const uint8_t *ph, size_t phSize) const
+	{
+		const size_t K = cidx.size();
+		const size_t bitN = E.size();
+		if (!os.init(s_extTag.size + 8 + (8 + G1_SIZE * 2) * K + 8 + 8 * 4 * predN + G1_SIZE * 3 * bitN + 8 + phSize)) return false;
+		os.put(s_extTag.p, s_extTag.size);
+		os.putInt(K);
+		for (size_t i = 0; i < K; i++) {
+			os.putInt(cidx[i]);
+			os.put(C[i]);
+			os.put(Ct[i]);
+		}
+		os.putInt(predN);
+		size_t pos = 0;
+		for (size_t i = 0; i < predN; i++) {
+			const bbsPredicate& p = preds[i];
+			os.putInt(p.idx);
+			os.putInt(p.type);
+			os.putInt(p.bound);
+			os.putInt(p.bitN);
+			for (size_t j = 0; j < p.bitN; j++) {
+				os.put(E[pos + j]);
+			}
+			for (size_t j = 0; j < p.bitN; j++) {
+				os.put(a0[pos + j]);
+				os.put(a1[pos + j]);
+			}
+			pos += p.bitN;
+		}
+		os.putInt(phSize);
+		os.put(ph, phSize);
+		return true;
+	}
+};
+
+// Cw = C - Y_1 * bound if GE, Y_1 * bound - C if LE
+// Cw is a commitment to w = m - bound or bound - m
+inline void calcCw(G1& Cw, const G1& C, const bbsPredicate& p)
+{
+	Fr bound;
+	setUint64(bound, p.bound);
+	G1 T;
+	G1::mul(T, s_Y[1], bound);
+	if (p.type == BBS_PRED_GE) {
+		G1::sub(Cw, C, T);
+	} else {
+		G1::sub(Cw, T, C);
+	}
+}
+
+namespace bbs {
+
+namespace local {
+
+void setJs(uint32_t *js, size_t undiscN, const uint32_t *discIdxs, size_t discN)
+{
+	const size_t msgN = undiscN + discN;
+	uint32_t v = 0;
+	size_t dPos = 0;
+	size_t next = dPos < discN ? discIdxs[dPos++]: msgN;
+
+	size_t jPos = 0;
+	while (jPos < undiscN) {
+		if (v < next) {
+			js[jPos++] = v;
+		} else {
+			next = dPos < discN ? discIdxs[dPos++]: msgN;
+		}
+		v++;
+	}
+}
+
+void hashToScalar(Fr& out, const void *msg, size_t msgSize, const void *dst, size_t dstSize)
+{
+	uint8_t md[EXPAND_LEN];
+	fp::expand_message_xmd(md, sizeof(md), msg, msgSize, dst, dstSize);
+	bool b;
+	out.setBigEndianMod(&b, md, sizeof(md));
+	assert(b); (void)b;
+	secureZero(md, sizeof(md));
+}
+
+void msgToFr(Fr& out, const uint8_t *msg, size_t msgSize)
+{
+	hashToScalar(out, msg, msgSize, s_mapDst.p, s_mapDst.size);
+}
+
+const G1 *getGenerators()
+{
+	return s_gen;
+}
+
+size_t proofGenWithRandomScalars(uint8_t *proof, size_t maxProofSize, const PublicKey& pub, const Signature& sig, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN, const uint32_t *discIdxs, size_t discN, const Fr *rs)
+{
+	if (!isValidMsgN(msgN)) return 0;
+	Array<Fr, true> x;
+	if (!x.resize(msgN)) return 0;
+	msgsToFr(x.data(), msgs, msgSize, msgN);
+	return coreProofGen(proof, maxProofSize, pub.get_v(), sig.get_A(), sig.get_e(), header, headerSize, ph, phSize, x.data(), msgN, discIdxs, discN, rs);
+}
+
 } // bbs::local
 
 bool init(int cipherSuite, size_t maxMsgN)
@@ -414,6 +724,8 @@ bool init(int cipherSuite, size_t maxMsgN)
 		if (!b) return false;
 		s_BP2.setStr(&b, s_BP2Hex, IoSerializeHexStr);
 		if (!b) return false;
+		uint8_t v[EXPAND_LEN];
+		if (!createGenerators(s_Y, 0, 2, v, s_comDisApiId)) return false;
 		s_cipherSuite = cipherSuite;
 	}
 	if (!extendGenerators(maxMsgN + 1)) return false;
@@ -487,80 +799,37 @@ const Fr& Signature::get_e() const
 	return *cast(&v.e);
 }
 
-/*
-	CoreSign of the spec
-	domain = calculate_domain(PK, Q_1, (H_1, ..., H_L), header, api_id)
-	e = hash_to_scalar(serialize((SK, msg_1, ..., msg_L, domain)))
-	B = P1 + Q_1 * domain + H_1 * msg_1 + ... + H_L * msg_L
-	A = B * (1 / (SK + e))
-	return (A, e)
-*/
-bool Signature::sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *header, size_t headerSize, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN)
+bool Signature::sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *header, size_t headerSize, const Fr *msgs, size_t msgN)
 {
-	if (!isValidMsgN(msgN)) return false;
-	const size_t L = msgN;
-	if (sec.get_v().isZero()) return false;
-
-	// x[0] = domain, x[1 + i] = scalar of msg[i]
-	Array<Fr, true> x;
-	if (!x.resize(L + 1)) return false;
-	msgsToFr(x.data() + 1, msgs, msgSize, L);
-	if (!calcDomain(x[0], pub.get_v(), L, header, headerSize)) return false;
-
-	Fr e;
-	{
-		Octets os;
-		if (!os.init(FR_SIZE * (L + 2))) return false;
-		os.put(sec.get_v());
-		for (size_t i = 0; i < L; i++) {
-			os.put(x[1 + i]);
-		}
-		os.put(x[0]);
-		bbs::local::hashToScalar(e, os.data(), os.size(), s_h2sDst.p, s_h2sDst.size);
-	}
-	if (e.isZero()) return false;
-	G1 B;
-	calcB(B, x.data(), L);
-	Fr t;
-	Fr::add(t, sec.get_v(), e);
-	if (t.isZero()) return false;
-	Fr::inv(t, t);
 	G1 A;
-	G1::mulCT(A, B, t);
-	secureZero(&t, sizeof(t));
-	if (A.isZero()) return false;
+	Fr e;
+	if (!coreSign(A, e, sec.get_v(), pub.get_v(), header, headerSize, msgs, msgN)) return false;
 	*cast(&v.A) = A;
 	*cast(&v.e) = e;
 	return true;
 }
 
-/*
-	CoreVerify of the spec
-	B = P1 + Q_1 * domain + H_1 * msg_1 + ... + H_L * msg_L
-	e(A, W) * e(A * e - B, BP2) == 1
-*/
+bool Signature::sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *header, size_t headerSize, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN)
+{
+	if (!isValidMsgN(msgN)) return false;
+	Array<Fr, true> x;
+	if (!x.resize(msgN)) return false;
+	msgsToFr(x.data(), msgs, msgSize, msgN);
+	return sign(sec, pub, header, headerSize, x.data(), msgN);
+}
+
+bool Signature::verify(const PublicKey& pub, const uint8_t *header, size_t headerSize, const Fr *msgs, size_t msgN) const
+{
+	return coreVerify(get_A(), get_e(), pub.get_v(), header, headerSize, msgs, msgN);
+}
+
 bool Signature::verify(const PublicKey& pub, const uint8_t *header, size_t headerSize, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN) const
 {
 	if (!isValidMsgN(msgN)) return false;
-	const size_t L = msgN;
-
-	const G1& A = get_A();
-	const Fr& e = get_e();
-	const G2& W = pub.get_v();
-	if (A.isZero() || e.isZero() || W.isZero()) return false;
-
-	// x[0] = domain, x[1 + i] = scalar of msg[i]
 	Array<Fr> x;
-	if (!x.resize(L + 1)) return false;
-	msgsToFr(x.data() + 1, msgs, msgSize, L);
-	if (!calcDomain(x[0], W, L, header, headerSize)) return false;
-
-	G1 B;
-	calcB(B, x.data(), L);
-	G1 T;
-	G1::mul(T, A, e);
-	T -= B;
-	return isPairingProductOne(A, W, T, s_BP2);
+	if (!x.resize(msgN)) return false;
+	msgsToFr(x.data(), msgs, msgSize, msgN);
+	return verify(pub, header, headerSize, x.data(), msgN);
 }
 
 size_t getProofSize(size_t undiscN)
@@ -568,88 +837,288 @@ size_t getProofSize(size_t undiscN)
 	return FIXED_PROOF_SIZE + FR_SIZE * undiscN;
 }
 
-size_t proofGen(uint8_t *proof, size_t maxProofSize, const PublicKey& pub, const Signature& sig, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN, const uint32_t *discIdxs, size_t discN)
+size_t proofGen(uint8_t *proof, size_t maxProofSize, const PublicKey& pub, const Signature& sig, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const Fr *msgs, size_t msgN, const uint32_t *discIdxs, size_t discN)
 {
 	if (!isValidMsgN(msgN)) return 0;
 	if (discN > msgN) return 0;
 	// calculate_random_scalars(5 + U)
-	const size_t rsN = FIXED_RANDOM_SCALAR_N + (msgN - discN);
 	Array<Fr, true> rs;
-	if (!rs.resize(rsN)) return 0;
-	for (size_t i = 0; i < rsN; i++) {
-		if (!setRandomScalar(rs[i])) return 0;
-	}
-	return bbs::local::proofGenWithRandomScalars(proof, maxProofSize, pub, sig, header, headerSize, ph, phSize, msgs, msgSize, msgN, discIdxs, discN, rs.data());
+	if (!setRandomScalars(rs, FIXED_RANDOM_SCALAR_N + (msgN - discN))) return 0;
+	return coreProofGen(proof, maxProofSize, pub.get_v(), sig.get_A(), sig.get_e(), header, headerSize, ph, phSize, msgs, msgN, discIdxs, discN, rs.data());
+}
+
+size_t proofGen(uint8_t *proof, size_t maxProofSize, const PublicKey& pub, const Signature& sig, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN, const uint32_t *discIdxs, size_t discN)
+{
+	if (!isValidMsgN(msgN)) return 0;
+	Array<Fr, true> x;
+	if (!x.resize(msgN)) return 0;
+	msgsToFr(x.data(), msgs, msgSize, msgN);
+	return proofGen(proof, maxProofSize, pub, sig, header, headerSize, ph, phSize, x.data(), msgN, discIdxs, discN);
+}
+
+bool proofVerify(const PublicKey& pub, const uint8_t *proof, size_t proofSize, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const Fr *discMsgs, const uint32_t *discIdxs, size_t discN)
+{
+	return coreProofVerify(pub.get_v(), proof, proofSize, header, headerSize, ph, phSize, discMsgs, discIdxs, discN);
+}
+
+bool proofVerify(const PublicKey& pub, const uint8_t *proof, size_t proofSize, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const uint8_t *discMsgs, const uint32_t *discMsgSize, const uint32_t *discIdxs, size_t discN)
+{
+	if (!isValidMsgN(discN)) return false;
+	Array<Fr> x;
+	if (!x.resize(discN)) return false;
+	msgsToFr(x.data(), discMsgs, discMsgSize, discN);
+	return proofVerify(pub, proof, proofSize, header, headerSize, ph, phSize, x.data(), discIdxs, discN);
+}
+
+size_t getProofExSize(size_t undiscN, const bbsPredicate *preds, size_t predN)
+{
+	size_t K, bitN;
+	if (!checkPreds(&K, &bitN, preds, predN)) return 0;
+	return getProofSize(undiscN) + getExtSize(K, bitN, predN);
 }
 
 /*
-	CoreProofVerify of the spec
-	(Abar, Bbar, D, e^, r1^, r3^, (m^_1, ..., m^_U), c) = proof
-	T1 = Bbar * c + Abar * e^ + D * r1^
-	Bv = P1 + Q_1 * domain + sum_{i in disclosed} H_i * msg_i
-	T2 = Bv * c + D * r3^ + sum_{j in undisclosed} H_j * m^_j
-	c == challenge and e(Abar, W) * e(Bbar, -BP2) == 1
+	the proof is
+	(BBS proof with ph') || (C, s^) * K || ((E_1, ..., E_(n-1)), (c_0, z_0, z_1) * n) for each predicate
+	see ExtTranscript::makePh for ph'
 */
-bool proofVerify(const PublicKey& pub, const uint8_t *proof, size_t proofSize, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const uint8_t *discMsgs, const uint32_t *discMsgSize, const uint32_t *discIdxs, size_t discN)
+size_t proofGenEx(uint8_t *proof, size_t maxProofSize, const PublicKey& pub, const Signature& sig, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const Fr *msgs, size_t msgN, const uint32_t *discIdxs, size_t discN, const bbsPredicate *preds, size_t predN)
+{
+	if (!isValidMsgN(msgN)) return 0;
+	if (discN > msgN) return 0;
+	const size_t L = msgN;
+	const size_t U = L - discN;
+	size_t K, bitN;
+	if (!checkPreds(&K, &bitN, preds, predN)) return 0;
+	const size_t baseSize = getProofSize(U);
+	const size_t proofSize = baseSize + getExtSize(K, bitN, predN);
+	if (maxProofSize < proofSize) return 0;
+	if (!isValidDiscIdx(L, discIdxs, discN)) return 0;
+	Array<uint32_t> js;
+	if (!js.resize(U)) return 0;
+	local::setJs(js.data(), U, discIdxs, discN);
+
+	ExtTranscript tr;
+	if (!tr.init(K, bitN)) return 0;
+	// random scalars of the BBS proof. m~ is shared with the commitments
+	Array<Fr, true> rs;
+	if (!setRandomScalars(rs, FIXED_RANDOM_SCALAR_N + U)) return 0;
+	const Fr *m_tilde = rs.data() + FIXED_RANDOM_SCALAR_N;
+	// s[k] and s~[k] for the k-th commitment
+	Array<Fr, true> s, s_tilde;
+	if (!setRandomScalars(s, K) || !setRandomScalars(s_tilde, K)) return 0;
+	/*
+		secrets for each bit
+		bt : E = Y_0 * bt + Y_1 * bit
+		bk : the random value of the real branch of the OR-proof
+		bc, bz : the challenge and the response of the simulated branch
+	*/
+	Array<Fr, true> bt, bk, bc, bz;
+	Array<uint8_t, true> bits;
+	if (!bt.resize(bitN) || !setRandomScalars(bk, bitN) || !setRandomScalars(bc, bitN) || !setRandomScalars(bz, bitN) || !bits.resize(bitN)) return 0;
+
+	size_t k = 0;
+	size_t pos = 0;
+	for (size_t i = 0; i < predN; i++) {
+		const bbsPredicate& p = preds[i];
+		if (i == 0 || preds[i - 1].idx != p.idx) {
+			// a new commitment
+			if (i > 0) k++;
+			const size_t rank = findIdx(js.data(), U, p.idx);
+			if (rank == U) return 0; // not an undisclosed message
+			tr.cidx[k] = p.idx;
+			tr.C[k] = s_Y[0] * s[k] + s_Y[1] * msgs[p.idx];
+			tr.Ct[k] = s_Y[0] * s_tilde[k] + s_Y[1] * m_tilde[rank];
+		}
+		// w = m - bound or bound - m must be in [0, 2^n). sw is the random value of Cw
+		const size_t n = p.bitN;
+		Fr bound, w, sw;
+		setUint64(bound, p.bound);
+		if (p.type == BBS_PRED_GE) {
+			w = msgs[p.idx] - bound;
+			sw = s[k];
+		} else {
+			w = bound - msgs[p.idx];
+			Fr::neg(sw, s[k]);
+		}
+		bool b;
+		const uint64_t wv = w.getUint64(&b);
+		secureZero(&w, sizeof(w));
+		if (!b) return 0;
+		if (n < 64 && (wv >> n) != 0) return 0;
+		// sw = sum_{j=0}^{n-1} 2^j bt[j]
+		{
+			Fr sum, pow2;
+			sum = 0;
+			pow2 = 1;
+			for (size_t j = 1; j < n; j++) {
+				if (!setRandomScalar(bt[pos + j])) return 0;
+				pow2 += pow2;
+				sum += pow2 * bt[pos + j];
+			}
+			bt[pos] = sw - sum;
+			secureZero(&sum, sizeof(sum));
+		}
+		secureZero(&sw, sizeof(sw));
+		for (size_t j = 0; j < n; j++) {
+			const size_t q = pos + j;
+			const uint8_t bit = uint8_t((wv >> j) & 1);
+			bits[q] = bit;
+			G1& E = tr.E[q];
+			G1::mul(E, s_Y[0], bt[q]);
+			if (bit) E += s_Y[1];
+			// real branch : a = Y_0 * bk
+			G1 real;
+			G1::mul(real, s_Y[0], bk[q]);
+			// simulated branch for 1 - bit : a = Y_0 * bz - (E - Y_1 * (1 - bit)) * bc
+			G1 X = E;
+			if (bit == 0) X -= s_Y[1];
+			G1 sim = s_Y[0] * bz[q] - X * bc[q];
+			if (bit == 0) {
+				tr.a0[q] = real;
+				tr.a1[q] = sim;
+			} else {
+				tr.a0[q] = sim;
+				tr.a1[q] = real;
+			}
+		}
+		pos += n;
+	}
+
+	Octets phEx;
+	if (!tr.makePh(phEx, preds, predN, ph, phSize)) return 0;
+	if (coreProofGen(proof, baseSize, pub.get_v(), sig.get_A(), sig.get_e(), header, headerSize, phEx.data(), phEx.size(), msgs, L, discIdxs, discN, rs.data()) != baseSize) return 0;
+	// the challenge is the last scalar of the BBS proof
+	Fr c;
+	if (!getFr(c, proof + baseSize - FR_SIZE)) return 0;
+
+	uint8_t *out = proof + baseSize;
+	for (size_t i = 0; i < K; i++) {
+		if (tr.C[i].serialize(out, G1_SIZE) != G1_SIZE) return 0;
+		out += G1_SIZE;
+		const Fr s_hat = s_tilde[i] + c * s[i];
+		if (s_hat.serialize(out, FR_SIZE) != FR_SIZE) return 0;
+		out += FR_SIZE;
+	}
+	pos = 0;
+	for (size_t i = 0; i < predN; i++) {
+		const size_t n = preds[i].bitN;
+		for (size_t j = 1; j < n; j++) {
+			if (tr.E[pos + j].serialize(out, G1_SIZE) != G1_SIZE) return 0;
+			out += G1_SIZE;
+		}
+		for (size_t j = 0; j < n; j++) {
+			const size_t q = pos + j;
+			// the challenge of the real branch is c - bc
+			Fr cr, zr;
+			cr = c - bc[q];
+			zr = bk[q] + cr * bt[q];
+			const Fr *v[3]; // c_0, z_0, z_1
+			if (bits[q] == 0) {
+				v[0] = &cr;
+				v[1] = &zr;
+				v[2] = &bz[q];
+			} else {
+				v[0] = &bc[q];
+				v[1] = &bz[q];
+				v[2] = &zr;
+			}
+			for (size_t l = 0; l < 3; l++) {
+				if (v[l]->serialize(out, FR_SIZE) != FR_SIZE) return 0;
+				out += FR_SIZE;
+			}
+		}
+		pos += n;
+	}
+	return proofSize;
+}
+
+bool proofVerifyEx(const PublicKey& pub, const uint8_t *proof, size_t proofSize, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const Fr *discMsgs, const uint32_t *discIdxs, size_t discN, const bbsPredicate *preds, size_t predN)
 {
 	if (!isInitialized()) return false;
-	if (proofSize < FIXED_PROOF_SIZE) return false;
-	if ((proofSize - FIXED_PROOF_SIZE) % FR_SIZE) return false;
-	const size_t U = (proofSize - FIXED_PROOF_SIZE) / FR_SIZE;
+	size_t K, bitN;
+	if (!checkPreds(&K, &bitN, preds, predN)) return false;
+	const size_t extSize = getExtSize(K, bitN, predN);
+	if (proofSize < FIXED_PROOF_SIZE || proofSize - FIXED_PROOF_SIZE < extSize) return false;
+	const size_t baseSize = proofSize - extSize;
+	if ((baseSize - FIXED_PROOF_SIZE) % FR_SIZE) return false;
+	const size_t U = (baseSize - FIXED_PROOF_SIZE) / FR_SIZE;
 	const size_t R = discN;
-	// L = U + R <= s_maxMsgN
 	if (U > s_maxMsgN || R > s_maxMsgN - U) return false;
 	const size_t L = U + R;
 	if (!isValidDiscIdx(L, discIdxs, R)) return false;
-	const G2& W = pub.get_v();
-	if (W.isZero()) return false;
-
-	// octets_to_proof
-	G1 Abar, Bbar, D;
-	Fr e_hat, r1_hat, r3_hat, c;
-	Array<Fr> m_hat;
-	if (!m_hat.resize(U)) return false;
-	const uint8_t *p = proof;
-	G1 *G1tbl[] = { &Abar, &Bbar, &D };
-	for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(G1tbl); i++) {
-		if (!getG1(*G1tbl[i], p)) return false;
-		p += G1_SIZE;
-	}
-	Fr *Frtbl[] = { &e_hat, &r1_hat, &r3_hat };
-	for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(Frtbl); i++) {
-		if (!getFr(*Frtbl[i], p)) return false;
-		p += FR_SIZE;
-	}
-	for (size_t i = 0; i < U; i++) {
-		if (!getFr(m_hat[i], p)) return false;
-		p += FR_SIZE;
-	}
-	if (!getFr(c, p)) return false;
-
-	// v[0] = domain, v[1 + i] = scalar of discMsg[i]
-	Array<Fr> v;
 	Array<uint32_t> js;
-	if (!v.resize(R + 1) || !js.resize(U)) return false;
-	msgsToFr(v.data() + 1, discMsgs, discMsgSize, R);
-	if (!calcDomain(v[0], W, L, header, headerSize)) return false;
-	const Fr& domain = v[0];
-	const Fr *m = v.data() + 1;
-	bbs::local::setJs(js.data(), U, discIdxs, R);
+	if (!js.resize(U)) return false;
+	local::setJs(js.data(), U, discIdxs, R);
 
-	// ProofVerifyInit
-	G1 T1 = Bbar * c + Abar * e_hat + D * r1_hat;
-	G1 Bv = s_P1 + s_gen[0] * domain;
-	if (!addSelectedMulVec(Bv, discIdxs, R, m)) return false;
-	G1 T2 = Bv * c + D * r3_hat;
-	if (!addSelectedMulVec(T2, js.data(), U, m_hat.data())) return false;
+	// the challenge and the responses m^ of the BBS proof
+	Fr c;
+	if (!getFr(c, proof + baseSize - FR_SIZE)) return false;
+	const uint8_t *const m_hat_top = proof + G1_SIZE * 3 + FR_SIZE * 3;
 
-	Fr c2;
-	if (!calcChallenge(c2, Abar, Bbar, D, T1, T2, domain, discIdxs, R, m, true, ph, phSize)) return false;
-	if (c2 != c) return false;
-	// e(Abar, W) * e(Bbar, -BP2) = e(Abar, W) * e(-Bbar, BP2)
-	G1 negBbar;
-	G1::neg(negBbar, Bbar);
-	return isPairingProductOne(Abar, W, negBbar, s_BP2);
+	ExtTranscript tr;
+	if (!tr.init(K, bitN)) return false;
+	const uint8_t *in = proof + baseSize;
+	// C~ = Y_0 * s^ + Y_1 * m^ - C * c
+	{
+		size_t k = 0;
+		for (size_t i = 0; i < predN; i++) {
+			const bbsPredicate& p = preds[i];
+			if (i > 0 && preds[i - 1].idx == p.idx) continue;
+			const size_t rank = findIdx(js.data(), U, p.idx);
+			if (rank == U) return false; // not an undisclosed message
+			Fr s_hat, m_hat;
+			if (!getG1(tr.C[k], in)) return false;
+			in += G1_SIZE;
+			if (s_hat.deserialize(in, FR_SIZE) != FR_SIZE) return false;
+			in += FR_SIZE;
+			if (!getFr(m_hat, m_hat_top + FR_SIZE * rank)) return false;
+			tr.cidx[k] = p.idx;
+			tr.Ct[k] = s_Y[0] * s_hat + s_Y[1] * m_hat - tr.C[k] * c;
+			k++;
+		}
+	}
+	{
+		size_t k = 0;
+		size_t pos = 0;
+		for (size_t i = 0; i < predN; i++) {
+			const bbsPredicate& p = preds[i];
+			if (i > 0 && preds[i - 1].idx != p.idx) k++;
+			const size_t n = p.bitN;
+			// E_0 = Cw - sum_{j=1}^{n-1} 2^j E_j
+			G1 acc;
+			acc.clear();
+			for (size_t j = 1; j < n; j++) {
+				if (!getG1(tr.E[pos + j], in)) return false;
+				in += G1_SIZE;
+			}
+			for (size_t j = n - 1; j >= 1; j--) {
+				acc += tr.E[pos + j];
+				G1::dbl(acc, acc);
+			}
+			G1 Cw;
+			calcCw(Cw, tr.C[k], p);
+			G1::sub(tr.E[pos], Cw, acc);
+			// a_0 = Y_0 * z_0 - E * c_0, a_1 = Y_0 * z_1 - (E - Y_1) * c_1 where c_1 = c - c_0
+			for (size_t j = 0; j < n; j++) {
+				const size_t q = pos + j;
+				Fr c0, z0, z1;
+				Fr *v[3] = { &c0, &z0, &z1 };
+				for (size_t l = 0; l < 3; l++) {
+					if (v[l]->deserialize(in, FR_SIZE) != FR_SIZE) return false;
+					in += FR_SIZE;
+				}
+				const Fr c1 = c - c0;
+				tr.a0[q] = s_Y[0] * z0 - tr.E[q] * c0;
+				tr.a1[q] = s_Y[0] * z1 - (tr.E[q] - s_Y[1]) * c1;
+			}
+			pos += n;
+		}
+	}
+	Octets phEx;
+	if (!tr.makePh(phEx, preds, predN, ph, phSize)) return false;
+	// the challenge recomputed with ph' must be equal to c
+	return coreProofVerify(pub.get_v(), proof, baseSize, header, headerSize, phEx.data(), phEx.size(), discMsgs, discIdxs, discN);
 }
 
 } // bbs
@@ -770,4 +1239,49 @@ mclSize bbsProofGen(uint8_t *proof, mclSize maxProofSize, const bbsPublicKey *pu
 bool bbsProofVerify(const bbsPublicKey *pub, const uint8_t *proof, mclSize proofSize, const uint8_t *header, mclSize headerSize, const uint8_t *ph, mclSize phSize, const uint8_t *discMsgs, const uint32_t *discMsgSize, const uint32_t *discIdxs, uint32_t discN)
 {
 	return bbs::proofVerify(*cast(pub), proof, proofSize, header, headerSize, ph, phSize, discMsgs, discMsgSize, discIdxs, discN);
+}
+
+void bbsMsgToFr(mclBnFr *x, const uint8_t *msg, mclSize msgSize)
+{
+	bbs::local::msgToFr(*cast(x), msg, msgSize);
+}
+
+void bbsUint64ToFr(mclBnFr *x, uint64_t v)
+{
+	setUint64(*cast(x), v);
+}
+
+bool bbsSignFr(bbsSignature *sig, const bbsSecretKey *sec, const bbsPublicKey *pub, const uint8_t *header, mclSize headerSize, const mclBnFr *msgs, uint32_t msgN)
+{
+	return cast(sig)->sign(*cast(sec), *cast(pub), header, headerSize, cast(msgs), msgN);
+}
+
+bool bbsVerifyFr(const bbsSignature *sig, const bbsPublicKey *pub, const uint8_t *header, mclSize headerSize, const mclBnFr *msgs, uint32_t msgN)
+{
+	return cast(sig)->verify(*cast(pub), header, headerSize, cast(msgs), msgN);
+}
+
+mclSize bbsProofGenFr(uint8_t *proof, mclSize maxProofSize, const bbsPublicKey *pub, const bbsSignature *sig, const uint8_t *header, mclSize headerSize, const uint8_t *ph, mclSize phSize, const mclBnFr *msgs, uint32_t msgN, const uint32_t *discIdxs, uint32_t discN)
+{
+	return bbs::proofGen(proof, maxProofSize, *cast(pub), *cast(sig), header, headerSize, ph, phSize, cast(msgs), msgN, discIdxs, discN);
+}
+
+bool bbsProofVerifyFr(const bbsPublicKey *pub, const uint8_t *proof, mclSize proofSize, const uint8_t *header, mclSize headerSize, const uint8_t *ph, mclSize phSize, const mclBnFr *discMsgs, const uint32_t *discIdxs, uint32_t discN)
+{
+	return bbs::proofVerify(*cast(pub), proof, proofSize, header, headerSize, ph, phSize, cast(discMsgs), discIdxs, discN);
+}
+
+mclSize bbsGetProofExSize(uint32_t undiscN, const bbsPredicate *preds, uint32_t predN)
+{
+	return bbs::getProofExSize(undiscN, preds, predN);
+}
+
+mclSize bbsProofGenEx(uint8_t *proof, mclSize maxProofSize, const bbsPublicKey *pub, const bbsSignature *sig, const uint8_t *header, mclSize headerSize, const uint8_t *ph, mclSize phSize, const mclBnFr *msgs, uint32_t msgN, const uint32_t *discIdxs, uint32_t discN, const bbsPredicate *preds, uint32_t predN)
+{
+	return bbs::proofGenEx(proof, maxProofSize, *cast(pub), *cast(sig), header, headerSize, ph, phSize, cast(msgs), msgN, discIdxs, discN, preds, predN);
+}
+
+bool bbsProofVerifyEx(const bbsPublicKey *pub, const uint8_t *proof, mclSize proofSize, const uint8_t *header, mclSize headerSize, const uint8_t *ph, mclSize phSize, const mclBnFr *discMsgs, const uint32_t *discIdxs, uint32_t discN, const bbsPredicate *preds, uint32_t predN)
+{
+	return bbs::proofVerifyEx(*cast(pub), proof, proofSize, header, headerSize, ph, phSize, cast(discMsgs), discIdxs, discN, preds, predN);
 }

@@ -1,6 +1,7 @@
 #include "bbs.hpp"
 #include <cybozu/test.hpp>
 #include <set>
+#include <time.h>
 #include <string>
 #include <vector>
 
@@ -938,6 +939,403 @@ CYBOZU_TEST_AUTO(proof)
 		for (uint32_t i = 0; i < discN; i++) discIdxs[i] = i;
 		checkProof(pub, sig, msgs, discIdxs, discN);
 		ccheckProof(&cpub, &csig, msgs, discIdxs, discN);
+	}
+}
+
+typedef std::vector<mclBnFr> FrVec;
+
+// scalars of the messages by messages_to_scalars of the spec
+FrVec toFrVec(const Msgs& msgs)
+{
+	FrVec v(msgs.n());
+	for (size_t i = 0; i < v.size(); i++) {
+		const Bytes m = msgs.get(i);
+		bbsMsgToFr(&v[i], m.data(), m.size());
+	}
+	return v;
+}
+
+FrVec selectFr(const FrVec& v, const uint32_t *idxs, size_t n)
+{
+	FrVec r(n);
+	for (size_t i = 0; i < n; i++) r[i] = v[idxs[i]];
+	return r;
+}
+
+// the functions for scalar messages are equivalent to the functions for octet strings
+CYBOZU_TEST_AUTO(fr_api)
+{
+	bbsSecretKey sec;
+	bbsPublicKey pub;
+	setSecretKey(sec, g_secHex);
+	setPublicKey(pub, g_pubHex);
+	const Bytes header = fromHex(g_headerHex);
+	const Bytes ph = fromHex(g_phHex);
+	const Msgs msgs = getMsgs();
+	const FrVec ms = toFrVec(msgs);
+	const uint32_t n = msgs.n();
+
+	bbsSignature sig;
+	CYBOZU_TEST_ASSERT(bbsSignFr(&sig, &sec, &pub, header.data(), header.size(), ms.data(), n));
+	CYBOZU_TEST_EQUAL(toHex(sig), g_sigMultiHex);
+	CYBOZU_TEST_ASSERT(bbsVerifyFr(&sig, &pub, header.data(), header.size(), ms.data(), n));
+	CYBOZU_TEST_ASSERT(bbsVerify(&sig, &pub, header.data(), header.size(), msgs.p(), msgs.sizes(), n));
+	CYBOZU_TEST_ASSERT(!bbsVerifyFr(&sig, &pub, header.data(), header.size(), ms.data(), n - 1));
+	CYBOZU_TEST_ASSERT(!bbsVerifyFr(&sig, &pub, 0, 0, ms.data(), n));
+	{
+		FrVec wrong = ms;
+		bbsUint64ToFr(&wrong[3], 5);
+		CYBOZU_TEST_ASSERT(!bbsVerifyFr(&sig, &pub, header.data(), header.size(), wrong.data(), n));
+	}
+	CYBOZU_TEST_ASSERT(!bbsSignFr(&sig, &sec, &pub, 0, 0, ms.data(), uint32_t(maxMsgN) + 1));
+
+	const uint32_t discIdxs[] = { 0, 2, 4, 6 };
+	const uint32_t discN = CYBOZU_NUM_OF_ARRAY(discIdxs);
+	const Msgs discMsgs = msgs.select(discIdxs, discN);
+	const FrVec discMs = selectFr(ms, discIdxs, discN);
+	Bytes proof(bbsGetProofSize(n - discN));
+	// Fr -> octets
+	CYBOZU_TEST_EQUAL(bbsProofGenFr(proof.data(), proof.size(), &pub, &sig, header.data(), header.size(), ph.data(), ph.size(), ms.data(), n, discIdxs, discN), proof.size());
+	CYBOZU_TEST_ASSERT(bbsProofVerify(&pub, proof.data(), proof.size(), header.data(), header.size(), ph.data(), ph.size(), discMsgs.p(), discMsgs.sizes(), discIdxs, discN));
+	CYBOZU_TEST_ASSERT(bbsProofVerifyFr(&pub, proof.data(), proof.size(), header.data(), header.size(), ph.data(), ph.size(), discMs.data(), discIdxs, discN));
+	// octets -> Fr
+	CYBOZU_TEST_EQUAL(bbsProofGen(proof.data(), proof.size(), &pub, &sig, header.data(), header.size(), ph.data(), ph.size(), msgs.p(), msgs.sizes(), n, discIdxs, discN), proof.size());
+	CYBOZU_TEST_ASSERT(bbsProofVerifyFr(&pub, proof.data(), proof.size(), header.data(), header.size(), ph.data(), ph.size(), discMs.data(), discIdxs, discN));
+	{
+		FrVec wrong = discMs;
+		wrong[1] = ms[1];
+		CYBOZU_TEST_ASSERT(!bbsProofVerifyFr(&pub, proof.data(), proof.size(), header.data(), header.size(), ph.data(), ph.size(), wrong.data(), discIdxs, discN));
+	}
+	// the proof of the spec (8.4.5.3)
+	const Bytes specProof = fromHex("a2ed608e8e12ed21abc2bf154e462d744a367c7f1f969bdbf784a2a134c7db2d340394223a5397a3011b1c340ebc415199462ba6f31106d8a6da8b513b37a47afe93c9b3474d0d7a354b2edc1b88818b063332df774c141f7a07c48fe50d452f897739228c88afc797916dca01e8f03bd9c5375c7a7c59996e514bb952a436afd24457658acbaba5ddac2e693ac481356918cd38025d86b28650e909defe9604a7259f44386b861608be742af7775a2e71a6070e5836f5f54dc43c60096834a5b6da295bf8f081f72b7cdf7f3b4347fb3ff19edaa9e74055c8ba46dbcb7594fb2b06633bb5324192eb9be91be0d33e453b4d3127459de59a5e2193c900816f049a02cb9127dac894418105fa1641d5a206ec9c42177af9316f433417441478276ca0303da8f941bf2e0222a43251cf5c2bf6eac1961890aa740534e519c1767e1223392a3a286b0f4d91f7f25217a7862b8fcc1810cdcfddde2a01c80fcc90b632585fec12dc4ae8fea1918e9ddeb9414623a457e88f53f545841f9d5dcb1f8e160d1560770aa79d65e2eca8edeaecb73fb7e995608b820c4a64de6313a370ba05dc25ed7c1d185192084963652f2870341bdaa4b1a37f8c06348f38a4f80c5a2650a21d59f09e8305dcd3fc3ac30e2a");
+	CYBOZU_TEST_ASSERT(bbsProofVerifyFr(&pub, specProof.data(), specProof.size(), header.data(), header.size(), ph.data(), ph.size(), discMs.data(), discIdxs, discN));
+}
+
+/*
+	tests of the extension (range predicates for undisclosed integer messages)
+	messages : [ "abc", m1, m2, "xyz" ] where m1 and m2 are integers
+*/
+struct PredTest {
+	bbsSecretKey sec;
+	bbsPublicKey pub;
+	bbsSignature sig;
+	FrVec ms;
+	Bytes header;
+	Bytes ph;
+	PredTest(uint64_t m1, uint64_t m2)
+		: ms(4)
+	{
+		CYBOZU_TEST_ASSERT(bbsInitSecretKey(&sec));
+		CYBOZU_TEST_ASSERT(bbsGetPublicKey(&pub, &sec));
+		const uint8_t abc[] = { 'a', 'b', 'c' };
+		const uint8_t xyz[] = { 'x', 'y', 'z' };
+		bbsMsgToFr(&ms[0], abc, sizeof(abc));
+		bbsUint64ToFr(&ms[1], m1);
+		bbsUint64ToFr(&ms[2], m2);
+		bbsMsgToFr(&ms[3], xyz, sizeof(xyz));
+		header = fromHex(g_headerHex);
+		ph = fromHex(g_phHex);
+		CYBOZU_TEST_ASSERT(bbsSignFr(&sig, &sec, &pub, header.data(), header.size(), ms.data(), n()));
+	}
+	uint32_t n() const { return uint32_t(ms.size()); }
+	// return an empty array if the proof can not be generated
+	Bytes gen(const uint32_t *discIdxs, uint32_t discN, const bbsPredicate *preds, uint32_t predN) const
+	{
+		Bytes proof(bbsGetProofSize(n() - discN) + 144 * 64 * predN + 80 * predN);
+		const size_t size = bbsProofGenEx(proof.data(), proof.size(), &pub, &sig, header.data(), header.size(), ph.data(), ph.size(), ms.data(), n(), discIdxs, discN, preds, predN);
+		if (size > 0) {
+			CYBOZU_TEST_EQUAL(size, bbsGetProofExSize(n() - discN, preds, predN));
+		}
+		proof.resize(size);
+		return proof;
+	}
+	bool verify(const Bytes& proof, const uint32_t *discIdxs, uint32_t discN, const bbsPredicate *preds, uint32_t predN) const
+	{
+		const FrVec discMs = selectFr(ms, discIdxs, discN);
+		return bbsProofVerifyEx(&pub, proof.data(), proof.size(), header.data(), header.size(), ph.data(), ph.size(), discMs.data(), discIdxs, discN, preds, predN);
+	}
+};
+
+bbsPredicate makePred(uint32_t idx, uint32_t type, uint64_t bound, uint32_t bitN)
+{
+	bbsPredicate p;
+	p.bound = bound;
+	p.idx = idx;
+	p.type = type;
+	p.bitN = bitN;
+	p.reserved = 0;
+	return p;
+}
+
+CYBOZU_TEST_AUTO(pred_range)
+{
+	CYBOZU_TEST_EQUAL(sizeof(bbsPredicate), 24u);
+	const uint64_t M = uint64_t(-1);
+	const struct {
+		uint64_t m;
+		uint32_t type;
+		uint64_t bound;
+		uint32_t bitN;
+		bool ok;
+	} tbl[] = {
+		// 0 <= m - bound < 2^bitN
+		{ 100, BBS_PRED_GE, 100, 1, true },
+		{ 101, BBS_PRED_GE, 100, 1, true },
+		{ 102, BBS_PRED_GE, 100, 1, false },
+		{ 99, BBS_PRED_GE, 100, 1, false },
+		{ 99, BBS_PRED_GE, 100, 64, false },
+		{ 355, BBS_PRED_GE, 100, 8, true },
+		{ 356, BBS_PRED_GE, 100, 8, false },
+		{ 65535, BBS_PRED_GE, 0, 16, true },
+		{ 65536, BBS_PRED_GE, 0, 16, false },
+		{ 0, BBS_PRED_GE, 0, 16, true },
+		{ 0, BBS_PRED_GE, 1, 16, false },
+		{ M, BBS_PRED_GE, 0, 64, true },
+		{ M, BBS_PRED_GE, M, 1, true },
+		{ M, BBS_PRED_GE, 0, 63, false },
+		{ 0, BBS_PRED_GE, 0, 64, true },
+		// 0 <= bound - m < 2^bitN
+		{ 100, BBS_PRED_LE, 100, 1, true },
+		{ 99, BBS_PRED_LE, 100, 1, true },
+		{ 98, BBS_PRED_LE, 100, 1, false },
+		{ 101, BBS_PRED_LE, 100, 1, false },
+		{ 101, BBS_PRED_LE, 100, 64, false },
+		{ 0, BBS_PRED_LE, 255, 8, true },
+		{ 0, BBS_PRED_LE, 256, 8, false },
+		{ 0, BBS_PRED_LE, M, 64, true },
+		{ M, BBS_PRED_LE, M, 64, true },
+		{ 1, BBS_PRED_LE, M, 63, false },
+		// birthday as YYYYMMDD is not later than 2008/10/01
+		{ 19900415, BBS_PRED_LE, 20081001, 25, true },
+		{ 20081001, BBS_PRED_LE, 20081001, 25, true },
+		{ 20081002, BBS_PRED_LE, 20081001, 25, false },
+	};
+	const uint32_t discIdxs[] = { 0 };
+	for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(tbl); i++) {
+		const PredTest t(tbl[i].m, 7);
+		const bbsPredicate pred = makePred(1, tbl[i].type, tbl[i].bound, tbl[i].bitN);
+		const Bytes proof = t.gen(discIdxs, 1, &pred, 1);
+		CYBOZU_TEST_EQUAL(!proof.empty(), tbl[i].ok);
+		if (proof.empty()) continue;
+		CYBOZU_TEST_EQUAL(proof.size(), bbsGetProofSize(3) + 80 + 144 * tbl[i].bitN - 48);
+		CYBOZU_TEST_ASSERT(t.verify(proof, discIdxs, 1, &pred, 1));
+		// a different statement
+		bbsPredicate wrong = pred;
+		wrong.bound++;
+		CYBOZU_TEST_ASSERT(!t.verify(proof, discIdxs, 1, &wrong, 1));
+		wrong = pred;
+		wrong.bound--;
+		CYBOZU_TEST_ASSERT(!t.verify(proof, discIdxs, 1, &wrong, 1));
+		wrong = pred;
+		wrong.type = pred.type == BBS_PRED_GE ? BBS_PRED_LE : BBS_PRED_GE;
+		CYBOZU_TEST_ASSERT(!t.verify(proof, discIdxs, 1, &wrong, 1));
+		wrong = pred;
+		wrong.idx = 2;
+		CYBOZU_TEST_ASSERT(!t.verify(proof, discIdxs, 1, &wrong, 1));
+		wrong = pred;
+		wrong.bitN = pred.bitN == 64 ? 63 : pred.bitN + 1;
+		CYBOZU_TEST_ASSERT(!t.verify(proof, discIdxs, 1, &wrong, 1));
+	}
+}
+
+CYBOZU_TEST_AUTO(pred_multi)
+{
+	// m1 = age, m2 = birthday
+	const PredTest t(30, 19960320);
+	const uint32_t discIdxs[] = { 3 };
+	const uint32_t discN = 1;
+	// 18 <= age <= 65 and 19000101 <= birthday <= 20081001
+	const bbsPredicate preds[] = {
+		makePred(1, BBS_PRED_GE, 18, 8),
+		makePred(1, BBS_PRED_LE, 65, 8),
+		makePred(2, BBS_PRED_GE, 19000101, 25),
+		makePred(2, BBS_PRED_LE, 20081001, 25),
+	};
+	const uint32_t predN = CYBOZU_NUM_OF_ARRAY(preds);
+	const Bytes proof = t.gen(discIdxs, discN, preds, predN);
+	CYBOZU_TEST_ASSERT(!proof.empty());
+	// 2 commitments and 66 bits
+	CYBOZU_TEST_EQUAL(proof.size(), bbsGetProofSize(3) + 80 * 2 + 144 * (8 + 8 + 25 + 25) - 48 * 4);
+	CYBOZU_TEST_ASSERT(t.verify(proof, discIdxs, discN, preds, predN));
+	// a subset or a different order of the predicates
+	CYBOZU_TEST_ASSERT(!t.verify(proof, discIdxs, discN, preds, predN - 1));
+	CYBOZU_TEST_ASSERT(!t.verify(proof, discIdxs, discN, preds + 1, predN - 1));
+	{
+		bbsPredicate swapped[predN];
+		memcpy(swapped, preds, sizeof(preds));
+		swapped[0] = preds[1];
+		swapped[1] = preds[0];
+		CYBOZU_TEST_ASSERT(!t.verify(proof, discIdxs, discN, swapped, predN));
+	}
+	// proofs are randomized
+	{
+		const Bytes proof2 = t.gen(discIdxs, discN, preds, predN);
+		CYBOZU_TEST_EQUAL(proof2.size(), proof.size());
+		CYBOZU_TEST_ASSERT(t.verify(proof2, discIdxs, discN, preds, predN));
+		size_t same = 0;
+		for (size_t i = 0; i + 32 <= proof.size(); i += 16) {
+			if (memcmp(&proof[i], &proof2[i], 16) == 0) same++;
+		}
+		CYBOZU_TEST_EQUAL(same, 0u);
+	}
+	// disclose nothing
+	{
+		const Bytes proof2 = t.gen(0, 0, preds, predN);
+		CYBOZU_TEST_ASSERT(!proof2.empty());
+		CYBOZU_TEST_ASSERT(t.verify(proof2, 0, 0, preds, predN));
+		CYBOZU_TEST_ASSERT(!t.verify(proof2, discIdxs, discN, preds, predN));
+	}
+	// one of the predicates does not hold
+	{
+		bbsPredicate wrong[predN];
+		memcpy(wrong, preds, sizeof(preds));
+		wrong[1].bound = 29;
+		CYBOZU_TEST_ASSERT(t.gen(discIdxs, discN, wrong, predN).empty());
+		wrong[1].bound = 30;
+		CYBOZU_TEST_ASSERT(!t.gen(discIdxs, discN, wrong, predN).empty());
+	}
+	// the message of a predicate is not an integer (a hashed value)
+	{
+		const bbsPredicate p = makePred(0, BBS_PRED_GE, 0, 64);
+		CYBOZU_TEST_ASSERT(t.gen(discIdxs, discN, &p, 1).empty());
+	}
+}
+
+CYBOZU_TEST_AUTO(pred_invalid)
+{
+	const PredTest t(30, 19960320);
+	const uint32_t discIdxs[] = { 0, 3 };
+	const uint32_t discN = 2;
+	const bbsPredicate pred = makePred(1, BBS_PRED_GE, 18, 4);
+	const Bytes proof = t.gen(discIdxs, discN, &pred, 1);
+	CYBOZU_TEST_ASSERT(!proof.empty());
+	CYBOZU_TEST_EQUAL(proof.size(), bbsGetProofSize(2) + 80 + 144 * 4 - 48);
+	CYBOZU_TEST_ASSERT(t.verify(proof, discIdxs, discN, &pred, 1));
+	const FrVec discMs = selectFr(t.ms, discIdxs, discN);
+
+	// it is not a proof without predicates
+	CYBOZU_TEST_ASSERT(!t.verify(proof, discIdxs, discN, 0, 0));
+	CYBOZU_TEST_ASSERT(!bbsProofVerifyFr(&t.pub, proof.data(), proof.size(), t.header.data(), t.header.size(), t.ph.data(), t.ph.size(), discMs.data(), discIdxs, discN));
+	// wrong presentation header, header, public key, disclosed message
+	CYBOZU_TEST_ASSERT(!bbsProofVerifyEx(&t.pub, proof.data(), proof.size(), t.header.data(), t.header.size(), t.ph.data(), t.ph.size() - 1, discMs.data(), discIdxs, discN, &pred, 1));
+	CYBOZU_TEST_ASSERT(!bbsProofVerifyEx(&t.pub, proof.data(), proof.size(), t.header.data(), t.header.size(), 0, 0, discMs.data(), discIdxs, discN, &pred, 1));
+	CYBOZU_TEST_ASSERT(!bbsProofVerifyEx(&t.pub, proof.data(), proof.size(), t.header.data(), t.header.size() - 1, t.ph.data(), t.ph.size(), discMs.data(), discIdxs, discN, &pred, 1));
+	{
+		bbsPublicKey wrongPub;
+		setPublicKey(wrongPub, g_wrongPubHex);
+		CYBOZU_TEST_ASSERT(!bbsProofVerifyEx(&wrongPub, proof.data(), proof.size(), t.header.data(), t.header.size(), t.ph.data(), t.ph.size(), discMs.data(), discIdxs, discN, &pred, 1));
+		FrVec wrong = discMs;
+		wrong[0] = t.ms[2];
+		CYBOZU_TEST_ASSERT(!bbsProofVerifyEx(&t.pub, proof.data(), proof.size(), t.header.data(), t.header.size(), t.ph.data(), t.ph.size(), wrong.data(), discIdxs, discN, &pred, 1));
+	}
+	// bad size
+	{
+		Bytes tmp = proof;
+		tmp.pop_back();
+		CYBOZU_TEST_ASSERT(!t.verify(tmp, discIdxs, discN, &pred, 1));
+		tmp = proof;
+		tmp.resize(proof.size() + 32);
+		CYBOZU_TEST_ASSERT(!t.verify(tmp, discIdxs, discN, &pred, 1));
+		tmp.resize(proof.size() - 32);
+		CYBOZU_TEST_ASSERT(!t.verify(tmp, discIdxs, discN, &pred, 1));
+		tmp.resize(100);
+		CYBOZU_TEST_ASSERT(!t.verify(tmp, discIdxs, discN, &pred, 1));
+		tmp.clear();
+		CYBOZU_TEST_ASSERT(!t.verify(tmp, discIdxs, discN, &pred, 1));
+		// small buffer
+		tmp.resize(proof.size() - 1);
+		CYBOZU_TEST_EQUAL(bbsProofGenEx(tmp.data(), tmp.size(), &t.pub, &t.sig, t.header.data(), t.header.size(), t.ph.data(), t.ph.size(), t.ms.data(), t.n(), discIdxs, discN, &pred, 1), 0u);
+	}
+	// modify each byte of the proof
+	for (size_t i = 0; i < proof.size(); i++) {
+		Bytes tmp = proof;
+		tmp[i] ^= 1;
+		CYBOZU_TEST_ASSERT(!t.verify(tmp, discIdxs, discN, &pred, 1));
+	}
+	// invalid predicates
+	{
+		const bbsPredicate disclosed = makePred(0, BBS_PRED_GE, 18, 4);
+		const bbsPredicate outOfRange = makePred(4, BBS_PRED_GE, 18, 4);
+		const bbsPredicate bit0 = makePred(1, BBS_PRED_GE, 18, 0);
+		const bbsPredicate bit65 = makePred(1, BBS_PRED_GE, 18, 65);
+		const bbsPredicate badType = makePred(1, 2, 18, 4);
+		bbsPredicate reserved = pred;
+		reserved.reserved = 1;
+		const bbsPredicate *tbl[] = { &disclosed, &outOfRange, &bit0, &bit65, &badType, &reserved };
+		for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(tbl); i++) {
+			CYBOZU_TEST_ASSERT(t.gen(discIdxs, discN, tbl[i], 1).empty());
+			CYBOZU_TEST_ASSERT(!t.verify(proof, discIdxs, discN, tbl[i], 1));
+		}
+		CYBOZU_TEST_EQUAL(bbsGetProofExSize(2, &bit0, 1), 0u);
+		CYBOZU_TEST_EQUAL(bbsGetProofExSize(2, &bit65, 1), 0u);
+		CYBOZU_TEST_EQUAL(bbsGetProofExSize(2, &badType, 1), 0u);
+		CYBOZU_TEST_EQUAL(bbsGetProofExSize(2, &reserved, 1), 0u);
+		// not sorted by idx
+		const bbsPredicate notSorted[] = { makePred(2, BBS_PRED_GE, 0, 32), makePred(1, BBS_PRED_GE, 18, 4) };
+		CYBOZU_TEST_EQUAL(bbsGetProofExSize(2, notSorted, 2), 0u);
+		CYBOZU_TEST_ASSERT(t.gen(0, 0, notSorted, 2).empty());
+		const bbsPredicate sorted[] = { notSorted[1], notSorted[0] };
+		const Bytes proof2 = t.gen(0, 0, sorted, 2);
+		CYBOZU_TEST_ASSERT(!proof2.empty());
+		CYBOZU_TEST_ASSERT(t.verify(proof2, 0, 0, sorted, 2));
+		CYBOZU_TEST_ASSERT(!t.verify(proof2, 0, 0, notSorted, 2));
+	}
+}
+
+// the first part of a proof is a proof of the spec whose presentation header is ph'
+CYBOZU_TEST_AUTO(pred_none)
+{
+	const PredTest t(30, 19960320);
+	const uint32_t discIdxs[] = { 0, 3 };
+	const uint32_t discN = 2;
+	const Bytes proof = t.gen(discIdxs, discN, 0, 0);
+	CYBOZU_TEST_EQUAL(proof.size(), bbsGetProofSize(2));
+	CYBOZU_TEST_ASSERT(t.verify(proof, discIdxs, discN, 0, 0));
+	const FrVec discMs = selectFr(t.ms, discIdxs, discN);
+	CYBOZU_TEST_ASSERT(!bbsProofVerifyFr(&t.pub, proof.data(), proof.size(), t.header.data(), t.header.size(), t.ph.data(), t.ph.size(), discMs.data(), discIdxs, discN));
+	// ph' = "BBS_EXT_V1_" || I2OSP(0, 8) || I2OSP(0, 8) || I2OSP(phSize, 8) || ph
+	const char tag[] = "BBS_EXT_V1_";
+	Bytes phEx(tag, tag + strlen(tag));
+	phEx.resize(phEx.size() + 8 * 3);
+	phEx[phEx.size() - 1] = uint8_t(t.ph.size());
+	phEx.insert(phEx.end(), t.ph.begin(), t.ph.end());
+	CYBOZU_TEST_ASSERT(bbsProofVerifyFr(&t.pub, proof.data(), proof.size(), t.header.data(), t.header.size(), phEx.data(), phEx.size(), discMs.data(), discIdxs, discN));
+}
+
+CYBOZU_TEST_AUTO(pred_bench)
+{
+	const PredTest t(19900415, 7);
+	const uint32_t discIdxs[] = { 0 };
+	const uint32_t bitTbl[] = { 8, 16, 25, 32, 64 };
+	for (size_t i = 0; i < CYBOZU_NUM_OF_ARRAY(bitTbl); i++) {
+		// m - bound = 100
+		const bbsPredicate pred = makePred(1, BBS_PRED_GE, 19900415 - 100, bitTbl[i]);
+		const int N = 20;
+		Bytes proof;
+		clock_t begin = clock();
+		for (int j = 0; j < N; j++) proof = t.gen(discIdxs, 1, &pred, 1);
+		const double genMs = double(clock() - begin) / CLOCKS_PER_SEC / N * 1e3;
+		CYBOZU_TEST_ASSERT(!proof.empty());
+		begin = clock();
+		bool ok = true;
+		for (int j = 0; j < N; j++) ok = ok && t.verify(proof, discIdxs, 1, &pred, 1);
+		const double verifyMs = double(clock() - begin) / CLOCKS_PER_SEC / N * 1e3;
+		CYBOZU_TEST_ASSERT(ok);
+		printf("bitN=%2u size=%5zd gen=%6.2f msec verify=%6.2f msec\n", bitTbl[i], proof.size(), genMs, verifyMs);
+	}
+	{
+		// a proof without predicates for comparison
+		const FrVec discMs = selectFr(t.ms, discIdxs, 1);
+		Bytes proof(bbsGetProofSize(3));
+		const int N = 20;
+		clock_t begin = clock();
+		for (int j = 0; j < N; j++) bbsProofGenFr(proof.data(), proof.size(), &t.pub, &t.sig, 0, 0, 0, 0, t.ms.data(), t.n(), discIdxs, 1);
+		const double genMs = double(clock() - begin) / CLOCKS_PER_SEC / N * 1e3;
+		// the signature has a header, so this proof is invalid but the cost is the same
+		begin = clock();
+		for (int j = 0; j < N; j++) bbsProofVerifyFr(&t.pub, proof.data(), proof.size(), 0, 0, 0, 0, discMs.data(), discIdxs, 1);
+		const double verifyMs = double(clock() - begin) / CLOCKS_PER_SEC / N * 1e3;
+		printf("no pred size=%5zd gen=%6.2f msec verify=%6.2f msec\n", proof.size(), genMs, verifyMs);
 	}
 }
 

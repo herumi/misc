@@ -56,6 +56,8 @@ public:
 			true: success
 	*/
 	bool sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *header, size_t headerSize, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN);
+	// sign for scalar messages (CoreSign of the spec)
+	bool sign(const SecretKey& sec, const PublicKey& pub, const uint8_t *header, size_t headerSize, const mcl::Fr *msgs, size_t msgN);
 	/*
 		Verify signature for byte array messages
 		Input:
@@ -68,6 +70,8 @@ public:
 			true: valid
 	*/
 	bool verify(const PublicKey& pub, const uint8_t *header, size_t headerSize, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN) const;
+	// verify for scalar messages (CoreVerify of the spec)
+	bool verify(const PublicKey& pub, const uint8_t *header, size_t headerSize, const mcl::Fr *msgs, size_t msgN) const;
 
 	const mcl::G1& get_A() const;
 	const mcl::Fr& get_e() const;
@@ -86,6 +90,23 @@ size_t getProofSize(size_t undiscN);
 size_t proofGen(uint8_t *proof, size_t maxProofSize, const PublicKey& pub, const Signature& sig, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const uint8_t *msgs, const uint32_t *msgSize, size_t msgN, const uint32_t *discIdxs, size_t discN);
 
 bool proofVerify(const PublicKey& pub, const uint8_t *proof, size_t proofSize, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const uint8_t *discMsgs, const uint32_t *discMsgSize, const uint32_t *discIdxs, size_t discN);
+
+// proofGen and proofVerify for scalar messages (CoreProofGen and CoreProofVerify of the spec)
+size_t proofGen(uint8_t *proof, size_t maxProofSize, const PublicKey& pub, const Signature& sig, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const mcl::Fr *msgs, size_t msgN, const uint32_t *discIdxs, size_t discN);
+
+bool proofVerify(const PublicKey& pub, const uint8_t *proof, size_t proofSize, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const mcl::Fr *discMsgs, const uint32_t *discIdxs, size_t discN);
+
+/*
+	extension which is not defined in the spec
+	proof with range predicates for undisclosed integer messages
+	see bbsProofGenEx and bbsProofVerifyEx
+*/
+// size of a proof for undiscN undisclosed messages and the predicates. return 0 if preds is invalid
+size_t getProofExSize(size_t undiscN, const bbsPredicate *preds, size_t predN);
+
+size_t proofGenEx(uint8_t *proof, size_t maxProofSize, const PublicKey& pub, const Signature& sig, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const mcl::Fr *msgs, size_t msgN, const uint32_t *discIdxs, size_t discN, const bbsPredicate *preds, size_t predN);
+
+bool proofVerifyEx(const PublicKey& pub, const uint8_t *proof, size_t proofSize, const uint8_t *header, size_t headerSize, const uint8_t *ph, size_t phSize, const mcl::Fr *discMsgs, const uint32_t *discIdxs, size_t discN, const bbsPredicate *preds, size_t predN);
 
 /*
 	internal functions exposed for tests

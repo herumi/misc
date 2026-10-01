@@ -178,6 +178,78 @@ MCL_DLL_API mclSize bbsProofGen(uint8_t *proof, mclSize maxProofSize, const bbsP
 */
 MCL_DLL_API bool bbsProofVerify(const bbsPublicKey *pub, const uint8_t *proof, mclSize proofSize, const uint8_t *header, mclSize headerSize, const uint8_t *ph, mclSize phSize, const uint8_t *discMsgs, const uint32_t *discMsgSize, const uint32_t *discIdxs, uint32_t discN);
 
+/*
+	functions for scalar messages (Core operations of the spec)
+	A message is given as a scalar instead of an octet string.
+	- bbsMsgToFr maps an octet string to a scalar in the same way as bbsSign (messages_to_scalars of the spec).
+	  The functions with the scalars made by bbsMsgToFr are equivalent to the functions for octet strings.
+	- bbsUint64ToFr sets an integer without hashing. This is not defined in the spec.
+	  It is necessary for the predicates of bbsProofGenEx.
+	These functions must be called after bbsInit.
+*/
+MCL_DLL_API void bbsMsgToFr(mclBnFr *x, const uint8_t *msg, mclSize msgSize);
+MCL_DLL_API void bbsUint64ToFr(mclBnFr *x, uint64_t v);
+
+MCL_DLL_API bool bbsSignFr(bbsSignature *sig, const bbsSecretKey *sec, const bbsPublicKey *pub, const uint8_t *header, mclSize headerSize, const mclBnFr *msgs, uint32_t msgN);
+MCL_DLL_API bool bbsVerifyFr(const bbsSignature *sig, const bbsPublicKey *pub, const uint8_t *header, mclSize headerSize, const mclBnFr *msgs, uint32_t msgN);
+MCL_DLL_API mclSize bbsProofGenFr(uint8_t *proof, mclSize maxProofSize, const bbsPublicKey *pub, const bbsSignature *sig, const uint8_t *header, mclSize headerSize, const uint8_t *ph, mclSize phSize, const mclBnFr *msgs, uint32_t msgN, const uint32_t *discIdxs, uint32_t discN);
+MCL_DLL_API bool bbsProofVerifyFr(const bbsPublicKey *pub, const uint8_t *proof, mclSize proofSize, const uint8_t *header, mclSize headerSize, const uint8_t *ph, mclSize phSize, const mclBnFr *discMsgs, const uint32_t *discIdxs, uint32_t discN);
+
+/*
+	extension which is not defined in the spec
+	proof with range predicates for undisclosed integer messages
+
+	A proof of bbsProofGenEx shows the predicates for the undisclosed messages in zero-knowledge
+	in addition to the statements of bbsProofGen.
+	The message of a predicate must be an integer set by bbsUint64ToFr.
+
+	The proof consists of
+	- a proof of the spec whose presentation header binds the following values
+	- a Pedersen commitment C = Y_0 * s + Y_1 * m to each message m of the predicates
+	  and a proof that m is the signed message (the committed disclosure of draft-irtf-cfrg-bbs-blind-signatures-03)
+	- a proof that m - bound or bound - m is in [0, 2^bitN) by the commitments to the bits and OR-proofs
+	The size is bbsGetProofSize(undiscN) + 80 * (number of distinct idx) + sum of (144 * bitN - 48).
+*/
+enum {
+	BBS_PRED_GE = 0, // 0 <= m - bound < 2^bitN
+	BBS_PRED_LE = 1 // 0 <= bound - m < 2^bitN
+};
+
+typedef struct {
+	uint64_t bound;
+	uint32_t idx; // index of an undisclosed integer message
+	uint32_t type; // BBS_PRED_GE or BBS_PRED_LE
+	uint32_t bitN; // 1 <= bitN <= 64
+	uint32_t reserved; // must be 0
+} bbsPredicate;
+
+/*
+	size of a proof of bbsProofGenEx
+	return 0 if preds is invalid
+*/
+MCL_DLL_API mclSize bbsGetProofExSize(uint32_t undiscN, const bbsPredicate *preds, uint32_t predN);
+
+/*
+	generate a proof with predicates
+	Input:
+		msgs: scalars of all messages
+		preds: predicates sorted by idx in ascending order. Several predicates may have the same idx.
+		       idx must be an index of an undisclosed message.
+		the other parameters are the same as bbsProofGenFr
+	Return:
+		written size if success else 0
+		0 is returned if a predicate does not hold.
+*/
+MCL_DLL_API mclSize bbsProofGenEx(uint8_t *proof, mclSize maxProofSize, const bbsPublicKey *pub, const bbsSignature *sig, const uint8_t *header, mclSize headerSize, const uint8_t *ph, mclSize phSize, const mclBnFr *msgs, uint32_t msgN, const uint32_t *discIdxs, uint32_t discN, const bbsPredicate *preds, uint32_t predN);
+
+/*
+	verify a proof with predicates
+	preds must be the same as those of bbsProofGenEx.
+	Return:
+		true: valid
+*/
+MCL_DLL_API bool bbsProofVerifyEx(const bbsPublicKey *pub, const uint8_t *proof, mclSize proofSize, const uint8_t *header, mclSize headerSize, const uint8_t *ph, mclSize phSize, const mclBnFr *discMsgs, const uint32_t *discIdxs, uint32_t discN, const bbsPredicate *preds, uint32_t predN);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
