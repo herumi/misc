@@ -6,8 +6,10 @@ async function testAll () {
     console.log('Initializing BBS')
     await bbs.init()
     bbsTest()
+    keyGenTest()
     fixedTest()
     proofTest()
+    bbs.term()
   } catch (e) {
     console.log(`TEST FAIL ${e}`)
     console.log('Error stack:', e.stack)
@@ -39,7 +41,8 @@ const bbsTest = () => {
         console.log(`pub=${s}`)
       }
       const msgs = [new Uint8Array([1, 2, 3]), new Uint8Array([4, 5, 6, 7, 8, 9]), new Uint8Array([10, 11, 12, 13])]
-      const sig = bbs.sign(sec, pub, msgs)
+      const header = new Uint8Array([0x11, 0x22])
+      const sig = bbs.sign(sec, pub, msgs, header)
       let sig2 = new bbs.Signature()
       {
         const s = sig.serializeToHexStr()
@@ -48,11 +51,19 @@ const bbsTest = () => {
         console.log(`sig=${s}`)
       }
 
-      assert(bbs.verify(sig, pub, msgs))
-      assert(bbs.verify(sig2, pub, msgs))
-      msgs[0][0] += 1
+      assert(bbs.verify(sig, pub, msgs, header))
+      assert(bbs.verify(sig2, pub, msgs, header))
+      // wrong header
       assert(!bbs.verify(sig, pub, msgs))
-      assert(!bbs.verify(sig2, pub, msgs))
+      assert(!bbs.verify(sig, pub, msgs, new Uint8Array([0x11])))
+      msgs[0][0] += 1
+      assert(!bbs.verify(sig, pub, msgs, header))
+      assert(!bbs.verify(sig2, pub, msgs, header))
+
+      // header is optional
+      const sig3 = bbs.sign(sec, pub, msgs)
+      assert(bbs.verify(sig3, pub, msgs))
+      assert(!bbs.verify(sig3, pub, msgs, header))
     } catch (e) {
       console.log(`Error in iteration ${i}:`, e)
       console.log('Error stack:', e.stack)
@@ -70,6 +81,33 @@ const getDiscMsgs = (msgs: Uint8Array[], discIdxs: Uint32Array): Uint8Array[] =>
   return r
 }
 
+// 8.4.1 Key Pair of draft-irtf-cfrg-bbs-signatures-12
+const keyGenTest = () => {
+  console.log('keyGenTest')
+  const keyMaterial = bbs.fromHexStr('746869732d49532d6a7573742d616e2d546573742d494b4d2d746f2d67656e65726174652d246528724074232d6b6579')
+  const keyInfo = bbs.fromHexStr('746869732d49532d736f6d652d6b65792d6d657461646174612d746f2d62652d757365642d696e2d746573742d6b65792d67656e')
+  const keyDst = strToUint8Array('BBS_BLS12381G1_XMD:SHA-256_SSWU_RO_H2G_HM2S_KEYGEN_DST_')
+  const sec = new bbs.SecretKey()
+  sec.keyGen(keyMaterial, keyInfo, keyDst)
+  assert.equal(sec.serializeToHexStr(), '60e55110f76883a13d030b2f6bd11883422d5abde717569fc0731f51237169fc')
+  const pub = sec.getPublicKey()
+  assert.equal(pub.serializeToHexStr(), 'a820f230f6ae38503b86c70dc50b61c58a77e45c39ab25c0652bbaa8fa136f2851bd4781c9dcde39fc9d1d52c9e60268061e7d7632171d91aa8d460acee0e96f1e7c4cfb12d3ff9ab5d5dc91c277db75c845d649ef3c4f63aebc364cd55ded0c')
+
+  // 8.4.4.1 Valid Single Message Signature
+  const msgs = [bbs.fromHexStr('9872ad089e452c7b6e283dfac2a80d58e8d0ff71cc4d5e310a1debdda4a45f02')]
+  const header = bbs.fromHexStr('11223344556677889900aabbccddeeff')
+  const sig = bbs.sign(sec, pub, msgs, header)
+  assert.equal(sig.serializeToHexStr(), '84773160b824e194073a57493dac1a20b667af70cd2352d8af241c77658da5253aa8458317cca0eae615690d55b1f27164657dcafee1d5c1973947aa70e2cfbb4c892340be5969920d0916067b4565a0')
+  assert(bbs.verify(sig, pub, msgs, header))
+
+  // the default dst is used
+  const sec2 = new bbs.SecretKey()
+  sec2.keyGen(keyMaterial, keyInfo)
+  assert(!sec.isEqual(sec2))
+  // keyMaterial is too short
+  assert.throws(() => { sec2.keyGen(new Uint8Array(31)) })
+}
+
 const proofTest = () => {
   console.log('ProofTest')
   const sec = new bbs.SecretKey()
@@ -80,16 +118,49 @@ const proofTest = () => {
     new Uint8Array([4, 5, 6, 7, 8, 9]),
     new Uint8Array([10, 11, 12, 13])
   ]
-  const sig = bbs.sign(sec, pub, msgs)
+  const header = new Uint8Array([0x11, 0x22])
+  const sig = bbs.sign(sec, pub, msgs, header)
   const discIdxs = new Uint32Array([0, 2])
   const discMsgs = getDiscMsgs(msgs, discIdxs)
   console.log('discMsgs=', discMsgs)
-  const nonce = new Uint8Array([1, 2, 3])
-  const prf = bbs.createProof(pub, sig, msgs, discIdxs, nonce)
-  assert(prf.pos !== 0)
+  const ph = new Uint8Array([1, 2, 3])
+  const prf = bbs.proofGen(pub, sig, msgs, discIdxs, header, ph)
+  assert.equal(prf.length, bbs.getProofSize(msgs.length - discIdxs.length))
+  assert.equal(prf.length, 48 * 3 + 32 * (4 + 1))
 
-  assert(bbs.verifyProof(pub, prf, discMsgs, discIdxs, nonce))
-  bbs.destroyProof(prf)
+  assert(bbs.proofVerify(pub, prf, discMsgs, discIdxs, header, ph))
+  // wrong presentation header
+  assert(!bbs.proofVerify(pub, prf, discMsgs, discIdxs, header))
+  assert(!bbs.proofVerify(pub, prf, discMsgs, discIdxs, header, new Uint8Array([1, 2])))
+  // wrong header
+  assert(!bbs.proofVerify(pub, prf, discMsgs, discIdxs, undefined, ph))
+  // wrong message
+  discMsgs[0] = new Uint8Array([1, 2, 4])
+  assert(!bbs.proofVerify(pub, prf, discMsgs, discIdxs, header, ph))
+  discMsgs[0] = msgs[0]
+  // modified proof
+  const prf2 = new Uint8Array(prf)
+  prf2[prf2.length - 1] ^= 1
+  assert(!bbs.proofVerify(pub, prf2, discMsgs, discIdxs, header, ph))
+  assert(!bbs.proofVerify(pub, prf.subarray(0, prf.length - 1), discMsgs, discIdxs, header, ph))
+
+  // proofs are randomized
+  const prf3 = bbs.proofGen(pub, sig, msgs, discIdxs, header, ph)
+  assert(bbs.toHexStr(prf) !== bbs.toHexStr(prf3))
+  assert(bbs.proofVerify(pub, prf3, discMsgs, discIdxs, header, ph))
+
+  // disclose nothing / all without header and ph
+  const sig2 = bbs.sign(sec, pub, msgs)
+  const none = new Uint32Array([])
+  const prf4 = bbs.proofGen(pub, sig2, msgs, none)
+  assert(bbs.proofVerify(pub, prf4, [], none))
+  const all = new Uint32Array([0, 1, 2])
+  const prf5 = bbs.proofGen(pub, sig2, msgs, all)
+  assert(bbs.proofVerify(pub, prf5, msgs, all))
+
+  // bad index
+  assert.throws(() => { bbs.proofGen(pub, sig2, msgs, new Uint32Array([2, 0])) })
+  assert.throws(() => { bbs.proofGen(pub, sig2, msgs, new Uint32Array([0, 3])) })
 }
 
 // generate Uint8Array from ascii string
@@ -97,46 +168,29 @@ const strToUint8Array = (s: string): Uint8Array => {
   return new Uint8Array(s.split('').map(c => c.charCodeAt(0)))
 }
 
+// the same values as fixed test in bbs_test.cpp
 const fixedTest = () => {
   console.log('Fixed test')
   const secHex = '6528255759bb6c2c64fed04877398200f67642bddb8bfe200690db6a30487811'
-//  const secHex = '0000000000000000000000000000000000000000000000000000000000000001'
   const sec = bbs.deserializeHexStrToSecretKey(secHex)
   console.log('sec=', sec.serializeToHexStr())
   const pub = sec.getPublicKey()
   console.log('pub=', pub.serializeToHexStr())
+  assert.equal(pub.serializeToHexStr(), 'b06e2a39e47c4fc65cf1d51dd181b793a57ebc4a3dc35bb8245c804ecc9b39effd5516c260ba463bafc1a1e002da9cba17f35c0d1b4c0518779d134cbd1b967996cc3f3de4c8e9a20c8c1db8f759439f16c995a9d25e861cb4eee282d9a2d085')
 
   const msgTbl = ['v', 'kbv', 'qnmnq', 'vbkvhwm', 'ez', 'vttv', 'zemwhv', 'k', 'bvq', 'nmnqv']
   const msgs: Uint8Array[] = msgTbl.map(strToUint8Array)
-  const sig = bbs.sign(sec, pub, msgs)
+  const header = strToUint8Array('header')
+  const sig = bbs.sign(sec, pub, msgs, header)
   console.log('sig=', sig.serializeToHexStr())
+  assert.equal(sig.serializeToHexStr(), '8db34eb67d85d70022d5875a02ea095a7035481d1bacbbf37d2e68c321b4e9165f2390bb688b642e7327fcc5ef59aae82b49108ed81da5e66818ab4e95c75dd5e896855fb2ab6e9104f7b6a05b804a50')
 
-  assert(bbs.verify(sig, pub, msgs))
+  assert(bbs.verify(sig, pub, msgs, header))
 
   const discIdxs = new Uint32Array([1, 4, 5])
-  const nonce = new Uint8Array([9, 0x11, 0x22])
-  const prf = bbs.createProof(pub, sig, msgs, discIdxs, nonce)
-  assert(prf.pos !== 0)
-  console.log('prf=', prf.serializeToHexStr())
-  if (false){
-    console.log('------------wasm-----------------')
-    const s2 = sig.serializeToHexStr()
-    console.log('sig.A=', s2.substring(0, 96))
-    console.log('sig.e=', s2.substring(96, 160))
-    console.log('sig.s=', s2.substring(160, 224))
-    const s = prf.serializeToHexStr()
-    console.log('prf.A_prime=', s.substring(0, 96))
-    console.log('prf.A_bar=', s.substring(96, 192))
-    console.log('prf.D=', s.substring(192, 288))
-    console.log('prf.c=', s.substring(288, 352))
-//    e_hat, r2_hat, r3_hat, s_hat
-    console.log('prf.e_hat=', s.substring(352, 416))
-    console.log('prf.r2_hat=', s.substring(416, 480))
-    console.log('prf.r3_hat=', s.substring(480, 544))
-    console.log('prf.s_hat=', s.substring(544, 608))
-    console.log('--------------------------------')
-  }
+  const ph = new Uint8Array([9, 0x11, 0x22])
+  const prf = bbs.proofGen(pub, sig, msgs, discIdxs, header, ph)
+  console.log('prf=', bbs.toHexStr(prf))
   const discMsgs = getDiscMsgs(msgs, discIdxs)
-  assert(bbs.verifyProof(pub, prf, discMsgs, discIdxs, nonce))
-  bbs.destroyProof(prf)
+  assert(bbs.proofVerify(pub, prf, discMsgs, discIdxs, header, ph))
 }

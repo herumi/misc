@@ -7,8 +7,8 @@ interface BBSLibrary {
   generateKeyPair(): Promise<{ secretKey: Uint8Array; publicKey: Uint8Array }>;
   sign(secretKey: Uint8Array, messages: Uint8Array[], nonce: Uint8Array): Promise<Uint8Array>;
   verify(publicKey: Uint8Array, messages: Uint8Array[], signature: Uint8Array): Promise<boolean>;
-  createProof(publicKey: Uint8Array, signature: Uint8Array, messages: Uint8Array[], disclosedIndexes: number[], nonce: Uint8Array): Promise<Uint8Array>;
-  verifyProof(publicKey: Uint8Array, proof: Uint8Array, disclosedMessages: Uint8Array[], disclosedIndexes: number[]): Promise<boolean>;
+  proofGen(publicKey: Uint8Array, signature: Uint8Array, messages: Uint8Array[], disclosedIndexes: number[], header: Uint8Array, ph: Uint8Array): Promise<Uint8Array>;
+  proofVerify(publicKey: Uint8Array, proof: Uint8Array, disclosedMessages: Uint8Array[], disclosedIndexes: number[], header: Uint8Array, ph: Uint8Array): Promise<boolean>;
 }
 
 declare global {
@@ -457,16 +457,12 @@ async function generateProof (): Promise<void> {
     console.log('証明生成用nonce:', uint8ArrayToString(g_nonce))
     console.log('nonceの長さ:', g_nonce.length, 'bytes')
 
-    // 古い証明を破棄
-    if (g_prf) {
-      bbs.destroyProof(g_prf)
-    }
-    // 証明を生成
-    g_prf = bbs.createProof(g_pub, g_sig, g_msgs, new Uint32Array(g_discIdxs), g_nonce)
+    // 証明を生成 (nonce を presentation header として束縛する)
+    g_prf = bbs.proofGen(g_pub, g_sig, g_msgs, new Uint32Array(g_discIdxs), undefined, g_nonce)
     console.log('証明生成完了 - 開示インデックス:', g_discIdxs)
 
     // 結果を表示
-    const proofHex = g_prf.serializeToHexStr()
+    const proofHex = bbs.toHexStr(g_prf)
     const proofPreview = document.getElementById('proofPreview')
     if (proofPreview) {
       const nonceStr = uint8ArrayToString(g_nonce)
@@ -514,7 +510,7 @@ async function verifyProof (): Promise<void> {
     const nonce = g_nonce
 
     // 証明を検証
-    const isValid = bbs.verifyProof(g_pub, g_prf, g_discMsgs, new Uint32Array(g_discIdxs), nonce)
+    const isValid = bbs.proofVerify(g_pub, g_prf, g_discMsgs, new Uint32Array(g_discIdxs), undefined, nonce)
 
     // 結果を表示
     if (result) {

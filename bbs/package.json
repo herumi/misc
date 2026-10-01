@@ -1,22 +1,21 @@
 {
-  "type": "module",
   "name": "bbs-wasm",
   "version": "1.0.0",
   "description": "BBS signature",
   "main": "dist/index.js",
   "scripts": {
     "build": "npm run build:bbs_c.js && npm run build:dist",
-    "build:bbs_c.js": "make",
-    "build:dist": "tsc",
-    "build:browser": "webpack --config webpack.config.js",
-    "build:browser:watch": "webpack --config webpack.config.js --watch",
-    "build:demo": "webpack --config webpack.demo.config.js",
-    "build:demo:watch": "webpack --config webpack.demo.config.js --watch",
+    "build:bbs_c.js": "make wasm",
+    "build:dist": "tsc -p tsconfig.dist.json",
+    "build:browser": "webpack --config webpack.config.mjs",
+    "build:browser:watch": "webpack --config webpack.config.mjs --watch",
+    "build:demo": "webpack --config webpack.demo.config.mjs",
+    "build:demo:watch": "webpack --config webpack.demo.config.mjs --watch",
     "build:all": "npm run build && npm run build:browser && npm run build:demo",
     "lint": "eslint browser/demo.ts wasm/bbs.ts",
     "lint-fix": "eslint browser/demo.ts wasm/bbs.ts --fix",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "test": "tsc && tsc test/test.ts && node test/test.js"
+    "test": "make wasm && tsc -p tsconfig.dist.json && tsc test/test.ts && node test/test.js"
   },
   "types": "dist/index.d.ts",
   "repository": {
@@ -43,20 +42,20 @@
   },
   "homepage": "https://github.com/herumi/bbs-wasm#readme",
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.35.0",
-    "@typescript-eslint/parser": "^8.35.0",
-    "assert": "^2.0.0",
-    "eslint": "^9.29.0",
-    "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-prettier": "^5.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.70.1",
+    "@typescript-eslint/parser": "^8.70.1",
+    "assert": "^2.1.0",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-plugin-prettier": "^5.5.6",
     "perf_hooks": "^0.0.1",
-    "prettier": "^3.0.0",
-    "ts-loader": "^9.2.6",
+    "prettier": "^3.9.9",
+    "ts-loader": "^9.6.2",
     "typescript": "^4.9.5",
-    "webpack": "^5.64.1",
-    "webpack-cli": "^4.9.1"
+    "webpack": "^5.111.1",
+    "webpack-cli": "^4.10.0"
   },
   "dependencies": {
-    "@types/node": "^20.2.5"
+    "@types/node": "^20.19.43"
   }
 }
