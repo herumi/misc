@@ -1,27 +1,17 @@
 MCL_DIR?=../../mcl
 include $(MCL_DIR)/common.mk
-SRC=bbs_test.cpp
-LIB_SRC=bbs.cpp
-OBJ=$(SRC:.cpp=.o) $(LIB_SRC:.cpp=.o)
-DEP=$(SRC:.cpp=.d)
-TARGET=$(SRC:.cpp=.exe)
 
-all: $(TARGET)
+# The C/C++ sources of BBS live in mcl:
+#   $(MCL_DIR)/include/mcl/bbs.h, bbs.hpp, $(MCL_DIR)/src/bbs.cpp
+# and the native unit test is $(MCL_DIR)/test/bbs_test.cpp (built by mcl's Makefile).
+# This Makefile only builds the wasm/JS glue.
 
-CFLAGS+=-I $(MCL_DIR)/include -I ./ $(CFLAGS_USER)
-LDFLAGS+=-L $(MCL_DIR)/lib -L ./ $(LDFLAGS_USER)
+all: wasm
 
-libbbs.a: bbs.o
-	$(AR) $(ARFLAGS) $@ $<
-
-%.o: %.cpp
-	$(PRE)$(CXX) $(CFLAGS) -c $< -o $@ -MMD -MP -MF $(@:.o=.d)
-
-%.exe: %.o libbbs.a
-	$(PRE)$(CXX) $< -o $@ -lmcl -lbbs $(LDFLAGS)
-
-test: $(TARGET)
-	./$(TARGET)
+# run the native unit test in mcl
+test:
+	$(MAKE) -C $(MCL_DIR) bin/bbs_test.exe
+	$(MCL_DIR)/bin/bbs_test.exe
 
 # wasm is built by plain clang (not emscripten) in the same way as $(MCL_DIR)/Makefile.wasm.
 # clang, wasm-ld (lld) and wasm-opt (binaryen) are required.
@@ -79,7 +69,7 @@ $(BBS_WASM): $(WASM_OBJS)
 $(WASM_OBJ_DIR)/fp.o: $(MCL_DIR)/src/fp.cpp | $(WASM_OBJ_DIR)
 	$(WASM_CXX) $(WASM_CXXFLAGS) -DMCL_DONT_EXPORT -c -o $@ $<
 
-$(WASM_OBJ_DIR)/bbs.o: bbs.cpp | $(WASM_OBJ_DIR)
+$(WASM_OBJ_DIR)/bbs.o: $(MCL_DIR)/src/bbs.cpp | $(WASM_OBJ_DIR)
 	$(WASM_CXX) $(WASM_CXXFLAGS) -c -o $@ $<
 
 $(WASM_OBJ_DIR)/dlmalloc.o: $(WASM_DIR)/dlmalloc.c | $(WASM_OBJ_DIR)
@@ -96,14 +86,9 @@ $(WASM_OBJ_DIR):
 
 wasm: $(BBS_JS)
 
--include $(DEP)
 -include $(WASM_DEPS)
 
 clean:
-	$(RM) $(TARGET) $(OBJ) $(DEP) *.a $(BBS_JS) *.d
-	$(RM) $(WASM_OBJS) $(WASM_DEPS) $(BBS_WASM) $(BBS_WASM).pre
+	$(RM) $(BBS_JS) $(WASM_OBJS) $(WASM_DEPS) $(BBS_WASM) $(BBS_WASM).pre
 
-.PHONY: clean wasm
-
-# don't remove these files automatically
-.SECONDARY: $(OBJ)
+.PHONY: all test clean wasm
