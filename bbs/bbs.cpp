@@ -5,6 +5,7 @@
 #define CYBOZU_DONT_USE_OPENSSL
 #include <mcl/bls12_381.hpp>
 #include <mcl/array.hpp>
+#include <mcl/sigma_protocol.hpp>
 #include <cybozu/endian.hpp>
 #include <stdlib.h>
 #include <string.h>
@@ -916,6 +917,11 @@ size_t proofGenEx(uint8_t *proof, size_t maxProofSize, const PublicKey& pub, con
 	Array<Fr, true> bt, bk, bc, bz;
 	Array<uint8_t, true> bits;
 	if (!bt.resize(bitN) || !setRandomScalars(bk, bitN) || !setRandomScalars(bc, bitN) || !setRandomScalars(bz, bitN) || !bits.resize(bitN)) return 0;
+	// 2-way OR proof for each bit : E - bit * Y_1 = Y_0 * bt
+	typedef sigma::BitOr<G1, Fr, 1> Or;
+	const sigma::MulG<G1> Y0mul(s_Y[0]);
+	const sigma::Bases1<G1, sigma::MulG<G1> > B(Y0mul);
+	const G1 *const O[1] = { &s_Y[1] };
 
 	size_t k = 0;
 	size_t pos = 0;
@@ -967,20 +973,12 @@ size_t proofGenEx(uint8_t *proof, size_t maxProofSize, const PublicKey& pub, con
 			G1& E = tr.E[q];
 			G1::mul(E, s_Y[0], bt[q]);
 			if (bit) E += s_Y[1];
-			// real branch : a = Y_0 * bk
-			G1 real;
-			G1::mul(real, s_Y[0], bk[q]);
+			const G1 *const X[1] = { &E };
+			G1 *const a[2] = { &tr.a0[q], &tr.a1[q] };
 			// simulated branch for 1 - bit : a = Y_0 * bz - (E - Y_1 * (1 - bit)) * bc
-			G1 X = E;
-			if (bit == 0) X -= s_Y[1];
-			G1 sim = s_Y[0] * bz[q] - X * bc[q];
-			if (bit == 0) {
-				tr.a0[q] = real;
-				tr.a1[q] = sim;
-			} else {
-				tr.a0[q] = sim;
-				tr.a1[q] = real;
-			}
+			Or::simulate(a[1 - bit], B, X, O, 1 - bit, bc[q], bz[q]);
+			// real branch : a = Y_0 * bk
+			Or::commit(a[bit], B, bk[q]);
 		}
 		pos += n;
 	}
@@ -1009,10 +1007,9 @@ size_t proofGenEx(uint8_t *proof, size_t maxProofSize, const PublicKey& pub, con
 		}
 		for (size_t j = 0; j < n; j++) {
 			const size_t q = pos + j;
-			// the challenge of the real branch is c - bc
+			// the challenge of the real branch is cr = c - bc and the response is zr = bk + cr * bt
 			Fr cr, zr;
-			cr = c - bc[q];
-			zr = bk[q] + cr * bt[q];
+			Or::finish(cr, zr, c, bc[q], bk[q], bt[q]);
 			const Fr *v[3]; // c_0, z_0, z_1
 			if (bits[q] == 0) {
 				v[0] = &cr;
@@ -1100,17 +1097,24 @@ bool proofVerifyEx(const PublicKey& pub, const uint8_t *proof, size_t proofSize,
 			calcCw(Cw, tr.C[k], p);
 			G1::sub(tr.E[pos], Cw, acc);
 			// a_0 = Y_0 * z_0 - E * c_0, a_1 = Y_0 * z_1 - (E - Y_1) * c_1 where c_1 = c - c_0
+			typedef sigma::BitOr<G1, Fr, 1> Or;
+			const sigma::MulG<G1> Y0mul(s_Y[0]);
+			const sigma::Bases1<G1, sigma::MulG<G1> > B(Y0mul);
+			const G1 *const O[1] = { &s_Y[1] };
 			for (size_t j = 0; j < n; j++) {
 				const size_t q = pos + j;
-				Fr c0, z0, z1;
-				Fr *v[3] = { &c0, &z0, &z1 };
+				Fr d[2], s[2]; // (c_0, c_1), (z_0, z_1)
+				Fr *v[3] = { &d[0], &s[0], &s[1] };
 				for (size_t l = 0; l < 3; l++) {
 					if (v[l]->deserialize(in, FR_SIZE) != FR_SIZE) return false;
 					in += FR_SIZE;
 				}
-				const Fr c1 = c - c0;
-				tr.a0[q] = s_Y[0] * z0 - tr.E[q] * c0;
-				tr.a1[q] = s_Y[0] * z1 - (tr.E[q] - s_Y[1]) * c1;
+				Fr::sub(d[1], c, d[0]);
+				const G1 *const X[1] = { &tr.E[q] };
+				G1 R[2][1];
+				Or::recompute(R, B, X, O, d, s);
+				tr.a0[q] = R[0][0];
+				tr.a1[q] = R[1][0];
 			}
 			pos += n;
 		}

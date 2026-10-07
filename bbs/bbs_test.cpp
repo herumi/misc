@@ -1,5 +1,6 @@
 #include "bbs.hpp"
 #include <cybozu/test.hpp>
+#include <cybozu/sha2.hpp>
 #include <set>
 #include <time.h>
 #include <string>
@@ -1283,6 +1284,57 @@ CYBOZU_TEST_AUTO(pred_invalid)
 }
 
 // the first part of a proof is a proof of the spec whose presentation header is ph'
+/*
+	regression test which fixes the byte sequence of the extended proof
+	A deterministic RNG is injected so that the key and the proof are reproducible.
+	The digest must not change by refactoring the range proof.
+*/
+struct SplitMix64 {
+	uint64_t s_;
+	explicit SplitMix64(uint64_t seed) : s_(seed) {}
+	uint64_t next()
+	{
+		uint64_t z = (s_ += 0x9e3779b97f4a7c15ull);
+		z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ull;
+		z = (z ^ (z >> 27)) * 0x94d049bb133111ebull;
+		return z ^ (z >> 31);
+	}
+	static uint32_t read(void *self, void *buf, uint32_t n)
+	{
+		SplitMix64& rg = *reinterpret_cast<SplitMix64*>(self);
+		uint8_t *p = reinterpret_cast<uint8_t*>(buf);
+		uint64_t v = 0;
+		for (uint32_t i = 0; i < n; i++) {
+			if ((i % 8) == 0) v = rg.next();
+			p[i] = uint8_t(v >> (8 * (i % 8)));
+		}
+		return n;
+	}
+};
+
+CYBOZU_TEST_AUTO(pred_fixed)
+{
+	SplitMix64 rg(12345);
+	mcl::fp::RandGen::setRandFunc(&rg, SplitMix64::read);
+	const PredTest t(30, 19960320);
+	const uint32_t discIdxs[] = { 3 };
+	const uint32_t discN = 1;
+	const bbsPredicate preds[] = {
+		makePred(1, BBS_PRED_GE, 18, 8),
+		makePred(1, BBS_PRED_LE, 65, 8),
+		makePred(2, BBS_PRED_LE, 20081001, 25),
+	};
+	const uint32_t predN = CYBOZU_NUM_OF_ARRAY(preds);
+	const Bytes proof = t.gen(discIdxs, discN, preds, predN);
+	mcl::fp::RandGen::setRandFunc(0, 0);
+	CYBOZU_TEST_ASSERT(!proof.empty());
+	CYBOZU_TEST_ASSERT(t.verify(proof, discIdxs, discN, preds, predN));
+	uint8_t md[32];
+	cybozu::Sha256().digest(md, sizeof(md), proof.data(), proof.size());
+	CYBOZU_TEST_EQUAL(toHex(t.pub), "81469dc235325fad0a889de3d37731f7fd9b1f0bf5fe389e1b9a8ea8a68f0f18e15cef9c3b955fed50962fd6ac6e489416f11453ddec138c33cc53467c8c3eda043f7bafdaa6acf5943c3f53cde2d323050679184969928d612ea5247e48e4b3");
+	CYBOZU_TEST_EQUAL(toHex(md, sizeof(md)), "80af5b4d333388b4f365a021d7c717d15bbd4dc3d3d582a1d00f5f9457d15424");
+}
+
 CYBOZU_TEST_AUTO(pred_none)
 {
 	const PredTest t(30, 19960320);
